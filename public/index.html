@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>佛乐 · 净土法音</title>
+<meta name="description" content="佛乐：净土法音道场。听经台、有声书、佛号念诵、讲记阅读、念佛计数、问法答疑。">
+<meta name="theme-color" content="#f3ecda">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-theme="day" data-view="home" data-tab="home" data-seg="ting" data-mode="live">
+
+<div class="sky" aria-hidden="true"></div>
+
+<header class="top">
+  <a class="brand" href="#home">
+    <svg class="lotus" viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M32 9 C37 18 37 30 32 39 C27 30 27 18 32 9 Z"/>
+        <path d="M21 14 C28 18 32 29 32 39 C25 35 19 25 21 14 Z"/>
+        <path d="M43 14 C36 18 32 29 32 39 C39 35 45 25 43 14 Z"/>
+        <path d="M10.5 25 C20 26.5 28 33 31 40 C22 39.5 13 34 10.5 25 Z"/>
+        <path d="M53.5 25 C44 26.5 36 33 33 40 C42 39.5 51 34 53.5 25 Z"/>
+        <path d="M12 39 C19 47.5 45 47.5 52 39 C48 50.5 16 50.5 12 39 Z"/>
+      </g>
+    </svg>
+    <span class="brand-text">
+      <strong>佛乐</strong>
+      <small>净土法音</small>
+    </span>
+  </a>
+  <nav class="tabs" aria-label="页面切换">
+    <a href="#home" data-tab="home">首页</a>
+    <a href="#ting" data-tab="ting">听经</a>
+    <a href="#wenku" data-tab="wenku">阅读</a>
+    <a href="#wode" data-tab="wode">我的</a>
+  </nav>
+  <a class="ask-btn" href="#wenda" data-tab="wenda" aria-label="问法">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 4.8h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-8.3L6 19.4V15.8H5a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2Z"/>
+      <path d="M12 8.1c1.5 1.6 1.5 3.4 0 5-1.5-1.6-1.5-3.4 0-5Z"/>
+      <path d="M9.5 12c1.3.2 2.3 1.1 2.5 2.5M14.5 12c-1.3.2-2.3 1.1-2.5 2.5" stroke-width="1.3"/>
+    </svg>
+    <span>问法</span>
+  </a>
+</header>
+
+<main>
+
+  <!-- 首页：今日修行案头 -->
+  <section id="view-home" class="view">
+    <h2 class="page-title">今日</h2>
+    <p class="page-note" id="homeDate"></p>
+    <a class="live-strip" href="#live">
+      <span class="live-dot" aria-hidden="true"></span>
+      <span class="ls-label">直播中</span>
+      <span class="ls-info"><strong id="hlSeries"></strong><em id="hlEp"></em></span>
+      <span class="ls-go">进入 ›</span>
+    </a>
+    <div id="homeCards"></div>
+  </section>
+
+  <!-- 听经：听经台 / 有声书 / 佛号 -->
+  <section id="view-ting" class="view">
+    <h2 class="page-title">听经</h2>
+    <div class="seg-row" role="tablist" aria-label="听经栏目">
+      <a href="#ting" data-seg="ting">听经台</a>
+      <a href="#shu" data-seg="shu">有声书</a>
+      <a href="#fohao" data-seg="fohao">佛号</a>
+    </div>
+
+    <div class="panel" id="panel-ting">
+      <a class="live-strip" href="#live" id="liveStrip">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span class="ls-label">直播中</span>
+        <span class="ls-info"><strong id="lsSeries"></strong><em id="lsEp"></em></span>
+        <span class="ls-go">进入 ›</span>
+      </a>
+      <div id="tingGroups"></div>
+    </div>
+
+    <div class="panel" id="panel-shu">
+      <p class="page-note">故事与传记 · 随选恭听，进度自动记忆</p>
+      <div id="shuGroups"></div>
+    </div>
+
+    <div class="panel" id="panel-fohao">
+      <p class="page-note">佛号与经咒 · 随选循环恭听，定课时长在播放器内设置</p>
+      <div id="fohaoGroups"></div>
+    </div>
+  </section>
+
+  <!-- 系列详情（听经台/有声书共用） -->
+  <section id="view-series" class="view">
+    <button class="back-btn" id="btnSeriesBack">‹ 返回</button>
+    <h2 id="seriesName"></h2>
+    <p class="page-note" id="seriesMeta"></p>
+    <p class="series-intro" id="seriesIntro" hidden></p>
+    <div id="seriesResume"></div>
+    <ol class="ep-list" id="epList"></ol>
+  </section>
+
+  <!-- 直播（从听经台进入的栏目） -->
+  <section id="view-live" class="view">
+    <button class="back-btn" data-back="#ting">‹ 返回听经</button>
+    <p class="now-date" id="nowDate"></p>
+    <div class="live-card">
+      <p class="block-chip"><span class="live-dot" aria-hidden="true"></span><span id="blockName"></span></p>
+      <h2 class="series-title" id="liveSeries"></h2>
+      <p class="ep-title" id="liveEp"></p>
+      <div class="progress-wrap" aria-hidden="true">
+        <div class="progress-bar"><div class="progress-fill" id="liveFill"></div></div>
+        <div class="progress-times"><span id="liveElapsed">--:--</span><span id="liveTotal">--:--</span></div>
+      </div>
+      <button class="play-big" id="btnLive" aria-label="播放">
+        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+      </button>
+      <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
+    </div>
+    <div class="next-up">
+      <h3>接下来</h3>
+      <ol id="nextList"></ol>
+      <a class="more-link" href="#schedule">查看今日节目单 ›</a>
+    </div>
+  </section>
+
+  <!-- 节目单 -->
+  <section id="view-schedule" class="view">
+    <button class="back-btn" data-back="#live">‹ 返回直播</button>
+    <div class="sched-head">
+      <h2>节目单</h2>
+      <div class="day-toggle" role="tablist">
+        <button id="btnToday" class="on">今日</button>
+        <button id="btnTomorrow">明日</button>
+      </div>
+    </div>
+    <p class="page-note">时间均为北京时间 · 长课不中断，时段起止略有浮动</p>
+    <div id="schedList"></div>
+  </section>
+
+  <!-- 阅读（讲记阅读站） -->
+  <section id="view-wenku" class="view">
+    <div id="wkHome">
+      <h2 class="page-title">阅读</h2>
+      <p class="page-note"><span id="wkSeriesCount"></span> 部讲记 · <span id="wkChapterCount"></span> 篇 · 大安法师讲经文字实录</p>
+      <div id="wkResume"></div>
+      <div class="lib-grid" id="wkGrid"></div>
+    </div>
+    <div id="wkSeries" hidden>
+      <button class="back-btn" data-back="#wenku">‹ 返回阅读</button>
+      <h2 id="wkSeriesName"></h2>
+      <p class="page-note" id="wkSeriesMeta"></p>
+      <ol class="ep-list" id="wkChapList"></ol>
+    </div>
+  </section>
+
+  <!-- 阅读器 -->
+  <section id="view-reader" class="view">
+    <div class="reader-bar">
+      <button class="back-btn" id="btnReaderBack">‹ 返回</button>
+      <span class="reader-pos" id="readerPos"></span>
+      <div class="reader-tools">
+        <button id="btnFontMinus" aria-label="缩小字号">A−</button>
+        <button id="btnFontPlus" aria-label="放大字号">A＋</button>
+      </div>
+      <div class="read-line" aria-hidden="true"><i id="readLine"></i></div>
+    </div>
+    <article class="reader" id="readerBody"></article>
+    <nav class="reader-nav">
+      <button id="btnPrevChap">‹ 上一篇</button>
+      <button id="btnNextChap">下一篇 ›</button>
+    </nav>
+  </section>
+
+  <!-- 我的：个人中心 · 功能入口（计数细节归念佛计数器） -->
+  <section id="view-wode" class="view">
+    <h2 class="page-title">我的</h2>
+    <a class="home-card" href="#count">
+      <span class="hc-label">念佛计数</span>
+      <span class="hc-main"><strong id="wcName"></strong><em id="wcProgress"></em></span>
+      <span class="hc-go">去计数 ›</span>
+    </a>
+    <div id="wodeTrail" hidden>
+      <div id="wodeCards"></div>
+    </div>
+    <div class="wode-set">
+      <span class="wode-set-label">外观</span>
+      <div class="theme-chips" id="themeChips">
+        <button data-theme="auto">跟随时段</button>
+        <button data-theme="day">浅色</button>
+        <button data-theme="night">深色</button>
+      </div>
+    </div>
+    <button class="wode-row" id="btnAbout">
+      <span>关于本站</span>
+      <span class="wr-go">›</span>
+    </button>
+    <p class="ai-note">计数与收听进度只保存在本机 · 清理浏览器数据前请留意</p>
+  </section>
+
+  <!-- 念佛计数器（极简：念珠为核心，功课/定课/历史点击展开） -->
+  <section id="view-count" class="view">
+    <div class="cnt-top">
+      <button class="back-btn cnt-back" data-back="#wode" aria-label="返回">‹</button>
+      <div class="cnt-tools">
+        <button class="cnt-tool" id="btnMuyu" aria-label="木鱼音效">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a5 5 0 0 0-5 5c0 5-1.8 6-1.8 6h13.6S17 14 17 9a5 5 0 0 0-5-5z"/><path d="M10.2 19.5a2 2 0 0 0 3.6 0"/></svg>
+        </button>
+        <button class="cnt-tool" id="btnWake" aria-label="屏幕常亮">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="cnt-hall">
+      <button class="cnt-practice" id="btnPractice">
+        <span id="countName"></span>
+        <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button class="nj-bead nj-bead-big" id="btnBead" aria-label="计一声">
+        <svg class="nj-svg" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="nj-ring-bg" cx="60" cy="60" r="54" fill="none" stroke-width="4.5"/>
+          <circle class="nj-ring" id="njRing" cx="60" cy="60" r="54" fill="none" stroke-width="4.5"
+            stroke-linecap="round" transform="rotate(-90 60 60)"/>
+        </svg>
+        <span class="nj-center">
+          <strong id="njToday">0</strong>
+          <small>今日 · 声</small>
+        </span>
+      </button>
+      <button class="cnt-goal" id="btnGoal"><span id="countSub"></span></button>
+      <div class="nj-actions">
+        <button id="btnTen">十念 +10</button>
+        <button id="btnUndo">撤销 −1</button>
+      </div>
+      <button class="cnt-summary" id="btnHistory"><span id="cntSummary"></span><span class="cnt-more">历史 ›</span></button>
+      <button class="hx-btn" id="btnHuixiang">回 向</button>
+    </div>
+  </section>
+
+  <!-- 问道：文库问答（RAG） -->
+  <section id="view-wenda" class="view">
+    <h2 class="page-title">问法</h2>
+    <p class="page-note">依据文库 <span id="wdCorpus"></span> 篇讲记与问答作答 · 每句注明出处，点编号可读原文</p>
+    <div class="chat" id="chatLog"></div>
+    <div class="chat-starters" id="chatStarters">
+      <button>如何对治念佛时的昏沉散乱？</button>
+      <button>什么是信愿行三资粮？</button>
+      <button>临终助念应该注意什么？</button>
+      <button>《往生论注》讲了什么？</button>
+    </div>
+    <div class="chat-input">
+      <textarea id="wdInput" rows="1" maxlength="300" placeholder="向文库提问 …"></textarea>
+      <button id="btnAsk" aria-label="提问"><svg viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+    <p class="ai-note">答案由 AI 依据大安法师讲记原文生成，仅供参考；修学请以原文与善知识为准。</p>
+  </section>
+
+</main>
+
+<!-- 统一听经播放器：收起=底部停靠条 / 展开=全屏莲台 -->
+<div id="mini" hidden class="collapsed">
+
+  <!-- 收起态 · 底部停靠条 -->
+  <div class="dock">
+    <div class="mini-line" aria-hidden="true"><i id="miniLine"></i></div>
+    <button class="dock-art" id="miniArt" aria-label="展开播放器">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M32 14 C37 21 37 30 32 37 C27 30 27 21 32 14 Z"/>
+          <path d="M18 23 C25 25 30 31 30 39 C23 37 18 31 18 23 Z"/>
+          <path d="M46 23 C39 25 34 31 34 39 C41 37 46 31 46 23 Z"/>
+          <path d="M12 37 C18 45 46 45 52 37 C47 48 17 48 12 37 Z"/>
+        </g>
+      </svg>
+    </button>
+    <button class="dock-info" id="miniTitles" aria-label="展开播放器">
+      <span class="mini-series" id="miniSeries"></span>
+      <span class="mini-ep" id="miniEp"></span>
+    </button>
+    <button class="mini-pp" id="btnMiniPlaySm" aria-label="播放/暂停">
+      <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+      <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+    </button>
+    <button class="dock-up" id="btnMiniToggle" aria-label="展开播放器">
+      <svg viewBox="0 0 24 24"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <!-- 展开态 · 全屏莲台播放器 -->
+  <div class="player">
+    <div class="pl-top">
+      <button class="pl-icon" id="btnPlayerDown" aria-label="收起播放器">
+        <svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="pl-tag" id="plTag">听经</span>
+      <button class="pl-icon" id="btnMiniClose" aria-label="停止播放">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <div class="pl-hero">
+      <div class="pl-art">
+        <svg class="pl-lotus" viewBox="0 0 64 64" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+            <path d="M32 12 C38 20 38 30 32 38 C26 30 26 20 32 12 Z"/>
+            <path d="M17 21 C25 23 30 30 30 39 C22 37 17 30 17 21 Z"/>
+            <path d="M47 21 C39 23 34 30 34 39 C42 37 47 30 47 21 Z"/>
+            <path d="M11 37 C17 46 47 46 53 37 C48 49 16 49 11 37 Z"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="pl-meta">
+      <h3 id="plEp"></h3>
+      <p id="plSeries"></p>
+    </div>
+
+    <div class="pl-seek">
+      <div class="mini-seekrow">
+        <span id="miniCur">0:00</span>
+        <input type="range" id="miniSeek" min="0" max="1000" value="0" aria-label="播放进度">
+        <span id="miniDur">0:00</span>
+      </div>
+      <p class="mini-status" id="miniStatus"></p>
+    </div>
+
+    <div class="pl-main">
+      <button class="pl-step" id="btnPrevEp" aria-label="上一集">
+        <svg viewBox="0 0 24 24"><path d="M8 6v12H6V6zM18 6v12l-9-6z"/></svg>
+      </button>
+      <button class="pl-jump" id="btnBack15" aria-label="后退15秒">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8"/><path d="M3.5 3.4v4.6h4.6"/></svg>
+        <b class="pl-jump-n">15</b>
+      </button>
+      <button class="pl-play" id="btnMiniPlay" aria-label="播放/暂停">
+        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+      </button>
+      <button class="pl-jump" id="btnFwd15" aria-label="前进15秒">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-8.5-8.5 9.2 9.2 0 0 1 6.4 2.6L20.5 8"/><path d="M20.5 3.4v4.6h-4.6"/></svg>
+        <b class="pl-jump-n">15</b>
+      </button>
+      <button class="pl-step" id="btnNextEp" aria-label="下一集">
+        <svg viewBox="0 0 24 24"><path d="M16 6v12h2V6zM6 6l9 6-9 6z"/></svg>
+      </button>
+    </div>
+
+    <div class="pl-sec">
+      <button class="pl-secbtn" id="btnRate" aria-label="倍速">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a8 8 0 1 0 7.5 5.2"/><path d="M12 12l3.5-2.6"/></svg>
+        <span id="rateVal">1×</span>
+      </button>
+      <button class="pl-secbtn" id="btnSleep" aria-label="睡眠定时">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
+        <span id="sleepVal">定时</span>
+      </button>
+      <button class="pl-secbtn" id="btnFav" aria-label="收藏">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
+        <span>收藏</span>
+      </button>
+      <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
+        <span>目录</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" preload="auto"></audio>
+
+<!-- 关于本站（弹窗） -->
+<div id="aboutOverlay" hidden>
+  <div class="about-sheet">
+    <button class="sheet-x" id="btnAboutClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <h3 class="sheet-title">关于本站</h3>
+    <h4>关于我们</h4>
+    <p>音频内容主要来源于庐山东林寺官网等官方渠道。为方便莲友随时随地听经闻法，特此整理收录。所有音频版权归原寺院及讲法法师所有。</p>
+    <h4>联系方式</h4>
+    <p>如有问题或建议反馈，欢迎来信告知。</p>
+    <p class="about-mail"><a href="mailto:foyue2026@gmail.com">foyue2026@gmail.com</a></p>
+  </div>
+</div>
+
+<!-- 回向偈（计数页回向） -->
+<div id="hxOverlay" hidden>
+  <div class="hx-verse">
+    <p>愿以此功德，庄严佛净土。</p>
+    <p>上报四重恩，下济三途苦。</p>
+    <p>若有见闻者，悉发菩提心。</p>
+    <p>尽此一报身，同生极乐国。</p>
+    <small>回向圆满 · 轻触任意处返回</small>
+  </div>
+</div>
+
+<!-- 念佛计数器弹层（功课 / 定课 / 历史 共用） -->
+<div id="cntSheet" hidden>
+  <div class="cnt-sheet">
+    <div class="cnt-sheet-grip" aria-hidden="true"></div>
+    <div class="cnt-sheet-head">
+      <h3 id="cntSheetTitle"></h3>
+      <button class="sheet-x" id="cntSheetX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+    <div id="cntSheetBody"></div>
+  </div>
+</div>
+
+<footer>
+  <p>南无阿弥陀佛</p>
+</footer>
+
+<!-- 移动端底部导航 -->
+<nav class="bottom-nav" aria-label="底部导航">
+  <a href="#home" data-tab="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 12 4.5l7.5 7"/><path d="M6.5 10.2V19.5h11v-9.3"/></svg>
+    <span>首页</span></a>
+  <a href="#ting" data-tab="ting">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.9v6.2l5.3-3.1z" fill="currentColor" stroke="none"/></svg>
+    <span>听经</span></a>
+  <a href="#wenku" data-tab="wenku">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/></svg>
+    <span>阅读</span></a>
+  <a href="#wode" data-tab="wode">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.4"/><path d="M5.2 19.5c1-3.9 3.8-5.8 6.8-5.8s5.8 1.9 6.8 5.8"/></svg>
+    <span>我的</span></a>
+</nav>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "佛乐 · 净土法音",
+  "short_name": "佛乐",
+  "description": "净土法音道场：二十四小时播经、听经点播、讲记阅读、念佛计数、问法答疑。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3ecda",
+  "theme_color": "#f3ecda",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

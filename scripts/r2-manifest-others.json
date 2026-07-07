@@ -1,0 +1,4218 @@
+[
+ {
+  "bucket": "fohao",
+  "key": "东林佛号共修版.mp3",
+  "size": 1329561,
+  "duration": 83.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "东林佛号标准版.mp3",
+  "size": 1347160,
+  "duration": 84.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "东林佛号欣赏版 女声.mp3",
+  "size": 5036859,
+  "duration": 314.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "东林佛号欣赏版 男声.mp3",
+  "size": 1452441,
+  "duration": 90.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "东林助念佛号（男众版）.mp3",
+  "size": 31860879,
+  "duration": 1991.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "东林助念佛号（男女众版）.mp3",
+  "size": 10750151,
+  "duration": 1791.7,
+  "bitrate": 48,
+  "method": "cbr"
+ },
+ {
+  "bucket": "fohao",
+  "key": "古琴佛号.mp3",
+  "size": 3812238,
+  "duration": 238.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingdiandusong",
+  "key": "佛说阿弥陀经（念诵）.mp3",
+  "size": 12576054,
+  "duration": 785.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingdiandusong",
+  "key": "大势至菩萨念佛圆通章.mp3",
+  "size": 4618198,
+  "duration": 192.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingdiandusong",
+  "key": "心经.mp3",
+  "size": 3270981,
+  "duration": 204.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "东林十八高贤刘遗民（东晋·刘遗民）.mp3",
+  "size": 7970652,
+  "duration": 331.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "东林圣贤往生（一）（东晋·慧持、慧永、僧济）.mp3",
+  "size": 8958968,
+  "duration": 372.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "东林圣贤往生（三）（刘宋·道昺、僧叡、昙诜）.mp3",
+  "size": 6931978,
+  "duration": 288.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "东林圣贤往生（二）（东晋·慧恭、昙恒 刘宋·道敬、昙顺）.mp3",
+  "size": 8818744,
+  "duration": 367.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "佛驮跋陀罗尊者（东晋·佛驮跋陀罗）.mp3",
+  "size": 5334560,
+  "duration": 221.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "弃官不做修净业（东晋·张野 张诠）.mp3",
+  "size": 3983652,
+  "duration": 165.6,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "焚毁仙经修净业（南北朝·昙鸾大师）.mp3",
+  "size": 6892033,
+  "duration": 286.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗七祖省常大师（宋·省常大师）.mp3",
+  "size": 6747296,
+  "duration": 280.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗三祖承远大师（唐·承远大师）.mp3",
+  "size": 7871592,
+  "duration": 327.6,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗九祖蕅益大师（明·蕅益大师）.mp3",
+  "size": 10686854,
+  "duration": 444.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗二祖善导大师（唐·善导大师）.mp3",
+  "size": 15084078,
+  "duration": 628.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗五祖少康大师（唐·少康大师）.mp3",
+  "size": 10496616,
+  "duration": 436.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗八祖莲池大师（明·莲池大师）.mp3",
+  "size": 13976756,
+  "duration": 581.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗六祖永明大师（宋·永明延寿大师）.mp3",
+  "size": 12951436,
+  "duration": 539.3,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗初祖慧远大师（东晋·慧远大师）.mp3",
+  "size": 10014316,
+  "duration": 416.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗十一祖省庵大师（清·省庵大师）.mp3",
+  "size": 9917989,
+  "duration": 412.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗十三祖印光大师（民国·印光大师）.mp3",
+  "size": 18082767,
+  "duration": 753.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗十二祖彻悟大师（清·彻悟大师）.mp3",
+  "size": 9139871,
+  "duration": 380.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗十祖截流大师（清·截流大师）.mp3",
+  "size": 7502738,
+  "duration": 312.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "jingtushengxian",
+  "key": "莲宗四祖法照大师（唐·法照大师）.mp3",
+  "size": 14856426,
+  "duration": 618.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "000 印祖生平.mp3",
+  "size": 22969811,
+  "duration": 1435.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "001 初出家风波.mp3",
+  "size": 3798995,
+  "duration": 237.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "002 挂单莲花寺.mp3",
+  "size": 6656723,
+  "duration": 416.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "003 继庐行者.mp3",
+  "size": 4256339,
+  "duration": 266.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "004 法雨闭关.mp3",
+  "size": 6963923,
+  "duration": 435.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "005 报国寺闭关.mp3",
+  "size": 11398739,
+  "duration": 712.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "006 弘一大师的师徒缘.mp3",
+  "size": 15376979,
+  "duration": 961.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "007 两法师.mp3",
+  "size": 18956243,
+  "duration": 1184.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "008 与谛闲大师心相印.mp3",
+  "size": 13233107,
+  "duration": 827.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "009 与太虚大师的忘年交.mp3",
+  "size": 4631123,
+  "duration": 289.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "010 虚云老和尚谈老实念佛.mp3",
+  "size": 5922131,
+  "duration": 370.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "011 真达和尚.mp3",
+  "size": 3322835,
+  "duration": 207.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "012 明道法师.mp3",
+  "size": 7271891,
+  "duration": 454.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "013 光照大醒.mp3",
+  "size": 3815123,
+  "duration": 238.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "014 印光大师许我出家.mp3",
+  "size": 4844243,
+  "duration": 302.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "015 海天佛国奇缘.mp3",
+  "size": 29580755,
+  "duration": 1848.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "016 如何才能让你念佛.mp3",
+  "size": 5085011,
+  "duration": 317.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "017 高鹤年赈灾.mp3",
+  "size": 6725459,
+  "duration": 420.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "018 初次求皈依.mp3",
+  "size": 8464211,
+  "duration": 529.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "019 雪庐老人念佛因缘.mp3",
+  "size": 14776019,
+  "duration": 923.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "020 与续范亭将军的因缘.mp3",
+  "size": 10871891,
+  "duration": 679.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "021 黑老大的皈依.mp3",
+  "size": 9446099,
+  "duration": 590.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "022 温暖的手.mp3",
+  "size": 15147731,
+  "duration": 946.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "023 再续前缘.mp3",
+  "size": 8100563,
+  "duration": 506.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "024 相见缘.mp3",
+  "size": 6272339,
+  "duration": 392.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "025 梦里十年生华发.mp3",
+  "size": 11271251,
+  "duration": 704.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "026 最后的相伴.mp3",
+  "size": 4329299,
+  "duration": 270.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "027 最后一夜.mp3",
+  "size": 2799827,
+  "duration": 175.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "028 灵山旧影.mp3",
+  "size": 5301971,
+  "duration": 331.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "029 哭悼恩师，誓愿追随.mp3",
+  "size": 7725779,
+  "duration": 482.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "030 同生西方.mp3",
+  "size": 1579859,
+  "duration": 98.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "031 大势至菩萨.mp3",
+  "size": 5200979,
+  "duration": 325.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "032 遥祈默感.mp3",
+  "size": 5179475,
+  "duration": 323.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "033 平易见功夫.mp3",
+  "size": 18066899,
+  "duration": 1129.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "034 回忆师恩.mp3",
+  "size": 3872723,
+  "duration": 242.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "035 天涯海角不放弃.mp3",
+  "size": 5144531,
+  "duration": 321.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "036 迷失红尘的悔悟.mp3",
+  "size": 4095827,
+  "duration": 256.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "037 师父.mp3",
+  "size": 7508051,
+  "duration": 469.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "038 想起理发匠.mp3",
+  "size": 3069011,
+  "duration": 191.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "039 惭愧惭愧.mp3",
+  "size": 5761619,
+  "duration": 360.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "040 归净.mp3",
+  "size": 3304403,
+  "duration": 206.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "041 我想出家.mp3",
+  "size": 2681555,
+  "duration": 167.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "042 妙笔止净.mp3",
+  "size": 3661139,
+  "duration": 228.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "043 千里供养的宁居士.mp3",
+  "size": 8026835,
+  "duration": 501.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "044 赈灾济贫.mp3",
+  "size": 2416979,
+  "duration": 151.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "045 克己奉公.mp3",
+  "size": 4112723,
+  "duration": 257.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "046 事必躬亲.mp3",
+  "size": 2271827,
+  "duration": 142.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "047 高风亮节.mp3",
+  "size": 3294419,
+  "duration": 205.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "048 反对立传.mp3",
+  "size": 6340691,
+  "duration": 396.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "049 少管闲事.mp3",
+  "size": 2396243,
+  "duration": 149.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "050 圣量会的取消.mp3",
+  "size": 2046419,
+  "duration": 127.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "051 万丈高楼平地起.mp3",
+  "size": 2250707,
+  "duration": 140.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "052 教育子女.mp3",
+  "size": 2949587,
+  "duration": 184.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "053 忍辱求和.mp3",
+  "size": 1794515,
+  "duration": 112.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "054 调教幼僧.mp3",
+  "size": 3866579,
+  "duration": 241.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "055 小虎“格心”.mp3",
+  "size": 6373715,
+  "duration": 398.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "056 吃肉.mp3",
+  "size": 2793683,
+  "duration": 174.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "057 富贵人断荤.mp3",
+  "size": 2160083,
+  "duration": 135.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "058 吃素因缘.mp3",
+  "size": 4101203,
+  "duration": 256.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "059 大师赠药方.mp3",
+  "size": 4984787,
+  "duration": 311.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "060 大师登广告.mp3",
+  "size": 1731155,
+  "duration": 108.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "100 美女变脸.mp3",
+  "size": 5224787,
+  "duration": 326.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "101 杀鸡记录.mp3",
+  "size": 2207315,
+  "duration": 138.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "102 三僧三甲.mp3",
+  "size": 2043347,
+  "duration": 127.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "103 良医自诬.mp3",
+  "size": 2309075,
+  "duration": 144.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "104 感同身受 放下屠刀.mp3",
+  "size": 6306899,
+  "duration": 394.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "105 华藏见娘.mp3",
+  "size": 1991123,
+  "duration": 124.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "106 通智法师往生记.mp3",
+  "size": 5920979,
+  "duration": 370.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "107 今彩大师往生记.mp3",
+  "size": 4791251,
+  "duration": 299.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "108 周紫珊居士生西记.mp3",
+  "size": 2429651,
+  "duration": 151.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "109 沙健庵居士往生记.mp3",
+  "size": 7417427,
+  "duration": 463.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "110 罗梓生居士生西记.mp3",
+  "size": 4707923,
+  "duration": 294.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "111 傅春浦居士生西记.mp3",
+  "size": 4841939,
+  "duration": 302.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "112 马通白居士妻女往生记.mp3",
+  "size": 5922131,
+  "duration": 370.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "113 胡了常居士往生纪实.mp3",
+  "size": 8918483,
+  "duration": 557.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "114 乐慧静优婆夷生西记.mp3",
+  "size": 3217235,
+  "duration": 201.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "115 白鹅往生.mp3",
+  "size": 1484243,
+  "duration": 92.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "116 桥亭观音.mp3",
+  "size": 4406483,
+  "duration": 275.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "117 云南僧.mp3",
+  "size": 3414611,
+  "duration": 213.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "118 高僧错失西方.mp3",
+  "size": 4547795,
+  "duration": 284.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "119 念佛感应.mp3",
+  "size": 2691155,
+  "duration": 168.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "120 恶霸念佛.mp3",
+  "size": 1890131,
+  "duration": 118.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "121 听佛号功德.mp3",
+  "size": 1819475,
+  "duration": 113.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "122 风流鬼的忏悔.mp3",
+  "size": 1972307,
+  "duration": 123.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "123 对面不识冤家.mp3",
+  "size": 2291027,
+  "duration": 143.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "124 第十四人.mp3",
+  "size": 3990227,
+  "duration": 249.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "125 劝谏督军.mp3",
+  "size": 13640147,
+  "duration": 852.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "126 愿代众生苦.mp3",
+  "size": 4384979,
+  "duration": 274.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "127 代母忏悔.mp3",
+  "size": 1775315,
+  "duration": 111.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "128 两江总督死不瞑目.mp3",
+  "size": 2596691,
+  "duration": 162.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "129 大惭愧 大勇猛.mp3",
+  "size": 1501523,
+  "duration": 93.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "130 军中念佛.mp3",
+  "size": 2084435,
+  "duration": 130.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "131 信佛因缘.mp3",
+  "size": 4562003,
+  "duration": 285.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "132 绑票奇迹.mp3",
+  "size": 3727187,
+  "duration": 232.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "133 慈航救渡.mp3",
+  "size": 2519123,
+  "duration": 157.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "134 炮火下的宁静.mp3",
+  "size": 7132499,
+  "duration": 445.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "135 虎口余生.mp3",
+  "size": 3416147,
+  "duration": 213.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "136 难产念观音.mp3",
+  "size": 2491475,
+  "duration": 155.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "137 饭店戒杀.mp3",
+  "size": 2810579,
+  "duration": 175.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "138 家和秘诀.mp3",
+  "size": 2119763,
+  "duration": 132.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "139 善度亲友.mp3",
+  "size": 1868243,
+  "duration": 116.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "140 掌权与度众生.mp3",
+  "size": 2008403,
+  "duration": 125.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "141 报应的早晚.mp3",
+  "size": 6234707,
+  "duration": 389.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "142 因果报应.mp3",
+  "size": 9310547,
+  "duration": 581.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "143 果报通三世 转变在人心.mp3",
+  "size": 3862355,
+  "duration": 241.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "144 断恶决心.mp3",
+  "size": 1998419,
+  "duration": 124.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "145 佛不保佑吗.mp3",
+  "size": 5597267,
+  "duration": 349.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "146 修福造业.mp3",
+  "size": 5309651,
+  "duration": 331.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "147 皈依三宝.mp3",
+  "size": 7946963,
+  "duration": 496.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "148 恭敬佛法.mp3",
+  "size": 3540563,
+  "duration": 221.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "149泥塑木雕的佛像.mp3",
+  "size": 2161235,
+  "duration": 135.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "150 观音菩萨是女的吗.mp3",
+  "size": 2130899,
+  "duration": 133.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "151 观世音菩萨普门示现.mp3",
+  "size": 2519123,
+  "duration": 157.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "152 善导大师立地而化.mp3",
+  "size": 2125907,
+  "duration": 132.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "153 如何应对虫害.mp3",
+  "size": 3509843,
+  "duration": 219.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "154 除陋习.mp3",
+  "size": 4379603,
+  "duration": 273.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "155 吃菜杀生吗.mp3",
+  "size": 3753683,
+  "duration": 234.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "156 放生.mp3",
+  "size": 6738131,
+  "duration": 421.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "157 鸡蛋.mp3",
+  "size": 2265683,
+  "duration": 141.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "158 卖香人须知.mp3",
+  "size": 1957715,
+  "duration": 122.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "159 佛法与气功.mp3",
+  "size": 1700819,
+  "duration": 106.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "160 大妄语.mp3",
+  "size": 2438483,
+  "duration": 152.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "161 能学济公喝酒吃肉吗.mp3",
+  "size": 2439251,
+  "duration": 152.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "162 求子秘诀.mp3",
+  "size": 4202195,
+  "duration": 262.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "163 妇女学佛须知.mp3",
+  "size": 6437843,
+  "duration": 402.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "164 假我的屋子.mp3",
+  "size": 1567571,
+  "duration": 98.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "165 对治嗔恚.mp3",
+  "size": 5159123,
+  "duration": 322.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "166 对治烦恼.mp3",
+  "size": 3532499,
+  "duration": 220.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "167 当敬尊经.mp3",
+  "size": 1917395,
+  "duration": 119.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "168 读经方法.mp3",
+  "size": 8095955,
+  "duration": 506.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "169 厚德载福.mp3",
+  "size": 1558355,
+  "duration": 97.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "170 安士全书.mp3",
+  "size": 5885267,
+  "duration": 367.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "171 病与魔.mp3",
+  "size": 2364755,
+  "duration": 147.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "172 燃香.mp3",
+  "size": 2840915,
+  "duration": 177.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "173 修行从心地下功夫.mp3",
+  "size": 2263763,
+  "duration": 141.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "174 莫唱高调.mp3",
+  "size": 1890131,
+  "duration": 118.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "175 持咒应学梵文吗.mp3",
+  "size": 1987283,
+  "duration": 124.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "176 不与魔争.mp3",
+  "size": 1943891,
+  "duration": 121.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "177 想要开悟.mp3",
+  "size": 2989523,
+  "duration": 186.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "178 开悟未必了生死.mp3",
+  "size": 1769939,
+  "duration": 110.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "179 觉悟者的修持.mp3",
+  "size": 5864147,
+  "duration": 366.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "180 安的什么心.mp3",
+  "size": 4506323,
+  "duration": 281.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "181 真金作夜壶.mp3",
+  "size": 1496915,
+  "duration": 93.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "182 淫心不除 尘不可出.mp3",
+  "size": 5587667,
+  "duration": 349.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "183 金刚经.mp3",
+  "size": 5147603,
+  "duration": 321.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "184 关于极乐世界的问答.mp3",
+  "size": 6629075,
+  "duration": 414.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "185 回头是岸.mp3",
+  "size": 2311379,
+  "duration": 144.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "186 对老年居士的开示.mp3",
+  "size": 4693715,
+  "duration": 293.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "187 极乐乐 娑婆苦.mp3",
+  "size": 7055699,
+  "duration": 441.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "188 求生西方比来生做人容易.mp3",
+  "size": 5666003,
+  "duration": 354.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "189 死字当头挂.mp3",
+  "size": 5406035,
+  "duration": 337.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "190 生死关头.mp3",
+  "size": 4345811,
+  "duration": 271.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "191 要度别人 先救自己.mp3",
+  "size": 3962195,
+  "duration": 247.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "192 念佛最要紧.mp3",
+  "size": 1795283,
+  "duration": 112.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "193 难得念佛.mp3",
+  "size": 1988819,
+  "duration": 124.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "194 烦恼沙石 弥陀巨航.mp3",
+  "size": 2239955,
+  "duration": 140.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "195 誓求出离 蒙佛垂慈.mp3",
+  "size": 2239187,
+  "duration": 139.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "196 一心不乱才能往生吗.mp3",
+  "size": 4514387,
+  "duration": 282.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "197 非愚即狂.mp3",
+  "size": 3563603,
+  "duration": 222.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "61 拟建道场的因果.mp3",
+  "size": 2201555,
+  "duration": 137.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "62 求生志向.mp3",
+  "size": 2150099,
+  "duration": 134.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "63 悲悯囚徒.mp3",
+  "size": 9797843,
+  "duration": 612.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "64 慧佐之死.mp3",
+  "size": 6373331,
+  "duration": 398.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "65 “寿康宝鉴”印赠因缘.mp3",
+  "size": 4447187,
+  "duration": 277.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "66 弃妇莫怨.mp3",
+  "size": 1749203,
+  "duration": 109.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "67 劝告厌世的人.mp3",
+  "size": 2964947,
+  "duration": 185.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "68 劝自杀者.mp3",
+  "size": 5922515,
+  "duration": 370.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "69 三界无安 犹如火宅.mp3",
+  "size": 5342291,
+  "duration": 333.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "70 怕什么东西.mp3",
+  "size": 5185619,
+  "duration": 324.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "71 法名.mp3",
+  "size": 5232083,
+  "duration": 327.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "72 佛法东传中国.mp3",
+  "size": 4769747,
+  "duration": 298.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "73 庐山道场.mp3",
+  "size": 5567699,
+  "duration": 348.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "74 灵岩道场.mp3",
+  "size": 7254611,
+  "duration": 453.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "75 南五台山.mp3",
+  "size": 12000467,
+  "duration": 750.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "76 游戏神通.mp3",
+  "size": 2715347,
+  "duration": 169.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "77 薄荷.mp3",
+  "size": 3355091,
+  "duration": 209.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "78 三生石.mp3",
+  "size": 27491411,
+  "duration": 1718.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "79 智积菩萨.mp3",
+  "size": 2520659,
+  "duration": 157.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "80 镇蟒塔.mp3",
+  "size": 2062547,
+  "duration": 128.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "81 法照大师遇文殊菩萨.mp3",
+  "size": 4467155,
+  "duration": 279.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "82 五台山人皮鼓.mp3",
+  "size": 3038291,
+  "duration": 189.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "83 幽冥钟.mp3",
+  "size": 3120851,
+  "duration": 195.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "84 杨岐灯盏、宝寿生姜.mp3",
+  "size": 4216787,
+  "duration": 263.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "85 隔世的迷失.mp3",
+  "size": 8523347,
+  "duration": 532.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "86 金子般的回首.mp3",
+  "size": 5393747,
+  "duration": 337.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "87 莲池殊宏.mp3",
+  "size": 3320531,
+  "duration": 207.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "88 臭鞋底专打作诗嘴.mp3",
+  "size": 3828179,
+  "duration": 239.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "89 瘫子应供.mp3",
+  "size": 2716883,
+  "duration": 169.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "90 洪水无损佛像.mp3",
+  "size": 2019923,
+  "duration": 126.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "91 他心通.mp3",
+  "size": 4403795,
+  "duration": 275.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "92 缁门孝子.mp3",
+  "size": 9136211,
+  "duration": 571.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "95 孟盈.mp3",
+  "size": 4562003,
+  "duration": 285.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "96 王恭抄经.mp3",
+  "size": 2421203,
+  "duration": 151.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "97 怨亲得度 自登莲池.mp3",
+  "size": 1443923,
+  "duration": 90.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "98 将错就错 西方极乐.mp3",
+  "size": 2628563,
+  "duration": 164.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "yinguangdashi",
+  "key": "99 苏东坡自误往生.mp3",
+  "size": 1985747,
+  "duration": 124.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】01 示劝全禄.mp3",
+  "size": 8496405,
+  "duration": 353.6,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】02 冥主遵行.mp3",
+  "size": 4226825,
+  "duration": 175.7,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】03 勒石垂慈.mp3",
+  "size": 3979165,
+  "duration": 165.3,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】04 鱼泣志感.mp3",
+  "size": 4301449,
+  "duration": 178.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】05 党恶冥谴.mp3",
+  "size": 4948253,
+  "duration": 205.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】06 业钱偿报.mp3",
+  "size": 4374065,
+  "duration": 181.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】07 汤公述冥.mp3",
+  "size": 4175859,
+  "duration": 173.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】08 探巢枯足.mp3",
+  "size": 7886739,
+  "duration": 328.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】09 写经脱苦.mp3",
+  "size": 3027669,
+  "duration": 125.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】10 送经答寿.mp3",
+  "size": 3354051,
+  "duration": 139.3,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】11 鹅死代亡.mp3",
+  "size": 4160811,
+  "duration": 172.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】12 烹羊速报.mp3",
+  "size": 4888849,
+  "duration": 203.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】13 杀生名累.mp3",
+  "size": 4118893,
+  "duration": 171.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】14 祀天遇佛.mp3",
+  "size": 8144073,
+  "duration": 338.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】15 关公护法.mp3",
+  "size": 5002155,
+  "duration": 207.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】16 师巫偿报.mp3",
+  "size": 4473917,
+  "duration": 185.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】17 夫杀羊妻.mp3",
+  "size": 8191519,
+  "duration": 340.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】18 为膳殃儿.mp3",
+  "size": 2962045,
+  "duration": 123.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】19 惜福延龄.mp3",
+  "size": 4498379,
+  "duration": 187.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】20 帝君示梦.mp3",
+  "size": 6536009,
+  "duration": 271.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】21 放生得子.mp3",
+  "size": 4352521,
+  "duration": 180.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】22 刀兵偿报.mp3",
+  "size": 3484885,
+  "duration": 144.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】23 龙子救难.mp3",
+  "size": 5873831,
+  "duration": 244.3,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】24 戏侮速殃.mp3",
+  "size": 6300113,
+  "duration": 262.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】25 算尽复延.mp3",
+  "size": 3508779,
+  "duration": 145.7,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】26 改书赎过.mp3",
+  "size": 3774593,
+  "duration": 156.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】27 焚蛇灭族.mp3",
+  "size": 6315267,
+  "duration": 262.6,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】28 死蛇得度.mp3",
+  "size": 6189595,
+  "duration": 257.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】29 红虫示报.mp3",
+  "size": 3584183,
+  "duration": 149.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】30 蚁王报德.mp3",
+  "size": 5992145,
+  "duration": 249.3,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】31 慈鸟感人.mp3",
+  "size": 4277035,
+  "duration": 177.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】32 三燕念恩.mp3",
+  "size": 3371685,
+  "duration": 140.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】33 卖斋立摄.mp3",
+  "size": 4211175,
+  "duration": 175.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】34 持斋免溺.mp3",
+  "size": 3524457,
+  "duration": 146.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】35 祷树变羊.mp3",
+  "size": 6344819,
+  "duration": 263.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】36 多杀变猪.mp3",
+  "size": 4120771,
+  "duration": 171.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】38 嗜鳖速毙.mp3",
+  "size": 3836437,
+  "duration": 159.4,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】39 蛙诉商冤.mp3",
+  "size": 6649705,
+  "duration": 276.7,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】40 救蚁延生.mp3",
+  "size": 3482723,
+  "duration": 144.5,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】41 膳减龄增.mp3",
+  "size": 4185249,
+  "duration": 173.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】42 人鹿同果.mp3",
+  "size": 6812937,
+  "duration": 283.4,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】43 众鸟啄身.mp3",
+  "size": 3111919,
+  "duration": 129.2,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】44 群豕索命.mp3",
+  "size": 4028879,
+  "duration": 167.4,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】45 嗔杀现报.mp3",
+  "size": 6060591,
+  "duration": 251.9,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】46 回心出世.mp3",
+  "size": 4981213,
+  "duration": 206.8,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】47 临终异相.mp3",
+  "size": 4450933,
+  "duration": 185.0,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "万善先资/【万善先资】48 破斋酬业.mp3",
+  "size": 4070561,
+  "duration": 169.1,
+  "bitrate": 192,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/“万法不离自性”与“一切法无自性”.mp3",
+  "size": 3348473,
+  "duration": 209.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/“唯心净土，自性弥陀”如何理解.mp3",
+  "size": 3775209,
+  "duration": 235.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/“如染香人，身有香气……”如何理解.mp3",
+  "size": 3059245,
+  "duration": 191.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/“能行即是佛，何须念！”这个知见对不对.mp3",
+  "size": 3395284,
+  "duration": 212.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/“色不异空”和“色即是空”的区别.mp3",
+  "size": 6327686,
+  "duration": 395.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/《圆通章》中“从生至生”如何理解.mp3",
+  "size": 3338860,
+  "duration": 208.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/《观经四帖疏》中“门余八万四千”的含义.mp3",
+  "size": 13071039,
+  "duration": 816.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/一天至少念多少佛号效果比较好.mp3",
+  "size": 2295216,
+  "duration": 143.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/一定得在娑婆世界才可成佛吗.mp3",
+  "size": 2742432,
+  "duration": 171.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/一精进就生病是什么原因.mp3",
+  "size": 2049874,
+  "duration": 128.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/一边念佛一边造恶能往生吗.mp3",
+  "size": 3358504,
+  "duration": 209.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/一门专修和法门无量誓愿学矛盾吗.mp3",
+  "size": 2781720,
+  "duration": 173.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/不持戒能往生吗.mp3",
+  "size": 3037093,
+  "duration": 189.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/专修与杂修有什么利弊得失.mp3",
+  "size": 4797119,
+  "duration": 299.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/东林寺以什么作为净土修学的参照系.mp3",
+  "size": 3389015,
+  "duration": 211.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/临终可以助念《地藏经》吗.mp3",
+  "size": 3113162,
+  "duration": 194.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/临终昏迷不醒能往生吗.mp3",
+  "size": 13428394,
+  "duration": 839.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么念佛后烦恼越来越多.mp3",
+  "size": 5723735,
+  "duration": 357.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么念佛的都是老头老太太.mp3",
+  "size": 3182543,
+  "duration": 198.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么总会浮现各种各样的恶念.mp3",
+  "size": 3687438,
+  "duration": 230.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么我一心念佛有空旷柔和的感觉.mp3",
+  "size": 5206301,
+  "duration": 325.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么有人预知时至却没往生.mp3",
+  "size": 3836231,
+  "duration": 239.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么要强调计数念佛.mp3",
+  "size": 3850024,
+  "duration": 240.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/为什么说富贵学道难.mp3",
+  "size": 4142177,
+  "duration": 258.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/事业成功与失败的原因何在.mp3",
+  "size": 3085994,
+  "duration": 192.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/亲人去世如何助念.mp3",
+  "size": 2275989,
+  "duration": 142.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/什么是不念自念的状态.mp3",
+  "size": 1804114,
+  "duration": 112.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/什么是自性.mp3",
+  "size": 4010520,
+  "duration": 250.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/何为见地.mp3",
+  "size": 3987114,
+  "duration": 249.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/佛号包含了哪些信息.mp3",
+  "size": 2301485,
+  "duration": 143.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/佛号念不下去怎么办.mp3",
+  "size": 3154122,
+  "duration": 197.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/佛弟子可以礼拜道教神灵吗.mp3",
+  "size": 1682905,
+  "duration": 105.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/佛教是宗教还是教育.mp3",
+  "size": 4345723,
+  "duration": 271.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/佛是什么.mp3",
+  "size": 4642474,
+  "duration": 290.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/修学净土是否要学中观、唯识、天台教理.mp3",
+  "size": 2699382,
+  "duration": 168.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/修学净土是否需要传承.mp3",
+  "size": 7234657,
+  "duration": 452.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/修行进进退退，如何对治.mp3",
+  "size": 3544914,
+  "duration": 221.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/冤亲债主会障碍往生吗.mp3",
+  "size": 3781896,
+  "duration": 236.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/净土法门与通途法门能够融通吗.mp3",
+  "size": 6116198,
+  "duration": 382.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/初学净土从哪下手.mp3",
+  "size": 4792940,
+  "duration": 299.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/勉强劝人捐款是否如法.mp3",
+  "size": 4581870,
+  "duration": 286.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/印祖为什么不提倡女众出家.mp3",
+  "size": 3014941,
+  "duration": 188.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/印祖往生后净土宗的现状.mp3",
+  "size": 4560554,
+  "duration": 284.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/去世后一天火化，会障碍往生吗.mp3",
+  "size": 2989028,
+  "duration": 186.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/受戒之后总是紧张怕犯戒.mp3",
+  "size": 6868943,
+  "duration": 429.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/口念弥陀心散乱，喊破喉咙也枉然.mp3",
+  "size": 3309185,
+  "duration": 206.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/只拜阿弥陀佛足够吗.mp3",
+  "size": 4369129,
+  "duration": 272.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/只是给佛菩萨烧烧香算不算修行.mp3",
+  "size": 4087843,
+  "duration": 255.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/只要信愿持名就能往生吗.mp3",
+  "size": 3405315,
+  "duration": 212.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/只顾自己修福报不管他人好不好.mp3",
+  "size": 4596499,
+  "duration": 287.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/哪类念佛人会生到边地疑城.mp3",
+  "size": 4908296,
+  "duration": 306.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/善导大师的弘愿门是怎么回事.mp3",
+  "size": 4016789,
+  "duration": 250.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/善男子善女人与男子女人有何差别.mp3",
+  "size": 1547069,
+  "duration": 96.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/喜欢研究经教不喜欢念佛怎么办.mp3",
+  "size": 3144091,
+  "duration": 196.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/因果轮回是真的存在吗.mp3",
+  "size": 5534399,
+  "duration": 345.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/在家居士如何圆满孝道.mp3",
+  "size": 3009508,
+  "duration": 188.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/大学生如何净化内心的烦恼.mp3",
+  "size": 5736274,
+  "duration": 358.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何保持内心清净.mp3",
+  "size": 2171082,
+  "duration": 135.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何保持精进念佛的道心.mp3",
+  "size": 2959353,
+  "duration": 184.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何做到“都摄六根，净念相继”.mp3",
+  "size": 2549753,
+  "duration": 159.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何做到真诚.mp3",
+  "size": 3697051,
+  "duration": 230.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何分辨正法和邪法.mp3",
+  "size": 8919033,
+  "duration": 557.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何勤修戒定慧.mp3",
+  "size": 4744456,
+  "duration": 296.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何回向发愿.mp3",
+  "size": 2851937,
+  "duration": 178.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何培养慈悲心.mp3",
+  "size": 2248404,
+  "duration": 140.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何对孩子进行佛学教育.mp3",
+  "size": 2765420,
+  "duration": 172.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何将佛法落实于生活中.mp3",
+  "size": 4594827,
+  "duration": 287.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何戒掉赌博的坏毛病.mp3",
+  "size": 3235206,
+  "duration": 202.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何放下对亲人的牵挂.mp3",
+  "size": 2846086,
+  "duration": 177.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何放下心中的怨恨.mp3",
+  "size": 3674899,
+  "duration": 229.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何正确地看待儒教道教经典.mp3",
+  "size": 6587656,
+  "duration": 411.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何激发一个人的孝心.mp3",
+  "size": 4596081,
+  "duration": 287.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何理解“不可以少善根福德得生彼国”.mp3",
+  "size": 2318621,
+  "duration": 144.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何理解“直心是道场”.mp3",
+  "size": 3590471,
+  "duration": 224.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何理解“都摄六根，净念相继”.mp3",
+  "size": 6450566,
+  "duration": 403.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何看待道教文化.mp3",
+  "size": 2765420,
+  "duration": 172.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何面对五欲的诱惑.mp3",
+  "size": 3258194,
+  "duration": 203.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/如何面对逆境.mp3",
+  "size": 4850200,
+  "duration": 303.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/学习压力大，怎样调整好心态.mp3",
+  "size": 2171500,
+  "duration": 135.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/小孩患有自闭症怎么办.mp3",
+  "size": 2923408,
+  "duration": 182.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/居士如何做好世间法与出世间法.mp3",
+  "size": 7828995,
+  "duration": 489.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/居士讲僧团的过失，如法吗.mp3",
+  "size": 3909792,
+  "duration": 244.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/弥陀法门和药师法门哪个好.mp3",
+  "size": 3694125,
+  "duration": 230.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/往生极乐世界后我们的恶业会怎样.mp3",
+  "size": 2794677,
+  "duration": 174.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/心里空虚怎么办.mp3",
+  "size": 5735856,
+  "duration": 358.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛与菩提心的关系.mp3",
+  "size": 2755807,
+  "duration": 172.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛与读诵大乘经典的关系.mp3",
+  "size": 2872835,
+  "duration": 179.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛之前可以祈求阿弥陀佛的加持吗.mp3",
+  "size": 2299813,
+  "duration": 143.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛人可以吃葱蒜吗.mp3",
+  "size": 3009508,
+  "duration": 188.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛人需不需要持戒.mp3",
+  "size": 4975588,
+  "duration": 310.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛到什么程度才能往生.mp3",
+  "size": 3163317,
+  "duration": 197.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛可否唱念.mp3",
+  "size": 1546651,
+  "duration": 96.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛对身心有什么好处.mp3",
+  "size": 3179199,
+  "duration": 198.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛时如何保持专注.mp3",
+  "size": 3385253,
+  "duration": 211.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛没到功夫成片能往生吗.mp3",
+  "size": 3682840,
+  "duration": 230.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛能缓解疲劳吗.mp3",
+  "size": 3179199,
+  "duration": 198.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛越念妄想越多怎么回事.mp3",
+  "size": 2634181,
+  "duration": 164.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念佛越精进障碍越多，怎么解决.mp3",
+  "size": 2868656,
+  "duration": 179.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/念六字佛号和四字佛号有何不同.mp3",
+  "size": 11675892,
+  "duration": 729.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎么忆佛.mp3",
+  "size": 3150778,
+  "duration": 196.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样做到随遇而安.mp3",
+  "size": 2637942,
+  "duration": 164.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样可以入定.mp3",
+  "size": 3303751,
+  "duration": 206.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样处理好做义工与念佛的关系.mp3",
+  "size": 3153704,
+  "duration": 197.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样才算与阿弥陀佛感应上了.mp3",
+  "size": 4359516,
+  "duration": 272.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样才能入佛知见.mp3",
+  "size": 3085994,
+  "duration": 192.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样才能生生世世不堕落.mp3",
+  "size": 3836231,
+  "duration": 239.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样摄心念佛.mp3",
+  "size": 3804884,
+  "duration": 237.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/怎样理解感应道交.mp3",
+  "size": 2493746,
+  "duration": 155.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/总想管教父亲，这样对不对.mp3",
+  "size": 3363101,
+  "duration": 210.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/我好像没什么问题可问.mp3",
+  "size": 4016789,
+  "duration": 250.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/我罪业深重能往生吗.mp3",
+  "size": 5210899,
+  "duration": 325.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/打坐能使身体健康吗.mp3",
+  "size": 2010167,
+  "duration": 125.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/整日在家播放念佛机有何不妥.mp3",
+  "size": 4163075,
+  "duration": 260.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/早课念佛加诵《楞严咒》算杂修吗.mp3",
+  "size": 1547069,
+  "duration": 96.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/是万修万人去还是万修一二去.mp3",
+  "size": 4598589,
+  "duration": 287.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/是否临终须有正念才能往生.mp3",
+  "size": 9967692,
+  "duration": 622.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/有人说不学《弟子规》就不能往生.mp3",
+  "size": 3183379,
+  "duration": 198.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/有什么方法可以让家人学佛.mp3",
+  "size": 3557870,
+  "duration": 222.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/末法时期只能靠念佛了脱生死.mp3",
+  "size": 3645642,
+  "duration": 227.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/极乐世界是物质世界还是精神世界.mp3",
+  "size": 2756225,
+  "duration": 172.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/极乐世界的天人、声闻、菩萨有何区别.mp3",
+  "size": 2501269,
+  "duration": 156.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/母亲学佛后对家人要求很苛刻，是不是学错了.mp3",
+  "size": 3678243,
+  "duration": 229.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/没皈依可以念佛吗.mp3",
+  "size": 2382151,
+  "duration": 148.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/淫欲心重怎么办.mp3",
+  "size": 2395108,
+  "duration": 149.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/生则决定生，去则实不去.mp3",
+  "size": 3133224,
+  "duration": 195.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/用别人的钱财做善事可以吗.mp3",
+  "size": 3353070,
+  "duration": 209.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/畸形胎儿能打掉吗.mp3",
+  "size": 3683676,
+  "duration": 230.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/皈依之后如何注意好自己的行为.mp3",
+  "size": 3357250,
+  "duration": 209.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/皈依时没听清楚要重受吗.mp3",
+  "size": 2227088,
+  "duration": 139.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/皈依释迦牟尼佛还是阿弥陀佛.mp3",
+  "size": 2508793,
+  "duration": 156.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/瞋恨心重，控制不住怎么办.mp3",
+  "size": 2573158,
+  "duration": 160.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/破戒之后如何补救.mp3",
+  "size": 4359516,
+  "duration": 272.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/绝食念佛求往生可以吗.mp3",
+  "size": 4921671,
+  "duration": 307.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/绝食求往生如法吗.mp3",
+  "size": 2749955,
+  "duration": 171.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/网络皈依如法吗.mp3",
+  "size": 4073632,
+  "duration": 254.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/老年痴呆能往生吗.mp3",
+  "size": 2273482,
+  "duration": 142.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/胎儿发育不正常能堕掉吗.mp3",
+  "size": 3363101,
+  "duration": 210.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/至诚持诵经典，教理自会透彻.mp3",
+  "size": 4856052,
+  "duration": 303.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/西方人造罪，念佛求生何国.mp3",
+  "size": 2825188,
+  "duration": 176.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/计数念佛好还是不计数好.mp3",
+  "size": 3950334,
+  "duration": 246.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/诵经读错读漏字有何因果.mp3",
+  "size": 3580440,
+  "duration": 223.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/请开示“诚”与“敬”的重要性.mp3",
+  "size": 3014523,
+  "duration": 188.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/读《地藏经》换成《无量寿经》可以吗.mp3",
+  "size": 1985508,
+  "duration": 124.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/边地疑城是个什么样的地方.mp3",
+  "size": 4252101,
+  "duration": 265.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/迷信上师是不是不好.mp3",
+  "size": 2619970,
+  "duration": 163.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/郭巨为孝养母亲而活埋儿子也算孝吗.mp3",
+  "size": 4313123,
+  "duration": 269.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/配偶邪淫的毛病改不了怎么办.mp3",
+  "size": 2411408,
+  "duration": 150.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/阿弥陀佛为什么不示现给人看呢.mp3",
+  "size": 4020133,
+  "duration": 251.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/阿弥陀佛的“阿”字念“o”可以吗.mp3",
+  "size": 2508793,
+  "duration": 156.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/静坐时可以呼吸念佛吗.mp3",
+  "size": 1835878,
+  "duration": 114.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "净土百问/预知时至却没往生，如何解释.mp3",
+  "size": 4866501,
+  "duration": 304.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】01 曹鼐不可.mp3",
+  "size": 4672826,
+  "duration": 292.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】02 船欢误考.mp3",
+  "size": 2541652,
+  "duration": 158.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】03 婢女折莲.mp3",
+  "size": 2995556,
+  "duration": 187.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】04 直隶两士.mp3",
+  "size": 2769440,
+  "duration": 173.1,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】05 南昌兄弟.mp3",
+  "size": 2913218,
+  "duration": 182.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】06 悬灯状元匾.mp3",
+  "size": 1526430,
+  "duration": 95.4,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】07 莆田二生.mp3",
+  "size": 2855540,
+  "duration": 178.4,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】08 义娶盲女.mp3",
+  "size": 1932686,
+  "duration": 120.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】09 富不易妻.mp3",
+  "size": 2018367,
+  "duration": 126.1,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】10 相由心生.mp3",
+  "size": 2082733,
+  "duration": 130.1,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】11 靳瑜还妾.mp3",
+  "size": 2137904,
+  "duration": 133.6,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】12 天赐贵子.mp3",
+  "size": 1987438,
+  "duration": 124.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】13 昆山王某.mp3",
+  "size": 1764666,
+  "duration": 110.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】14 王沈二公.mp3",
+  "size": 2711762,
+  "duration": 169.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】15 避寇因缘.mp3",
+  "size": 1987021,
+  "duration": 124.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】16 仪州美事.mp3",
+  "size": 1395608,
+  "duration": 87.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】17 陈姓医生.mp3",
+  "size": 1845750,
+  "duration": 115.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】18 朱买臣妻.mp3",
+  "size": 3737016,
+  "duration": 233.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】19 冤鬼跟随.mp3",
+  "size": 1527683,
+  "duration": 95.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】20 棉被裹尸.mp3",
+  "size": 2173430,
+  "duration": 135.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】21 梁氏转世.mp3",
+  "size": 2519918,
+  "duration": 157.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】22 赵林冤死.mp3",
+  "size": 1581600,
+  "duration": 98.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】23 悖入悖出.mp3",
+  "size": 2861391,
+  "duration": 178.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】24 贞女守礼.mp3",
+  "size": 3429398,
+  "duration": 214.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】25 朱公取卷.mp3",
+  "size": 2178028,
+  "duration": 136.1,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】26 狄公劝贞.mp3",
+  "size": 5003014,
+  "duration": 312.7,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】27 月白风清.mp3",
+  "size": 1706988,
+  "duration": 106.7,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】28 业识化虫.mp3",
+  "size": 1894234,
+  "duration": 118.4,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】29 宰相韩琦.mp3",
+  "size": 2257858,
+  "duration": 141.1,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】30 顾提控.mp3",
+  "size": 2521172,
+  "duration": 157.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】31 刘差某.mp3",
+  "size": 1555269,
+  "duration": 97.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】32 二曹将军.mp3",
+  "size": 2109901,
+  "duration": 131.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】33 茅鹿门.mp3",
+  "size": 1314942,
+  "duration": 82.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】34 陆仲锡.mp3",
+  "size": 1893816,
+  "duration": 118.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】35 史堂.mp3",
+  "size": 2407905,
+  "duration": 150.5,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】36 陈公子.mp3",
+  "size": 1471677,
+  "duration": 92.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】37 婆罗门妇.mp3",
+  "size": 2788248,
+  "duration": 174.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】38 范县尹.mp3",
+  "size": 2214390,
+  "duration": 138.4,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】39 池州舟子.mp3",
+  "size": 1152774,
+  "duration": 72.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】40 戈阿己.mp3",
+  "size": 1252666,
+  "duration": 78.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】41 许兆馨.mp3",
+  "size": 1004398,
+  "duration": 62.7,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】42 进香舟人.mp3",
+  "size": 1588287,
+  "duration": 99.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】43 懿德堪钦.mp3",
+  "size": 2623990,
+  "duration": 164.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】45 林茂先.mp3",
+  "size": 1573241,
+  "duration": 98.3,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】46 浙士某.mp3",
+  "size": 1979079,
+  "duration": 123.7,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】47 张德先.mp3",
+  "size": 941287,
+  "duration": 58.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】48 马封翁.mp3",
+  "size": 1674387,
+  "duration": 104.6,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】49 张崇义.mp3",
+  "size": 2272487,
+  "duration": 142.0,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】50 洪焘.mp3",
+  "size": 1748366,
+  "duration": 109.2,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "欲海回狂/【欲海回狂】51 田某.mp3",
+  "size": 1373456,
+  "duration": 85.8,
+  "bitrate": 128,
+  "method": "xing"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】01 犊吞刀.mp3",
+  "size": 7999598,
+  "duration": 499.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】02 东莞五乳犬.mp3",
+  "size": 4331907,
+  "duration": 270.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】03 蝙蝠识母气.mp3",
+  "size": 2195717,
+  "duration": 137.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】04 同母牛.mp3",
+  "size": 2938427,
+  "duration": 183.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】05 舁无足蟹过簖.mp3",
+  "size": 2646279,
+  "duration": 165.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】06 粤中战象.mp3",
+  "size": 2756199,
+  "duration": 172.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】07 安福猴.mp3",
+  "size": 4851426,
+  "duration": 303.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】08 雌鹳表贞.mp3",
+  "size": 2723180,
+  "duration": 170.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】09 镇江随舟雁.mp3",
+  "size": 2673445,
+  "duration": 167.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】10 颜氏鹅.mp3",
+  "size": 2371256,
+  "duration": 148.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】11 鹿恸子肠断.mp3",
+  "size": 2981481,
+  "duration": 186.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】12 羊乞产后死.mp3",
+  "size": 2988586,
+  "duration": 186.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】13 犬埋子骨.mp3",
+  "size": 5026135,
+  "duration": 314.0,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】14 豚媪哭声.mp3",
+  "size": 3715415,
+  "duration": 232.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】15 鹤自拔氅.mp3",
+  "size": 2339493,
+  "duration": 146.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】16 黄衣女乞儿命.mp3",
+  "size": 2748679,
+  "duration": 171.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】17 双鲤救子.mp3",
+  "size": 3844982,
+  "duration": 240.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】18 鳝护子.mp3",
+  "size": 4205679,
+  "duration": 262.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】19 鱼为子贷命.mp3",
+  "size": 2131770,
+  "duration": 133.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】20 慈鸡说.mp3",
+  "size": 4532941,
+  "duration": 283.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】21 三燕殉墓.mp3",
+  "size": 2632483,
+  "duration": 164.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】22 鸿赎妇.mp3",
+  "size": 2922126,
+  "duration": 182.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】23 乌郎苍女.mp3",
+  "size": 2436042,
+  "duration": 152.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】24 虎赴西关约.mp3",
+  "size": 7680596,
+  "duration": 479.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】25 浯溪白驴.mp3",
+  "size": 2547219,
+  "duration": 159.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】26 芮氏犬.mp3",
+  "size": 2405529,
+  "duration": 150.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】27 神鹰.mp3",
+  "size": 3513537,
+  "duration": 219.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】28 鹦鹉救火.mp3",
+  "size": 2765812,
+  "duration": 172.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】29 龟济将军.mp3",
+  "size": 2294772,
+  "duration": 143.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】30 鳝救火伤.mp3",
+  "size": 4088235,
+  "duration": 255.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】31 蚁啮械.mp3",
+  "size": 3337160,
+  "duration": 208.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】32 病马报恩.mp3",
+  "size": 3689501,
+  "duration": 230.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】33 獭贿.mp3",
+  "size": 2828084,
+  "duration": 176.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】34 鼠荐卷.mp3",
+  "size": 3776435,
+  "duration": 235.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】35 鹤衔珠.mp3",
+  "size": 2724850,
+  "duration": 170.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】36 雀衔环.mp3",
+  "size": 3683648,
+  "duration": 230.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】37 鼋报恩.mp3",
+  "size": 2892033,
+  "duration": 180.6,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】38 龙宫方.mp3",
+  "size": 3223475,
+  "duration": 201.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】39 龟引路.mp3",
+  "size": 3289930,
+  "duration": 205.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】40 鲤负舟.mp3",
+  "size": 3177499,
+  "duration": 198.5,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】41 定风珠.mp3",
+  "size": 2384213,
+  "duration": 148.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】42 蚁入闱.mp3",
+  "size": 2958071,
+  "duration": 184.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】43 猪道人.mp3",
+  "size": 4678809,
+  "duration": 292.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】44 蛙诉商冤.mp3",
+  "size": 2197805,
+  "duration": 137.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】45 牛前知.mp3",
+  "size": 10732948,
+  "duration": 670.7,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】46 蛤知不第.mp3",
+  "size": 2405531,
+  "duration": 150.2,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】47 天狐指窍.mp3",
+  "size": 4838471,
+  "duration": 302.3,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】48 鼠听经.mp3",
+  "size": 3060053,
+  "duration": 191.1,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】49 鹦鹉念佛.mp3",
+  "size": 2287248,
+  "duration": 142.8,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】50 鸲鹆念佛.mp3",
+  "size": 2496646,
+  "duration": 155.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】51 鹅听经.mp3",
+  "size": 2208670,
+  "duration": 137.9,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】52 万鱼念佛.mp3",
+  "size": 2376274,
+  "duration": 148.4,
+  "bitrate": 128,
+  "method": "cbr"
+ },
+ {
+  "bucket": "youshengshu",
+  "key": "物犹如此/【物犹如此】54 蜈蚣听说法.mp3",
+  "size": 2859019,
+  "duration": 178.6,
+  "bitrate": 128,
+  "method": "cbr"
+ }
+]
