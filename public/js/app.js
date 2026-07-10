@@ -539,6 +539,7 @@ function startOd() {
   updateFav();
   updateMediaSession({ ...ep, seriesTitle: od.title }, od.loop ? '佛号' : '点播');
   markPlayingRow();
+  plsMark();
   // 记住最后收听位置（首页"继续收听"用）
   if (od.progress && od.seriesId) {
     localStorage.setItem('fy.last', JSON.stringify({ sid: od.seriesId, idx: od.idx }));
@@ -754,6 +755,27 @@ function markPlayingRow() {
     li.classList.toggle('playing',
       mode === 'od' && od && od.seriesId === listSeries && Number(li.dataset.idx) === od.idx);
   });
+}
+
+/* 播放器「目录」抽屉：不离开播放器快速切集 */
+function openPlList() {
+  if (!(mode === 'od' && od)) return;
+  $('#plListTitle').textContent = od.title;
+  $('#plListEps').innerHTML = od.list.map((ep, i) =>
+    `<li data-pi="${i}"${i === od.idx ? ' class="playing"' : ''}>
+      <span class="n">${i + 1}</span>
+      <span class="t">${esc(ep.title)}</span>
+      <span class="d">${fmtDur(ep.dur)}</span></li>`).join('');
+  $('#plListSheet').hidden = false;
+  // 当前集居中呈现
+  $('#plListEps').querySelector('li.playing')?.scrollIntoView({ block: 'center' });
+}
+
+function plsMark() {
+  // 切集后同步抽屉高亮（抽屉未开时跳过）
+  if ($('#plListSheet').hidden || !od) return;
+  document.querySelectorAll('#plListEps li').forEach((li) =>
+    li.classList.toggle('playing', Number(li.dataset.pi) === od.idx));
 }
 
 /* ================= 文库（阅读站） ================= */
@@ -1732,8 +1754,15 @@ function renderAnswer(text, sources, streaming) {
   return html + srcs;
 }
 
-// 每条回答尾部的操作行
-const ANS_ACTS = '<div class="ans-acts"><button data-ans-copy>复 制</button><button data-ans-share>分 享</button></div>';
+// 每条回答尾部的操作行（纯图标：复制 / 分享）
+const ANS_ACTS = `<div class="ans-acts">
+  <button data-ans-copy aria-label="复制回答" title="复制">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.6" y="8.6" width="11" height="11" rx="2"/><path d="M15.4 5.4a2 2 0 0 0-2-2H6.4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2"/></svg>
+  </button>
+  <button data-ans-share aria-label="分享为长图" title="分享">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg>
+  </button>
+</div>`;
 
 // 对话持久化：刷新/换页回来还在；「新问」清空
 function saveChat() {
@@ -1790,6 +1819,7 @@ function playerShare() {
     quote: (SERIES_INTROS[od.seriesId] || '').slice(0, 76),
     url: `${location.origin}/#series/${od.seriesId}/${od.idx + 1}`,
     cta: '扫码恭听',
+    dl: true,   // 播放器分享附带「下载音频」
   };
 }
 
@@ -1812,6 +1842,7 @@ function openShare(p) {
   sharePayload = p;
   $('#sharePrev').innerHTML = `<strong>${esc(p.title)}</strong><em>${esc(p.sub)}</em>`;
   $('#shareSys').hidden = !navigator.share;
+  $('#shareDl').hidden = !p.dl;
   $('#shareMsg').textContent = '';
   $('#shareSheet').hidden = false;
 }
@@ -2577,14 +2608,30 @@ function bindEvents() {
   // 存储与缓存（我的）
   $('#btnStorage').addEventListener('click', () => { openCntSheet('storage', '存储与缓存'); renderStorageSheet(); });
 
-  // 播放器「更多」抽屉：收藏 / 下载 / 分享（低频操作收纳，主控区留白）
-  $('#btnPlMore').addEventListener('click', () => { $('#plMoreSheet').hidden = false; });
-  $('#plMoreX').addEventListener('click', () => { $('#plMoreSheet').hidden = true; });
-  $('#plMoreSheet').addEventListener('click', (e) => { if (e.target === $('#plMoreSheet')) $('#plMoreSheet').hidden = true; });
+  // 播放器「目录」抽屉：不离开播放器快速切集；「前往系列页」保留旧跳转
+  $('#btnPlaylist').addEventListener('click', openPlList);
+  $('#plListX').addEventListener('click', () => { $('#plListSheet').hidden = true; });
+  $('#plListSheet').addEventListener('click', (e) => { if (e.target === $('#plListSheet')) $('#plListSheet').hidden = true; });
+  $('#plListEps').addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-pi]');
+    if (!li || !od) return;
+    const i = Number(li.dataset.pi);
+    if (i === od.idx) return;
+    saveProgress();
+    od.idx = i;
+    startOd();
+  });
+  $('#plListGo').addEventListener('click', () => {
+    $('#plListSheet').hidden = true;
+    if (od && od.seriesId) { setMiniExpanded(false); location.hash = '#series/' + od.seriesId; }
+  });
 
-  // 下载当前集（同源 a[download]，保存为「系列 集名.mp3」）
-  $('#btnDl').addEventListener('click', () => {
-    $('#plMoreSheet').hidden = true;
+  // 分享（法布施）：播放器与阅读器入口 + 分享抽屉
+  $('#btnShare').addEventListener('click', () => openShare(playerShare()));
+  $('#btnReaderShare').addEventListener('click', () => openShare(readerShare()));
+
+  // 下载当前集（分享抽屉内，仅播放器分享显示；同源 a[download]，保存为「系列 集名.mp3」)
+  $('#shareDl').addEventListener('click', () => {
     if (!(mode === 'od' && od)) return;
     const ep = od.list[od.idx];
     const a = document.createElement('a');
@@ -2593,13 +2640,8 @@ function bindEvents() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    playStatus('已开始下载，可在浏览器下载列表查看');
-    setTimeout(() => playStatus(''), 4000);
+    $('#shareMsg').textContent = '已开始下载 · 可在浏览器下载列表查看';
   });
-
-  // 分享（法布施）：播放器与阅读器入口 + 分享抽屉
-  $('#btnShare').addEventListener('click', () => { $('#plMoreSheet').hidden = true; openShare(playerShare()); });
-  $('#btnReaderShare').addEventListener('click', () => openShare(readerShare()));
 
   // 分享法布施：阅读器内选中经文（上限 800 字），浮标一点生成长图
   let quoteText = '';
@@ -2760,9 +2802,6 @@ function bindEvents() {
   $('#btnPrevEp').addEventListener('click', () => stepEpisode(-1));
   $('#btnNextEp').addEventListener('click', () => stepEpisode(1));
   $('#btnFav').addEventListener('click', toggleFav);
-  $('#btnPlaylist').addEventListener('click', () => {
-    if (od && od.seriesId) { setMiniExpanded(false); location.hash = '#series/' + od.seriesId; }
-  });
   const togglePlay = () => {
     if (audio.paused) audio.play().catch(() => {}); else audio.pause();
   };

@@ -979,13 +979,19 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 #btnAsk .ic-stop { display: none; }
 .chat-input.asking #btnAsk .ic-send { display: none; }
 .chat-input.asking #btnAsk .ic-stop { display: block; }
-.ans-acts { display: flex; gap: 14px; margin-top: 12px; }
-.ans-acts button, .chat-retry {
-  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
-  color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer;
+/* 回答操作行：纯图标按钮（复制 / 分享） */
+.ans-acts { display: flex; gap: 6px; margin-top: 10px; }
+.ans-acts button {
+  background: transparent; border: 0; padding: 6px; cursor: pointer;
+  color: var(--ink-3); display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; transition: color 0.2s, background 0.2s;
 }
-.ans-acts button:hover, .chat-retry:hover { color: var(--accent); }
-.chat-retry { color: var(--accent); margin-top: 6px; }
+.ans-acts button svg { width: 17px; height: 17px; }
+.ans-acts button:hover, .ans-acts button:active { color: var(--accent); background: var(--accent-wash); }
+.chat-retry {
+  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
+  color: var(--accent); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 6px;
+}
 .cite-src { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; margin-bottom: 10px; }
 .cite-x {
   color: var(--ink); font-size: 0.92rem; line-height: 2; text-align: justify;
@@ -1210,15 +1216,22 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
 }
 #shareSheet[hidden] { display: none; }
 
-/* 播放器「更多」抽屉：在全屏播放器（z30）之上、分享抽屉（z70）之下 */
-#plMoreSheet {
-  position: fixed; inset: 0; z-index: 46; display: flex; align-items: flex-end; justify-content: center;
+/* 播放器「目录」抽屉：在全屏播放器（z60）之上、分享抽屉（z70）之下 */
+#plListSheet {
+  position: fixed; inset: 0; z-index: 62; display: flex; align-items: flex-end; justify-content: center;
   background: rgba(30, 22, 10, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
   animation: fadein 0.25s ease;
 }
-#plMoreSheet[hidden] { display: none; }
-.pl-more-acts { display: flex; justify-content: space-around; padding: 12px 0 8px; }
-.pl-more-acts .pl-secbtn { flex: none; width: 88px; }
+#plListSheet[hidden] { display: none; }
+.pls-eps { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; margin-top: 4px; }
+.pls-go {
+  display: block; width: 100%; margin-top: 10px; padding: 12px 4px;
+  background: transparent; border: 0; border-top: 1px solid var(--line);
+  color: var(--ink-3); font-family: var(--serif); font-size: 0.82rem; letter-spacing: 0.08em; cursor: pointer;
+}
+.pls-go:hover { color: var(--accent); }
+/* 收藏态：书签实心 */
+#btnFav.on svg { fill: currentColor; }
 .share-prev {
   display: flex; flex-direction: column; gap: 4px;
   background: var(--card); border: 1px solid var(--line); border-radius: 12px;
@@ -1226,14 +1239,23 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
 }
 .share-prev strong { font-size: 0.98rem; font-weight: 600; line-height: 1.5; }
 .share-prev em { font-style: normal; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.04em; }
-.share-acts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.share-acts button {
-  font-family: var(--serif); background: transparent; border: 1px solid var(--line); border-radius: 12px;
-  color: var(--ink); font-size: 0.88rem; letter-spacing: 0.04em; padding: 14px 4px; cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
+/* 分享操作：圆形描边图标 + 小字标签（iOS 分享面板式） */
+.share-acts { display: flex; justify-content: space-evenly; padding: 4px 0 2px; }
+.share-act {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  color: var(--ink-2); font-family: var(--serif); font-size: 0.7rem; letter-spacing: 0.08em;
 }
-.share-acts button:hover { border-color: var(--accent-soft); background: var(--accent-wash); }
-.share-acts button[hidden] { display: none; }
+.share-act .sa-ic {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+.share-act .sa-ic svg { width: 22px; height: 22px; }
+.share-act:hover .sa-ic, .share-act:active .sa-ic {
+  border-color: var(--accent-soft); background: var(--accent-wash); color: var(--accent);
+}
+.share-act[hidden] { display: none; }
 
 #posterOverlay {
   position: fixed; inset: 0; z-index: 75; display: flex; align-items: center; justify-content: center;
@@ -1241,18 +1263,24 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
   animation: fadein 0.25s ease;
 }
 #posterOverlay[hidden] { display: none; }
-.poster-box { text-align: center; padding: 20px; max-width: 420px; width: 100%; }
+.poster-box { position: relative; text-align: center; padding: 48px 20px 20px; max-width: 420px; width: 100%; }
 .poster-box img {
-  width: 100%; max-height: 66vh; object-fit: contain;
+  width: 100%; max-height: 62vh; object-fit: contain;
   border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.55);
 }
-.poster-acts { display: flex; gap: 10px; justify-content: center; margin-top: 16px; }
-.poster-acts button {
-  font-family: var(--serif); font-size: 0.88rem; letter-spacing: 0.06em; cursor: pointer;
-  border-radius: 999px; padding: 9px 22px;
+.poster-x {
+  position: absolute; top: 6px; right: 14px; width: 40px; height: 40px;
+  background: transparent; border: 0; color: rgba(232, 220, 194, 0.8); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
 }
-#posterSave { color: #f3ecda; background: var(--c-zhusha); border: 0; }
-#posterClose { color: #e8dcc2; background: transparent; border: 1px solid rgba(232, 220, 194, 0.4); }
+.poster-x svg { width: 22px; height: 22px; }
+.poster-acts { display: flex; gap: 34px; justify-content: center; margin-top: 18px; }
+/* 深色底上的圆形图标按钮 */
+.poster-act { color: #e8dcc2; }
+.poster-act .sa-ic { border-color: rgba(232, 220, 194, 0.4); }
+.poster-act:hover .sa-ic, .poster-act:active .sa-ic {
+  border-color: #e8dcc2; background: rgba(232, 220, 194, 0.12); color: #f3ecda;
+}
 .poster-box small { display: block; margin-top: 12px; color: rgba(232, 220, 194, 0.75); font-size: 0.72rem; letter-spacing: 0.08em; }
 
 /* 分享深链定位：目标集闪烁提示 */

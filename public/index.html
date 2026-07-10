@@ -437,40 +437,32 @@
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
         <span id="sleepVal">定时</span>
       </button>
+      <button class="pl-secbtn" id="btnFav" aria-label="收藏本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
+        <span>收藏</span>
+      </button>
       <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
         <span>目录</span>
       </button>
-      <button class="pl-secbtn" id="btnPlMore" aria-label="更多操作">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5.2" cy="12" r="0.9" fill="currentColor"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/><circle cx="18.8" cy="12" r="0.9" fill="currentColor"/></svg>
-        <span>更多</span>
+      <button class="pl-secbtn" id="btnShare" aria-label="分享本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg>
+        <span>分享</span>
       </button>
     </div>
   </div>
 </div>
 
-<!-- 播放器「更多」抽屉：低频操作（收藏 / 下载 / 分享） -->
-<div id="plMoreSheet" hidden>
+<!-- 播放器「目录」抽屉：本系列快速切集，不离开播放器 -->
+<div id="plListSheet" hidden>
   <div class="cnt-sheet">
     <div class="cnt-sheet-grip" aria-hidden="true"></div>
     <div class="cnt-sheet-head">
-      <h3>更多</h3>
-      <button class="sheet-x" id="plMoreX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <h3 id="plListTitle">目录</h3>
+      <button class="sheet-x" id="plListX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
-    <div class="pl-more-acts">
-      <button class="pl-secbtn" id="btnFav" aria-label="收藏">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
-        <span>收藏</span>
-      </button>
-      <button class="pl-secbtn" id="btnDl" aria-label="下载本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg>
-        <span>下载</span>
-      </button>
-      <button class="pl-secbtn" id="btnShare" aria-label="分享本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.6" cy="5.4" r="2.5"/><circle cx="6.4" cy="12" r="2.5"/><circle cx="17.6" cy="18.6" r="2.5"/><path d="M8.6 10.7l6.8-4M8.6 13.3l6.8 4"/></svg>
-        <span>分享</span>
-      </button>
-    </div>
+    <ol class="ep-list pls-eps" id="plListEps"></ol>
+    <button class="pls-go" id="plListGo">前往系列页 ›</button>
   </div>
 </div>
 
@@ -527,9 +519,22 @@
     </div>
     <div class="share-prev" id="sharePrev"></div>
     <div class="share-acts">
-      <button id="shareSys">系统分享</button>
-      <button id="shareCopy">复制链接</button>
-      <button id="sharePoster">生成海报</button>
+      <button class="share-act" id="shareSys">
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
+        <span>转发</span>
+      </button>
+      <button class="share-act" id="shareCopy">
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 13.6a3.8 3.8 0 0 0 5.4 0l3-3a3.8 3.8 0 0 0-5.4-5.4l-1.5 1.5"/><path d="M13.6 10.4a3.8 3.8 0 0 0-5.4 0l-3 3a3.8 3.8 0 0 0 5.4 5.4l1.5-1.5"/></svg></span>
+        <span>链接</span>
+      </button>
+      <button class="share-act" id="sharePoster">
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9.2" cy="10" r="1.4"/><path d="M4.5 16.8 9.5 12l4 3.6 2.8-2.4 3.2 2.9"/></svg></span>
+        <span>海报</span>
+      </button>
+      <button class="share-act" id="shareDl" hidden>
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg></span>
+        <span>下载</span>
+      </button>
     </div>
     <p class="bk-note bk-msg" id="shareMsg"></p>
   </div>
@@ -538,11 +543,19 @@
 <!-- 分享海报预览 -->
 <div id="posterOverlay" hidden>
   <div class="poster-box">
+    <button class="poster-x" id="posterClose" aria-label="关闭">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
     <img id="posterImg" alt="分享海报">
     <div class="poster-acts">
-      <button id="posterShare" hidden>分享至社交软件</button>
-      <button id="posterSave">保存图片</button>
-      <button id="posterClose">关闭</button>
+      <button class="share-act poster-act" id="posterShare" hidden>
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
+        <span>转发</span>
+      </button>
+      <button class="share-act poster-act" id="posterSave">
+        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg></span>
+        <span>保存</span>
+      </button>
     </div>
     <small>手机上也可长按图片保存</small>
   </div>
