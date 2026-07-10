@@ -1,4 +1,4 @@
-# 佛悦 · 净土法音
+# 佛乐 · 净土法音
 
 基于 Cloudflare Workers + R2 的净土法音道场（foyue.org 新站）。
 无服务器状态、无数据库、无构建步骤。
@@ -41,7 +41,8 @@
 worker/index.js       /audio/<桶别名>/<key> 六桶 R2 流式音频（Range 分段）；/api/ask 问道 RAG；其余走静态资源
 public/
   js/station.js       确定性排播算法（核心，EPOCH_UTC_MS 上线后不可改）
-  js/app.js           五区界面 + 三种播放模式（直播/点播/念佛堂）
+  js/app.js           五区界面 + 三种播放模式（直播/点播/念佛堂）+ 听经搜索/收藏/睡眠定时/分享海报/数据备份
+  sw.js               Service Worker：壳资源缓存提速与离线兜底（/audio、/api 直连；改壳清单时 VER 加一）
   catalog.json        音频目录（6 桶 / 24 系列 / 912 集 / 401 小时）
   library.json        文库目录（38 系列 / 241 篇）
   qa.json             问道索引（969 问）
@@ -70,4 +71,5 @@ python3 scripts/build-library.py   # 本地讲记文本变更后重建文库
 - `EPOCH_UTC_MS`（开播纪元）与排播算法一经上线不可轻改，否则全网节目单错位
 - 文字稿是润饰稿、音频是原声，问答两库标题多不对应，故并列呈现不强行匹配
 - 旧站（Cloudflare Pages 的 foyue.org）整体归档不迁移；域名切换到本 Worker 需用户确认后操作
+- 域名切到本站后，首次访问会自动把旧站念佛计数（localStorage `foyue_store.counter`）累加并入 `fy.nj`（见 app.js `importOldStore`，凭 `fy.njOldImport` 标记只执行一次）
 - 尚未收入文库：《佛说无量寿经》讲记42讲完整版.docx、淨土宗教程（2018.1.16校）.doc（整本书需按讲拆分，待做）

@@ -236,7 +236,7 @@ writeFileSync(join(ROOT, 'public/qa.json'), JSON.stringify({
 }, null, 1), 'utf8');
 
 const catalog = {
-  name: '佛悦 · 净土法音',
+  name: '佛乐 · 净土法音',
   generatedAt: new Date().toISOString().slice(0, 10),
   totalEpisodes: series.reduce((s, x) => s + x.count, 0),
   totalDur: series.reduce((s, x) => s + x.totalDur, 0),

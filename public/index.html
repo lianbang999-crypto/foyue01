@@ -10,6 +10,7 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-512.png">
 <link rel="stylesheet" href="/css/style.css">
+<script src="/js/qrcode.js" defer></script><!-- 二维码生成（MIT，分享海报用） -->
 </head>
 <body data-theme="day" data-view="home" data-tab="home" data-seg="ting" data-mode="live">
 
@@ -18,13 +19,13 @@
 <header class="top">
   <a class="brand" href="#home">
     <svg class="lotus" viewBox="0 0 64 64" aria-hidden="true">
-      <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M32 9 C37 18 37 30 32 39 C27 30 27 18 32 9 Z"/>
-        <path d="M21 14 C28 18 32 29 32 39 C25 35 19 25 21 14 Z"/>
-        <path d="M43 14 C36 18 32 29 32 39 C39 35 45 25 43 14 Z"/>
-        <path d="M10.5 25 C20 26.5 28 33 31 40 C22 39.5 13 34 10.5 25 Z"/>
-        <path d="M53.5 25 C44 26.5 36 33 33 40 C42 39.5 51 34 53.5 25 Z"/>
-        <path d="M12 39 C19 47.5 45 47.5 52 39 C48 50.5 16 50.5 12 39 Z"/>
+      <!-- 佛乐标志「莲音」：三瓣莲花 + 两道法音涟漪（莲花出水，法音流布） -->
+      <g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
+        <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
+        <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
+        <path d="M14 43 C22 50 42 50 50 43"/>
+        <path d="M21 51 C27 56 37 56 43 51"/>
       </g>
     </svg>
     <span class="brand-text">
@@ -71,6 +72,12 @@
       <a href="#shu" data-seg="shu">有声书</a>
       <a href="#fohao" data-seg="fohao">佛号</a>
     </div>
+
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M15.8 15.8 20 20"/></svg>
+      <input id="tingSearch" type="search" placeholder="搜索系列与集名 …" aria-label="搜索听经内容" autocomplete="off">
+    </div>
+    <div id="searchResults" hidden></div>
 
     <div class="panel" id="panel-ting">
       <a class="live-strip" href="#live" id="liveStrip">
@@ -120,7 +127,23 @@
         <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
+      <button class="live-sleep" id="btnLiveSleep" aria-label="睡眠定时">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
+        <span id="liveSleepVal">定时</span>
+      </button>
     </div>
+    <!-- 同修在此：直播留言（不预审，后台可管理） -->
+    <div class="live-cmt">
+      <p class="live-notice" id="liveNotice" hidden></p>
+      <h3>同修在此</h3>
+      <div class="cmt-list" id="cmtList"><p class="cmt-empty">虚位以待 · 留一句随喜，与莲友共修同闻</p></div>
+      <div class="cmt-input">
+        <input id="cmtText" type="text" maxlength="100" placeholder="以法相会 · 敬请爱语" aria-label="留言">
+        <button id="btnCmtSend" aria-label="发送留言">发 送</button>
+      </div>
+      <p class="cmt-note" id="cmtNote"></p>
+    </div>
+
     <div class="next-up">
       <h3>接下来</h3>
       <ol id="nextList"></ol>
@@ -147,6 +170,8 @@
     <div id="wkHome">
       <h2 class="page-title">阅读</h2>
       <p class="page-note"><span id="wkSeriesCount"></span> 部讲记 · <span id="wkChapterCount"></span> 篇 · 大安法师讲经文字实录</p>
+      <div class="wk-search"><input id="wkSearch" type="search" maxlength="30" placeholder="搜索篇目 …" aria-label="搜索篇目"></div>
+      <ol class="ep-list" id="wkSearchResults" hidden></ol>
       <div id="wkResume"></div>
       <div class="lib-grid" id="wkGrid"></div>
     </div>
@@ -164,56 +189,102 @@
       <button class="back-btn" id="btnReaderBack">‹ 返回</button>
       <span class="reader-pos" id="readerPos"></span>
       <div class="reader-tools">
-        <button id="btnFontMinus" aria-label="缩小字号">A−</button>
-        <button id="btnFontPlus" aria-label="放大字号">A＋</button>
+        <button id="btnBookmark" aria-label="收藏本篇">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
+        </button>
+        <button id="btnReaderShare" aria-label="分享本篇">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.6" cy="5.4" r="2.5"/><circle cx="6.4" cy="12" r="2.5"/><circle cx="17.6" cy="18.6" r="2.5"/><path d="M8.6 10.7l6.8-4M8.6 13.3l6.8 4"/></svg>
+        </button>
+        <button id="btnTtsToggle" aria-label="朗读本篇">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.6v4.8h3l4.3 3.8V5.8L7.5 9.6z"/><path d="M15.2 9.2c1.6 1.6 1.6 4 0 5.6"/><path d="M17.8 6.8c2.9 2.9 2.9 7.5 0 10.4"/></svg>
+        </button>
+        <button id="btnRdSet" aria-label="阅读设置">Aa</button>
       </div>
       <div class="read-line" aria-hidden="true"><i id="readLine"></i></div>
     </div>
     <article class="reader" id="readerBody"></article>
     <nav class="reader-nav">
-      <button id="btnPrevChap">‹ 上一篇</button>
-      <button id="btnNextChap">下一篇 ›</button>
+      <div id="readerNextCard"></div>
+      <div class="reader-nav-row">
+        <button id="btnPrevChap">‹ 上一篇</button>
+        <button id="btnChapList">目 录</button>
+      </div>
     </nav>
+    <button id="btnTop" class="top-fab" hidden aria-label="回到顶部">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14.5 12 8.5l6 6"/></svg>
+    </button>
   </section>
 
-  <!-- 我的：个人中心 · 功能入口（计数细节归念佛计数器） -->
+  <!-- 我的：修行概览 + 足迹/收藏 + 通用设置（计数细节归念佛计数器） -->
   <section id="view-wode" class="view">
     <h2 class="page-title">我的</h2>
-    <a class="home-card" href="#count">
-      <span class="hc-label">念佛计数</span>
-      <span class="hc-main"><strong id="wcName"></strong><em id="wcProgress"></em></span>
+
+    <!-- 修行概览：定课进度环 + 今日/累计/连续 -->
+    <a class="wode-hero" href="#count" aria-label="进入念佛计数">
+      <div class="wh-ring" aria-hidden="true">
+        <svg viewBox="0 0 76 76">
+          <circle class="whr-bg" cx="38" cy="38" r="32" fill="none" stroke-width="5"/>
+          <circle class="whr-fg" id="whRing" cx="38" cy="38" r="32" fill="none" stroke-width="5"
+            stroke-linecap="round" transform="rotate(-90 38 38)"/>
+        </svg>
+        <div class="wh-num"><strong id="whToday">0</strong><small>今日</small></div>
+      </div>
+      <div class="wh-main">
+        <strong id="wcName"></strong>
+        <em id="wcProgress"></em>
+        <small id="whStats"></small>
+      </div>
       <span class="hc-go">去计数 ›</span>
     </a>
+
     <div id="wodeTrail" hidden>
+      <h3 class="wode-sub">足迹</h3>
       <div id="wodeCards"></div>
     </div>
-    <div class="wode-set">
-      <span class="wode-set-label">外观</span>
-      <div class="theme-chips" id="themeChips">
-        <button data-theme="auto">跟随时段</button>
-        <button data-theme="day">浅色</button>
-        <button data-theme="night">深色</button>
+    <div id="wodeFavs"></div>
+
+    <h3 class="wode-sub">通用</h3>
+    <div class="wode-group">
+      <div class="wode-set">
+        <span class="wode-set-label">外观</span>
+        <div class="theme-chips" id="themeChips">
+          <button data-theme="auto">跟随时段</button>
+          <button data-theme="day">浅色</button>
+          <button data-theme="night">深色</button>
+        </div>
       </div>
+      <div class="wode-set">
+        <span class="wode-set-label">文字</span>
+        <div class="theme-chips" id="zhChips">
+          <button data-zh="s" class="on">简体</button>
+          <button data-zh="t">繁體</button>
+        </div>
+      </div>
+      <button class="wode-row" id="btnMyHl">
+        <span>我的划线</span>
+        <span class="wr-go">›</span>
+      </button>
+      <button class="wode-row" id="btnStorage">
+        <span>存储与缓存</span>
+        <span class="wr-go">›</span>
+      </button>
+      <button class="wode-row" id="btnBackup">
+        <span>备份与迁移</span>
+        <span class="wr-go">›</span>
+      </button>
+      <button class="wode-row" id="btnAbout">
+        <span>关于本站</span>
+        <span class="wr-go">›</span>
+      </button>
     </div>
-    <button class="wode-row" id="btnAbout">
-      <span>关于本站</span>
-      <span class="wr-go">›</span>
-    </button>
-    <p class="ai-note">计数与收听进度只保存在本机 · 清理浏览器数据前请留意</p>
+    <p class="ai-note">计数与收听进度只保存在本机 · 换机或清数据前请先在「备份与迁移」中导出</p>
   </section>
 
-  <!-- 念佛计数器（极简：念珠为核心，功课/定课/历史点击展开） -->
+  <!-- 念佛计数器（极简主屏：功课名 + 大念珠 + 三键；其余归「功课」中心） -->
   <section id="view-count" class="view">
     <div class="cnt-top">
       <button class="back-btn cnt-back" data-back="#wode" aria-label="返回">‹</button>
-      <div class="cnt-tools">
-        <button class="cnt-tool" id="btnMuyu" aria-label="木鱼音效">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a5 5 0 0 0-5 5c0 5-1.8 6-1.8 6h13.6S17 14 17 9a5 5 0 0 0-5-5z"/><path d="M10.2 19.5a2 2 0 0 0 3.6 0"/></svg>
-        </button>
-        <button class="cnt-tool" id="btnWake" aria-label="屏幕常亮">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 12H2M22 12h-2.2M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5"/></svg>
-        </button>
-      </div>
+      <button class="cnt-hub" id="btnHub">功课 ›</button>
     </div>
     <div class="cnt-hall">
       <button class="cnt-practice" id="btnPractice">
@@ -235,16 +306,18 @@
       <div class="nj-actions">
         <button id="btnTen">十念 +10</button>
         <button id="btnUndo">撤销 −1</button>
+        <button id="btnReset">重 置</button>
       </div>
-      <button class="cnt-summary" id="btnHistory"><span id="cntSummary"></span><span class="cnt-more">历史 ›</span></button>
-      <button class="hx-btn" id="btnHuixiang">回 向</button>
     </div>
   </section>
 
   <!-- 问道：文库问答（RAG） -->
   <section id="view-wenda" class="view">
-    <h2 class="page-title">问法</h2>
-    <p class="page-note">依据文库 <span id="wdCorpus"></span> 篇讲记与问答作答 · 每句注明出处，点编号可读原文</p>
+    <div class="wd-head">
+      <h2 class="page-title">问法</h2>
+      <button class="chat-new" id="btnChatNew">新 问</button>
+    </div>
+    <p class="page-note">依据文库 <span id="wdCorpus"></span> 篇讲记与问答作答 · 每句注明出处，点编号可看原文</p>
     <div class="chat" id="chatLog"></div>
     <div class="chat-starters" id="chatStarters">
       <button>如何对治念佛时的昏沉散乱？</button>
@@ -254,7 +327,10 @@
     </div>
     <div class="chat-input">
       <textarea id="wdInput" rows="1" maxlength="300" placeholder="向文库提问 …"></textarea>
-      <button id="btnAsk" aria-label="提问"><svg viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button id="btnAsk" aria-label="提问">
+        <svg class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+      </button>
     </div>
     <p class="ai-note">答案由 AI 依据大安法师讲记原文生成，仅供参考；修学请以原文与善知识为准。</p>
   </section>
@@ -270,10 +346,11 @@
     <button class="dock-art" id="miniArt" aria-label="展开播放器">
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <g fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M32 14 C37 21 37 30 32 37 C27 30 27 21 32 14 Z"/>
-          <path d="M18 23 C25 25 30 31 30 39 C23 37 18 31 18 23 Z"/>
-          <path d="M46 23 C39 25 34 31 34 39 C41 37 46 31 46 23 Z"/>
-          <path d="M12 37 C18 45 46 45 52 37 C47 48 17 48 12 37 Z"/>
+          <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
+          <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
+          <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
+          <path d="M14 43 C22 50 42 50 50 43"/>
+          <path d="M21 51 C27 56 37 56 43 51"/>
         </g>
       </svg>
     </button>
@@ -306,10 +383,11 @@
       <div class="pl-art">
         <svg class="pl-lotus" viewBox="0 0 64 64" aria-hidden="true">
           <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
-            <path d="M32 12 C38 20 38 30 32 38 C26 30 26 20 32 12 Z"/>
-            <path d="M17 21 C25 23 30 30 30 39 C22 37 17 30 17 21 Z"/>
-            <path d="M47 21 C39 23 34 30 34 39 C42 37 47 30 47 21 Z"/>
-            <path d="M11 37 C17 46 47 46 53 37 C48 49 16 49 11 37 Z"/>
+            <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
+            <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
+            <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
+            <path d="M14 43 C22 50 42 50 50 43"/>
+            <path d="M21 51 C27 56 37 56 43 51"/>
           </g>
         </svg>
       </div>
@@ -359,13 +437,38 @@
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
         <span id="sleepVal">定时</span>
       </button>
+      <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
+        <span>目录</span>
+      </button>
+      <button class="pl-secbtn" id="btnPlMore" aria-label="更多操作">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5.2" cy="12" r="0.9" fill="currentColor"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/><circle cx="18.8" cy="12" r="0.9" fill="currentColor"/></svg>
+        <span>更多</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 播放器「更多」抽屉：低频操作（收藏 / 下载 / 分享） -->
+<div id="plMoreSheet" hidden>
+  <div class="cnt-sheet">
+    <div class="cnt-sheet-grip" aria-hidden="true"></div>
+    <div class="cnt-sheet-head">
+      <h3>更多</h3>
+      <button class="sheet-x" id="plMoreX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="pl-more-acts">
       <button class="pl-secbtn" id="btnFav" aria-label="收藏">
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
         <span>收藏</span>
       </button>
-      <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
-        <span>目录</span>
+      <button class="pl-secbtn" id="btnDl" aria-label="下载本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg>
+        <span>下载</span>
+      </button>
+      <button class="pl-secbtn" id="btnShare" aria-label="分享本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.6" cy="5.4" r="2.5"/><circle cx="6.4" cy="12" r="2.5"/><circle cx="17.6" cy="18.6" r="2.5"/><path d="M8.6 10.7l6.8-4M8.6 13.3l6.8 4"/></svg>
+        <span>分享</span>
       </button>
     </div>
   </div>
@@ -383,6 +486,65 @@
     <h4>联系方式</h4>
     <p>如有问题或建议反馈，欢迎来信告知。</p>
     <p class="about-mail"><a href="mailto:foyue2026@gmail.com">foyue2026@gmail.com</a></p>
+  </div>
+</div>
+
+<!-- 定课圆满（达成每日定课时） -->
+<div id="gdOverlay" hidden>
+  <div class="hx-verse">
+    <p class="gd-title">今日定课圆满</p>
+    <p>南无阿弥陀佛</p>
+    <button class="hx-btn" id="btnGdHx">回 向</button>
+    <small>轻触任意处返回</small>
+  </div>
+</div>
+
+<!-- 选中文字浮标：划线 + 分享法布施 -->
+<div id="quoteChip" hidden>
+  <button id="chipHl">划 线</button>
+  <button id="chipShare">❝ 分享</button>
+</div>
+
+<!-- 朗读控制条（文转音频） -->
+<div id="ttsBar" hidden>
+  <button id="ttsPlay" aria-label="暂停/继续">
+    <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+    <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>
+  </button>
+  <span id="ttsInfo">朗读中 …</span>
+  <button id="ttsStopBtn" aria-label="停止朗读">
+    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- 分享抽屉（法布施） -->
+<div id="shareSheet" hidden>
+  <div class="cnt-sheet">
+    <div class="cnt-sheet-grip" aria-hidden="true"></div>
+    <div class="cnt-sheet-head">
+      <h3>分享 · 法布施</h3>
+      <button class="sheet-x" id="shareX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="share-prev" id="sharePrev"></div>
+    <div class="share-acts">
+      <button id="shareSys">系统分享</button>
+      <button id="shareCopy">复制链接</button>
+      <button id="sharePoster">生成海报</button>
+    </div>
+    <p class="bk-note bk-msg" id="shareMsg"></p>
+  </div>
+</div>
+
+<!-- 分享海报预览 -->
+<div id="posterOverlay" hidden>
+  <div class="poster-box">
+    <img id="posterImg" alt="分享海报">
+    <div class="poster-acts">
+      <button id="posterShare" hidden>分享至社交软件</button>
+      <button id="posterSave">保存图片</button>
+      <button id="posterClose">关闭</button>
+    </div>
+    <small>手机上也可长按图片保存</small>
   </div>
 </div>
 

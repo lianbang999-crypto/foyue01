@@ -1,4 +1,4 @@
-// 佛悦 Worker：/audio/<桶别名>/<key> 从对应 R2 桶流式提供音频（支持 Range 分段），
+// 佛乐 Worker：/audio/<桶别名>/<key> 从对应 R2 桶流式提供音频（支持 Range 分段），
 // 其余请求交给静态资源（public/，含文库文本 /text/*）。与旧站基础设施完全独立。
 
 const BUCKETS = {
@@ -11,7 +11,7 @@ const BUCKETS = {
 };
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname.startsWith('/audio/')) {
       return serveAudio(request, env, url);
@@ -19,9 +19,180 @@ export default {
     if (url.pathname === '/api/ask') {
       return serveAsk(request, env, url);
     }
+    if (url.pathname === '/api/tts') {
+      return serveTts(request, env, ctx);
+    }
+    if (url.pathname === '/api/cmt') {
+      return serveCmt(request, env);
+    }
+    if (url.pathname.startsWith('/api/admin/')) {
+      return serveAdmin(request, env, url);
+    }
     return env.ASSETS.fetch(request);
   },
 };
+
+/* ================= 文转音频（阅读器朗读） =================
+   POST /api/tts {text} → 硅基流动 CosyVoice2 合成 mp3。
+   Key 存 Worker Secret SF_TTS_KEY（前端零接触）；同一段文字经边缘缓存复用，不重复计费。 */
+
+async function serveTts(request, env, ctx) {
+  if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+  if (!env.SF_TTS_KEY) return new Response('朗读服务未配置', { status: 503 });
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  try {
+    if (env.TTS_RL) {
+      const { success } = await env.TTS_RL.limit({ key: ip });
+      if (!success) return new Response('朗读请求太频繁，请稍候再试', { status: 429 });
+    }
+  } catch { /* 限流器故障不阻断 */ }
+
+  let text;
+  try {
+    text = String((await request.json()).text || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+  } catch { return new Response('Bad Request', { status: 400 }); }
+  if (text.length < 2) return new Response('Bad Request', { status: 400 });
+
+  // 边缘缓存：按文本哈希取回已合成的音频
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tts-v1:' + text));
+  const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const cacheKey = new Request(`https://tts-cache.bojingtai.internal/${hex}`);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+
+  const sf = await fetch('https://api.siliconflow.cn/v1/audio/speech', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.SF_TTS_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'FunAudioLLM/CosyVoice2-0.5B',
+      voice: 'FunAudioLLM/CosyVoice2-0.5B:benjamin',   // 沉稳男声，宜读讲记
+      input: text,
+      response_format: 'mp3',
+      speed: 1,
+    }),
+  });
+  if (!sf.ok) return new Response('朗读服务暂不可用', { status: 502 });
+  const buf = await sf.arrayBuffer();
+  const headers = { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=604800' };
+  if (ctx) ctx.waitUntil(caches.default.put(cacheKey, new Response(buf.slice(0), { headers })));
+  return new Response(buf, { headers });
+}
+
+/* ================= 直播留言（同修在此） =================
+   GET  /api/cmt?after=<id>  → { notice, items:[{id,name,text,ts}] } 增量轮询
+   POST /api/cmt {dev,name,text,ep} → 频控 + 封禁 + 屏蔽词校验后入库（不预审，后台可删可封） */
+
+const json = (data, status = 200) =>
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+
+async function metaGet(env, k) {
+  const row = await env.DB.prepare('SELECT v FROM meta WHERE k = ?').bind(k).first();
+  return row ? row.v : '';
+}
+
+async function serveCmt(request, env) {
+  if (request.method === 'GET') {
+    const after = Number(new URL(request.url).searchParams.get('after')) || 0;
+    const { results } = after
+      ? await env.DB.prepare('SELECT id,name,text,ts FROM comments WHERE id > ? ORDER BY id ASC LIMIT 50').bind(after).all()
+      : await env.DB.prepare('SELECT id,name,text,ts FROM comments ORDER BY id DESC LIMIT 50').all();
+    const items = after ? results : results.reverse();
+    return json({ notice: await metaGet(env, 'notice'), items });
+  }
+  if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  let dev, name, text, ep;
+  try {
+    const body = await request.json();
+    dev = String(body.dev || '').trim();
+    name = String(body.name || '').replace(/\s+/g, ' ').trim().slice(0, 14);
+    text = String(body.text || '').replace(/\s+/g, ' ').trim();
+    ep = String(body.ep || '').trim().slice(0, 60);
+  } catch { return new Response('Bad Request', { status: 400 }); }
+  if (!/^[a-zA-Z0-9-]{8,40}$/.test(dev) || name.length < 2) return new Response('Bad Request', { status: 400 });
+  if (!text) return new Response('留言不能为空', { status: 400 });
+  if (text.length > 100) return new Response('留言最长 100 字', { status: 400 });
+
+  // 频控（本机设备 + IP 双键）
+  try {
+    if (env.CMT_RL) {
+      const { success } = await env.CMT_RL.limit({ key: `${dev}:${ip}` });
+      if (!success) return new Response('发言太频繁，请稍候再试', { status: 429 });
+    }
+  } catch { /* 限流器故障不阻断 */ }
+
+  // 封禁校验
+  const ban = await env.DB.prepare('SELECT dev FROM banned WHERE dev = ?').bind(dev).first();
+  if (ban) return new Response('留言功能暂不可用', { status: 403 });
+
+  // 屏蔽词（后台可维护，JSON 数组，子串匹配）
+  try {
+    const words = JSON.parse(await metaGet(env, 'badwords') || '[]');
+    const hit = words.find((w) => w && text.includes(w));
+    if (hit) return new Response('留言包含不合适的内容，请修改后再发', { status: 422 });
+  } catch { /* 词表损坏时不拦截 */ }
+
+  const r = await env.DB.prepare('INSERT INTO comments (dev,name,text,ep,ts) VALUES (?,?,?,?,?)')
+    .bind(dev, name, text, ep, Date.now()).run();
+  return json({ ok: true, id: r.meta.last_row_id });
+}
+
+/* ================= 管理后台接口 =================
+   鉴权：Authorization: Bearer <ADMIN_TOKEN>（Worker Secret）。
+   /admin.html 静态管理页调用；覆盖留言删除、设备封禁、公告、屏蔽词。 */
+
+async function serveAdmin(request, env, url) {
+  if (!env.ADMIN_TOKEN) return new Response('后台未配置', { status: 503 });
+  if (request.headers.get('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+  const path = url.pathname.slice('/api/admin/'.length);
+
+  if (request.method === 'GET' && path === 'overview') {
+    const dayStart = new Date().setHours(0, 0, 0, 0);
+    const total = (await env.DB.prepare('SELECT COUNT(*) n FROM comments').first()).n;
+    const today = (await env.DB.prepare('SELECT COUNT(*) n FROM comments WHERE ts >= ?').bind(dayStart).first()).n;
+    const banned = (await env.DB.prepare('SELECT dev,ts FROM banned ORDER BY ts DESC').all()).results;
+    let badwords = [];
+    try { badwords = JSON.parse(await metaGet(env, 'badwords') || '[]'); } catch { /* 忽略 */ }
+    return json({ total, today, banned, notice: await metaGet(env, 'notice'), badwords });
+  }
+  if (request.method === 'GET' && path === 'comments') {
+    const { results } = await env.DB.prepare(
+      'SELECT c.id,c.dev,c.name,c.text,c.ep,c.ts,(b.dev IS NOT NULL) banned FROM comments c LEFT JOIN banned b ON b.dev = c.dev ORDER BY c.id DESC LIMIT 200').all();
+    return json({ items: results });
+  }
+  if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+
+  let body;
+  try { body = await request.json(); } catch { return new Response('Bad Request', { status: 400 }); }
+
+  if (path === 'del') {
+    const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).map(Number).filter(Boolean);
+    if (!ids.length) return new Response('Bad Request', { status: 400 });
+    await env.DB.prepare(`DELETE FROM comments WHERE id IN (${ids.map(() => '?').join(',')})`).bind(...ids).run();
+    return json({ ok: true, n: ids.length });
+  }
+  if (path === 'ban' || path === 'unban') {
+    const dev = String(body.dev || '').trim();
+    if (!dev) return new Response('Bad Request', { status: 400 });
+    if (path === 'ban') await env.DB.prepare('INSERT OR REPLACE INTO banned (dev,ts) VALUES (?,?)').bind(dev, Date.now()).run();
+    else await env.DB.prepare('DELETE FROM banned WHERE dev = ?').bind(dev).run();
+    return json({ ok: true });
+  }
+  if (path === 'notice') {
+    await env.DB.prepare('INSERT OR REPLACE INTO meta (k,v) VALUES (?,?)')
+      .bind('notice', String(body.text || '').trim().slice(0, 200)).run();
+    return json({ ok: true });
+  }
+  if (path === 'badwords') {
+    const words = (Array.isArray(body.words) ? body.words : []).map((w) => String(w).trim()).filter(Boolean).slice(0, 200);
+    await env.DB.prepare('INSERT OR REPLACE INTO meta (k,v) VALUES (?,?)').bind('badwords', JSON.stringify(words)).run();
+    return json({ ok: true, n: words.length });
+  }
+  return new Response('Not Found', { status: 404 });
+}
 
 /* ================= 问道 RAG 接口 =================
    流程：问题向量化(bge-m3) → Vectorize 召回20 → bge-reranker 重排取8
@@ -93,13 +264,14 @@ async function serveAsk(request, env, url) {
   const sources = matches.map((m, i) => ({
     n: i + 1, title: m.metadata.title, series: m.metadata.series,
     path: m.metadata.path, kind: m.metadata.kind,
+    x: String(m.metadata.t || '').replace(/\s+/g, ' ').trim().slice(0, 160),   // 段落摘录（前端出处预览用）
   }));
   const context = matches.map((m, i) =>
     `【${i + 1}】《${m.metadata.series}》${m.metadata.title}\n${m.metadata.t}`).join('\n\n');
 
   const messages = [
     { role: 'system', content:
-      '你是净土修学网站「佛悦」的问道助手。你的唯一职责是根据提供的大安法师讲经文字资料，忠实地回答提问。\n' +
+      '你是净土修学网站「佛乐」的问道助手。你的唯一职责是根据提供的大安法师讲经文字资料，忠实地回答提问。\n' +
       '规则：\n' +
       '一、只依据【资料】作答，忠于原文义理，不得自行发挥或杜撰法义；\n' +
       '二、引用资料时在句末标注编号，如 [1][3]；\n' +

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>佛乐 · 管理后台</title>
+<style>
+  /* 独立管理页：与主站同一宣纸纸墨语汇，零依赖单文件 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Noto Serif SC", "Songti SC", "STSong", serif;
+    background: #f3ecda; color: #33291b; min-height: 100vh; padding: 24px 16px 60px;
+  }
+  main { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 1.2rem; letter-spacing: 0.14em; margin-bottom: 4px; }
+  .sub { color: #a08b6b; font-size: 0.8rem; letter-spacing: 0.06em; margin-bottom: 22px; }
+  section {
+    background: rgba(255, 252, 243, 0.7); border: 1px solid rgba(86, 68, 42, 0.16);
+    border-radius: 14px; padding: 18px; margin-bottom: 16px;
+  }
+  h2 { font-size: 0.95rem; letter-spacing: 0.12em; color: #6f6047; margin-bottom: 12px; }
+  input, textarea {
+    width: 100%; font-family: inherit; font-size: 0.92rem; color: #33291b;
+    background: #fffcf3; border: 1px solid rgba(86, 68, 42, 0.2); border-radius: 10px; padding: 10px 14px;
+  }
+  input:focus, textarea:focus { outline: none; border-color: rgba(189, 58, 38, 0.45); }
+  textarea { min-height: 88px; resize: vertical; line-height: 1.8; }
+  button {
+    font-family: inherit; font-size: 0.86rem; letter-spacing: 0.08em; cursor: pointer;
+    color: #bd3a26; background: rgba(189, 58, 38, 0.06);
+    border: 1px solid rgba(189, 58, 38, 0.4); border-radius: 999px; padding: 8px 20px;
+  }
+  button:hover { background: rgba(189, 58, 38, 0.12); }
+  button.plain { color: #6f6047; border-color: rgba(86, 68, 42, 0.25); background: transparent; }
+  .row { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .stats { display: flex; gap: 22px; flex-wrap: wrap; }
+  .stats b { font-size: 1.35rem; display: block; font-variant-numeric: tabular-nums; }
+  .stats span { color: #a08b6b; font-size: 0.76rem; letter-spacing: 0.08em; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid rgba(86, 68, 42, 0.12); vertical-align: top; }
+  th { color: #a08b6b; font-weight: 400; font-size: 0.76rem; letter-spacing: 0.08em; white-space: nowrap; }
+  td.t { color: #a08b6b; font-size: 0.76rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td .dev { color: #a08b6b; font-size: 0.72rem; }
+  td .ep { color: #a08b6b; font-size: 0.74rem; display: block; margin-top: 2px; }
+  .banned-tag { color: #bd3a26; font-size: 0.72rem; border: 1px solid rgba(189, 58, 38, 0.4); border-radius: 4px; padding: 0 5px; margin-left: 6px; }
+  .ops { white-space: nowrap; }
+  .ops button { padding: 4px 12px; font-size: 0.78rem; margin-left: 6px; }
+  .msg { color: #8f6f2e; font-size: 0.82rem; min-height: 1.3em; margin-top: 8px; }
+  .table-wrap { overflow-x: auto; }
+  #panel { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>佛乐 · 管理后台</h1>
+  <p class="sub">留言 · 公告 · 屏蔽词 · 封禁 —— 统一管理</p>
+
+  <!-- 口令登录：令牌只存本机 -->
+  <section id="login">
+    <h2>管理口令</h2>
+    <div class="row">
+      <input id="token" type="password" placeholder="输入 ADMIN_TOKEN" style="max-width:340px">
+      <button id="btnLogin">进 入</button>
+    </div>
+    <p class="msg" id="loginMsg"></p>
+  </section>
+
+  <div id="panel">
+    <section>
+      <h2>概览</h2>
+      <div class="stats">
+        <div><b id="stToday">–</b><span>今日留言</span></div>
+        <div><b id="stTotal">–</b><span>累计留言</span></div>
+        <div><b id="stBanned">–</b><span>封禁设备</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>公告（显示在直播页「同修在此」上方，留空即撤下）</h2>
+      <textarea id="notice" maxlength="200" placeholder="如：今晚七点共修《无量寿经》第十讲，欢迎莲友同闻。"></textarea>
+      <div class="row"><button id="btnNotice">保存公告</button><span class="msg" id="noticeMsg"></span></div>
+    </section>
+
+    <section>
+      <h2>屏蔽词（一行一个，命中即拒收）</h2>
+      <textarea id="badwords" placeholder="一行一个屏蔽词"></textarea>
+      <div class="row"><button id="btnBadwords">保存屏蔽词</button><span class="msg" id="bwMsg"></span></div>
+    </section>
+
+    <section>
+      <h2>最近留言（最新 200 条）</h2>
+      <div class="row" style="margin:0 0 10px"><button class="plain" id="btnReload">刷 新</button><span class="msg" id="cmtMsg"></span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>时间</th><th>法名 / 内容</th><th class="ops">操作</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>封禁设备</h2>
+      <div class="table-wrap"><table><tbody id="banRows"></tbody></table></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let TOKEN = localStorage.getItem('fy.admTok') || '';
+
+  async function api(path, body) {
+    const r = await fetch('/api/admin/' + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { Authorization: 'Bearer ' + TOKEN, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (r.status === 401) { logout(); throw new Error('口令错误或已失效'); }
+    if (!r.ok) throw new Error(await r.text() || ('HTTP ' + r.status));
+    return r.json();
+  }
+
+  function logout() {
+    TOKEN = '';
+    localStorage.removeItem('fy.admTok');
+    $('#panel').style.display = 'none';
+    $('#login').style.display = '';
+  }
+
+  const fmtT = (ts) => {
+    const d = new Date(ts);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  async function loadAll() {
+    const ov = await api('overview');
+    $('#stToday').textContent = ov.today;
+    $('#stTotal').textContent = ov.total;
+    $('#stBanned').textContent = ov.banned.length;
+    $('#notice').value = ov.notice || '';
+    $('#badwords').value = (ov.badwords || []).join('\n');
+    $('#banRows').innerHTML = ov.banned.map((b) =>
+      `<tr><td class="t">${fmtT(b.ts)}</td><td><span class="dev">${esc(b.dev)}</span></td>
+       <td class="ops"><button data-unban="${esc(b.dev)}">解封</button></td></tr>`).join('')
+      || '<tr><td class="t">暂无封禁</td></tr>';
+    const { items } = await api('comments');
+    $('#rows').innerHTML = items.map((c) =>
+      `<tr><td class="t">${fmtT(c.ts)}</td>
+       <td><b>${esc(c.name)}</b>${c.banned ? '<span class="banned-tag">已封禁</span>' : ''} ${esc(c.text)}
+         ${c.ep ? `<span class="ep">${esc(c.ep)}</span>` : ''}<span class="dev">${esc(c.dev)}</span></td>
+       <td class="ops"><button data-del="${c.id}">删除</button>${c.banned
+         ? `<button class="plain" data-unban="${esc(c.dev)}">解封</button>`
+         : `<button class="plain" data-ban="${esc(c.dev)}">封禁</button>`}</td></tr>`).join('')
+      || '<tr><td class="t">暂无留言</td></tr>';
+  }
+
+  $('#btnLogin').addEventListener('click', async () => {
+    TOKEN = $('#token').value.trim();
+    if (!TOKEN) return;
+    try {
+      await api('overview');
+      localStorage.setItem('fy.admTok', TOKEN);
+      $('#login').style.display = 'none';
+      $('#panel').style.display = 'block';
+      loadAll();
+    } catch (e) { $('#loginMsg').textContent = e.message; }
+  });
+
+  $('#btnReload').addEventListener('click', () => loadAll().catch((e) => { $('#cmtMsg').textContent = e.message; }));
+  $('#btnNotice').addEventListener('click', async () => {
+    try { await api('notice', { text: $('#notice').value }); $('#noticeMsg').textContent = '已保存'; }
+    catch (e) { $('#noticeMsg').textContent = e.message; }
+  });
+  $('#btnBadwords').addEventListener('click', async () => {
+    try {
+      const { n } = await api('badwords', { words: $('#badwords').value.split('\n') });
+      $('#bwMsg').textContent = `已保存 ${n} 个`;
+    } catch (e) { $('#bwMsg').textContent = e.message; }
+  });
+
+  document.body.addEventListener('click', async (e) => {
+    const del = e.target.closest('[data-del]');
+    const ban = e.target.closest('[data-ban]');
+    const unban = e.target.closest('[data-unban]');
+    try {
+      if (del) { if (!confirm('删除这条留言？')) return; await api('del', { id: Number(del.dataset.del) }); }
+      else if (ban) { if (!confirm('封禁该设备？其后续留言将被拒收。')) return; await api('ban', { dev: ban.dataset.ban }); }
+      else if (unban) { await api('unban', { dev: unban.dataset.unban }); }
+      else return;
+      loadAll();
+    } catch (err) { $('#cmtMsg').textContent = err.message; }
+  });
+
+  // 已存口令则直接进入
+  if (TOKEN) {
+    api('overview').then(() => {
+      $('#login').style.display = 'none';
+      $('#panel').style.display = 'block';
+      loadAll();
+    }).catch(() => { /* 停留在登录 */ });
+  }
+</script>
+</body>
+</html>

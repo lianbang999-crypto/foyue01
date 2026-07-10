@@ -1,4 +1,4 @@
-// 佛悦 Cloudflare Worker 配置
+// 佛乐 Cloudflare Worker 配置
 {
   "name": "bojingtai",
   "main": "worker/index.js",
@@ -18,14 +18,20 @@
   "vectorize": [
     { "binding": "WENKU", "index_name": "foyue-wenku" }
   ],
+  // 直播留言存储（同修在此 + 管理后台）
+  "d1_databases": [
+    { "binding": "DB", "database_name": "bojingtai-cmt", "database_id": "14b4c9fd-0b36-45f2-930c-bbcd9e8b818b" }
+  ],
   "vars": {
     // 生成模型可随时更换（硅基流动模型 ID）
     "SF_CHAT_MODEL": "Qwen/Qwen3.5-35B-A3B"
   },
-  // 问道接口限流：每 IP 每分钟 8 次
+  // 接口限流：问道每 IP 每分钟 8 次；留言每 IP 每分钟 6 条；朗读每 IP 每分钟 20 段
   "unsafe": {
     "bindings": [
-      { "name": "ASK_RL", "type": "ratelimit", "namespace_id": "1101", "simple": { "limit": 8, "period": 60 } }
+      { "name": "ASK_RL", "type": "ratelimit", "namespace_id": "1101", "simple": { "limit": 8, "period": 60 } },
+      { "name": "CMT_RL", "type": "ratelimit", "namespace_id": "1102", "simple": { "limit": 6, "period": 60 } },
+      { "name": "TTS_RL", "type": "ratelimit", "namespace_id": "1103", "simple": { "limit": 20, "period": 60 } }
     ]
   },
   "workers_dev": true,

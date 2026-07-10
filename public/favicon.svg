@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#f3ecda"/>
-  <g fill="none" stroke="#bd3a26" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M32 9 C37 18 37 30 32 39 C27 30 27 18 32 9 Z"/>
-    <path d="M21 14 C28 18 32 29 32 39 C25 35 19 25 21 14 Z"/>
-    <path d="M43 14 C36 18 32 29 32 39 C39 35 45 25 43 14 Z"/>
-    <path d="M10.5 25 C20 26.5 28 33 31 40 C22 39.5 13 34 10.5 25 Z"/>
-    <path d="M53.5 25 C44 26.5 36 33 33 40 C42 39.5 51 34 53.5 25 Z"/>
-    <path d="M12 39 C19 47.5 45 47.5 52 39 C48 50.5 16 50.5 12 39 Z"/>
+  <!-- 佛乐标志「莲音」：宣纸圆角底 + 朱砂莲花与法音涟漪 -->
+  <rect x="1" y="1" width="62" height="62" rx="14" fill="#f3ecda"/>
+  <g fill="none" stroke="#bd3a26" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M32 11 C38 19 38 28 32 35.5 C26 28 26 19 32 11 Z"/>
+    <path d="M19 18.5 C26.5 21.5 31 28 31 35.5 C23.5 33.5 19 27 19 18.5 Z"/>
+    <path d="M45 18.5 C37.5 21.5 33 28 33 35.5 C40.5 33.5 45 27 45 18.5 Z"/>
+    <path d="M15 42.5 C23 49.5 41 49.5 49 42.5"/>
+    <path d="M21.5 50.5 C27.5 55.5 36.5 55.5 42.5 50.5"/>
   </g>
 </svg>

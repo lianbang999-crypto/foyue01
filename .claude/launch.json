@@ -6,6 +6,19 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["wrangler", "dev", "--remote", "--port", "8787"],
       "port": 8787
+    },
+    {
+      "name": "bojingtai-static",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "python3 -m http.server ${PORT:-8790} --directory public"],
+      "port": 8790,
+      "autoPort": true
+    },
+    {
+      "name": "bojingtai-local",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--port", "8788"],
+      "port": 8788
     }
   ]
 }
