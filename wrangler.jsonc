@@ -24,14 +24,20 @@
   ],
   "vars": {
     // 生成模型可随时更换（硅基流动模型 ID）
-    "SF_CHAT_MODEL": "Qwen/Qwen3.5-35B-A3B"
+    "SF_CHAT_MODEL": "Qwen/Qwen3.5-35B-A3B",
+    // 音频字幕识别（免费档）与界面翻译（免费档）
+    "SF_ASR_MODEL": "FunAudioLLM/SenseVoiceSmall",
+    "SF_I18N_MODEL": "Qwen/Qwen3.5-9B"
   },
-  // 接口限流：问道每 IP 每分钟 8 次；留言每 IP 每分钟 6 条；朗读每 IP 每分钟 20 段
+  // 接口限流：问道每 IP 每分钟 8 次；留言每 IP 每分钟 6 条；朗读每 IP 每分钟 20 段；
+  // 字幕每 IP 每分钟 12 段（缓存命中不计）；翻译每 IP 每分钟 20 批
   "unsafe": {
     "bindings": [
       { "name": "ASK_RL", "type": "ratelimit", "namespace_id": "1101", "simple": { "limit": 8, "period": 60 } },
       { "name": "CMT_RL", "type": "ratelimit", "namespace_id": "1102", "simple": { "limit": 6, "period": 60 } },
-      { "name": "TTS_RL", "type": "ratelimit", "namespace_id": "1103", "simple": { "limit": 20, "period": 60 } }
+      { "name": "TTS_RL", "type": "ratelimit", "namespace_id": "1103", "simple": { "limit": 20, "period": 60 } },
+      { "name": "CC_RL", "type": "ratelimit", "namespace_id": "1104", "simple": { "limit": 12, "period": 60 } },
+      { "name": "I18N_RL", "type": "ratelimit", "namespace_id": "1105", "simple": { "limit": 20, "period": 60 } }
     ]
   },
   "workers_dev": true,

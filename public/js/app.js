@@ -7,6 +7,7 @@ import {
   createStation, stationNow, fmtClock, fmtDur, fmtMMSS, bjParts,
 } from './station.js';
 import { SERIES_INTROS } from './intros.js';
+import { initI18n } from './i18n.js';
 
 const $ = (s) => document.querySelector(s);
 const audio = $('#audio');
@@ -66,7 +67,11 @@ async function init() {
   tick();
   setInterval(tick, 1000);
   ensureLibrary().catch(() => { /* 预取失败静默：进入相关页时会重试 */ });
-  if (zhTradOn()) setZhTrad(true);   // 繁体偏好：全站转换并接管动态内容
+  // 语言偏好：繁体走字表转换，外文走 AI 词典（均接管后续动态内容）
+  const lang = getLang();
+  applyLangChips(lang);
+  if (lang === 't') setZhTrad(true);
+  else if (lang === 'en' || lang === 'ja') initI18n(lang);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { /* 忽略 */ });
 }
 
@@ -177,12 +182,20 @@ function zhApply(root) {
   }
 }
 
-function zhTradOn() { return localStorage.getItem('fy.zh') === 't'; }
+function zhTradOn() { return getLang() === 't'; }
+
+// 语言偏好：s 简体 / t 繁體 / en English / ja 日本語（旧键 fy.zh 自动迁移）
+function getLang() {
+  return localStorage.getItem('fy.lang')
+    || (localStorage.getItem('fy.zh') === 't' ? 't' : 's');
+}
+
+function applyLangChips(l) {
+  document.querySelectorAll('#langChips button').forEach((b) =>
+    b.classList.toggle('on', b.dataset.lang === l));
+}
 
 async function setZhTrad(on) {
-  localStorage.setItem('fy.zh', on ? 't' : 's');
-  document.querySelectorAll('#zhChips button').forEach((b) =>
-    b.classList.toggle('on', (b.dataset.zh === 't') === on));
   if (!on) { location.reload(); return; }   // 回简体：源数据即简体，重载最可靠
   await ensureZh();
   document.title = zhConv(document.title, zhMap);
@@ -250,7 +263,7 @@ async function route() {
   }
   $('#quoteChip').hidden = true;
   document.body.dataset.view = view;
-  if (view === 'live') startCmt(); else stopCmt();   // 同修在此：进直播页轮询，离开即停
+  if (view === 'live') startCmt(); else { stopCmt(); dmClear(); }   // 同修在此：进直播页轮询，离开即停（弹幕同清）
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
 }
@@ -322,6 +335,8 @@ function tick() {
   document.body.dataset.playing = String(mode === 'live' && !audio.paused);
   document.body.dataset.odPlaying = String(mode === 'od' && !audio.paused);
   document.body.dataset.nfPlaying = String(mode === 'nianfo' && !audio.paused);
+
+  ccTick();   // 实时字幕：随播放进度取段显示
 
   // 锁屏进度条（媒体会话位置状态）
   if ('mediaSession' in navigator && navigator.mediaSession.setPositionState
@@ -534,6 +549,7 @@ function startOd() {
   $('#miniDur').textContent = fmtMMSS(ep.dur);
   $('#rateVal').textContent = `${currentRate()}×`;
   $('#btnRate').hidden = !!od.loop;   // 佛号不变速
+  $('#btnCc').hidden = !!od.loop;     // 佛号无需字幕
   $('#btnPrevEp').disabled = od.idx <= 0;
   $('#btnNextEp').disabled = od.idx >= od.list.length - 1;
   updateFav();
@@ -557,6 +573,80 @@ function saveProgress() {
   } else if (audio.currentTime >= ep.dur - 30) {
     localStorage.removeItem('fy.p.' + ep.key);
   }
+}
+
+/* ================= 音频实时字幕（AI 识别，仅供参考） =================
+   与 Worker /api/cc 约定按 30 秒时间窗取段：直播按台里偏移、点播按播放位置，
+   段内文字整段呈现，播放中提前预取下一段衔接。识别结果全网边缘缓存复用。 */
+
+const CC_SEG = 30;
+let ccOn = localStorage.getItem('fy.cc') === '1';
+const ccCache = new Map();     // `${桶}/${键}#${段}` → 文本（null=失败占位，稍后重试）
+const ccPending = new Set();
+let ccShown = '';              // 上次已写入的字幕，避免每秒重写 DOM
+
+function ccSource() {
+  if (mode === 'od' && od && !od.loop) {
+    const ep = od.list[od.idx];
+    return { b: od.bucket, k: ep.key, d: ep.dur, t: audio.currentTime || 0 };
+  }
+  if (mode === 'live' && liveItem) {
+    const ep = liveItem.ep;
+    return { b: ep.bucket, k: ep.key, d: ep.dur, t: Math.max(0, stationNow() - liveItem.start) };
+  }
+  return null;
+}
+
+function ccSet(on) {
+  ccOn = on;
+  localStorage.setItem('fy.cc', on ? '1' : '0');
+  $('#btnCc').classList.toggle('on', on);
+  $('#btnLiveCc').classList.toggle('on', on);
+  ccShown = '';
+  if (!on) { $('#liveCc').hidden = true; $('#plCc').hidden = true; }
+  else ccTick();
+}
+
+async function ccFetch(src, seg) {
+  const id = `${src.b}/${src.k}#${seg}`;
+  if (ccCache.has(id) || ccPending.has(id)) return;
+  if (seg < 0 || seg * CC_SEG >= src.d) return;
+  ccPending.add(id);
+  try {
+    const r = await fetch(`/api/cc?b=${encodeURIComponent(src.b)}&k=${encodeURIComponent(src.k)}&d=${Math.round(src.d)}&seg=${seg}`);
+    if (r.ok) ccCache.set(id, (await r.json()).text || '');
+    else throw new Error(String(r.status));
+  } catch {
+    // 失败占位 15 秒，避免每秒重试打爆接口；期满自动清除再试
+    ccCache.set(id, null);
+    setTimeout(() => { if (ccCache.get(id) === null) ccCache.delete(id); }, 15000);
+  }
+  ccPending.delete(id);
+  if (ccCache.size > 400) ccCache.clear();   // 防长开无限增长
+}
+
+function ccTick() {
+  const liveView = document.body.dataset.view === 'live' && mode === 'live';
+  const plOpen = mode === 'od' && od && !od.loop
+    && !$('#mini').hidden && !$('#mini').classList.contains('collapsed');
+  if (!ccOn || (!liveView && !plOpen)) {
+    if (!$('#liveCc').hidden) $('#liveCc').hidden = true;
+    if (!$('#plCc').hidden) $('#plCc').hidden = true;
+    return;
+  }
+  const src = ccSource();
+  const box = liveView ? $('#liveCc') : $('#plCc');
+  const other = liveView ? $('#plCc') : $('#liveCc');
+  if (!other.hidden) other.hidden = true;
+  if (!src) { if (!box.hidden) box.hidden = true; return; }
+  box.hidden = false;
+
+  const seg = Math.floor(src.t / CC_SEG);
+  ccFetch(src, seg);
+  if (src.t - seg * CC_SEG > CC_SEG - 12) ccFetch(src, seg + 1);   // 播近段尾预取下一段
+  const text = ccCache.get(`${src.b}/${src.k}#${seg}`);
+  const line = text == null ? '字幕识别中 …' : (text || '（此段无言语）');
+  if (line !== ccShown) { ccShown = line; box.textContent = line; }
 }
 
 /* 收藏（当前点播集，仅存本机；清单见「我的」页） */
@@ -1610,7 +1700,8 @@ function renderWode() {
   const k = bjDateKey();
   const t = njDayTotal(k);
   $('#wcName').textContent = njItem().name;
-  $('#wcProgress').textContent = nj.goal ? `今日 ${t} / 定课 ${nj.goal} 声` : `今日 ${t} 声`;
+  // 「声」由下行统计承载，进度行收短避免窄屏折出孤字
+  $('#wcProgress').textContent = nj.goal ? `今日 ${t} / 定课 ${nj.goal}` : `今日 ${t} 声`;
   $('#whToday').textContent = t >= 10000 ? (t / 1000).toFixed(1) + 'k' : t;
   const rtMin = Math.floor((Number(localStorage.getItem('fy.rt.' + k)) || 0) / 60);
   $('#whStats').textContent = `累计 ${njGrandTotal().toLocaleString()} 声 · 连续 ${njStreak()} 日`
@@ -2029,6 +2120,61 @@ function showPoster(cv) {
   $('#posterOverlay').hidden = false;
 }
 
+/* ================= 直播弹幕 =================
+   与「同修在此」同一数据源：轮询到的新留言排队错峰飘过莲台卡，
+   自己发送的经轮询立即上屏；开关记在 fy.dm，默认开。 */
+
+let dmOn = localStorage.getItem('fy.dm') !== '0';
+let dmQueue = [];
+let dmTimer = 0;
+let dmLane = 0;
+
+function dmSet(on) {
+  dmOn = on;
+  localStorage.setItem('fy.dm', on ? '1' : '0');
+  $('#btnDm').classList.toggle('on', on);
+  if (!on) dmClear();
+}
+
+function dmClear() {
+  dmQueue = [];
+  if (dmTimer) { clearTimeout(dmTimer); dmTimer = 0; }
+  $('#dmLayer').innerHTML = '';
+}
+
+function dmPush(texts) {
+  if (!dmOn || document.body.dataset.view !== 'live' || !texts.length) return;
+  dmQueue.push(...texts);
+  if (dmQueue.length > 40) dmQueue = dmQueue.slice(-40);   // 积压只留最近
+  if (!dmTimer) dmDrain();
+}
+
+function dmDrain() {
+  if (!dmOn || !dmQueue.length || document.body.dataset.view !== 'live') { dmTimer = 0; return; }
+  const text = dmQueue.shift();
+  if (!document.hidden) dmSpawn(text);   // 后台标签不飘也不积压，回来看的是新留言
+  // 错峰：批量到达的留言摊开飘，不挤成一团
+  dmTimer = setTimeout(dmDrain, 1300 + Math.random() * 1700);
+}
+
+function dmSpawn(text) {
+  const layer = $('#dmLayer');
+  const el = document.createElement('span');
+  el.className = 'dm-item';
+  el.textContent = text;
+  layer.appendChild(el);
+  const W = layer.clientWidth;
+  const w = el.offsetWidth;
+  el.style.top = `${6 + (dmLane % 4) * 24}%`;
+  el.style.transform = `translateX(${W}px)`;
+  dmLane += 1;
+  const anim = el.animate(
+    [{ transform: `translateX(${W}px)` }, { transform: `translateX(${-w - 24}px)` }],
+    { duration: (W + w) * 16, easing: 'linear' });   // 约 62px/秒，匀速横过
+  anim.onfinish = () => el.remove();
+  anim.oncancel = () => el.remove();
+}
+
 /* ================= 直播留言（同修在此） ================= */
 
 let cmtLastId = 0;
@@ -2066,12 +2212,15 @@ async function pollCmt() {
     $('#liveNotice').hidden = !notice;
     if (d.items && d.items.length) {
       const list = $('#cmtList');
-      if (!cmtLastId) list.innerHTML = '';
+      const first = !cmtLastId;
+      if (first) list.innerHTML = '';
       cmtLastId = d.items[d.items.length - 1].id;
       list.insertAdjacentHTML('beforeend', d.items.map((c) =>
         `<p class="cmt-row"><b>${esc(c.name)}</b><span>${esc(c.text)}</span></p>`).join(''));
       while (list.children.length > 80) list.firstChild.remove();   // 只留最近，防无限增长
       list.scrollTop = list.scrollHeight;
+      // 弹幕：新留言全部上屏；首次进页只取最近两条作氛围，不回放历史
+      dmPush((first ? d.items.slice(-2) : d.items).map((c) => c.text));
     }
   } catch { /* 网络波动静默，下轮再试 */ }
 }
@@ -2721,13 +2870,20 @@ function bindEvents() {
     applyThemePref();
   });
 
-  // 文字：简体 / 繁體
-  $('#zhChips').addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-zh]');
+  // 语言：简体 / 繁體 / English / 日本語
+  $('#langChips').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-lang]');
     if (!b) return;
-    const on = b.dataset.zh === 't';
-    if (on === zhTradOn()) return;   // 未变化
-    setZhTrad(on);
+    const cur = getLang();
+    const next = b.dataset.lang;
+    if (next === cur) return;
+    localStorage.setItem('fy.lang', next);
+    localStorage.setItem('fy.zh', next === 't' ? 't' : 's');   // 兼容旧键
+    applyLangChips(next);
+    // 从简体出发可就地转换；其余切换（如繁→英）重载后按偏好初始化最可靠
+    if (cur === 's' && next === 't') { setZhTrad(true); return; }
+    if (cur === 's' && (next === 'en' || next === 'ja')) { initI18n(next); return; }
+    location.reload();
   });
 
   // 关于本站弹窗
@@ -2818,6 +2974,14 @@ function bindEvents() {
   const cycleSleep = () => setSleep(SLEEP_MINS[(SLEEP_MINS.indexOf(sleepT.min) + 1) % SLEEP_MINS.length]);
   $('#btnSleep').addEventListener('click', cycleSleep);
   $('#btnLiveSleep').addEventListener('click', cycleSleep);
+
+  // 弹幕 / 字幕开关（直播页 + 播放器）
+  $('#btnDm').classList.toggle('on', dmOn);
+  $('#btnDm').addEventListener('click', () => dmSet(!dmOn));
+  $('#btnCc').classList.toggle('on', ccOn);
+  $('#btnLiveCc').classList.toggle('on', ccOn);
+  $('#btnCc').addEventListener('click', () => ccSet(!ccOn));
+  $('#btnLiveCc').addEventListener('click', () => ccSet(!ccOn));
   $('#miniSeek').addEventListener('input', () => {
     seekDragging = true;
     if (od) $('#miniCur').textContent = fmtMMSS(($('#miniSeek').value / 1000) * od.list[od.idx].dur);

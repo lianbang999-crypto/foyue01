@@ -115,6 +115,7 @@
     <button class="back-btn" data-back="#ting">‹ 返回听经</button>
     <p class="now-date" id="nowDate"></p>
     <div class="live-card">
+      <div class="dm-layer" id="dmLayer" aria-hidden="true"></div>
       <p class="block-chip"><span class="live-dot" aria-hidden="true"></span><span id="blockName"></span></p>
       <h2 class="series-title" id="liveSeries"></h2>
       <p class="ep-title" id="liveEp"></p>
@@ -127,10 +128,21 @@
         <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
-      <button class="live-sleep" id="btnLiveSleep" aria-label="睡眠定时">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
-        <span id="liveSleepVal">定时</span>
-      </button>
+      <p class="live-cc" id="liveCc" hidden></p>
+      <div class="live-tools">
+        <button class="live-sleep" id="btnDm" aria-label="弹幕开关">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg>
+          <span>弹幕</span>
+        </button>
+        <button class="live-sleep" id="btnLiveCc" aria-label="字幕开关">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M7 12h4M13.5 12H17M7 15h2.5M12 15h5"/></svg>
+          <span>字幕</span>
+        </button>
+        <button class="live-sleep" id="btnLiveSleep" aria-label="睡眠定时">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
+          <span id="liveSleepVal">定时</span>
+        </button>
+      </div>
     </div>
     <!-- 同修在此：直播留言（不预审，后台可管理） -->
     <div class="live-cmt">
@@ -246,7 +258,7 @@
     <h3 class="wode-sub">通用</h3>
     <div class="wode-group">
       <div class="wode-set">
-        <span class="wode-set-label">外观</span>
+        <span class="wode-set-label">主题</span>
         <div class="theme-chips" id="themeChips">
           <button data-theme="auto">跟随时段</button>
           <button data-theme="day">浅色</button>
@@ -254,26 +266,32 @@
         </div>
       </div>
       <div class="wode-set">
-        <span class="wode-set-label">文字</span>
-        <div class="theme-chips" id="zhChips">
-          <button data-zh="s" class="on">简体</button>
-          <button data-zh="t">繁體</button>
+        <span class="wode-set-label">语言</span>
+        <div class="theme-chips" id="langChips">
+          <button data-lang="s" class="on">简体</button>
+          <button data-lang="t">繁體</button>
+          <button data-lang="en">EN</button>
+          <button data-lang="ja">日本語</button>
         </div>
       </div>
       <button class="wode-row" id="btnMyHl">
-        <span>我的划线</span>
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 19.5h13"/><path d="M8.5 13.2 15.2 6.5a1.9 1.9 0 0 1 2.7 2.7l-6.7 6.7-3.6.9z"/></svg></span>
+        <span class="wr-t">我的划线</span>
         <span class="wr-go">›</span>
       </button>
       <button class="wode-row" id="btnStorage">
-        <span>存储与缓存</span>
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"/><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></svg></span>
+        <span class="wr-t">存储与缓存</span>
         <span class="wr-go">›</span>
       </button>
       <button class="wode-row" id="btnBackup">
-        <span>备份与迁移</span>
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8.2h10"/><path d="M13.8 4.8 17.2 8.2l-3.4 3.4"/><path d="M17 15.8H7"/><path d="M10.2 12.4 6.8 15.8l3.4 3.4"/></svg></span>
+        <span class="wr-t">备份与迁移</span>
         <span class="wr-go">›</span>
       </button>
       <button class="wode-row" id="btnAbout">
-        <span>关于本站</span>
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5"/><path d="M12 7.6h.01" stroke-width="2.2"/></svg></span>
+        <span class="wr-t">关于本站</span>
         <span class="wr-go">›</span>
       </button>
     </div>
@@ -398,6 +416,8 @@
       <p id="plSeries"></p>
     </div>
 
+    <p class="pl-cc" id="plCc" hidden></p>
+
     <div class="pl-seek">
       <div class="mini-seekrow">
         <span id="miniCur">0:00</span>
@@ -436,6 +456,10 @@
       <button class="pl-secbtn" id="btnSleep" aria-label="睡眠定时">
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
         <span id="sleepVal">定时</span>
+      </button>
+      <button class="pl-secbtn" id="btnCc" aria-label="字幕">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M7 12h4M13.5 12H17M7 15h2.5M12 15h5"/></svg>
+        <span>字幕</span>
       </button>
       <button class="pl-secbtn" id="btnFav" aria-label="收藏本集">
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>

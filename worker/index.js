@@ -22,6 +22,12 @@ export default {
     if (url.pathname === '/api/tts') {
       return serveTts(request, env, ctx);
     }
+    if (url.pathname === '/api/cc') {
+      return serveCc(request, env, ctx, url);
+    }
+    if (url.pathname === '/api/i18n') {
+      return serveI18n(request, env, ctx);
+    }
     if (url.pathname === '/api/cmt') {
       return serveCmt(request, env);
     }
@@ -76,6 +82,154 @@ async function serveTts(request, env, ctx) {
   const headers = { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=604800' };
   if (ctx) ctx.waitUntil(caches.default.put(cacheKey, new Response(buf.slice(0), { headers })));
   return new Response(buf, { headers });
+}
+
+/* ================= 音频实时字幕（AI 识别） =================
+   GET /api/cc?b=<桶别名>&k=<key>&d=<总时长秒>&seg=<第n个30秒窗>
+   按时间窗等比换算字节区间取 R2 片段（CBR mp3 帧自动重同步），
+   送硅基流动 SenseVoiceSmall（免费档）转写；音频不变，结果永久边缘缓存。 */
+
+const CC_SEG = 30;            // 字幕时间窗（秒），与前端约定一致
+const CC_MAX_BYTES = 2500000; // 单段上限，防异常参数拖垮上游
+
+async function serveCc(request, env, ctx, url) {
+  if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+  if (!env.SF_TTS_KEY) return new Response('字幕服务未配置', { status: 503 });
+
+  const b = url.searchParams.get('b') || '';
+  const k = url.searchParams.get('k') || '';
+  const d = Number(url.searchParams.get('d'));
+  const seg = Number(url.searchParams.get('seg'));
+  const binding = BUCKETS[b];
+  if (!binding || !k || k.includes('..') || !Number.isFinite(d) || d < 5 || d > 90000
+      || !Number.isInteger(seg) || seg < 0 || seg * CC_SEG >= d) {
+    return new Response('Bad Request', { status: 400 });
+  }
+
+  // 边缘缓存：音频永不变更，识别结果按 桶/键/段 永久复用（全网只算一次）
+  const cacheKey = new Request(`https://cc-cache.bojingtai.internal/${b}/${seg}/${encodeURIComponent(k)}`);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+
+  // 限流放在缓存判断之后：命中缓存不占额度
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  try {
+    if (env.CC_RL) {
+      const { success } = await env.CC_RL.limit({ key: ip });
+      if (!success) return new Response('字幕请求太频繁，请稍候再试', { status: 429 });
+    }
+  } catch { /* 限流器故障不阻断 */ }
+
+  const head = await env[binding].head(k);
+  if (!head) return new Response('Not Found', { status: 404 });
+  const bps = head.size / d;   // CBR 近似：字节/秒
+  const offset = Math.max(0, Math.floor(seg * CC_SEG * bps));
+  const length = Math.min(Math.ceil((CC_SEG + 1.5) * bps), head.size - offset, CC_MAX_BYTES);
+  if (length < 1000) return new Response('Bad Request', { status: 400 });
+
+  const object = await env[binding].get(k, { range: { offset, length } });
+  if (!object) return new Response('Not Found', { status: 404 });
+  const buf = await object.arrayBuffer();
+
+  const fd = new FormData();
+  fd.append('model', env.SF_ASR_MODEL || 'FunAudioLLM/SenseVoiceSmall');
+  fd.append('file', new File([buf], 'seg.mp3', { type: 'audio/mpeg' }));
+  const sf = await fetch(SF_BASE + '/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.SF_TTS_KEY}` },
+    body: fd,
+  });
+  if (!sf.ok) return new Response('字幕服务暂不可用', { status: 502 });
+  const text = String((await sf.json()).text || '')
+    .replace(/<\|[^|]*\|>/g, '')   // 剥离 SenseVoice 情绪/事件标记
+    .trim();
+
+  const res = json({ text });
+  res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  if (ctx) ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
+  return res;
+}
+
+/* ================= 界面多语言（AI 翻译） =================
+   POST /api/i18n {lang, texts[]} → { map: {原文: 译文} }
+   免费小模型批量翻译界面字符串；逐条边缘缓存，同一字符串全网只翻一次。 */
+
+const I18N_LANGS = { en: 'English', ja: 'Japanese' };
+
+async function i18nCacheKey(lang, text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`i18n-v1:${lang}${text}`));
+  const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return new Request(`https://i18n-cache.bojingtai.internal/${lang}/${hex}`);
+}
+
+async function serveI18n(request, env, ctx) {
+  if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+  if (!env.SF_TTS_KEY) return new Response('翻译服务未配置', { status: 503 });
+
+  let lang, texts;
+  try {
+    const body = await request.json();
+    lang = String(body.lang || '');
+    texts = (Array.isArray(body.texts) ? body.texts : [])
+      .map((t) => String(t).trim()).filter((t) => t && t.length <= 300);
+  } catch { return new Response('Bad Request', { status: 400 }); }
+  if (!I18N_LANGS[lang] || !texts.length) return new Response('Bad Request', { status: 400 });
+  texts = [...new Set(texts)].slice(0, 60);
+
+  // 先取边缘缓存，只把没见过的送模型
+  const map = {};
+  const misses = [];
+  for (const t of texts) {
+    const hit = await caches.default.match(await i18nCacheKey(lang, t));
+    if (hit) map[t] = await hit.text();
+    else misses.push(t);
+  }
+
+  if (misses.length) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    try {
+      if (env.I18N_RL) {
+        const { success } = await env.I18N_RL.limit({ key: ip });
+        if (!success) return new Response('翻译请求太频繁，请稍候再试', { status: 429 });
+      }
+    } catch { /* 限流器故障不阻断 */ }
+
+    const sf = await fetch(SF_BASE + '/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.SF_TTS_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: env.SF_I18N_MODEL || 'Qwen/Qwen3.5-9B',
+        messages: [
+          { role: 'system', content:
+            `You translate UI strings of a Pure Land Buddhist audio app from Chinese to ${I18N_LANGS[lang]}.\n`
+            + 'Rules: use standard Buddhist terminology (e.g. 南无阿弥陀佛 → Namo Amitabha); keep strings short like UI labels; '
+            + 'preserve any numbers, punctuation style and placeholders; '
+            + 'reply with ONLY a JSON array of translated strings, same length and order as the input array.' },
+          { role: 'user', content: JSON.stringify(misses) },
+        ],
+        max_tokens: 2000, temperature: 0.2, enable_thinking: false,
+      }),
+    });
+    if (!sf.ok) return new Response('翻译服务暂不可用', { status: 502 });
+    let out = [];
+    try {
+      const raw = (await sf.json()).choices?.[0]?.message?.content || '';
+      const m = raw.match(/\[[\s\S]*\]/);
+      out = JSON.parse(m ? m[0] : raw);
+    } catch { out = []; }
+    if (Array.isArray(out) && out.length === misses.length) {
+      for (let i = 0; i < misses.length; i++) {
+        const v = String(out[i] ?? '').trim();
+        if (!v) continue;
+        map[misses[i]] = v;
+        const key = await i18nCacheKey(lang, misses[i]);
+        const res = new Response(v, { headers: { 'Cache-Control': 'public, max-age=2592000' } });
+        if (ctx) ctx.waitUntil(caches.default.put(key, res));
+      }
+    }
+  }
+
+  return json({ map });
 }
 
 /* ================= 直播留言（同修在此） =================

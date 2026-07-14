@@ -56,7 +56,8 @@ body {
   --accent-wash: color-mix(in srgb, var(--accent) 7%, transparent);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+/* touch-action: manipulation —— 禁双击放大（保留滚动与双指缩放），并消除移动端 300ms 点击延迟 */
 html { -webkit-text-size-adjust: 100%; }
 [hidden] { display: none !important; }   /* hidden 属性优先于任何 display 声明 */
 
@@ -553,7 +554,7 @@ body[data-mode="od"] main { padding-bottom: 96px; }
   padding: 13px 16px; margin-bottom: 12px;
 }
 .wode-set-label { color: var(--ink); font-size: 0.94rem; letter-spacing: 0.06em; flex: none; }
-.theme-chips { display: flex; gap: 6px; }
+.theme-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .theme-chips button {
   font-family: var(--serif); background: transparent; border: 1px solid var(--line);
   border-radius: 999px; color: var(--ink-2); font-size: 0.8rem; padding: 5px 12px; cursor: pointer;
@@ -724,13 +725,16 @@ body[data-mode="od"] main { padding-bottom: 96px; }
 
 /* 我的 · 关于本站入口行 */
 .wode-row {
-  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  display: flex; align-items: center; gap: 12px; width: 100%;
   margin: 22px 0 0; font-family: var(--serif); cursor: pointer;
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
   padding: 15px 18px; color: var(--ink); font-size: 0.94rem; letter-spacing: 0.06em;
   transition: border-color 0.25s;
 }
 .wode-row:hover { border-color: var(--accent-soft); }
+.wr-ic { flex: none; width: 19px; height: 19px; color: var(--ink-3); display: flex; }
+.wr-ic svg { width: 100%; height: 100%; }
+.wr-t { flex: 1; text-align: left; }
 .wr-go { color: var(--ink-3); font-size: 1.1rem; }
 
 /* 关于本站 · 弹窗 */
@@ -1124,9 +1128,10 @@ body[data-searching] .panel { display: none !important; }
   display: block; color: var(--ink-3); font-size: 0.72rem; margin-top: 2px; letter-spacing: 0.04em;
 }
 
-/* —— 直播 · 睡眠定时 —— */
+/* —— 直播 · 工具行（弹幕 / 字幕 / 定时） —— */
+.live-tools { display: flex; justify-content: center; gap: 8px; margin-top: 14px; position: relative; z-index: 3; }
 .live-sleep {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 14px;
+  display: inline-flex; align-items: center; gap: 6px;
   background: transparent; border: 1px solid var(--line); border-radius: 999px;
   color: var(--ink-2); font-family: var(--serif); font-size: 0.78rem; letter-spacing: 0.08em;
   padding: 6px 14px; cursor: pointer; font-variant-numeric: tabular-nums;
@@ -1134,6 +1139,25 @@ body[data-searching] .panel { display: none !important; }
 }
 .live-sleep svg { width: 15px; height: 15px; }
 .live-sleep.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+
+/* —— 直播 · 弹幕层（覆盖莲台卡上部，不挡按钮） —— */
+.live-card { position: relative; overflow: hidden; }
+.dm-layer { position: absolute; inset: 0 0 42% 0; pointer-events: none; z-index: 2; }
+.dm-item {
+  position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
+  max-width: none; font-size: 0.88rem; color: var(--ink-2); letter-spacing: 0.04em;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 13px;
+}
+
+/* —— 实时字幕（直播莲台 / 全屏播放器） —— */
+.live-cc, .pl-cc {
+  color: var(--ink-2); font-size: 0.92rem; line-height: 1.8; letter-spacing: 0.04em;
+  text-align: center; position: relative; z-index: 3;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.live-cc { margin: 14px auto 0; max-width: 480px; }
+.pl-cc { margin: 10px auto 0; max-width: 520px; flex: none; }
 
 /* —— 我的 · 收藏清单 —— */
 .wode-sub {
@@ -1314,7 +1338,8 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
 .wh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .wh-main strong { font-size: 1.04rem; font-weight: 600; letter-spacing: 0.05em; }
 .wh-main em { font-style: normal; color: var(--ink-2); font-size: 0.82rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
-.wh-main small { color: var(--ink-3); font-size: 0.74rem; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+/* text-wrap: balance —— 窄屏折行时两行均匀，不留「日」字孤行 */
+.wh-main small { color: var(--ink-3); font-size: 0.74rem; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; text-wrap: balance; }
 
 /* —— 我的 · 通用设置组（卡内行列表） —— */
 .wode-group {
