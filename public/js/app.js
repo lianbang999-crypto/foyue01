@@ -46,6 +46,8 @@ let askCtrl = null;                // 问法流式请求控制器（停止生成
 init();
 
 async function init() {
+  // bo.foyue.org（直播台入口域名）：无锚点访问默认直达直播页（同一 Worker，不拆站）
+  if (/^bo\./i.test(location.hostname) && !location.hash) location.replace('#live');
   // 首屏只等 catalog（听经/直播立即可用）；library/qa 后台预取，进相关页时再等
   try {
     catalog = await fetchJson('/catalog.json');
@@ -269,7 +271,7 @@ async function route() {
     // 进入直播即自动播放：用户手势下可直接起播，被浏览器自动播放策略拦截时 loadLive 回落到「轻触莲台」
     if (mode !== 'live') backToLive();
     else if (audio.paused) { wantLive = true; loadLive(); }
-  } else { stopCmt(); dmClear(); }   // 离开直播：停轮询、清弹幕
+  } else { closeChatRoom(); stopCmt(); dmClear(); }   // 离开直播：关聊天室、停轮询、清弹幕
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
 }
@@ -341,8 +343,6 @@ function tick() {
   document.body.dataset.playing = String(mode === 'live' && !audio.paused);
   document.body.dataset.odPlaying = String(mode === 'od' && !audio.paused);
   document.body.dataset.nfPlaying = String(mode === 'nianfo' && !audio.paused);
-
-  ccTick();   // 实时字幕：随播放进度取段显示
 
   // 锁屏进度条（媒体会话位置状态）
   if ('mediaSession' in navigator && navigator.mediaSession.setPositionState
@@ -754,7 +754,6 @@ function startOd() {
   $('#miniDur').textContent = fmtMMSS(ep.dur);
   $('#rateVal').textContent = `${currentRate()}×`;
   $('#btnRate').hidden = !!od.loop;   // 佛号不变速
-  $('#btnCc').hidden = !!od.loop;     // 佛号无需字幕
   $('#btnPrevEp').disabled = od.idx <= 0;
   $('#btnNextEp').disabled = od.idx >= od.list.length - 1;
   updateFav();
@@ -780,77 +779,6 @@ function saveProgress() {
   } else if (audio.currentTime >= ep.dur - 30) {
     localStorage.removeItem('fy.p.' + ep.key);
   }
-}
-
-/* ================= 音频实时字幕（AI 识别，仅供参考） =================
-   与 Worker /api/cc 约定按 30 秒时间窗取段：直播按台里偏移、点播按播放位置，
-   段内文字整段呈现，播放中提前预取下一段衔接。识别结果全网边缘缓存复用。 */
-
-const CC_SEG = 30;
-localStorage.removeItem('fy.cc');   // 音频转文字（实时字幕）接口已关闭，清除旧开关
-let ccOn = false;
-const ccCache = new Map();     // `${桶}/${键}#${段}` → 文本（null=失败占位，稍后重试）
-const ccPending = new Set();
-let ccShown = '';              // 上次已写入的字幕，避免每秒重写 DOM
-
-function ccSource() {
-  if (mode === 'od' && od && !od.loop) {
-    const ep = od.list[od.idx];
-    return { b: od.bucket, k: ep.key, d: ep.dur, t: audio.currentTime || 0 };
-  }
-  if (mode === 'live' && liveItem) {
-    const ep = liveItem.ep;
-    return { b: ep.bucket, k: ep.key, d: ep.dur, t: Math.max(0, stationNow() - liveItem.start) };
-  }
-  return null;
-}
-
-function ccSet() {
-  // 音频转文字（实时字幕）功能已关闭：恒为关，不再发起 /api/cc 请求
-  ccOn = false;
-  $('#liveCc').hidden = true; $('#plCc').hidden = true;
-}
-
-async function ccFetch(src, seg) {
-  const id = `${src.b}/${src.k}#${seg}`;
-  if (ccCache.has(id) || ccPending.has(id)) return;
-  if (seg < 0 || seg * CC_SEG >= src.d) return;
-  ccPending.add(id);
-  try {
-    const r = await fetch(`/api/cc?b=${encodeURIComponent(src.b)}&k=${encodeURIComponent(src.k)}&d=${Math.round(src.d)}&seg=${seg}`);
-    if (r.ok) ccCache.set(id, (await r.json()).text || '');
-    else throw new Error(String(r.status));
-  } catch {
-    // 失败占位 15 秒，避免每秒重试打爆接口；期满自动清除再试
-    ccCache.set(id, null);
-    setTimeout(() => { if (ccCache.get(id) === null) ccCache.delete(id); }, 15000);
-  }
-  ccPending.delete(id);
-  if (ccCache.size > 400) ccCache.clear();   // 防长开无限增长
-}
-
-function ccTick() {
-  const liveView = document.body.dataset.view === 'live' && mode === 'live';
-  const plOpen = mode === 'od' && od && !od.loop
-    && !$('#mini').hidden && !$('#mini').classList.contains('collapsed');
-  if (!ccOn || (!liveView && !plOpen)) {
-    if (!$('#liveCc').hidden) $('#liveCc').hidden = true;
-    if (!$('#plCc').hidden) $('#plCc').hidden = true;
-    return;
-  }
-  const src = ccSource();
-  const box = liveView ? $('#liveCc') : $('#plCc');
-  const other = liveView ? $('#plCc') : $('#liveCc');
-  if (!other.hidden) other.hidden = true;
-  if (!src) { if (!box.hidden) box.hidden = true; return; }
-  box.hidden = false;
-
-  const seg = Math.floor(src.t / CC_SEG);
-  ccFetch(src, seg);
-  if (src.t - seg * CC_SEG > CC_SEG - 12) ccFetch(src, seg + 1);   // 播近段尾预取下一段
-  const text = ccCache.get(`${src.b}/${src.k}#${seg}`);
-  const line = text == null ? '字幕识别中 …' : (text || '（此段无言语）');
-  if (line !== ccShown) { ccShown = line; box.textContent = line; }
 }
 
 /* 收藏（当前点播集，仅存本机；清单见「我的」页） */
@@ -2127,7 +2055,6 @@ function playerShare() {
     quote: (SERIES_INTROS[od.seriesId] || '').slice(0, 76),
     url: `${location.origin}/#series/${od.seriesId}/${od.idx + 1}`,
     cta: '扫码恭听',
-    dl: false,  // 下载已独立到播放器工具行，分享抽屉不再附带
   };
 }
 
@@ -2152,6 +2079,7 @@ function liveShare() {
   const series = ep ? ep.seriesTitle.replace(/^《|》$/g, '') : '';
   const nowLine = ep ? `《${series}》${ep.title}` : '';
   return {
+    kind: 'live',   // 海报走直播专版（当下播放内容 + 进度 + 二维码）
     title: '佛乐 · 净土法音直播',
     sub: ep ? `此刻恭听${nowLine}` : '二十四时 · 佛号讲经不断',
     source: '佛乐直播',
@@ -2159,6 +2087,13 @@ function liveShare() {
     quote: '二十四时 · 佛号讲经不断，随时可入，与大众同闻。',
     url: `${location.origin}/#live`,
     cta: '扫码同闻',
+    live: ep ? {
+      series, ep: ep.title,
+      block: liveItem.block ? liveItem.block.name : '',
+      elapsed: Math.max(0, Math.min(ep.dur, stationNow() - liveItem.start)),
+      dur: ep.dur,
+      online: liveOnlineN,   // 真实在线数，0 不上海报
+    } : null,
   };
 }
 
@@ -2167,7 +2102,6 @@ function openShare(p) {
   sharePayload = p;
   $('#sharePrev').innerHTML = `<strong>${esc(p.title)}</strong><em>${esc(p.sub)}</em>`;
   $('#shareSys').hidden = !navigator.share;
-  $('#shareDl').hidden = !p.dl;
   $('#shareMsg').textContent = '';
   $('#shareSheet').hidden = false;
 }
@@ -2265,6 +2199,135 @@ function makePoster(p) {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `24px ${SERIF}`;
     ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, H - 150);
+  }
+  return cv;
+}
+
+// 圆角矩形路径（canvas 兼容旧 Safari，不依赖 ctx.roundRect）
+function rrPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// 直播分享海报：手绘一张与直播莲台同款式的「播放器卡片」——
+// 直播中标记 + 当下系列/集名 + 实时进度与已播时长 + 日期 +（有人时）在线人数 + 二维码
+function makeLivePoster(p) {
+  const W = 750, H = 1000;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const SERIF = '"Noto Serif SC", "Songti SC", "STSong", serif';
+  const T = (zhMap && zhTradOn()) ? ((s) => zhConv(s, zhMap)) : ((s) => s);
+  const lv = p.live;
+
+  // 素宣纸底 + 一道极细界栏
+  ctx.fillStyle = '#f4efe2';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(166, 130, 60, 0.32)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
+
+  // 莲音标志
+  ctx.save();
+  ctx.translate(W / 2 - 48, 74);
+  ctx.scale(1.5, 1.5);
+  ctx.strokeStyle = '#bd3a26';
+  ctx.lineWidth = 2.6 / 1.5;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const d of [
+    'M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z',
+    'M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z',
+    'M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z',
+    'M14 43 C22 50 42 50 50 43',
+    'M21 51 C27 56 37 56 43 51',
+  ]) ctx.stroke(new Path2D(d));
+  ctx.restore();
+
+  // 播放器卡片（仿站内 .live-card 的圆角卡）
+  const cx = 64, cy = 212, cw = W - 128, ch = 430;
+  rrPath(ctx, cx, cy, cw, ch, 26);
+  ctx.fillStyle = '#fbf7ec';
+  ctx.fill();
+  ctx.strokeStyle = '#e2d5b6';
+  ctx.stroke();
+
+  // 「直播中」胶囊（朱砂点 + 时段名）
+  ctx.font = `24px ${SERIF}`;
+  const chipText = T(lv && lv.block ? `直播中 · ${lv.block}` : '直播中');
+  const tw = ctx.measureText(chipText).width;
+  const pw = tw + 64, px = W / 2 - pw / 2, py = cy + 44;
+  rrPath(ctx, px, py, pw, 44, 22);
+  ctx.fillStyle = 'rgba(189, 58, 38, 0.08)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(189, 58, 38, 0.35)';
+  ctx.stroke();
+  ctx.fillStyle = '#bd3a26';
+  ctx.beginPath();
+  ctx.arc(px + 24, py + 22, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.textAlign = 'left';
+  ctx.fillText(chipText, px + 40, py + 31);
+
+  // 系列名（大字，最多两行）与集名
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#33291b';
+  ctx.font = `600 40px ${SERIF}`;
+  const titleLines = lv ? wrapLines(ctx, T(`《${lv.series}》`), cw - 110, 2) : [T('二十四时 · 佛号讲经不断')];
+  let y = titleLines.length > 1 ? cy + 158 : cy + 172;
+  for (const ln of titleLines) { ctx.fillText(ln, W / 2, y); y += 56; }
+  ctx.fillStyle = '#6b5d42';
+  ctx.font = `26px ${SERIF}`;
+  if (lv) { ctx.fillText(T(lv.ep), W / 2, y + 8); y += 8; }
+
+  // 实时进度条 + 已播/总长
+  if (lv && lv.dur > 0) {
+    const bx = cx + 82, bw = cw - 164, by = cy + 306;
+    rrPath(ctx, bx, by, bw, 6, 3);
+    ctx.fillStyle = '#e5d9bd';
+    ctx.fill();
+    const frac = Math.min(1, lv.elapsed / lv.dur);
+    if (frac > 0.01) {
+      rrPath(ctx, bx, by, Math.max(8, bw * frac), 6, 3);
+      ctx.fillStyle = '#bd3a26';
+      ctx.fill();
+    }
+    ctx.fillStyle = '#a08b6b';
+    ctx.font = `22px ${SERIF}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(fmtMMSS(lv.elapsed), bx, by + 40);
+    ctx.textAlign = 'right';
+    ctx.fillText(fmtMMSS(lv.dur), bx + bw, by + 40);
+  }
+
+  // （有人同闻时）真实在线人数 + 日期行
+  const dp = bjParts(Date.now());
+  ctx.textAlign = 'center';
+  if (lv && lv.online > 0) {
+    ctx.fillStyle = '#bd3a26';
+    ctx.font = `23px ${SERIF}`;
+    ctx.fillText(T(`${lv.online} 位同修在此同闻`), W / 2, cy + 384);
+  }
+  ctx.fillStyle = '#a08b6b';
+  ctx.font = `22px ${SERIF}`;
+  ctx.fillText(
+    T(`${dp.y}年${dp.mo}月${dp.d}日 · 周${WEEK[dp.day]} · 北京时间 ${String(dp.h).padStart(2, '0')}:${String(dp.mi).padStart(2, '0')}`),
+    W / 2, cy + 418);
+
+  // 底部：二维码 + 扫码同闻
+  const qsize = 150;
+  if (drawQR(ctx, p.url, W / 2 - qsize / 2, 700, qsize)) {
+    ctx.fillStyle = '#8f6f2e';
+    ctx.font = `22px ${SERIF}`;
+    ctx.fillText(T('扫码同闻 · 佛乐净土法音'), W / 2, 700 + qsize + 44);
+  } else {
+    ctx.fillStyle = '#8f6f2e';
+    ctx.font = `24px ${SERIF}`;
+    ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, 790);
   }
   return cv;
 }
@@ -2386,7 +2449,7 @@ function dmPush(texts) {
 function dmDrain() {
   if (!dmOn || !dmQueue.length || document.body.dataset.view !== 'live') { dmTimer = 0; return; }
   const text = dmQueue.shift();
-  if (!document.hidden) dmSpawn(text);   // 后台标签不飘也不积压，回来看的是新留言
+  if (!document.hidden && !chatOpen) dmSpawn(text);   // 后台标签/聊天室全屏时不飘也不积压
   // 错峰：批量到达的留言摊开飘，不挤成一团
   dmTimer = setTimeout(dmDrain, 1300 + Math.random() * 1700);
 }
@@ -2412,8 +2475,11 @@ function dmSpawn(text) {
 /* ================= 直播留言（同修在此） ================= */
 
 let cmtLastId = 0;
+let cmtLastTs = 0;      // 上一条留言时间：超过 10 分钟插一枚时间戳（微信式）
 let cmtTimer = 0;
 let cmtBusy = false;
+let chatOpen = false;   // 聊天室全屏层是否打开（开着时轮询加密到 8 秒）
+let liveOnlineN = 0;    // 最近一次真实在线人数（直播海报用）
 
 // 本机匿名设备标识（封禁用）与自动法名（莲友·两字清净名）
 function devId() {
@@ -2438,7 +2504,7 @@ function dharmaName() {
 async function pollCmt() {
   if (document.body.dataset.view !== 'live') return;
   try {
-    const qs = new URLSearchParams({ dev: devId() });   // 附带设备标识：既拉留言又上报在线心跳
+    const qs = new URLSearchParams({ dev: devId() });   // 附带设备标识：拉留言 + 在线心跳 + 标记自己的发言
     if (cmtLastId) qs.set('after', cmtLastId);
     const r = await fetch('/api/cmt?' + qs.toString());
     if (!r.ok) return;
@@ -2450,33 +2516,73 @@ async function pollCmt() {
     if (d.items && d.items.length) {
       const list = $('#cmtList');
       const first = !cmtLastId;
-      if (first) list.innerHTML = '';
+      if (first) { list.innerHTML = ''; cmtLastTs = 0; }
       cmtLastId = d.items[d.items.length - 1].id;
-      list.insertAdjacentHTML('beforeend', d.items.map(cmtRowHtml).join(''));
-      while (list.children.length > 80) list.firstChild.remove();   // 只留最近，防无限增长
-      list.scrollTop = list.scrollHeight;
+      // 微信式追加：跨 10 分钟插时间戳；已翻看历史（不在底部）时不打扰滚动位置
+      const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 90;
+      let html = '';
+      for (const c of d.items) {
+        if (c.ts - cmtLastTs > 600000) html += cmtTimeHtml(c.ts);
+        cmtLastTs = c.ts;
+        html += cmtRowHtml(c);
+      }
+      list.insertAdjacentHTML('beforeend', html);
+      while (list.children.length > 160) list.firstChild.remove();   // 只留最近，防无限增长
+      if (first || nearBottom) list.scrollTop = list.scrollHeight;
       // 弹幕：新留言全部上屏；首次进页只取最近两条作氛围，不回放历史
       dmPush((first ? d.items.slice(-2) : d.items).map((c) => c.text));
     }
   } catch { /* 网络波动静默，下轮再试 */ }
 }
-// 一行留言气泡：法名取「·」后首字作莲印，正文另起气泡
+// 时间戳分隔（北京时间）：今日只显时分，往日带月日
+function cmtTimeHtml(ts) {
+  const p = bjParts(ts);
+  const hm = `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`;
+  const key = `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+  return `<p class="lc-time">${key === bjDateKey() ? hm : `${p.mo}月${p.d}日 ${hm}`}</p>`;
+}
+// 一行留言气泡：法名取「·」后首字作莲印；自己的发言靠右朱砂气泡（服务端按设备标识判定）
 function cmtRowHtml(c) {
   const dn = c.name.includes('·') ? c.name.split('·').pop() : c.name;
   const av = esc([...String(dn)][0] || '莲');
-  return `<div class="lc-row"><span class="lc-av" aria-hidden="true">${av}</span>`
+  return `<div class="lc-row${c.mine ? ' mine' : ''}"><span class="lc-av" aria-hidden="true">${av}</span>`
     + `<span class="lc-msg"><b>${esc(c.name)}</b><span>${esc(c.text)}</span></span></div>`;
 }
-// 同时在线人数：真实心跳统计，0 人时不显示
+// 同时在线人数：真实心跳统计，0 人时不显示（直播莲台 + 聊天室头部同步）
 function setLiveOnline(n) {
   n = Number(n) || 0;
+  liveOnlineN = n;
   const box = $('#liveOnline');
-  if (!box) return;
-  if (n > 0) { $('#liveOnlineN').textContent = n; box.hidden = false; }
-  else box.hidden = true;
+  if (box) {
+    if (n > 0) { $('#liveOnlineN').textContent = n; box.hidden = false; }
+    else box.hidden = true;
+  }
+  $('#crSub').textContent = n > 0 ? `${n} 位同修在此 · 敬请爱语` : '以法相会 · 敬请爱语';
 }
-function startCmt() { stopCmt(); $('#cmtWho').textContent = dharmaName(); pollCmt(); cmtTimer = setInterval(pollCmt, 30000); }
+function startCmt() { $('#cmtWho').textContent = dharmaName(); pollCmt(); setCmtCadence(chatOpen); }
 function stopCmt() { if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; } setLiveOnline(0); }
+// 轮询节奏：聊天室开着 8 秒近实时，关着 30 秒（喂弹幕与在线数即可）
+function setCmtCadence(fast) {
+  if (cmtTimer) clearInterval(cmtTimer);
+  cmtTimer = setInterval(pollCmt, fast ? 8000 : 30000);
+}
+
+/* ── 聊天室全屏层（直播页「留言」进入） ── */
+function openChatRoom() {
+  chatOpen = true;
+  $('#chatRoom').hidden = false;
+  $('#cmtWho').textContent = dharmaName();
+  const list = $('#cmtList');
+  list.scrollTop = list.scrollHeight;
+  pollCmt();
+  setCmtCadence(true);
+}
+function closeChatRoom() {
+  if (!chatOpen) return;
+  chatOpen = false;
+  $('#chatRoom').hidden = true;
+  if (cmtTimer) setCmtCadence(false);   // 仍在直播页：回落慢轮询
+}
 
 async function sendCmt() {
   const input = $('#cmtText');
@@ -2567,7 +2673,7 @@ function openCmtSheet() {
 async function loadEpCmt() {
   const ep = epTag();
   try {
-    const r = await fetch(`/api/cmt?ep=${encodeURIComponent(ep)}`);
+    const r = await fetch(`/api/cmt?ep=${encodeURIComponent(ep)}&dev=${encodeURIComponent(devId())}`);
     if (!r.ok) throw new Error();
     const d = await r.json();
     if (epTag() !== ep) return;   // 加载期间已切集
@@ -3180,18 +3286,9 @@ function bindEvents() {
   $('#btnReaderShare').addEventListener('click', () => openShare(readerShare()));
   $('#btnLiveShare').addEventListener('click', () => openShare(liveShare()));
 
-  // 下载当前集（分享抽屉内，仅播放器分享显示；同源 a[download]，保存为「系列 集名.mp3」)
-  $('#shareDl').addEventListener('click', () => {
-    if (!(mode === 'od' && od)) return;
-    const ep = od.list[od.idx];
-    const a = document.createElement('a');
-    a.href = audioUrl(od.bucket, ep.key);
-    a.download = `${od.title} ${ep.title}.mp3`.replace(/[/\\:*?"<>|]/g, ' ');
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    $('#shareMsg').textContent = '已开始下载 · 可在浏览器下载列表查看';
-  });
+  // 莲友聊天室（直播页「留言」进入的全屏层）
+  $('#btnLiveChat').addEventListener('click', openChatRoom);
+  $('#chatRoomX').addEventListener('click', closeChatRoom);
 
   // 分享法布施：阅读器内选中经文（上限 800 字），浮标一点生成长图
   let quoteText = '';
@@ -3240,7 +3337,9 @@ function bindEvents() {
     $('#shareMsg').textContent = ok ? '已复制 · 粘贴给莲友即可' : '复制失败，请手动复制链接';
   });
   $('#sharePoster').addEventListener('click', () => {
-    if (sharePayload) showPoster(makePoster(sharePayload));
+    if (!sharePayload) return;
+    // 直播分享走专版海报（带当下播放内容与进度），其余走通用版
+    showPoster(sharePayload.kind === 'live' ? makeLivePoster(sharePayload) : makePoster(sharePayload));
   });
   $('#posterClose').addEventListener('click', () => { $('#posterOverlay').hidden = true; });
   $('#posterOverlay').addEventListener('click', (e) => { if (e.target === $('#posterOverlay')) $('#posterOverlay').hidden = true; });
@@ -3375,7 +3474,7 @@ function bindEvents() {
     toast(playMode === 'one' ? '单曲循环' : playMode === 'shuffle' ? '随机播放' : '列表循环');
   });
 
-  // 随喜 / 评论：本轮先占位，下一步接入后台
+  // 随喜 / 按集闻法留言（D1 后台）
   $('#btnLike').addEventListener('click', toggleLike);
   $('#btnComment').addEventListener('click', openCmtSheet);
   $('#cmtSheetSend').addEventListener('click', sendEpCmt);
@@ -3415,13 +3514,9 @@ function bindEvents() {
   $('#btnSleep').addEventListener('click', cycleSleep);
   $('#btnLiveSleep').addEventListener('click', cycleSleep);
 
-  // 弹幕 / 字幕开关（直播页 + 播放器）
+  // 弹幕开关（直播页）
   $('#btnDm').classList.toggle('on', dmOn);
   $('#btnDm').addEventListener('click', () => dmSet(!dmOn));
-  $('#btnCc').classList.toggle('on', ccOn);
-  $('#btnLiveCc').classList.toggle('on', ccOn);
-  $('#btnCc').addEventListener('click', () => ccSet(!ccOn));
-  $('#btnLiveCc').addEventListener('click', () => ccSet(!ccOn));
   $('#miniSeek').addEventListener('input', () => {
     seekDragging = true;
     if (od) $('#miniCur').textContent = fmtMMSS(($('#miniSeek').value / 1000) * od.list[od.idx].dur);

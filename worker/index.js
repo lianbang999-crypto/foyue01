@@ -208,17 +208,20 @@ async function serveCmt(request, env) {
   if (request.method === 'GET') {
     const params = new URL(request.url).searchParams;
     const ep = String(params.get('ep') || '').slice(0, 60);
+    const me = String(params.get('dev') || '').trim();
+    // mine：是否本设备的发言（聊天气泡靠右用）；只回布尔，不外泄任何设备标识
+    const pack = (rows) => rows.map((r) => ({ id: r.id, name: r.name, text: r.text, ts: r.ts, mine: r.dev === me ? 1 : 0 }));
     if (ep) {   // 按集拉留言（播放器「闻法留言」抽屉用），最新在前
       const { results } = await env.DB.prepare(
-        'SELECT id,name,text,ts FROM comments WHERE ep = ? ORDER BY id DESC LIMIT 60').bind(ep).all();
-      return json({ items: results });
+        'SELECT id,dev,name,text,ts FROM comments WHERE ep = ? ORDER BY id DESC LIMIT 60').bind(ep).all();
+      return json({ items: pack(results) });
     }
     const after = Number(params.get('after')) || 0;
-    const online = await liveOnline(env, String(params.get('dev') || '').trim());   // 顺带上报/统计在线心跳
+    const online = await liveOnline(env, me);   // 顺带上报/统计在线心跳
     const { results } = after
-      ? await env.DB.prepare('SELECT id,name,text,ts FROM comments WHERE id > ? ORDER BY id ASC LIMIT 50').bind(after).all()
-      : await env.DB.prepare('SELECT id,name,text,ts FROM comments ORDER BY id DESC LIMIT 50').all();
-    const items = after ? results : results.reverse();
+      ? await env.DB.prepare('SELECT id,dev,name,text,ts FROM comments WHERE id > ? ORDER BY id ASC LIMIT 50').bind(after).all()
+      : await env.DB.prepare('SELECT id,dev,name,text,ts FROM comments ORDER BY id DESC LIMIT 50').all();
+    const items = pack(after ? results : results.reverse());
     return json({ notice: await metaGet(env, 'notice'), items, online });
   }
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
@@ -234,7 +237,7 @@ async function serveCmt(request, env) {
   } catch { return new Response('Bad Request', { status: 400 }); }
   if (!/^[a-zA-Z0-9-]{8,40}$/.test(dev) || name.length < 2) return new Response('Bad Request', { status: 400 });
   if (!text) return new Response('留言不能为空', { status: 400 });
-  if (text.length > 100) return new Response('留言最长 100 字', { status: 400 });
+  if (text.length > 150) return new Response('留言最长 150 字', { status: 400 });
 
   // 频控（本机设备 + IP 双键）
   try {
@@ -317,7 +320,9 @@ async function serveAdmin(request, env, url) {
   const path = url.pathname.slice('/api/admin/'.length);
 
   if (request.method === 'GET' && path === 'overview') {
-    const dayStart = new Date().setHours(0, 0, 0, 0);
+    // 「今日」按北京时间起算（Worker 运行在 UTC）
+    const now = Date.now();
+    const dayStart = now - ((now + 8 * 3600000) % 86400000);
     const total = (await env.DB.prepare('SELECT COUNT(*) n FROM comments').first()).n;
     const today = (await env.DB.prepare('SELECT COUNT(*) n FROM comments WHERE ts >= ?').bind(dayStart).first()).n;
     const banned = (await env.DB.prepare('SELECT dev,ts FROM banned ORDER BY ts DESC').all()).results;

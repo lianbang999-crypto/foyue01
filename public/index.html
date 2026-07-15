@@ -129,19 +129,18 @@
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
       <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
-      <p class="live-cc" id="liveCc" hidden></p>
       <div class="live-tools">
         <button class="live-sleep" id="btnDm" aria-label="弹幕开关">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg>
           <span>弹幕</span>
         </button>
+        <button class="live-sleep" id="btnLiveChat" aria-label="打开聊天室">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.5" fill="currentColor"/><circle cx="12" cy="10.5" r="0.5" fill="currentColor"/><circle cx="15.2" cy="10.5" r="0.5" fill="currentColor"/></svg>
+          <span>留言</span>
+        </button>
         <button class="live-sleep" id="btnLiveShare" aria-label="分享直播">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.3"/><circle cx="17.4" cy="6" r="2.3"/><circle cx="17.4" cy="18" r="2.3"/><path d="M8.1 10.9 15.3 7.1M8.1 13.1l7.2 3.8"/></svg>
           <span>分享</span>
-        </button>
-        <button class="live-sleep" id="btnLiveCc" aria-label="字幕开关">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M7 12h4M13.5 12H17M7 15h2.5M12 15h5"/></svg>
-          <span>字幕</span>
         </button>
         <button class="live-sleep" id="btnLiveSleep" aria-label="睡眠定时">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
@@ -149,24 +148,7 @@
         </button>
       </div>
     </div>
-    <!-- 同修在此：直播留言（不预审，后台可管理） -->
-    <div class="live-cmt">
-      <div class="lc-head">
-        <h3>同修在此</h3>
-        <span class="lc-tag">以法相会 · 敬请爱语</span>
-      </div>
-      <p class="live-notice" id="liveNotice" hidden></p>
-      <div class="cmt-list" id="cmtList"><p class="cmt-empty">虚位以待 · 留一句随喜，与莲友共修同闻</p></div>
-      <p class="lc-who">以 <button class="cmt-name" id="cmtWho" type="button">莲友</button> 的身份留言 · 轻触法名可改</p>
-      <div class="cmt-input">
-        <input id="cmtText" type="text" maxlength="100" placeholder="写一句随喜 · 与大众共勉" aria-label="留言">
-        <button id="btnCmtSend" aria-label="发送留言">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h12.5M11 6l6 6-6 6"/></svg>
-          <span>发送</span>
-        </button>
-      </div>
-      <p class="cmt-note" id="cmtNote"></p>
-    </div>
+    <p class="live-notice" id="liveNotice" hidden></p>
 
     <div class="next-up">
       <h3>接下来</h3>
@@ -431,8 +413,6 @@
       <p id="plSeries"></p>
     </div>
 
-    <p class="pl-cc" id="plCc" hidden></p>
-
     <div class="pl-seek">
       <div class="mini-seekrow">
         <button class="pl-jump" id="btnBack15" aria-label="后退15秒">
@@ -496,10 +476,9 @@
       </button>
     </div>
 
-    <!-- 保留但隐藏：倍速 / 字幕（本轮布局不展示，保留节点以免脚本失联，后续可再启用） -->
+    <!-- 保留但隐藏：倍速（本轮布局不展示，保留节点以免脚本失联，后续可再启用） -->
     <div class="pl-legacy" hidden aria-hidden="true">
       <button id="btnRate" aria-label="倍速"><span id="rateVal">1×</span></button>
-      <button id="btnCc" aria-label="字幕"><span>字幕</span></button>
     </div>
   </div>
 </div>
@@ -517,6 +496,31 @@
   </div>
 </div>
 
+<!-- 莲友聊天室：直播页「留言」进入的全屏聊天（全球同闻，微信群式布局） -->
+<div id="chatRoom" hidden>
+  <div class="cr-box">
+    <header class="cr-head">
+      <div class="cr-title">
+        <h3>莲友聊天室</h3>
+        <p class="cr-sub" id="crSub">以法相会 · 敬请爱语</p>
+      </div>
+      <button class="sheet-x" id="chatRoomX" aria-label="关闭聊天室"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </header>
+    <div class="cmt-list" id="cmtList"><p class="cmt-empty">虚位以待 · 说一句随喜，与全球莲友同闻共修</p></div>
+    <div class="cr-foot">
+      <p class="lc-who">以 <button class="cmt-name" id="cmtWho" type="button">莲友</button> 的身份发言 · 轻触法名可改</p>
+      <div class="cmt-input">
+        <input id="cmtText" type="text" maxlength="150" placeholder="写一句随喜 · 与大众共勉" aria-label="留言" enterkeyhint="send">
+        <button id="btnCmtSend" aria-label="发送留言">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h12.5M11 6l6 6-6 6"/></svg>
+          <span>发送</span>
+        </button>
+      </div>
+      <p class="cmt-note" id="cmtNote"></p>
+    </div>
+  </div>
+</div>
+
 <!-- 闻法留言抽屉：按集留言，署名默认「莲友·某某」，可轻改名（只存本机） -->
 <div id="cmtSheet" hidden>
   <div class="cnt-sheet">
@@ -529,7 +533,7 @@
     <div class="cmt-list" id="cmtSheetList"></div>
     <p class="cmt-name-row">以 <button class="cmt-name" id="cmtSheetName">莲友</button> 的身份留言 · 轻触法名可改</p>
     <div class="cmt-input">
-      <input id="cmtSheetInput" type="text" maxlength="100" placeholder="写下一句闻法心得 …" enterkeyhint="send">
+      <input id="cmtSheetInput" type="text" maxlength="150" placeholder="写下一句闻法心得 …" enterkeyhint="send">
       <button id="cmtSheetSend">发送</button>
     </div>
     <p class="cmt-note" id="cmtSheetNote"></p>
@@ -600,10 +604,6 @@
       <button class="share-act" id="sharePoster">
         <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9.2" cy="10" r="1.4"/><path d="M4.5 16.8 9.5 12l4 3.6 2.8-2.4 3.2 2.9"/></svg></span>
         <span>海报</span>
-      </button>
-      <button class="share-act" id="shareDl" hidden>
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg></span>
-        <span>下载</span>
       </button>
     </div>
     <p class="bk-note bk-msg" id="shareMsg"></p>
