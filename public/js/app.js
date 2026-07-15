@@ -39,7 +39,7 @@ let nj = { total: 0, days: {} };   // 念佛计数
 let reader = { chapters: null, idx: 0, path: null, backHash: '#wenku' };
 let pendingReaderBack = null;      // 从问道引用跳转阅读时，返回键回问道
 let pendingHlTarget = null;        // 从「我的划线」跳转时定位到的段落 {path, p}
-let allChapters = null;            // 文库全部篇目（今日恭读用）
+let allChapters = null;            // 文库全部篇目（阅读页标题搜索用）
 let chat = { msgs: [], streaming: false };
 let askCtrl = null;                // 问法流式请求控制器（停止生成用）
 
@@ -92,8 +92,7 @@ function ensureLibrary() {
       library = l; qaData = q;
       buildWenku();
       buildWenda();
-      if (document.body.dataset.view === 'home') buildHome();
-      if (document.body.dataset.view === 'wode') renderWode();
+      if (document.body.dataset.view === 'wode') renderWode();   // 我的页续读卡依赖 library
     })
     .catch((e) => { libPromise = null; throw e; });
   return libPromise;
@@ -360,17 +359,6 @@ function tick() {
 
 /* ================= 首页：今日案头 ================= */
 
-function dailyPick() {
-  // 今日恭读：按北京日期确定性轮选一篇，全网同一篇
-  if (!allChapters) {
-    allChapters = [];
-    for (const s of library.series) for (const c of s.chapters) allChapters.push({ s, c });
-  }
-  const p = bjParts(Date.now());
-  const seed = p.y * 372 + p.mo * 31 + p.d;
-  return allChapters[seed % allChapters.length];
-}
-
 function listenCardHtml(label) {
   // 续听卡（首页/我的共用）：读 fy.last
   let last = null;
@@ -427,17 +415,7 @@ function fohaoHomeHtml() {
     </button>`).join('');
   return `<section class="home-fohao" data-fohao-home="${s.id}">
     <div class="fh-head">
-      <svg class="fh-lotus" viewBox="0 0 64 64" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
-          <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
-          <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
-          <path d="M14 43 C22 50 42 50 50 43"/>
-          <path d="M21 51 C27 56 37 56 43 51"/>
-        </g>
-      </svg>
       <span class="fh-title">佛号</span>
-      <span class="fh-sub">都摄六根 · 净念相继</span>
       <a class="fh-all" href="#fohao">经咒 ›</a>
     </div>
     <div class="fh-grid">${cells}</div>
@@ -445,7 +423,7 @@ function fohaoHomeHtml() {
 }
 
 function buildHome() {
-  // 首页信息秩序（今日案头）：个人续听最优先 → 四门导航 → 佛号速取 → 今日恭读
+  // 首页信息秩序（今日案头）：个人续听最优先 → 四门导航 → 佛号速取
   // 继续收听（若有未听完）——回访者最想要的一键
   let html = listenCardHtml('继续收听');
 
@@ -455,17 +433,8 @@ function buildHome() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
       <strong>${d.name}</strong><span>${esc(d.sub)}</span></a>`).join('') + '</div>';
 
-  // 佛号速取（紧凑两列，随手起一炉佛号循环恭听）
+  // 佛号速取（极简两列，随手起一炉佛号循环恭听）
   html += fohaoHomeHtml();
-
-  // 今日恭读（每日轮选一篇讲记；文库数据就绪后由 ensureLibrary 补绘）
-  if (library) {
-    const pick = dailyPick();
-    html += `<a class="home-card" href="#read/${pick.s.id}/${pick.c.n}">
-      <span class="hc-label">今日恭读</span>
-      <span class="hc-main"><strong>${esc(pick.c.title)}</strong><em>《${esc(pick.s.title)}》· 约 ${Math.max(1, Math.round(pick.c.chars / 500))} 分钟</em></span>
-      <span class="hc-go">恭读 ›</span></a>`;
-  }
 
   $('#homeCards').innerHTML = html;
   markFohaoHome();   // 若正循环恭听某首佛号，重绘后同步高亮

@@ -247,49 +247,41 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
   border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 11px;
 }
 
-/* —— 首页 · 佛号速取（随手起一炉佛号，横滑循环恭听） —— */
-.home-fohao {
-  position: relative; overflow: hidden;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 15px 16px 16px; margin-bottom: 10px;
+/* —— 首页 · 佛号速取（极简两列，随手起一炉佛号循环恭听） —— */
+.home-fohao { margin: 6px 0 4px; }
+/* 板块标题与全站一致：泥金菱纹 + 疏排小字，右侧「经咒›」入口 */
+.fh-head { display: flex; align-items: center; justify-content: space-between; margin: 4px 2px 12px; }
+.fh-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 0.85rem; color: var(--ink-2); letter-spacing: 0.26em; font-weight: 600;
 }
-.fh-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
-.fh-head::after {   /* 泥金细引线，写经格局的一道界栏 */
-  content: ''; position: absolute; left: 16px; right: 16px; top: 44px; height: 1px;
-  background: linear-gradient(90deg, var(--gold-line), transparent 78%);
+.fh-title::before {
+  content: ''; width: 7px; height: 7px; flex: none;
+  background: var(--gold-text); opacity: 0.75; transform: rotate(45deg); border-radius: 1.5px;
 }
-.fh-lotus { width: 22px; height: 22px; color: var(--accent); flex: none; }
-.fh-title { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.16em; text-indent: 0.16em; color: var(--ink); }
-.fh-sub { flex: 1; min-width: 0; color: var(--ink-3); font-size: 0.73rem; letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fh-all {
-  flex: none; color: var(--accent); font-size: 0.78rem; letter-spacing: 0.04em; text-decoration: none;
-  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 3px 10px;
-}
-.fh-all:hover { border-color: var(--accent); }
+.fh-all { flex: none; color: var(--accent); font-size: 0.78rem; letter-spacing: 0.04em; text-decoration: none; }
+.fh-all:hover { text-decoration: underline; }
 
-/* 紧凑两列：7 首佛号占地减半，标题一行省略，时长小字在下 */
+/* 极简两列：细线卡片，朱砂只作点睛（播放态轻染），标题一行省略、时长小字在下 */
 .fh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fh-chip {
   min-width: 0; text-align: left;
   display: flex; align-items: center; gap: 9px;
-  background: var(--accent-wash); border: 1px solid var(--accent-soft); border-radius: 12px;
-  padding: 8px 10px 8px 8px; cursor: pointer; color: var(--ink);
+  background: transparent; border: 1px solid var(--line); border-radius: 11px;
+  padding: 9px 12px; cursor: pointer; color: var(--ink);
   font-family: var(--serif);
   transition: border-color 0.25s, transform 0.18s ease, background 0.25s;
 }
-.fh-chip:hover { border-color: var(--accent); }
+.fh-chip:hover { border-color: var(--accent-soft); }
 .fh-chip:active { transform: scale(0.97); }
-.fh-chip.playing { background: var(--accent); border-color: var(--accent); }
-.fh-chip.playing .fh-txt strong,
-.fh-chip.playing .fh-txt em { color: #fdf6ea; }
+.fh-chip.playing { background: var(--accent-wash); border-color: var(--accent-soft); }
+.fh-chip.playing .fh-txt strong { color: var(--accent); }
 .fh-play {
-  flex: none; width: 28px; height: 28px; border-radius: 50%;
-  display: grid; place-items: center;
-  background: var(--accent); color: #fdf6ea;   /* 朱砂莲台上，白三角 */
+  flex: none; width: 20px; height: 20px;
+  display: grid; place-items: center; color: var(--accent);   /* 朱砂点睛，无实心底 */
 }
-.fh-chip.playing .fh-play { background: rgba(253, 246, 234, 0.2); }
-.fh-ic-play { width: 13px; height: 13px; fill: currentColor; margin-left: 1.5px; }
-.fh-eq { display: none; align-items: flex-end; gap: 2px; height: 11px; }
+.fh-ic-play { width: 14px; height: 14px; fill: currentColor; margin-left: 1px; }
+.fh-eq { display: none; align-items: flex-end; gap: 2px; height: 12px; }
 .fh-chip.playing .fh-ic-play { display: none; }
 .fh-chip.playing .fh-eq { display: flex; }
 .fh-eq i {
