@@ -23,13 +23,17 @@ export default {
       return serveTts(request, env, ctx);
     }
     if (url.pathname === '/api/cc') {
-      return serveCc(request, env, ctx, url);
+      // 音频转文字（实时字幕）接口已关闭
+      return new Response('字幕功能已关闭', { status: 404 });
     }
     if (url.pathname === '/api/i18n') {
       return serveI18n(request, env, ctx);
     }
     if (url.pathname === '/api/cmt') {
       return serveCmt(request, env);
+    }
+    if (url.pathname === '/api/like') {
+      return serveLike(request, env);
     }
     if (url.pathname.startsWith('/api/admin/')) {
       return serveAdmin(request, env, url);
@@ -82,72 +86,6 @@ async function serveTts(request, env, ctx) {
   const headers = { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'public, max-age=604800' };
   if (ctx) ctx.waitUntil(caches.default.put(cacheKey, new Response(buf.slice(0), { headers })));
   return new Response(buf, { headers });
-}
-
-/* ================= 音频实时字幕（AI 识别） =================
-   GET /api/cc?b=<桶别名>&k=<key>&d=<总时长秒>&seg=<第n个30秒窗>
-   按时间窗等比换算字节区间取 R2 片段（CBR mp3 帧自动重同步），
-   送硅基流动 SenseVoiceSmall（免费档）转写；音频不变，结果永久边缘缓存。 */
-
-const CC_SEG = 30;            // 字幕时间窗（秒），与前端约定一致
-const CC_MAX_BYTES = 2500000; // 单段上限，防异常参数拖垮上游
-
-async function serveCc(request, env, ctx, url) {
-  if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
-  if (!env.SF_TTS_KEY) return new Response('字幕服务未配置', { status: 503 });
-
-  const b = url.searchParams.get('b') || '';
-  const k = url.searchParams.get('k') || '';
-  const d = Number(url.searchParams.get('d'));
-  const seg = Number(url.searchParams.get('seg'));
-  const binding = BUCKETS[b];
-  if (!binding || !k || k.includes('..') || !Number.isFinite(d) || d < 5 || d > 90000
-      || !Number.isInteger(seg) || seg < 0 || seg * CC_SEG >= d) {
-    return new Response('Bad Request', { status: 400 });
-  }
-
-  // 边缘缓存：音频永不变更，识别结果按 桶/键/段 永久复用（全网只算一次）
-  const cacheKey = new Request(`https://cc-cache.bojingtai.internal/${b}/${seg}/${encodeURIComponent(k)}`);
-  const cached = await caches.default.match(cacheKey);
-  if (cached) return cached;
-
-  // 限流放在缓存判断之后：命中缓存不占额度
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  try {
-    if (env.CC_RL) {
-      const { success } = await env.CC_RL.limit({ key: ip });
-      if (!success) return new Response('字幕请求太频繁，请稍候再试', { status: 429 });
-    }
-  } catch { /* 限流器故障不阻断 */ }
-
-  const head = await env[binding].head(k);
-  if (!head) return new Response('Not Found', { status: 404 });
-  const bps = head.size / d;   // CBR 近似：字节/秒
-  const offset = Math.max(0, Math.floor(seg * CC_SEG * bps));
-  const length = Math.min(Math.ceil((CC_SEG + 1.5) * bps), head.size - offset, CC_MAX_BYTES);
-  if (length < 1000) return new Response('Bad Request', { status: 400 });
-
-  const object = await env[binding].get(k, { range: { offset, length } });
-  if (!object) return new Response('Not Found', { status: 404 });
-  const buf = await object.arrayBuffer();
-
-  const fd = new FormData();
-  fd.append('model', env.SF_ASR_MODEL || 'FunAudioLLM/SenseVoiceSmall');
-  fd.append('file', new File([buf], 'seg.mp3', { type: 'audio/mpeg' }));
-  const sf = await fetch(SF_BASE + '/audio/transcriptions', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${env.SF_TTS_KEY}` },
-    body: fd,
-  });
-  if (!sf.ok) return new Response('字幕服务暂不可用', { status: 502 });
-  const text = String((await sf.json()).text || '')
-    .replace(/<\|[^|]*\|>/g, '')   // 剥离 SenseVoice 情绪/事件标记
-    .trim();
-
-  const res = json({ text });
-  res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-  if (ctx) ctx.waitUntil(caches.default.put(cacheKey, res.clone()));
-  return res;
 }
 
 /* ================= 界面多语言（AI 翻译） =================
@@ -244,14 +182,44 @@ async function metaGet(env, k) {
   return row ? row.v : '';
 }
 
+/* 同时在线人数：设备心跳 upsert + 时间窗内计数（真实统计，不虚增） */
+const ONLINE_WINDOW = 75000;   // 在线判定窗（毫秒），略大于前端 30 秒轮询间隔
+let onlineReady = false;
+async function ensureOnline(env) {
+  if (onlineReady) return;
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS online (dev TEXT PRIMARY KEY, ts INTEGER NOT NULL)').run();
+  onlineReady = true;
+}
+async function liveOnline(env, dev) {
+  await ensureOnline(env);
+  const now = Date.now();
+  if (dev && /^[a-zA-Z0-9-]{8,40}$/.test(dev)) {
+    await env.DB.prepare('INSERT INTO online (dev, ts) VALUES (?, ?) ON CONFLICT(dev) DO UPDATE SET ts = excluded.ts')
+      .bind(dev, now).run();
+  }
+  if (Math.random() < 0.05) {   // 概率性清理过期心跳，防表无限增长
+    await env.DB.prepare('DELETE FROM online WHERE ts < ?').bind(now - 600000).run();
+  }
+  const row = await env.DB.prepare('SELECT COUNT(*) n FROM online WHERE ts > ?').bind(now - ONLINE_WINDOW).first();
+  return row ? row.n : 0;
+}
+
 async function serveCmt(request, env) {
   if (request.method === 'GET') {
-    const after = Number(new URL(request.url).searchParams.get('after')) || 0;
+    const params = new URL(request.url).searchParams;
+    const ep = String(params.get('ep') || '').slice(0, 60);
+    if (ep) {   // 按集拉留言（播放器「闻法留言」抽屉用），最新在前
+      const { results } = await env.DB.prepare(
+        'SELECT id,name,text,ts FROM comments WHERE ep = ? ORDER BY id DESC LIMIT 60').bind(ep).all();
+      return json({ items: results });
+    }
+    const after = Number(params.get('after')) || 0;
+    const online = await liveOnline(env, String(params.get('dev') || '').trim());   // 顺带上报/统计在线心跳
     const { results } = after
       ? await env.DB.prepare('SELECT id,name,text,ts FROM comments WHERE id > ? ORDER BY id ASC LIMIT 50').bind(after).all()
       : await env.DB.prepare('SELECT id,name,text,ts FROM comments ORDER BY id DESC LIMIT 50').all();
     const items = after ? results : results.reverse();
-    return json({ notice: await metaGet(env, 'notice'), items });
+    return json({ notice: await metaGet(env, 'notice'), items, online });
   }
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
@@ -290,6 +258,51 @@ async function serveCmt(request, env) {
   const r = await env.DB.prepare('INSERT INTO comments (dev,name,text,ep,ts) VALUES (?,?,?,?,?)')
     .bind(dev, name, text, ep, Date.now()).run();
   return json({ ok: true, id: r.meta.last_row_id });
+}
+
+/* ================= 随喜（功德点赞，按集计数） =================
+   GET  /api/like?ep=<集>&dev=<设备>  → { count, liked }
+   POST /api/like {ep,dev}            → 切换随喜（同设备同集只算一次），返回最新 { count, liked } */
+
+let likesReady = false;
+async function ensureLikes(env) {
+  if (likesReady) return;
+  await env.DB.prepare(
+    'CREATE TABLE IF NOT EXISTS likes (ep TEXT NOT NULL, dev TEXT NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (ep, dev))'
+  ).run();
+  likesReady = true;
+}
+async function likeCount(env, ep) {
+  const c = await env.DB.prepare('SELECT COUNT(*) n FROM likes WHERE ep = ?').bind(ep).first();
+  return c ? c.n : 0;
+}
+async function serveLike(request, env) {
+  await ensureLikes(env);
+  if (request.method === 'GET') {
+    const params = new URL(request.url).searchParams;
+    const ep = String(params.get('ep') || '').slice(0, 60);
+    const dev = String(params.get('dev') || '').trim();
+    if (!ep) return json({ count: 0, liked: false });
+    let liked = false;
+    if (/^[a-zA-Z0-9-]{8,40}$/.test(dev)) {
+      liked = !!(await env.DB.prepare('SELECT 1 FROM likes WHERE ep = ? AND dev = ?').bind(ep, dev).first());
+    }
+    return json({ count: await likeCount(env, ep), liked });
+  }
+  if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+
+  let ep, dev;
+  try {
+    const body = await request.json();
+    ep = String(body.ep || '').trim().slice(0, 60);
+    dev = String(body.dev || '').trim();
+  } catch { return new Response('Bad Request', { status: 400 }); }
+  if (!ep || !/^[a-zA-Z0-9-]{8,40}$/.test(dev)) return new Response('Bad Request', { status: 400 });
+
+  const mine = await env.DB.prepare('SELECT 1 FROM likes WHERE ep = ? AND dev = ?').bind(ep, dev).first();
+  if (mine) await env.DB.prepare('DELETE FROM likes WHERE ep = ? AND dev = ?').bind(ep, dev).run();
+  else await env.DB.prepare('INSERT INTO likes (ep, dev, ts) VALUES (?,?,?)').bind(ep, dev, Date.now()).run();
+  return json({ count: await likeCount(env, ep), liked: !mine });
 }
 
 /* ================= 管理后台接口 =================

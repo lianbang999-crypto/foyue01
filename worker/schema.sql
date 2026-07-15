@@ -10,11 +10,26 @@ CREATE TABLE IF NOT EXISTS comments (
   ts   INTEGER NOT NULL          -- 毫秒时间戳
 );
 CREATE INDEX IF NOT EXISTS idx_comments_id ON comments(id DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_ep ON comments(ep, id DESC);   -- 按集拉留言
+
+-- 随喜（功德点赞，按集计数；同设备同集只一条）
+CREATE TABLE IF NOT EXISTS likes (
+  ep  TEXT NOT NULL,             -- 集标识（seriesId#idx）
+  dev TEXT NOT NULL,             -- 本机设备标识
+  ts  INTEGER NOT NULL,          -- 毫秒时间戳
+  PRIMARY KEY (ep, dev)
+);
 
 -- 封禁设备
 CREATE TABLE IF NOT EXISTS banned (
   dev TEXT PRIMARY KEY,
   ts  INTEGER NOT NULL
+);
+
+-- 同时在线心跳（直播「同时在线人数」；每设备一行，轮询时刷新时间戳）
+CREATE TABLE IF NOT EXISTS online (
+  dev TEXT PRIMARY KEY,          -- 本机设备标识
+  ts  INTEGER NOT NULL           -- 最近一次心跳毫秒时间戳
 );
 
 -- 站点配置（公告、屏蔽词等，k/v 各存一行 JSON 或纯文本）

@@ -246,6 +246,65 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
   flex: none; color: var(--accent); font-size: 0.8rem; letter-spacing: 0.04em;
   border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 11px;
 }
+
+/* —— 首页 · 佛号速取（随手起一炉佛号，横滑循环恭听） —— */
+.home-fohao {
+  position: relative; overflow: hidden;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 15px 16px 16px; margin-bottom: 10px;
+}
+.fh-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.fh-head::after {   /* 泥金细引线，写经格局的一道界栏 */
+  content: ''; position: absolute; left: 16px; right: 16px; top: 44px; height: 1px;
+  background: linear-gradient(90deg, var(--gold-line), transparent 78%);
+}
+.fh-lotus { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.fh-title { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.16em; text-indent: 0.16em; color: var(--ink); }
+.fh-sub { flex: 1; min-width: 0; color: var(--ink-3); font-size: 0.73rem; letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fh-all {
+  flex: none; color: var(--accent); font-size: 0.78rem; letter-spacing: 0.04em; text-decoration: none;
+  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 3px 10px;
+}
+.fh-all:hover { border-color: var(--accent); }
+
+.fh-grid { display: flex; flex-direction: column; gap: 9px; }
+.fh-chip {
+  width: 100%; min-width: 0; text-align: left;
+  display: flex; align-items: center; gap: 11px;
+  background: var(--accent-wash); border: 1px solid var(--accent-soft); border-radius: 12px;
+  padding: 9px 15px 9px 9px; cursor: pointer; color: var(--ink);
+  font-family: var(--serif);
+  transition: border-color 0.25s, transform 0.18s ease, background 0.25s;
+}
+.fh-chip:hover { border-color: var(--accent); }
+.fh-chip:active { transform: scale(0.97); }
+.fh-chip.playing { background: var(--accent); border-color: var(--accent); }
+.fh-chip.playing .fh-txt strong,
+.fh-chip.playing .fh-txt em { color: #fdf6ea; }
+.fh-play {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent); color: #fdf6ea;   /* 朱砂莲台上，白三角 */
+}
+.fh-chip.playing .fh-play { background: rgba(253, 246, 234, 0.2); }
+.fh-ic-play { width: 14px; height: 14px; fill: currentColor; margin-left: 1.5px; }
+.fh-eq { display: none; align-items: flex-end; gap: 2px; height: 12px; }
+.fh-chip.playing .fh-ic-play { display: none; }
+.fh-chip.playing .fh-eq { display: flex; }
+.fh-eq i {
+  width: 2.5px; height: 100%; border-radius: 1px; background: currentColor;
+  transform-origin: bottom; transform: scaleY(0.4);
+  animation: fhEq 0.95s ease-in-out infinite; animation-play-state: paused;
+}
+.fh-eq i:nth-child(1) { animation-delay: 0s; }
+.fh-eq i:nth-child(2) { animation-delay: 0.28s; }
+.fh-eq i:nth-child(3) { animation-delay: 0.52s; }
+body[data-od-playing="true"] .fh-chip.playing .fh-eq i { animation-play-state: running; }
+@keyframes fhEq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+.fh-txt { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.fh-txt strong { min-width: 0; font-size: 0.98rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fh-txt em { flex: none; font-style: normal; color: var(--ink-3); font-size: 0.76rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+
 /* —— 直播视图 —— */
 .now-date { text-align: center; color: var(--ink-2); font-size: 0.85rem; margin: 10px 0 18px; letter-spacing: 0.08em; }
 
@@ -305,6 +364,23 @@ body[data-nf-playing="false"] #btnNf::after {
 @keyframes ripple { 0% { transform: scale(0.92); opacity: 0.55; } 70%,100% { transform: scale(1.14); opacity: 0; } }
 
 .live-hint { color: var(--ink-3); font-size: 0.82rem; margin-top: 16px; letter-spacing: 0.14em; }
+/* 同时在线人数（真实心跳统计，不虚增） */
+.live-online {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+  color: var(--ink-2); font-size: 0.8rem; letter-spacing: 0.06em;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px;
+  background: var(--card); position: relative; z-index: 3;
+}
+.live-online b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lo-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: #4caf6e; box-shadow: 0 0 0 0 rgba(76, 175, 110, 0.5);
+  animation: loPulse 2.2s ease-out infinite;
+}
+@keyframes loPulse {
+  0% { box-shadow: 0 0 0 0 rgba(76, 175, 110, 0.45); }
+  70%, 100% { box-shadow: 0 0 0 6px rgba(76, 175, 110, 0); }
+}
 
 .next-up { margin-top: 30px; }
 .next-up h3 { font-size: 0.88rem; color: var(--ink-2); letter-spacing: 0.22em; margin-bottom: 12px; font-weight: 600; }
@@ -490,6 +566,63 @@ body[data-od-playing="true"] :is(.pl-play, .mini-pp) .ic-pause { display: block;
 .pl-secbtn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; background: transparent; border: 0; color: var(--ink-2); font-family: var(--serif); font-size: 0.72rem; letter-spacing: 0.06em; cursor: pointer; font-variant-numeric: tabular-nums; }
 .pl-secbtn .pl-ic { width: 22px; height: 22px; }
 .pl-secbtn.on { color: var(--accent); }
+
+/* 顶栏右侧：分享 + 停止 */
+.pl-top-right { display: flex; align-items: center; gap: 2px; }
+
+/* 第一栏：后退/前进 15 秒图标嵌入进度条两旁（描边更轻，退到辅助层） */
+.pl-seek .pl-jump { width: 34px; height: 34px; flex: none; color: var(--ink-3); opacity: 0.55; }
+.pl-seek .pl-jump:active { opacity: 0.9; }
+.pl-seek .pl-jump svg { width: 22px; height: 22px; }
+.pl-seek .pl-jump .pl-jump-n { font-size: 0.5rem; }
+.pl-seek .mini-seekrow span { min-width: 38px; }
+
+/* 第二栏：播放模式单键（列表循环 → 单曲循环 → 随机 轮换） */
+.pl-mode { position: relative; width: 48px; height: 48px; background: transparent; border: 0; color: var(--ink-2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.pl-mode .ic-mode { width: 24px; height: 24px; display: none; }
+.pl-mode.m-list .ic-mode-loop, .pl-mode.m-one .ic-mode-loop { display: block; }
+.pl-mode.m-shuffle .ic-mode-shuffle { display: block; }
+.pl-mode.m-one, .pl-mode.m-shuffle { color: var(--accent); }
+.pl-mode-1 { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.5rem; font-weight: 700; font-variant-numeric: tabular-nums; display: none; }
+.pl-mode.m-one .pl-mode-1 { display: block; }
+
+/* 第二栏：定时（闹钟）—— 图标为主，计时中显示朱砂余量 */
+.pl-mainbtn { position: relative; width: 48px; height: 48px; background: transparent; border: 0; color: var(--ink-2); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: var(--serif); }
+.pl-mainbtn .pl-ic { width: 23px; height: 23px; }
+.pl-mainbtn.on { color: var(--accent); }
+.pl-mainbtn #sleepVal { font-size: 0.5rem; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; display: none; }
+.pl-mainbtn.on #sleepVal { display: block; }
+
+/* 保留但隐藏：倍速 / 字幕 */
+.pl-legacy { display: none !important; }
+
+/* 下载键：下载中显朱砂进度，已下载态由 .on 上色 */
+.pl-secbtn.loading { color: var(--accent); }
+.pl-secbtn.loading .pl-ic { animation: dlPulse 1.1s ease-in-out infinite; }
+@keyframes dlPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+/* 我的 · 已下载 */
+#wodeDownloads .dl-total { color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.03em; margin: 8px 2px 0; line-height: 1.7; }
+#wodeDownloads .dl-ios { color: var(--gold-text); }
+#wodeDownloads .dl-ing .t { color: var(--ink-3); }
+#wodeDownloads .dl-ing .t small { color: var(--accent); margin-left: 8px; }
+
+/* 随喜计数徽章（第三栏「随喜」键右上角） */
+.pl-secbtn { position: relative; }
+.pl-count { position: absolute; top: -2px; left: calc(50% + 5px); min-width: 15px; height: 15px; padding: 0 4px;
+  border-radius: 8px; background: var(--accent); color: #fbf7ec; font-family: var(--serif);
+  font-size: 0.56rem; font-weight: 600; line-height: 15px; text-align: center; font-variant-numeric: tabular-nums; }
+.pl-count[hidden] { display: none; }
+
+/* 闻法留言抽屉（播放器之上，分享抽屉之下） */
+#cmtSheet { position: fixed; inset: 0; z-index: 64; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(30, 22, 10, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: fadein 0.25s ease; }
+#cmtSheet[hidden] { display: none; }
+.cmt-ep { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.04em; margin: 2px 0 12px; }
+#cmtSheetList { max-height: 42vh; margin-bottom: 10px; }
+.cmt-name-row { color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.04em; margin-bottom: 10px; }
+.cmt-name { font-family: var(--serif); color: var(--accent); background: var(--accent-wash);
+  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 2px 12px; font-size: 0.78rem; cursor: pointer; }
 
 body[data-mode="od"] main { padding-bottom: 96px; }
 
@@ -1003,35 +1136,56 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
   padding: 14px 16px; margin-bottom: 14px;
 }
 
-/* 同修在此（直播留言） */
-.live-cmt { max-width: 640px; margin: 26px auto 0; }
-.live-cmt h3 { font-size: 0.92rem; color: var(--ink-2); letter-spacing: 0.14em; margin-bottom: 10px; }
+/* 同修在此（直播留言 · 共修留言板） */
+.live-cmt { max-width: 640px; margin: 30px auto 0; }
+.lc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.lc-head h3 { font-size: 0.95rem; color: var(--ink-2); letter-spacing: 0.16em; font-weight: 600; }
+.lc-tag { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.06em; white-space: nowrap; }
 .live-notice {
   color: var(--gold-text); font-size: 0.84rem; line-height: 1.7; letter-spacing: 0.04em;
-  border: 1px solid var(--gold-line); border-radius: 10px; padding: 9px 14px; margin-bottom: 14px;
+  border: 1px solid var(--gold-line); border-radius: 10px; padding: 9px 14px; margin-bottom: 12px;
   background: var(--card);
 }
 .cmt-list {
-  max-height: 300px; overflow-y: auto; overscroll-behavior: contain;
-  border: 1px solid var(--line); border-radius: 12px; background: var(--card);
-  padding: 8px 14px; margin-bottom: 10px;
+  max-height: 340px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+  padding: 13px 14px; margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 12px;
 }
-.cmt-row { padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 0.9rem; line-height: 1.7; }
-.cmt-row:last-child { border-bottom: 0; }
-.cmt-row b { color: var(--gold-text); font-weight: 600; font-size: 0.8rem; margin-right: 8px; white-space: nowrap; }
-.cmt-row span { color: var(--ink); overflow-wrap: anywhere; }
-.cmt-empty { color: var(--ink-3); font-size: 0.82rem; text-align: center; padding: 18px 0; }
+/* 一行留言：法名莲印 + 气泡 */
+.lc-row { display: flex; align-items: flex-start; gap: 10px; }
+.lc-av {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--serif); font-size: 0.9rem; color: #fdf6ea; line-height: 1;
+  background: linear-gradient(150deg, var(--accent), var(--gold-text));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.lc-msg { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lc-msg b { color: var(--gold-text); font-weight: 600; font-size: 0.75rem; letter-spacing: 0.04em; }
+.lc-msg span {
+  align-self: flex-start; color: var(--ink); font-size: 0.92rem; line-height: 1.6; overflow-wrap: anywhere;
+  background: var(--accent-wash); border: 1px solid var(--line);
+  border-radius: 4px 13px 13px 13px; padding: 7px 12px;
+}
+.cmt-empty { color: var(--ink-3); font-size: 0.82rem; text-align: center; padding: 22px 0; }
+.lc-who { color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; margin-bottom: 9px; }
 .cmt-input { display: flex; gap: 8px; }
 .cmt-input input {
   flex: 1; min-width: 0; font-family: var(--serif); font-size: 0.92rem; color: var(--ink);
-  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 10px 18px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 11px 18px;
+  transition: border-color 0.2s;
 }
 .cmt-input input:focus { outline: none; border-color: var(--accent-soft); }
 .cmt-input button {
-  flex: none; font-family: var(--serif); font-size: 0.88rem; letter-spacing: 0.1em;
-  color: var(--accent); background: var(--accent-wash);
-  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 10px 22px; cursor: pointer;
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--serif); font-size: 0.88rem; letter-spacing: 0.08em;
+  color: #fdf6ea; background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px; padding: 11px 20px; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s ease;
 }
+.cmt-input button svg { width: 16px; height: 16px; }
+.cmt-input button:active { transform: scale(0.96); }
 .cmt-input button:disabled { opacity: 0.5; cursor: default; }
 .cmt-note { color: var(--accent); font-size: 0.78rem; margin-top: 8px; min-height: 1.2em; letter-spacing: 0.04em; }
 
@@ -1129,6 +1283,8 @@ body[data-searching] .panel { display: none !important; }
 }
 
 /* —— 直播 · 工具行（弹幕 / 字幕 / 定时） —— */
+#btnLiveCc, #btnCc { display: none !important; }
+
 .live-tools { display: flex; justify-content: center; gap: 8px; margin-top: 14px; position: relative; z-index: 3; }
 .live-sleep {
   display: inline-flex; align-items: center; gap: 6px;

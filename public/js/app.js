@@ -23,6 +23,7 @@ const RING_LEN = 2 * Math.PI * 54; // 数珠进度环周长
 let catalog = null, library = null, qaData = null;
 let station = null;
 let mode = 'live';          // live | od | nianfo
+let playMode = localStorage.getItem('foyue_playmode_v1') || 'list';  // list 列表循环 | one 单曲循环 | shuffle 随机
 let liveItem = null;
 let wantLive = false;
 let od = null;              // 点播状态 { title, list, idx, progress, seriesId, bucket }
@@ -263,7 +264,12 @@ async function route() {
   }
   $('#quoteChip').hidden = true;
   document.body.dataset.view = view;
-  if (view === 'live') startCmt(); else { stopCmt(); dmClear(); }   // 同修在此：进直播页轮询，离开即停（弹幕同清）
+  if (view === 'live') {
+    startCmt();   // 同修在此：进直播页轮询
+    // 进入直播即自动播放：用户手势下可直接起播，被浏览器自动播放策略拦截时 loadLive 回落到「轻触莲台」
+    if (mode !== 'live') backToLive();
+    else if (audio.paused) { wantLive = true; loadLive(); }
+  } else { stopCmt(); dmClear(); }   // 离开直播：停轮询、清弹幕
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
 }
@@ -406,9 +412,43 @@ const HOME_DOORS = [
     icon: '<rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/>' },
 ];
 
+// 首页佛号：七首东林佛号全数陈列，点一首即进全屏播放器循环恭听
+function fohaoHomeHtml() {
+  const s = catalog.series.find((x) => x.id === 'fohao');
+  if (!s || !s.episodes.length) return '';
+  const cells = s.episodes.map((ep, i) =>
+    `<button class="fh-chip" data-fh-idx="${i}">
+      <span class="fh-play" aria-hidden="true">
+        <svg class="fh-ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <span class="fh-eq"><i></i><i></i><i></i></span>
+      </span>
+      <span class="fh-txt"><strong>${esc(ep.title)}</strong><em>${fmtDur(ep.dur)}</em></span>
+    </button>`).join('');
+  return `<section class="home-fohao" data-fohao-home="${s.id}">
+    <div class="fh-head">
+      <svg class="fh-lotus" viewBox="0 0 64 64" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
+          <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
+          <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
+          <path d="M14 43 C22 50 42 50 50 43"/>
+          <path d="M21 51 C27 56 37 56 43 51"/>
+        </g>
+      </svg>
+      <span class="fh-title">佛号</span>
+      <span class="fh-sub">都摄六根 · 净念相继</span>
+      <a class="fh-all" href="#fohao">经咒 ›</a>
+    </div>
+    <div class="fh-grid">${cells}</div>
+  </section>`;
+}
+
 function buildHome() {
+  // 佛号：七首东林佛号全数陈列，紧随直播条之下（随手起一炉佛号，循环恭听）
+  let html = fohaoHomeHtml();
+
   // 继续收听（若有未听完）
-  let html = listenCardHtml('继续收听');
+  html += listenCardHtml('继续收听');
 
   // 四门宫格（听经 / 有声书 / 念佛 / 阅读）
   html += '<div class="home-grid">' + HOME_DOORS.map((d) =>
@@ -426,12 +466,177 @@ function buildHome() {
   }
 
   $('#homeCards').innerHTML = html;
+  markFohaoHome();   // 若正循环恭听某首佛号，重绘后同步高亮
 }
 
 /* ================= 播放底层 ================= */
 
 function audioUrl(bucket, key) {
   return `/audio/${bucket}/` + key.split('/').map(encodeURIComponent).join('/');
+}
+
+/* ================= 离线音频（下载后 App 内可离线恭听） =================
+   音频 blob 存 IndexedDB，轻量元信息（系列/集名/大小/时间）存 localStorage，
+   二者以 ep.key 对应。播放时 startOd 优先用内存里的 blob objectURL，无网也能听。 */
+const ODB_NAME = 'foyue-offline', ODB_STORE = 'audio', OFF_META = 'fy.offline.meta';
+let _odb = null;
+const offlineURLs = {};                 // key -> objectURL（内存态，可同步取用）
+const offlineDownloading = new Set();   // 正在下载的 key
+const offlineProgress = {};             // key -> 0..1
+
+function offlineDB() {
+  if (_odb) return Promise.resolve(_odb);
+  return new Promise((resolve, reject) => {
+    let req;
+    try { req = indexedDB.open(ODB_NAME, 1); } catch (e) { reject(e); return; }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(ODB_STORE)) db.createObjectStore(ODB_STORE, { keyPath: 'key' });
+    };
+    req.onsuccess = () => { _odb = req.result; resolve(_odb); };
+    req.onerror = () => reject(req.error);
+  });
+}
+function odbGet(key) {
+  return offlineDB().then((db) => new Promise((resolve, reject) => {
+    const r = db.transaction(ODB_STORE, 'readonly').objectStore(ODB_STORE).get(key);
+    r.onsuccess = () => resolve(r.result ? r.result.blob : null);
+    r.onerror = () => reject(r.error);
+  }));
+}
+function odbPut(key, blob) {
+  return offlineDB().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(ODB_STORE, 'readwrite');
+    tx.objectStore(ODB_STORE).put({ key, blob });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function odbDel(key) {
+  return offlineDB().then((db) => new Promise((resolve, reject) => {
+    const tx = db.transaction(ODB_STORE, 'readwrite');
+    tx.objectStore(ODB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+function offlineMeta() { try { return JSON.parse(localStorage.getItem(OFF_META) || '{}'); } catch { return {}; } }
+function saveOfflineMeta(m) { localStorage.setItem(OFF_META, JSON.stringify(m)); }
+function offlineHas(key) { return !!offlineMeta()[key]; }
+function offlineTotal() { const m = offlineMeta(); return Object.keys(m).reduce((s, k) => s + (m[k].size || 0), 0); }
+
+// 启动时把已下载 blob 逐个建成 objectURL，之后 startOd 可同步取用（离线亦可）；顺带自愈丢失项
+async function hydrateOfflineURLs() {
+  const m = offlineMeta(); let changed = false;
+  for (const key of Object.keys(m)) {
+    if (offlineURLs[key]) continue;
+    try {
+      const blob = await odbGet(key);
+      if (blob) offlineURLs[key] = URL.createObjectURL(blob);
+      else { delete m[key]; changed = true; }   // 元信息在但 blob 丢了：清掉
+    } catch { /* 忽略 */ }
+  }
+  if (changed) saveOfflineMeta(m);
+}
+
+// 下载 od 的某一集到本地（带进度）
+async function downloadOffline(o, idx) {
+  if (!o || !o.list[idx]) return;
+  const ep = o.list[idx], key = ep.key;
+  if (offlineHas(key) || offlineDownloading.has(key)) return;
+  offlineDownloading.add(key); offlineProgress[key] = 0;
+  updateDownloadBtn(); renderDownloads();
+  try {
+    const resp = await fetch(audioUrl(o.bucket, key));
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const total = Number(resp.headers.get('content-length')) || 0;
+    let blob;
+    if (resp.body && resp.body.getReader) {
+      const reader = resp.body.getReader(); const chunks = []; let recv = 0, lastPaint = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); recv += value.length;
+        offlineProgress[key] = total ? recv / total : 0;
+        if (Date.now() - lastPaint > 200) { lastPaint = Date.now(); updateDownloadBtn(); }
+      }
+      blob = new Blob(chunks, { type: resp.headers.get('content-type') || 'audio/mpeg' });
+    } else {
+      blob = await resp.blob();   // 退化：不支持流式进度时整段取
+    }
+    await odbPut(key, blob);
+    offlineURLs[key] = URL.createObjectURL(blob);
+    const m = offlineMeta();
+    m[key] = { sid: o.seriesId, title: o.title, sub: o.sub || '有声书', epTitle: ep.title, dur: ep.dur, size: blob.size, savedAt: Date.now() };
+    saveOfflineMeta(m);
+    toast('已下载 · 「我的 · 已下载」可离线恭听');
+  } catch (err) {
+    toast('下载失败 · ' + (err && err.message ? err.message : '请重试'));
+  } finally {
+    offlineDownloading.delete(key); delete offlineProgress[key];
+    updateDownloadBtn(); renderDownloads();
+  }
+}
+
+async function removeOffline(key) {
+  try { await odbDel(key); } catch { /* 忽略 */ }
+  if (offlineURLs[key]) { try { URL.revokeObjectURL(offlineURLs[key]); } catch { /* 忽略 */ } delete offlineURLs[key]; }
+  const m = offlineMeta(); delete m[key]; saveOfflineMeta(m);
+}
+async function clearAllOffline() {
+  const m = offlineMeta();
+  for (const key of Object.keys(m)) {
+    try { await odbDel(key); } catch { /* 忽略 */ }
+    if (offlineURLs[key]) { try { URL.revokeObjectURL(offlineURLs[key]); } catch { /* 忽略 */ } delete offlineURLs[key]; }
+  }
+  saveOfflineMeta({});
+}
+
+// 刷新播放器「下载」键：未下载 / 下载中(%) / 已下载
+function updateDownloadBtn() {
+  const b = $('#btnDownload'); if (!b) return;
+  const lb = b.querySelector('span');
+  const key = (mode === 'od' && od && od.list[od.idx]) ? od.list[od.idx].key : null;
+  b.classList.remove('on', 'loading');
+  if (!key) { if (lb) lb.textContent = '下载'; return; }
+  if (offlineDownloading.has(key)) {
+    b.classList.add('loading');
+    const p = offlineProgress[key] || 0;
+    if (lb) lb.textContent = p > 0 ? Math.round(p * 100) + '%' : '下载中';
+  } else if (offlineHas(key)) {
+    b.classList.add('on');
+    if (lb) lb.textContent = '已下载';
+  } else if (lb) {
+    lb.textContent = '下载';
+  }
+}
+
+// iOS 且未加主屏时，离线内容可能被系统回收 —— 给一句引导（仅 iPhone 显示）
+function iosOfflineHint() {
+  const ua = navigator.userAgent;
+  const isIOS = /iP(hone|od|ad)/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+  const standalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  return (isIOS && !standalone) ? '<span class="dl-ios">· iPhone 请把本站「添加到主屏幕」，离线内容更不易被系统回收</span>' : '';
+}
+
+// 渲染「我的 · 已下载」
+function renderDownloads() {
+  const el = $('#wodeDownloads'); if (!el) return;
+  const m = offlineMeta();
+  const keys = Object.keys(m).sort((a, b) => (m[b].savedAt || 0) - (m[a].savedAt || 0));
+  const dling = [...offlineDownloading].filter((k) => !m[k]);
+  if (!keys.length && !dling.length) { el.innerHTML = ''; return; }
+  let rows = keys.map((k) =>
+    `<li data-dlplay="${esc(k)}" data-dlsid="${esc(m[k].sid)}">
+        <span class="t">${esc(m[k].epTitle)}<small>《${esc(m[k].title)}》· ${((m[k].size || 0) / 1048576).toFixed(1)} MB</small></span>
+        <button class="fav-del" data-dldel="${esc(k)}" aria-label="删除离线">✕</button></li>`).join('');
+  rows += dling.map((k) => {
+    const p = Math.round((offlineProgress[k] || 0) * 100);
+    return `<li class="dl-ing"><span class="t">正在下载 …<small>${p}%</small></span></li>`;
+  }).join('');
+  el.innerHTML = `<h3 class="wode-sub">已下载 · 离线可听</h3><ol class="ep-list fav-list">${rows}</ol>
+    <p class="dl-total">共 ${keys.length} 集 · ${(offlineTotal() / 1048576).toFixed(1)} MB ${iosOfflineHint()}</p>`;
 }
 
 function switchMode(m) {
@@ -532,7 +737,7 @@ function playEpisode(series, idx) {
 
 function startOd() {
   const ep = od.list[od.idx];
-  audio.src = audioUrl(od.bucket, ep.key);
+  audio.src = offlineURLs[ep.key] || audioUrl(od.bucket, ep.key);   // 已离线则用本地 blob
   audio.loop = !!od.loop;   // 佛号循环恭听
   const saved = od.progress ? getProgress(ep.key) : 0;
   seekPending = saved && saved < ep.dur - 30 ? saved : 0;
@@ -553,6 +758,8 @@ function startOd() {
   $('#btnPrevEp').disabled = od.idx <= 0;
   $('#btnNextEp').disabled = od.idx >= od.list.length - 1;
   updateFav();
+  updateDownloadBtn();
+  refreshLike();
   updateMediaSession({ ...ep, seriesTitle: od.title }, od.loop ? '佛号' : '点播');
   markPlayingRow();
   plsMark();
@@ -580,7 +787,8 @@ function saveProgress() {
    段内文字整段呈现，播放中提前预取下一段衔接。识别结果全网边缘缓存复用。 */
 
 const CC_SEG = 30;
-let ccOn = localStorage.getItem('fy.cc') === '1';
+localStorage.removeItem('fy.cc');   // 音频转文字（实时字幕）接口已关闭，清除旧开关
+let ccOn = false;
 const ccCache = new Map();     // `${桶}/${键}#${段}` → 文本（null=失败占位，稍后重试）
 const ccPending = new Set();
 let ccShown = '';              // 上次已写入的字幕，避免每秒重写 DOM
@@ -597,14 +805,10 @@ function ccSource() {
   return null;
 }
 
-function ccSet(on) {
-  ccOn = on;
-  localStorage.setItem('fy.cc', on ? '1' : '0');
-  $('#btnCc').classList.toggle('on', on);
-  $('#btnLiveCc').classList.toggle('on', on);
-  ccShown = '';
-  if (!on) { $('#liveCc').hidden = true; $('#plCc').hidden = true; }
-  else ccTick();
+function ccSet() {
+  // 音频转文字（实时字幕）功能已关闭：恒为关，不再发起 /api/cc 请求
+  ccOn = false;
+  $('#liveCc').hidden = true; $('#plCc').hidden = true;
 }
 
 async function ccFetch(src, seg) {
@@ -845,6 +1049,16 @@ function markPlayingRow() {
     li.classList.toggle('playing',
       mode === 'od' && od && od.seriesId === listSeries && Number(li.dataset.idx) === od.idx);
   });
+  markFohaoHome();
+}
+
+// 首页佛号横滑条：高亮正在循环恭听的那一首
+function markFohaoHome() {
+  const sec = document.querySelector('.home-fohao[data-fohao-home]');
+  if (!sec) return;
+  const on = mode === 'od' && od && od.seriesId === sec.dataset.fohaoHome;
+  sec.querySelectorAll('.fh-chip').forEach((c) =>
+    c.classList.toggle('playing', on && Number(c.dataset.fhIdx) === od.idx));
 }
 
 /* 播放器「目录」抽屉：不离开播放器快速切集 */
@@ -1320,10 +1534,12 @@ async function renderStorageSheet() {
       <p class="st-row"><span>应用本体（${esc(ver)}）</span><b>${shell} 项</b></p>
       <p class="st-row"><span>已缓存讲记</span><b>${texts} 篇</b></p>
       <p class="st-row"><span>目录与数据</span><b>${data} 项</b></p>
+      <p class="st-row"><span>离线音频（已下载）</span><b>${Object.keys(offlineMeta()).length} 集 · ${(offlineTotal() / 1048576).toFixed(1)} MB</b></p>
       <p class="st-row"><span>估算占用</span><b>${(used / 1048576).toFixed(1)} MB</b></p>
     </div>
+    ${Object.keys(offlineMeta()).length ? '<button class="st-clear" data-offline-clear>清 空 离 线 音 频</button>' : ''}
     <button class="st-clear" data-st-clear>清 理 缓 存</button>
-    <p class="bk-note">清理只清空页面与讲记缓存，随后自动刷新重建。<br>念佛计数、阅读进度、收藏均不受影响。</p>`;
+    <p class="bk-note">「清空离线音频」只删已下载的音频；「清理缓存」清空页面与讲记缓存并刷新重建。<br>念佛计数、阅读进度、收藏均不受影响。</p>`;
 }
 
 // 轻提示：底部浮出一句，2.6 秒自动消隐
@@ -1715,6 +1931,7 @@ function renderWode() {
   $('#wodeCards').innerHTML = html;
   $('#wodeTrail').hidden = !html;
   renderFavs();
+  renderDownloads();
 }
 
 /* ================= 问道（文库 RAG） ================= */
@@ -1910,7 +2127,7 @@ function playerShare() {
     quote: (SERIES_INTROS[od.seriesId] || '').slice(0, 76),
     url: `${location.origin}/#series/${od.seriesId}/${od.idx + 1}`,
     cta: '扫码恭听',
-    dl: true,   // 播放器分享附带「下载音频」
+    dl: false,  // 下载已独立到播放器工具行，分享抽屉不再附带
   };
 }
 
@@ -1925,6 +2142,23 @@ function readerShare() {
     quote: firstP.slice(0, 76),
     url: `${location.origin}/${reader.shareHash}`,
     cta: '扫码恭读',
+  };
+}
+
+function liveShare() {
+  // 分享直播：深链 #live，对方打开即入二十四时排播，与大众同闻
+  const ep = liveItem ? liveItem.ep : null;
+  // 系列名可能自带书名号，去掉后统一补一层，避免《《…》》
+  const series = ep ? ep.seriesTitle.replace(/^《|》$/g, '') : '';
+  const nowLine = ep ? `《${series}》${ep.title}` : '';
+  return {
+    title: '佛乐 · 净土法音直播',
+    sub: ep ? `此刻恭听${nowLine}` : '二十四时 · 佛号讲经不断',
+    source: '佛乐直播',
+    text: ep ? `正与大众同闻${nowLine}，一起来听` : '佛乐净土法音 · 二十四时直播，随时同闻',
+    quote: '二十四时 · 佛号讲经不断，随时可入，与大众同闻。',
+    url: `${location.origin}/#live`,
+    cta: '扫码同闻',
   };
 }
 
@@ -2204,9 +2438,12 @@ function dharmaName() {
 async function pollCmt() {
   if (document.body.dataset.view !== 'live') return;
   try {
-    const r = await fetch('/api/cmt' + (cmtLastId ? '?after=' + cmtLastId : ''));
+    const qs = new URLSearchParams({ dev: devId() });   // 附带设备标识：既拉留言又上报在线心跳
+    if (cmtLastId) qs.set('after', cmtLastId);
+    const r = await fetch('/api/cmt?' + qs.toString());
     if (!r.ok) return;
     const d = await r.json();
+    setLiveOnline(d.online);
     const notice = (d.notice || '').trim();
     $('#liveNotice').textContent = notice;
     $('#liveNotice').hidden = !notice;
@@ -2215,8 +2452,7 @@ async function pollCmt() {
       const first = !cmtLastId;
       if (first) list.innerHTML = '';
       cmtLastId = d.items[d.items.length - 1].id;
-      list.insertAdjacentHTML('beforeend', d.items.map((c) =>
-        `<p class="cmt-row"><b>${esc(c.name)}</b><span>${esc(c.text)}</span></p>`).join(''));
+      list.insertAdjacentHTML('beforeend', d.items.map(cmtRowHtml).join(''));
       while (list.children.length > 80) list.firstChild.remove();   // 只留最近，防无限增长
       list.scrollTop = list.scrollHeight;
       // 弹幕：新留言全部上屏；首次进页只取最近两条作氛围，不回放历史
@@ -2224,8 +2460,23 @@ async function pollCmt() {
     }
   } catch { /* 网络波动静默，下轮再试 */ }
 }
-function startCmt() { stopCmt(); pollCmt(); cmtTimer = setInterval(pollCmt, 30000); }
-function stopCmt() { if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; } }
+// 一行留言气泡：法名取「·」后首字作莲印，正文另起气泡
+function cmtRowHtml(c) {
+  const dn = c.name.includes('·') ? c.name.split('·').pop() : c.name;
+  const av = esc([...String(dn)][0] || '莲');
+  return `<div class="lc-row"><span class="lc-av" aria-hidden="true">${av}</span>`
+    + `<span class="lc-msg"><b>${esc(c.name)}</b><span>${esc(c.text)}</span></span></div>`;
+}
+// 同时在线人数：真实心跳统计，0 人时不显示
+function setLiveOnline(n) {
+  n = Number(n) || 0;
+  const box = $('#liveOnline');
+  if (!box) return;
+  if (n > 0) { $('#liveOnlineN').textContent = n; box.hidden = false; }
+  else box.hidden = true;
+}
+function startCmt() { stopCmt(); $('#cmtWho').textContent = dharmaName(); pollCmt(); cmtTimer = setInterval(pollCmt, 30000); }
+function stopCmt() { if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; } setLiveOnline(0); }
 
 async function sendCmt() {
   const input = $('#cmtText');
@@ -2250,6 +2501,117 @@ async function sendCmt() {
   $('#btnCmtSend').disabled = false;
 }
 
+/* ================= 按集：随喜 + 闻法留言 ================= */
+
+// 集标识：稳定、简短（seriesId#idx），供随喜计数与留言归类
+function epTag() { return (mode === 'od' && od) ? `${od.seriesId}#${od.idx}` : ''; }
+
+// —— 随喜（点赞）——
+const likeCache = {};
+function setLikeUI(d) {
+  const b = $('#btnLike'); if (!b) return;
+  d = d || { count: 0, liked: false };
+  b.classList.toggle('on', !!d.liked);
+  const badge = $('#likeCount');
+  if (badge) {
+    const show = d.count > 0;
+    badge.hidden = !show;
+    badge.textContent = show ? (d.count > 999 ? '999+' : String(d.count)) : '';
+  }
+}
+async function refreshLike() {
+  if (!(mode === 'od' && od)) return;
+  const ep = epTag();
+  setLikeUI(likeCache[ep]);   // 先用缓存，避免闪烁
+  try {
+    const r = await fetch(`/api/like?ep=${encodeURIComponent(ep)}&dev=${encodeURIComponent(devId())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    likeCache[ep] = d;
+    if (epTag() === ep) setLikeUI(d);
+  } catch { /* 网络波动静默 */ }
+}
+async function toggleLike() {
+  if (!(mode === 'od' && od)) { toast('请先选择要随喜的音频'); return; }
+  const ep = epTag();
+  const cur = likeCache[ep] || { count: 0, liked: false };
+  const optimistic = { count: Math.max(0, cur.count + (cur.liked ? -1 : 1)), liked: !cur.liked };
+  likeCache[ep] = optimistic; setLikeUI(optimistic);   // 乐观更新
+  try {
+    const r = await fetch('/api/like', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ep, dev: devId() }),
+    });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    likeCache[ep] = d;
+    if (epTag() === ep) setLikeUI(d);
+    if (d.liked) toast('随喜功德 · 南无阿弥陀佛');
+  } catch {
+    likeCache[ep] = cur; setLikeUI(cur);   // 回滚
+    toast('网络不畅，请稍后再试');
+  }
+}
+
+// —— 闻法留言（按集）——
+function openCmtSheet() {
+  if (!(mode === 'od' && od)) { toast('请先选择要留言的音频'); return; }
+  $('#cmtSheetEp').textContent = `${od.title} · ${od.list[od.idx].title}`;
+  $('#cmtSheetName').textContent = dharmaName();
+  $('#cmtSheetInput').value = '';
+  $('#cmtSheetNote').textContent = '';
+  $('#cmtSheetList').innerHTML = '<p class="cmt-empty">正在加载 …</p>';
+  $('#cmtSheet').hidden = false;
+  loadEpCmt();
+}
+async function loadEpCmt() {
+  const ep = epTag();
+  try {
+    const r = await fetch(`/api/cmt?ep=${encodeURIComponent(ep)}`);
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    if (epTag() !== ep) return;   // 加载期间已切集
+    const list = $('#cmtSheetList');
+    if (!d.items || !d.items.length) {
+      list.innerHTML = '<p class="cmt-empty">还没有留言 · 来说一句闻法心得</p>';
+      return;
+    }
+    list.innerHTML = d.items.map(cmtRowHtml).join('');
+  } catch {
+    $('#cmtSheetList').innerHTML = '<p class="cmt-empty">加载失败 · 请稍后再试</p>';
+  }
+}
+let cmtSheetBusy = false;
+async function sendEpCmt() {
+  const input = $('#cmtSheetInput');
+  const text = input.value.replace(/\s+/g, ' ').trim();
+  if (!text || cmtSheetBusy) return;
+  cmtSheetBusy = true;
+  $('#cmtSheetSend').disabled = true;
+  $('#cmtSheetNote').textContent = '';
+  try {
+    const r = await fetch('/api/cmt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dev: devId(), name: dharmaName(), text, ep: epTag() }),
+    });
+    if (r.ok) { input.value = ''; loadEpCmt(); }
+    else $('#cmtSheetNote').textContent = (await r.text()) || '发送失败，请稍后再试';
+  } catch { $('#cmtSheetNote').textContent = '网络不畅，请稍后再试'; }
+  cmtSheetBusy = false;
+  $('#cmtSheetSend').disabled = false;
+}
+function renameDharma() {
+  const cur = dharmaName();
+  const v = window.prompt('修改法名（只存本机，2–12 字）', cur);
+  if (v == null) return;
+  const name = v.replace(/\s+/g, ' ').trim().slice(0, 12);
+  if (name.length < 2) { toast('法名至少 2 字'); return; }
+  localStorage.setItem('fy.fname', name);
+  $('#cmtSheetName').textContent = name;
+  $('#cmtWho').textContent = name;
+  toast('已改名 · ' + name);
+}
+
 /* ================= 事件 ================= */
 
 function bindEvents() {
@@ -2271,8 +2633,18 @@ function bindEvents() {
   $('#homeCards').addEventListener('click', resumeListen);
   $('#wodeCards').addEventListener('click', resumeListen);
 
-  // 同修在此：发送留言
+  // 首页佛号：横滑速取，点一条即进全屏播放器循环恭听
+  $('#homeCards').addEventListener('click', (e) => {
+    const chip = e.target.closest('.fh-chip');
+    if (!chip) return;
+    const sec = chip.closest('[data-fohao-home]');
+    const s = sec && catalog.series.find((x) => x.id === sec.dataset.fohaoHome);
+    if (s) playEpisode(s, Number(chip.dataset.fhIdx));
+  });
+
+  // 同修在此：发送留言 + 轻触法名改名
   $('#btnCmtSend').addEventListener('click', sendCmt);
+  $('#cmtWho').addEventListener('click', renameDharma);
   $('#cmtText').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); sendCmt(); }
   });
@@ -2296,8 +2668,15 @@ function bindEvents() {
     else if (mode === 'od' && od) {
       const ep = od.list[od.idx];
       if (od.progress) localStorage.removeItem('fy.p.' + ep.key);
-      if (od.idx + 1 < od.list.length) { od.idx += 1; startOd(); }
-      else backToLive();
+      const n = od.list.length;
+      if (playMode === 'one') {
+        startOd();                                        // 单曲循环：重播本集
+      } else if (playMode === 'shuffle' && n > 1) {
+        let j = od.idx; while (j === od.idx) j = Math.floor(Math.random() * n);
+        od.idx = j; startOd();                            // 随机播放
+      } else {
+        od.idx = (od.idx + 1) % n; startOd();             // 列表循环：末集回到首集
+      }
     }
   });
   audio.addEventListener('error', () => {
@@ -2383,6 +2762,22 @@ function bindEvents() {
     const s = catalog.series.find((x) => x.id === li.dataset.fs);
     if (s) playEpisode(s, Number(li.dataset.fi));
   });
+
+  // 我的 · 已下载：点条目离线播放，点 ✕ 删除
+  $('#wodeDownloads').addEventListener('click', (e) => {
+    const del = e.target.closest('[data-dldel]');
+    if (del) {
+      removeOffline(del.dataset.dldel).then(() => { renderDownloads(); updateDownloadBtn(); toast('已删除离线文件'); });
+      return;
+    }
+    const li = e.target.closest('li[data-dlplay]');
+    if (!li) return;
+    const s = catalog.series.find((x) => x.id === li.dataset.dlsid);
+    if (!s) { toast('该系列已更新，请重新下载'); return; }
+    const i = s.episodes.findIndex((x) => x.key === li.dataset.dlplay);
+    if (i >= 0) playEpisode(s, i);
+  });
+  hydrateOfflineURLs();   // 启动即把已下载 blob 建成可用的 objectURL（离线亦可）
 
   // 听经台 / 有声书 / 系列
   $('#tingGroups').addEventListener('click', seriesCardClick);
@@ -2690,6 +3085,11 @@ function bindEvents() {
       applyReaderPrefs();
       renderRdSetSheet();
     } else if (cntSheetMode === 'storage') {
+      if (e.target.closest('[data-offline-clear]')) {
+        if (!window.confirm('清空全部离线音频？已下载的集将需要重新下载。')) return;
+        clearAllOffline().then(() => { renderStorageSheet(); renderDownloads(); updateDownloadBtn(); toast('已清空离线音频'); });
+        return;
+      }
       if (!e.target.closest('[data-st-clear]')) return;
       if (!window.confirm('清空全部缓存并刷新页面？\n念佛计数、阅读进度、收藏不受影响。')) return;
       caches.keys()
@@ -2778,6 +3178,7 @@ function bindEvents() {
   // 分享（法布施）：播放器与阅读器入口 + 分享抽屉
   $('#btnShare').addEventListener('click', () => openShare(playerShare()));
   $('#btnReaderShare').addEventListener('click', () => openShare(readerShare()));
+  $('#btnLiveShare').addEventListener('click', () => openShare(liveShare()));
 
   // 下载当前集（分享抽屉内，仅播放器分享显示；同源 a[download]，保存为「系列 集名.mp3」)
   $('#shareDl').addEventListener('click', () => {
@@ -2951,12 +3352,51 @@ function bindEvents() {
   // 迷你播放条：两态 / 关闭 / 标题回系列
   $('#btnMiniToggle').addEventListener('click', () =>
     setMiniExpanded($('#mini').classList.contains('collapsed')));
-  $('#btnMiniClose').addEventListener('click', closeOd);
   $('#btnPlayerDown').addEventListener('click', () => setMiniExpanded(false));
   $('#miniTitles').addEventListener('click', () => setMiniExpanded(true));
   $('#miniArt').addEventListener('click', () => setMiniExpanded(true));
   $('#btnPrevEp').addEventListener('click', () => stepEpisode(-1));
   $('#btnNextEp').addEventListener('click', () => stepEpisode(1));
+
+  // 播放模式：单键轮换 列表循环 → 单曲循环 → 随机播放
+  function applyPlayMode() {
+    const b = $('#btnPlayMode');
+    if (!b) return;
+    b.classList.remove('m-list', 'm-one', 'm-shuffle');
+    b.classList.add(playMode === 'one' ? 'm-one' : playMode === 'shuffle' ? 'm-shuffle' : 'm-list');
+    const name = playMode === 'one' ? '单曲循环' : playMode === 'shuffle' ? '随机播放' : '列表循环';
+    b.setAttribute('aria-label', '播放模式：' + name);
+  }
+  applyPlayMode();
+  $('#btnPlayMode').addEventListener('click', () => {
+    playMode = playMode === 'list' ? 'one' : playMode === 'one' ? 'shuffle' : 'list';
+    localStorage.setItem('foyue_playmode_v1', playMode);
+    applyPlayMode();
+    toast(playMode === 'one' ? '单曲循环' : playMode === 'shuffle' ? '随机播放' : '列表循环');
+  });
+
+  // 随喜 / 评论：本轮先占位，下一步接入后台
+  $('#btnLike').addEventListener('click', toggleLike);
+  $('#btnComment').addEventListener('click', openCmtSheet);
+  $('#cmtSheetSend').addEventListener('click', sendEpCmt);
+  $('#cmtSheetInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendEpCmt(); } });
+  $('#cmtSheetName').addEventListener('click', renameDharma);
+  $('#cmtSheetX').addEventListener('click', () => { $('#cmtSheet').hidden = true; });
+  $('#cmtSheet').addEventListener('click', (e) => { if (e.target === $('#cmtSheet')) $('#cmtSheet').hidden = true; });
+
+  // 下载本集 → App 内离线缓存（IndexedDB）；再点可删除。「我的 · 已下载」可离线恭听
+  $('#btnDownload').addEventListener('click', () => {
+    if (!(mode === 'od' && od && od.list[od.idx])) { toast('请先选择要下载的音频'); return; }
+    const key = od.list[od.idx].key;
+    if (offlineDownloading.has(key)) { toast('正在下载 …'); return; }
+    if (offlineHas(key)) {
+      if (window.confirm('本集已离线下载。删除离线文件？')) {
+        removeOffline(key).then(() => { updateDownloadBtn(); renderDownloads(); toast('已删除离线文件'); });
+      }
+      return;
+    }
+    downloadOffline(od, od.idx);
+  });
   $('#btnFav').addEventListener('click', toggleFav);
   const togglePlay = () => {
     if (audio.paused) audio.play().catch(() => {}); else audio.pause();

@@ -128,11 +128,16 @@
         <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
+      <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
       <p class="live-cc" id="liveCc" hidden></p>
       <div class="live-tools">
         <button class="live-sleep" id="btnDm" aria-label="弹幕开关">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg>
           <span>弹幕</span>
+        </button>
+        <button class="live-sleep" id="btnLiveShare" aria-label="分享直播">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.3"/><circle cx="17.4" cy="6" r="2.3"/><circle cx="17.4" cy="18" r="2.3"/><path d="M8.1 10.9 15.3 7.1M8.1 13.1l7.2 3.8"/></svg>
+          <span>分享</span>
         </button>
         <button class="live-sleep" id="btnLiveCc" aria-label="字幕开关">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M7 12h4M13.5 12H17M7 15h2.5M12 15h5"/></svg>
@@ -146,12 +151,19 @@
     </div>
     <!-- 同修在此：直播留言（不预审，后台可管理） -->
     <div class="live-cmt">
+      <div class="lc-head">
+        <h3>同修在此</h3>
+        <span class="lc-tag">以法相会 · 敬请爱语</span>
+      </div>
       <p class="live-notice" id="liveNotice" hidden></p>
-      <h3>同修在此</h3>
       <div class="cmt-list" id="cmtList"><p class="cmt-empty">虚位以待 · 留一句随喜，与莲友共修同闻</p></div>
+      <p class="lc-who">以 <button class="cmt-name" id="cmtWho" type="button">莲友</button> 的身份留言 · 轻触法名可改</p>
       <div class="cmt-input">
-        <input id="cmtText" type="text" maxlength="100" placeholder="以法相会 · 敬请爱语" aria-label="留言">
-        <button id="btnCmtSend" aria-label="发送留言">发 送</button>
+        <input id="cmtText" type="text" maxlength="100" placeholder="写一句随喜 · 与大众共勉" aria-label="留言">
+        <button id="btnCmtSend" aria-label="发送留言">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h12.5M11 6l6 6-6 6"/></svg>
+          <span>发送</span>
+        </button>
       </div>
       <p class="cmt-note" id="cmtNote"></p>
     </div>
@@ -254,6 +266,7 @@
       <div id="wodeCards"></div>
     </div>
     <div id="wodeFavs"></div>
+    <div id="wodeDownloads"></div>
 
     <h3 class="wode-sub">通用</h3>
     <div class="wode-group">
@@ -392,9 +405,11 @@
         <svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <span class="pl-tag" id="plTag">听经</span>
-      <button class="pl-icon" id="btnMiniClose" aria-label="停止播放">
-        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-      </button>
+      <div class="pl-top-right">
+        <button class="pl-icon" id="btnShare" aria-label="分享本集">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="pl-hero">
@@ -420,59 +435,71 @@
 
     <div class="pl-seek">
       <div class="mini-seekrow">
+        <button class="pl-jump" id="btnBack15" aria-label="后退15秒">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8"/><path d="M3.5 3.4v4.6h4.6"/></svg>
+          <b class="pl-jump-n">15</b>
+        </button>
         <span id="miniCur">0:00</span>
         <input type="range" id="miniSeek" min="0" max="1000" value="0" aria-label="播放进度">
         <span id="miniDur">0:00</span>
+        <button class="pl-jump" id="btnFwd15" aria-label="前进15秒">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-8.5-8.5 9.2 9.2 0 0 1 6.4 2.6L20.5 8"/><path d="M20.5 3.4v4.6h-4.6"/></svg>
+          <b class="pl-jump-n">15</b>
+        </button>
       </div>
       <p class="mini-status" id="miniStatus"></p>
     </div>
 
     <div class="pl-main">
+      <button class="pl-mode m-list" id="btnPlayMode" aria-label="播放模式">
+        <svg class="ic-mode ic-mode-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M4 12V10a4 4 0 0 1 4-4h12"/><path d="M7 21l-3-3 3-3"/><path d="M20 12v2a4 4 0 0 1-4 4H4"/></svg>
+        <svg class="ic-mode ic-mode-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h4l10 12h4"/><path d="M3 18h4l3-3.6M14.5 8l2.5-2h4"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>
+        <b class="pl-mode-1">1</b>
+      </button>
       <button class="pl-step" id="btnPrevEp" aria-label="上一集">
         <svg viewBox="0 0 24 24"><path d="M8 6v12H6V6zM18 6v12l-9-6z"/></svg>
-      </button>
-      <button class="pl-jump" id="btnBack15" aria-label="后退15秒">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8"/><path d="M3.5 3.4v4.6h4.6"/></svg>
-        <b class="pl-jump-n">15</b>
       </button>
       <button class="pl-play" id="btnMiniPlay" aria-label="播放/暂停">
         <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
         <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
-      <button class="pl-jump" id="btnFwd15" aria-label="前进15秒">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-8.5-8.5 9.2 9.2 0 0 1 6.4 2.6L20.5 8"/><path d="M20.5 3.4v4.6h-4.6"/></svg>
-        <b class="pl-jump-n">15</b>
-      </button>
       <button class="pl-step" id="btnNextEp" aria-label="下一集">
         <svg viewBox="0 0 24 24"><path d="M16 6v12h2V6zM6 6l9 6-9 6z"/></svg>
+      </button>
+      <button class="pl-mainbtn" id="btnSleep" aria-label="睡眠定时">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.2"/><path d="M12 9.6V13l2.4 1.6"/><path d="M5.2 3.4 2.8 5.8"/><path d="M18.8 3.4 21.2 5.8"/><path d="M7.4 19.8 5.8 21.6"/><path d="M16.6 19.8 18.2 21.6"/></svg>
+        <span id="sleepVal">定时</span>
       </button>
     </div>
 
     <div class="pl-sec">
-      <button class="pl-secbtn" id="btnRate" aria-label="倍速">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a8 8 0 1 0 7.5 5.2"/><path d="M12 12l3.5-2.6"/></svg>
-        <span id="rateVal">1×</span>
-      </button>
-      <button class="pl-secbtn" id="btnSleep" aria-label="睡眠定时">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20 14.4A8 8 0 0 1 9.6 4 8 8 0 1 0 20 14.4z"/></svg>
-        <span id="sleepVal">定时</span>
-      </button>
-      <button class="pl-secbtn" id="btnCc" aria-label="字幕">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2.4"/><path d="M7 12h4M13.5 12H17M7 15h2.5M12 15h5"/></svg>
-        <span>字幕</span>
-      </button>
-      <button class="pl-secbtn" id="btnFav" aria-label="收藏本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
-        <span>收藏</span>
-      </button>
       <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
         <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
         <span>目录</span>
       </button>
-      <button class="pl-secbtn" id="btnShare" aria-label="分享本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg>
-        <span>分享</span>
+      <button class="pl-secbtn" id="btnFav" aria-label="收藏本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.35 5.9.86-4.27 4.16 1.01 5.87L12 17.9l-5.25 2.8 1.01-5.87L3.5 10.67l5.9-.86z"/></svg>
+        <span>收藏</span>
       </button>
+      <button class="pl-secbtn" id="btnLike" aria-label="随喜">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.5v9.5H4.5a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1z"/><path d="M7 10.5l4.2-6.6a1.9 1.9 0 0 1 2.7 1.7V9h4.3a2 2 0 0 1 2 2.4l-1.3 6.2a2 2 0 0 1-2 1.4H7"/></svg>
+        <b class="pl-count" id="likeCount" hidden></b>
+        <span>随喜</span>
+      </button>
+      <button class="pl-secbtn" id="btnComment" aria-label="留言">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5v3.2L12 17h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>
+        <span>留言</span>
+      </button>
+      <button class="pl-secbtn" id="btnDownload" aria-label="下载本集">
+        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+        <span>下载</span>
+      </button>
+    </div>
+
+    <!-- 保留但隐藏：倍速 / 字幕（本轮布局不展示，保留节点以免脚本失联，后续可再启用） -->
+    <div class="pl-legacy" hidden aria-hidden="true">
+      <button id="btnRate" aria-label="倍速"><span id="rateVal">1×</span></button>
+      <button id="btnCc" aria-label="字幕"><span>字幕</span></button>
     </div>
   </div>
 </div>
@@ -487,6 +514,25 @@
     </div>
     <ol class="ep-list pls-eps" id="plListEps"></ol>
     <button class="pls-go" id="plListGo">前往系列页 ›</button>
+  </div>
+</div>
+
+<!-- 闻法留言抽屉：按集留言，署名默认「莲友·某某」，可轻改名（只存本机） -->
+<div id="cmtSheet" hidden>
+  <div class="cnt-sheet">
+    <div class="cnt-sheet-grip" aria-hidden="true"></div>
+    <div class="cnt-sheet-head">
+      <h3>闻法留言 · 同修在此</h3>
+      <button class="sheet-x" id="cmtSheetX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    </div>
+    <p class="cmt-ep" id="cmtSheetEp"></p>
+    <div class="cmt-list" id="cmtSheetList"></div>
+    <p class="cmt-name-row">以 <button class="cmt-name" id="cmtSheetName">莲友</button> 的身份留言 · 轻触法名可改</p>
+    <div class="cmt-input">
+      <input id="cmtSheetInput" type="text" maxlength="100" placeholder="写下一句闻法心得 …" enterkeyhint="send">
+      <button id="cmtSheetSend">发送</button>
+    </div>
+    <p class="cmt-note" id="cmtSheetNote"></p>
   </div>
 </div>
 
