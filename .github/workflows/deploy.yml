@@ -1,0 +1,26 @@
+# push 到 main 自动把 Worker 部署到 Cloudflare
+# 前置：在 GitHub 仓库 Settings → Secrets and variables → Actions 添加 Secret
+#   名称 CLOUDFLARE_API_TOKEN，值为具备「Workers 部署」权限的 Cloudflare API Token
+#   （用 Cloudflare「Edit Cloudflare Workers」模板生成；仅 R2 权限的 Token 不足以部署）
+# 账户 ID 非机密，直接内联即可；如需保密可改为 secrets.CLOUDFLARE_ACCOUNT_ID
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # 也可在 Actions 页手动触发
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '26421038b798983a846d930404453652'
