@@ -267,12 +267,13 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
 }
 .fh-all:hover { border-color: var(--accent); }
 
-.fh-grid { display: flex; flex-direction: column; gap: 9px; }
+/* 紧凑两列：7 首佛号占地减半，标题一行省略，时长小字在下 */
+.fh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .fh-chip {
-  width: 100%; min-width: 0; text-align: left;
-  display: flex; align-items: center; gap: 11px;
+  min-width: 0; text-align: left;
+  display: flex; align-items: center; gap: 9px;
   background: var(--accent-wash); border: 1px solid var(--accent-soft); border-radius: 12px;
-  padding: 9px 15px 9px 9px; cursor: pointer; color: var(--ink);
+  padding: 8px 10px 8px 8px; cursor: pointer; color: var(--ink);
   font-family: var(--serif);
   transition: border-color 0.25s, transform 0.18s ease, background 0.25s;
 }
@@ -282,13 +283,13 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
 .fh-chip.playing .fh-txt strong,
 .fh-chip.playing .fh-txt em { color: #fdf6ea; }
 .fh-play {
-  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  flex: none; width: 28px; height: 28px; border-radius: 50%;
   display: grid; place-items: center;
   background: var(--accent); color: #fdf6ea;   /* 朱砂莲台上，白三角 */
 }
 .fh-chip.playing .fh-play { background: rgba(253, 246, 234, 0.2); }
-.fh-ic-play { width: 14px; height: 14px; fill: currentColor; margin-left: 1.5px; }
-.fh-eq { display: none; align-items: flex-end; gap: 2px; height: 12px; }
+.fh-ic-play { width: 13px; height: 13px; fill: currentColor; margin-left: 1.5px; }
+.fh-eq { display: none; align-items: flex-end; gap: 2px; height: 11px; }
 .fh-chip.playing .fh-ic-play { display: none; }
 .fh-chip.playing .fh-eq { display: flex; }
 .fh-eq i {
@@ -301,9 +302,9 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
 .fh-eq i:nth-child(3) { animation-delay: 0.52s; }
 body[data-od-playing="true"] .fh-chip.playing .fh-eq i { animation-play-state: running; }
 @keyframes fhEq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
-.fh-txt { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.fh-txt strong { min-width: 0; font-size: 0.98rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fh-txt em { flex: none; font-style: normal; color: var(--ink-3); font-size: 0.76rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+.fh-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.fh-txt strong { max-width: 100%; font-size: 0.88rem; font-weight: 600; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fh-txt em { font-style: normal; color: var(--ink-3); font-size: 0.68rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
 
 /* —— 直播视图 —— */
 .now-date { text-align: center; color: var(--ink-2); font-size: 0.85rem; margin: 10px 0 18px; letter-spacing: 0.08em; }
@@ -868,6 +869,8 @@ body[data-mode="od"] main { padding-bottom: 96px; }
 .wr-ic { flex: none; width: 19px; height: 19px; color: var(--ink-3); display: flex; }
 .wr-ic svg { width: 100%; height: 100%; }
 .wr-t { flex: 1; text-align: left; }
+.wr-n { flex: none; color: var(--accent); font-size: 0.8rem; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.wr-n:empty { display: none; }
 .wr-go { color: var(--ink-3); font-size: 1.1rem; }
 
 /* 关于本站 · 弹窗 */
@@ -1324,17 +1327,32 @@ body[data-searching] .panel { display: none !important; }
   display: block; color: var(--ink-3); font-size: 0.72rem; margin-top: 2px; letter-spacing: 0.04em;
 }
 
-/* —— 直播 · 工具行（弹幕 / 留言 / 分享 / 定时） —— */
-.live-tools { display: flex; justify-content: center; gap: 7px; margin-top: 14px; position: relative; z-index: 3; }
-.live-sleep {
-  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  background: transparent; border: 1px solid var(--line); border-radius: 999px;
-  color: var(--ink-2); font-family: var(--serif); font-size: 0.78rem; letter-spacing: 0.06em;
-  padding: 6px 10px; cursor: pointer; font-variant-numeric: tabular-nums;
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
+/* —— 直播 · 工具行（弹幕 · 随喜 · 留言 · 分享 · 定时，全图标圆钮） —— */
+.live-tools { display: flex; justify-content: center; gap: 16px; margin-top: 18px; position: relative; z-index: 3; }
+.live-tool {
+  position: relative; flex: none;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--line);
+  color: var(--ink-2); cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.15s ease;
 }
-.live-sleep svg { width: 15px; height: 15px; }
-.live-sleep.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+.live-tool svg { width: 21px; height: 21px; }
+.live-tool:active { transform: scale(0.92); }
+.live-tool.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+.live-tool.on svg :is(path, circle) { }
+/* 随喜按下即朱砂实心莲叶 */
+#btnLiveLike.on svg path:first-child { fill: var(--accent); }
+#btnLiveLike.on svg path:last-child { fill: color-mix(in srgb, var(--accent) 22%, transparent); }
+/* 角标：随喜计数 / 定时剩余分钟 */
+.lt-badge {
+  position: absolute; top: -4px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 9px; background: var(--accent); color: #fbf7ec;
+  font-family: var(--serif); font-size: 0.58rem; font-weight: 600; line-height: 16px;
+  text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px var(--card);
+}
+.lt-badge[hidden] { display: none; }
 
 /* —— 直播 · 弹幕层（覆盖莲台卡上部，不挡按钮） —— */
 .live-card { position: relative; overflow: hidden; }
@@ -1531,7 +1549,7 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
 /* —— 我的 · 通用设置组（卡内行列表） —— */
 .wode-group {
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  overflow: hidden; margin-bottom: 4px;
+  overflow: hidden; margin: 14px 0 4px;
 }
 .wode-group .wode-set, .wode-group .wode-row {
   background: transparent; border: 0; border-radius: 0; margin: 0;

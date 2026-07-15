@@ -267,7 +267,8 @@ async function route() {
   $('#quoteChip').hidden = true;
   document.body.dataset.view = view;
   if (view === 'live') {
-    startCmt();   // 同修在此：进直播页轮询
+    startCmt();   // 直播留言：进直播页轮询
+    refreshLiveLike();   // 随喜此刻节目
     // 进入直播即自动播放：用户手势下可直接起播，被浏览器自动播放策略拦截时 loadLive 回落到「轻触莲台」
     if (mode !== 'live') backToLive();
     else if (audio.paused) { wantLive = true; loadLive(); }
@@ -328,9 +329,9 @@ function tick() {
       if (mode === 'live') { wantLive = false; hint('定时已到 · 轻触莲台再续'); }
       setSleep(0);
     } else {
-      const left = `${Math.ceil((sleepT.deadline - Date.now()) / 60000)}分`;
-      $('#sleepVal').textContent = left;
-      $('#liveSleepVal').textContent = left;
+      const leftMin = Math.ceil((sleepT.deadline - Date.now()) / 60000);
+      $('#sleepVal').textContent = `${leftMin}分`;
+      $('#liveSleepVal').textContent = String(leftMin);   // 工具行角标只放数字
     }
   }
 
@@ -444,17 +445,18 @@ function fohaoHomeHtml() {
 }
 
 function buildHome() {
-  // 佛号：七首东林佛号全数陈列，紧随直播条之下（随手起一炉佛号，循环恭听）
-  let html = fohaoHomeHtml();
-
-  // 继续收听（若有未听完）
-  html += listenCardHtml('继续收听');
+  // 首页信息秩序（今日案头）：个人续听最优先 → 四门导航 → 佛号速取 → 今日恭读
+  // 继续收听（若有未听完）——回访者最想要的一键
+  let html = listenCardHtml('继续收听');
 
   // 四门宫格（听经 / 有声书 / 念佛 / 阅读）
   html += '<div class="home-grid">' + HOME_DOORS.map((d) =>
     `<a class="grid-card" href="${d.href}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
       <strong>${d.name}</strong><span>${esc(d.sub)}</span></a>`).join('') + '</div>';
+
+  // 佛号速取（紧凑两列，随手起一炉佛号循环恭听）
+  html += fohaoHomeHtml();
 
   // 今日恭读（每日轮选一篇讲记；文库数据就绪后由 ensureLibrary 补绘）
   if (library) {
@@ -650,9 +652,10 @@ function switchMode(m) {
 
 function setSleep(min) {
   sleepT = { min, deadline: min > 0 ? Date.now() + min * 60000 : null };
-  const label = min > 0 ? `${min}分` : '定时';
-  $('#sleepVal').textContent = label;
-  $('#liveSleepVal').textContent = label;
+  $('#sleepVal').textContent = min > 0 ? `${min}分` : '定时';   // 播放器内闹钟下方文字
+  const badge = $('#liveSleepVal');                             // 直播工具行角标（图标钮）
+  badge.textContent = min > 0 ? String(min) : '';
+  badge.hidden = min <= 0;
   $('#btnSleep').classList.toggle('on', min > 0);
   $('#btnLiveSleep').classList.toggle('on', min > 0);
 }
@@ -694,6 +697,7 @@ function renderLive(item, next) {
     `<li><time>${fmtClock(x.start)}</time><span>${esc(x.ep.seriesTitle)} ${esc(x.ep.title)}${x.filler ? '<span class="tag">间奏</span>' : ''}</span></li>`
   ).join('');
   if (mode === 'live') updateMediaSession(item.ep, '直播');
+  if (document.body.dataset.view === 'live') refreshLiveLike();   // 换节目即刷新随喜态
 }
 
 function loadLive() {
@@ -1858,8 +1862,21 @@ function renderWode() {
   const html = listenCardHtml('最近在听') + readCardHtml('最近在读');
   $('#wodeCards').innerHTML = html;
   $('#wodeTrail').hidden = !html;
+  const hn = hlCount();
+  $('#hlCount').textContent = hn ? `${hn} 处` : '';
   renderFavs();
   renderDownloads();
+}
+
+// 划线总条数（跨所有篇目，我的页入口显示）
+function hlCount() {
+  let n = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith('fy.hl.')) continue;
+    try { n += (JSON.parse(localStorage.getItem(key)) || []).length; } catch { /* 忽略 */ }
+  }
+  return n;
 }
 
 /* ================= 问道（文库 RAG） ================= */
@@ -2655,6 +2672,59 @@ async function toggleLike() {
     if (d.liked) toast('随喜功德 · 南无阿弥陀佛');
   } catch {
     likeCache[ep] = cur; setLikeUI(cur);   // 回滚
+    toast('网络不畅，请稍后再试');
+  }
+}
+
+// —— 直播随喜（此刻节目）——
+// 与点播用同一集标识（seriesId#idx），直播随喜与点播随喜同集合并计数
+function liveEpTag() {
+  if (mode !== 'live' || !liveItem) return '';
+  const ep = liveItem.ep;
+  const s = catalog.series.find((x) => x.id === ep.seriesId);
+  const idx = s ? s.episodes.findIndex((e) => e.key === ep.key) : -1;
+  return idx >= 0 ? `${ep.seriesId}#${idx}` : '';
+}
+function setLiveLikeUI(d) {
+  const b = $('#btnLiveLike'); if (!b) return;
+  d = d || { count: 0, liked: false };
+  b.classList.toggle('on', !!d.liked);
+  const badge = $('#liveLikeN');
+  if (badge) {
+    badge.hidden = !(d.count > 0);
+    badge.textContent = d.count > 0 ? (d.count > 999 ? '999+' : String(d.count)) : '';
+  }
+}
+async function refreshLiveLike() {
+  const ep = liveEpTag();
+  if (!ep) { setLiveLikeUI(null); return; }
+  setLiveLikeUI(likeCache[ep]);
+  try {
+    const r = await fetch(`/api/like?ep=${encodeURIComponent(ep)}&dev=${encodeURIComponent(devId())}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    likeCache[ep] = d;
+    if (liveEpTag() === ep) setLiveLikeUI(d);
+  } catch { /* 网络波动静默 */ }
+}
+async function toggleLiveLike() {
+  const ep = liveEpTag();
+  if (!ep) { toast('稍候即可随喜此刻节目'); return; }
+  const cur = likeCache[ep] || { count: 0, liked: false };
+  const optimistic = { count: Math.max(0, cur.count + (cur.liked ? -1 : 1)), liked: !cur.liked };
+  likeCache[ep] = optimistic; setLiveLikeUI(optimistic);
+  try {
+    const r = await fetch('/api/like', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ep, dev: devId() }),
+    });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    likeCache[ep] = d;
+    if (liveEpTag() === ep) setLiveLikeUI(d);
+    if (d.liked) toast('随喜功德 · 南无阿弥陀佛');
+  } catch {
+    likeCache[ep] = cur; setLiveLikeUI(cur);
     toast('网络不畅，请稍后再试');
   }
 }
@@ -3514,9 +3584,10 @@ function bindEvents() {
   $('#btnSleep').addEventListener('click', cycleSleep);
   $('#btnLiveSleep').addEventListener('click', cycleSleep);
 
-  // 弹幕开关（直播页）
+  // 弹幕开关 + 随喜此刻节目（直播工具行）
   $('#btnDm').classList.toggle('on', dmOn);
   $('#btnDm').addEventListener('click', () => dmSet(!dmOn));
+  $('#btnLiveLike').addEventListener('click', toggleLiveLike);
   $('#miniSeek').addEventListener('input', () => {
     seekDragging = true;
     if (od) $('#miniCur').textContent = fmtMMSS(($('#miniSeek').value / 1000) * od.list[od.idx].dur);
