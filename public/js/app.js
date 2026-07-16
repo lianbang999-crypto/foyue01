@@ -2203,7 +2203,7 @@ function rrPath(ctx, x, y, w, h, r) {
 // 直播分享海报：手绘一张与直播莲台同款式的「播放器卡片」——
 // 直播中标记 + 当下系列/集名 + 实时进度与已播时长 + 日期 +（有人时）在线人数 + 二维码
 function makeLivePoster(p) {
-  const W = 750, H = 1000;
+  const W = 750, H = 1100;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
@@ -2220,7 +2220,7 @@ function makeLivePoster(p) {
 
   // 莲音标志
   ctx.save();
-  ctx.translate(W / 2 - 48, 74);
+  ctx.translate(W / 2 - 48, 70);
   ctx.scale(1.5, 1.5);
   ctx.strokeStyle = '#bd3a26';
   ctx.lineWidth = 2.6 / 1.5;
@@ -2234,8 +2234,8 @@ function makeLivePoster(p) {
   ]) ctx.stroke(new Path2D(d));
   ctx.restore();
 
-  // 播放器卡片（仿站内 .live-card 的圆角卡）
-  const cx = 64, cy = 212, cw = W - 128, ch = 430;
+  // 播放器卡片（整块画进海报：胶囊 + 系列集名 + 进度 + 大播放钮 + 在线 + 日期）
+  const cx = 64, cy = 200, cw = W - 128, ch = 606;
   rrPath(ctx, cx, cy, cw, ch, 26);
   ctx.fillStyle = '#fbf7ec';
   ctx.fill();
@@ -2246,7 +2246,7 @@ function makeLivePoster(p) {
   ctx.font = `24px ${SERIF}`;
   const chipText = T(lv && lv.block ? `直播中 · ${lv.block}` : '直播中');
   const tw = ctx.measureText(chipText).width;
-  const pw = tw + 64, px = W / 2 - pw / 2, py = cy + 44;
+  const pw = tw + 64, px = W / 2 - pw / 2, py = cy + 38;
   rrPath(ctx, px, py, pw, 44, 22);
   ctx.fillStyle = 'rgba(189, 58, 38, 0.08)';
   ctx.fill();
@@ -2264,15 +2264,17 @@ function makeLivePoster(p) {
   ctx.fillStyle = '#33291b';
   ctx.font = `600 40px ${SERIF}`;
   const titleLines = lv ? wrapLines(ctx, T(`《${lv.series}》`), cw - 110, 2) : [T('二十四时 · 佛号讲经不断')];
-  let y = titleLines.length > 1 ? cy + 158 : cy + 172;
-  for (const ln of titleLines) { ctx.fillText(ln, W / 2, y); y += 56; }
-  ctx.fillStyle = '#6b5d42';
-  ctx.font = `26px ${SERIF}`;
-  if (lv) { ctx.fillText(T(lv.ep), W / 2, y + 8); y += 8; }
+  let ty = titleLines.length > 1 ? cy + 146 : cy + 160;
+  for (const ln of titleLines) { ctx.fillText(ln, W / 2, ty); ty += 54; }
+  if (lv) {
+    ctx.fillStyle = '#6b5d42';
+    ctx.font = `26px ${SERIF}`;
+    ctx.fillText(T(lv.ep), W / 2, cy + 236);
+  }
 
   // 实时进度条 + 已播/总长
   if (lv && lv.dur > 0) {
-    const bx = cx + 82, bw = cw - 164, by = cy + 306;
+    const bx = cx + 82, bw = cw - 164, by = cy + 286;
     rrPath(ctx, bx, by, bw, 6, 3);
     ctx.fillStyle = '#e5d9bd';
     ctx.fill();
@@ -2285,10 +2287,25 @@ function makeLivePoster(p) {
     ctx.fillStyle = '#a08b6b';
     ctx.font = `22px ${SERIF}`;
     ctx.textAlign = 'left';
-    ctx.fillText(fmtMMSS(lv.elapsed), bx, by + 40);
+    ctx.fillText(fmtMMSS(lv.elapsed), bx, by + 38);
     ctx.textAlign = 'right';
-    ctx.fillText(fmtMMSS(lv.dur), bx + bw, by + 40);
+    ctx.fillText(fmtMMSS(lv.dur), bx + bw, by + 38);
   }
+
+  // 大播放钮（朱砂圆 + 光晕环 + 白色暂停双条，表「正在直播」）
+  const pcx = W / 2, pcy = cy + 416, pr = 54;
+  ctx.beginPath();
+  ctx.arc(pcx, pcy, pr + 9, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(189, 58, 38, 0.12)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
+  ctx.fillStyle = '#bd3a26';
+  ctx.fill();
+  ctx.fillStyle = '#faf6ea';
+  const barW = 12, barH = 42, barGap = 10, barY = pcy - barH / 2;
+  rrPath(ctx, pcx - barGap - barW, barY, barW, barH, 3); ctx.fill();
+  rrPath(ctx, pcx + barGap, barY, barW, barH, 3); ctx.fill();
 
   // （有人同闻时）真实在线人数 + 日期行
   const dp = bjParts(Date.now());
@@ -2296,24 +2313,24 @@ function makeLivePoster(p) {
   if (lv && lv.online > 0) {
     ctx.fillStyle = '#bd3a26';
     ctx.font = `23px ${SERIF}`;
-    ctx.fillText(T(`${lv.online} 位同修在此同闻`), W / 2, cy + 384);
+    ctx.fillText(T(`${lv.online} 位同修在此同闻`), W / 2, cy + 522);
   }
   ctx.fillStyle = '#a08b6b';
   ctx.font = `22px ${SERIF}`;
   ctx.fillText(
     T(`${dp.y}年${dp.mo}月${dp.d}日 · 周${WEEK[dp.day]} · 北京时间 ${String(dp.h).padStart(2, '0')}:${String(dp.mi).padStart(2, '0')}`),
-    W / 2, cy + 418);
+    W / 2, cy + (lv && lv.online > 0 ? 560 : 540));
 
   // 底部：二维码 + 扫码同闻
-  const qsize = 150;
-  if (drawQR(ctx, p.url, W / 2 - qsize / 2, 700, qsize)) {
+  const qsize = 150, qy = cy + ch + 40;
+  if (drawQR(ctx, p.url, W / 2 - qsize / 2, qy, qsize)) {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `22px ${SERIF}`;
-    ctx.fillText(T('扫码同闻 · 佛乐净土法音'), W / 2, 700 + qsize + 44);
+    ctx.fillText(T('扫码同闻 · 佛乐净土法音'), W / 2, qy + qsize + 40);
   } else {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `24px ${SERIF}`;
-    ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, 790);
+    ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, qy + 40);
   }
   return cv;
 }

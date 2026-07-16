@@ -129,24 +129,27 @@
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
       <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
-      <!-- 工具行：弹幕 · 随喜 · 留言 · 分享 · 定时（全图标圆钮；闹钟与全屏播放器同款） -->
+      <!-- 底部五键：弹幕 · 留言 · 随喜 · 定时 · 分享（图标 + 文字） -->
       <div class="live-tools">
-        <button class="live-tool" id="btnDm" aria-label="弹幕开关" title="弹幕">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg>
+        <button class="live-tool" id="btnDm" aria-label="弹幕开关">
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg></span>
+          <span class="lt-t">弹幕</span>
         </button>
-        <button class="live-tool" id="btnLiveLike" aria-label="随喜此刻节目" title="随喜">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10.5v9.5H4.5a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1z"/><path d="M7 10.5l4.2-6.6a1.9 1.9 0 0 1 2.7 1.7V9h4.3a2 2 0 0 1 2 2.4l-1.3 6.2a2 2 0 0 1-2 1.4H7"/></svg>
-          <b class="lt-badge" id="liveLikeN" hidden></b>
+        <button class="live-tool" id="btnLiveChat" aria-label="进入共修群聊天室">
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.5" fill="currentColor"/><circle cx="12" cy="10.5" r="0.5" fill="currentColor"/><circle cx="15.2" cy="10.5" r="0.5" fill="currentColor"/></svg></span>
+          <span class="lt-t">留言</span>
         </button>
-        <button class="live-tool" id="btnLiveChat" aria-label="打开聊天室" title="留言">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.5" fill="currentColor"/><circle cx="12" cy="10.5" r="0.5" fill="currentColor"/><circle cx="15.2" cy="10.5" r="0.5" fill="currentColor"/></svg>
+        <button class="live-tool" id="btnLiveLike" aria-label="随喜此刻节目">
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10.5v9.5H4.5a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1z"/><path d="M7 10.5l4.2-6.6a1.9 1.9 0 0 1 2.7 1.7V9h4.3a2 2 0 0 1 2 2.4l-1.3 6.2a2 2 0 0 1-2 1.4H7"/></svg><b class="lt-badge" id="liveLikeN" hidden></b></span>
+          <span class="lt-t">随喜</span>
         </button>
-        <button class="live-tool" id="btnLiveShare" aria-label="分享直播" title="分享">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.3"/><circle cx="17.4" cy="6" r="2.3"/><circle cx="17.4" cy="18" r="2.3"/><path d="M8.1 10.9 15.3 7.1M8.1 13.1l7.2 3.8"/></svg>
+        <button class="live-tool" id="btnLiveSleep" aria-label="睡眠定时">
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7.2"/><path d="M12 9.6V13l2.4 1.6"/><path d="M5.2 3.4 2.8 5.8"/><path d="M18.8 3.4 21.2 5.8"/><path d="M7.4 19.8 5.8 21.6"/><path d="M16.6 19.8 18.2 21.6"/></svg><b class="lt-badge" id="liveSleepVal" hidden></b></span>
+          <span class="lt-t">定时</span>
         </button>
-        <button class="live-tool" id="btnLiveSleep" aria-label="睡眠定时" title="定时">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="7.2"/><path d="M12 9.6V13l2.4 1.6"/><path d="M5.2 3.4 2.8 5.8"/><path d="M18.8 3.4 21.2 5.8"/><path d="M7.4 19.8 5.8 21.6"/><path d="M16.6 19.8 18.2 21.6"/></svg>
-          <b class="lt-badge" id="liveSleepVal" hidden></b>
+        <button class="live-tool" id="btnLiveShare" aria-label="分享直播">
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="2.3"/><circle cx="17.4" cy="6" r="2.3"/><circle cx="17.4" cy="18" r="2.3"/><path d="M8.1 10.9 15.3 7.1M8.1 13.1l7.2 3.8"/></svg></span>
+          <span class="lt-t">分享</span>
         </button>
       </div>
     </div>

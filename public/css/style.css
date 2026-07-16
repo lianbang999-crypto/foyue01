@@ -1319,26 +1319,32 @@ body[data-searching] .panel { display: none !important; }
   display: block; color: var(--ink-3); font-size: 0.72rem; margin-top: 2px; letter-spacing: 0.04em;
 }
 
-/* —— 直播 · 工具行（弹幕 · 随喜 · 留言 · 分享 · 定时，全图标圆钮） —— */
-.live-tools { display: flex; justify-content: center; gap: 16px; margin-top: 18px; position: relative; z-index: 3; }
+/* —— 直播 · 底部五键（弹幕 · 留言 · 随喜 · 定时 · 分享，图标 + 文字） —— */
+.live-tools { display: flex; justify-content: space-between; gap: 6px; margin-top: 20px; position: relative; z-index: 3; }
 .live-tool {
-  position: relative; flex: none;
+  flex: 1; min-width: 0;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--ink-2); font-family: var(--serif); font-size: 0.72rem; letter-spacing: 0.06em;
+  transition: color 0.2s, transform 0.15s ease;
+}
+.live-tool:active { transform: scale(0.94); }
+.lt-ic {
+  position: relative;
   width: 44px; height: 44px; border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
   background: var(--card); border: 1px solid var(--line);
-  color: var(--ink-2); cursor: pointer;
-  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.15s ease;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
-.live-tool svg { width: 21px; height: 21px; }
-.live-tool:active { transform: scale(0.92); }
-.live-tool.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
-.live-tool.on svg :is(path, circle) { }
+.lt-ic svg { width: 21px; height: 21px; }
+.live-tool.on { color: var(--accent); }
+.live-tool.on .lt-ic { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
 /* 随喜按下即朱砂实心莲叶 */
 #btnLiveLike.on svg path:first-child { fill: var(--accent); }
 #btnLiveLike.on svg path:last-child { fill: color-mix(in srgb, var(--accent) 22%, transparent); }
-/* 角标：随喜计数 / 定时剩余分钟 */
+/* 角标：随喜计数 / 定时剩余分钟（叠在图标圆钮右上角） */
 .lt-badge {
-  position: absolute; top: -4px; right: -5px; min-width: 16px; height: 16px; padding: 0 4px;
+  position: absolute; top: -5px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 9px; background: var(--accent); color: #fbf7ec;
   font-family: var(--serif); font-size: 0.58rem; font-weight: 600; line-height: 16px;
   text-align: center; font-variant-numeric: tabular-nums;
