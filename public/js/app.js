@@ -2094,7 +2094,7 @@ function playerShare() {
     text: `与您分享《${od.title}》${ep.title}`,
     quote: (SERIES_INTROS[od.seriesId] || '').slice(0, 76),
     url: `${location.origin}/#series/${od.seriesId}/${od.idx + 1}`,
-    cta: '扫码恭听',
+    cta: '扫二维码 听经闻法',   // 二维码下方一行，极简不落品牌
   };
 }
 
@@ -2108,7 +2108,7 @@ function readerShare() {
     text: `与您分享《${reader.series}》${reader.title}`,
     quote: firstP.slice(0, 76),
     url: `${location.origin}/${reader.shareHash}`,
-    cta: '扫码恭读',
+    cta: '扫二维码 恭读原文',
   };
 }
 
@@ -2126,7 +2126,7 @@ function liveShare() {
     text: ep ? `正与大众同闻${nowLine}，一起来听` : '佛乐净土法音 · 二十四时直播，随时同闻',
     quote: '二十四时 · 佛号讲经不断，随时可入，与大众同闻。',
     url: `${location.origin}/#live`,
-    cta: '扫码同闻',
+    cta: '扫二维码 听经闻法',
     live: ep ? {
       series, ep: ep.title,
       block: liveItem.block ? liveItem.block.name : '',
@@ -2146,7 +2146,7 @@ function chatShare() {
     source: '莲友共修群',
     text: '一起来「莲友共修群」，与全球莲友以法相会、同称佛号',
     url: `${location.origin}/#qun`,
-    cta: '扫码进群',
+    cta: '扫二维码 进群共修',
   };
 }
 
@@ -2230,7 +2230,7 @@ function makePoster(p) {
   if (drawQR(ctx, p.url, W / 2 - qsize / 2, H - 322, qsize)) {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `22px ${SERIF}`;
-    ctx.fillText(T(`${p.cta || '扫码同闻'} · 佛乐净土法音`), W / 2, H - 116);
+    ctx.fillText(T(p.cta || '扫二维码 听经闻法'), W / 2, H - 116);
   } else {
     // 二维码库未就绪：退回品牌小字
     ctx.fillStyle = '#8f6f2e';
@@ -2369,7 +2369,7 @@ function makeLivePoster(p) {
   if (drawQR(ctx, p.url, W / 2 - qsize / 2, qy, qsize)) {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `22px ${SERIF}`;
-    ctx.fillText(T('扫码同闻 · 佛乐净土法音'), W / 2, qy + qsize + 40);
+    ctx.fillText(T(p.cta || '扫二维码 听经闻法'), W / 2, qy + qsize + 40);
   } else {
     ctx.fillStyle = '#8f6f2e';
     ctx.font = `24px ${SERIF}`;
