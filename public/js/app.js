@@ -2901,6 +2901,19 @@ function saveDharma() {
 function bindEvents() {
   window.addEventListener('hashchange', route);
 
+  /* 禁双击放大：CSS 的 touch-action: manipulation 在部分 iOS 上仍会「智能缩放」，补一道守卫。
+     只拦非交互区域的第二次轻触——按钮/链接/输入一律放行，故念珠连点、佛号连点、发送连点均不受影响；
+     长按选字与双指缩放照常保留（老莲友要放大看经，不可一刀切禁缩放）。 */
+  let lastTapT = 0;
+  document.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTapT <= 320
+      && !e.target.closest('button, a, input, textarea, select, label, [contenteditable]')) {
+      e.preventDefault();
+    }
+    lastTapT = now;
+  }, { passive: false });
+
   document.querySelectorAll('.back-btn[data-back]').forEach((b) =>
     b.addEventListener('click', () => { location.hash = b.dataset.back; }));
   $('#btnSeriesBack').addEventListener('click', () => { location.hash = $('#btnSeriesBack').dataset.back || '#ting'; });
