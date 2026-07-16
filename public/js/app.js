@@ -11,6 +11,7 @@ import { initI18n } from './i18n.js';
 
 const $ = (s) => document.querySelector(s);
 const audio = $('#audio');
+const SITE_TITLE = '佛乐 · 净土法音';
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const RATES = [1, 1.25, 1.5, 1.75, 2, 0.75];
 const FONT_SIZES = [17, 19, 21, 24];
@@ -46,8 +47,11 @@ let askCtrl = null;                // 问法流式请求控制器（停止生成
 init();
 
 async function init() {
-  // bo.foyue.org（直播台入口域名）：无锚点访问默认直达直播页（同一 Worker，不拆站）
-  if (/^bo\./i.test(location.hostname) && !location.hash) location.replace('#live');
+  // 入口域名感知（同一 Worker，不拆站）：无锚点访问默认直达对应模块
+  if (!location.hash) {
+    if (/^bo\./i.test(location.hostname)) location.replace('#live');          // 直播台
+    else if (/^(qun|liao)\./i.test(location.hostname)) location.replace('#qun'); // 莲友共修群
+  }
   // 首屏只等 catalog（听经/直播立即可用）；library/qa 后台预取，进相关页时再等
   try {
     catalog = await fetchJson('/catalog.json');
@@ -232,6 +236,10 @@ let routeSeq = 0;
 async function route() {
   const seq = ++routeSeq;
   const h = location.hash || '#home';
+  // 莲友共修群：全屏覆盖的独立模块，底层视图保持不变（可深链/子域名直达）
+  if (h.startsWith('#qun')) { openChatRoom(); return; }
+  chatBackHash = h;                                   // 记住底层页，供聊天室返回
+  if (chatOpen) { chatOpen = false; $('#chatRoom').hidden = true; document.title = SITE_TITLE; }
   // 文库类页面依赖 library/qa 数据：未就绪则先等加载（通常预取已完成）
   if (LIB_ROUTES.test(h) && !library) {
     try { await ensureLibrary(); } catch { if (seq === routeSeq) showLibError(); return; }
@@ -266,12 +274,12 @@ async function route() {
   $('#quoteChip').hidden = true;
   document.body.dataset.view = view;
   if (view === 'live') {
-    startCmt();   // 直播留言：进直播页轮询
     refreshLiveLike();   // 随喜此刻节目
     // 进入直播即自动播放：用户手势下可直接起播，被浏览器自动播放策略拦截时 loadLive 回落到「轻触莲台」
     if (mode !== 'live') backToLive();
     else if (audio.paused) { wantLive = true; loadLive(); }
-  } else { closeChatRoom(); stopCmt(); dmClear(); }   // 离开直播：关聊天室、停轮询、清弹幕
+  } else { dmClear(); }               // 离开直播：清弹幕
+  syncCmtPolling();                   // 按「聊天室开 / 在直播页」决定留言轮询节奏
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
 }
@@ -423,9 +431,15 @@ function fohaoHomeHtml() {
 }
 
 function buildHome() {
-  // 首页信息秩序（今日案头）：个人续听最优先 → 四门导航 → 佛号速取
+  // 首页信息秩序（今日案头）：个人续听 → 共修群 → 四门导航 → 佛号速取
   // 继续收听（若有未听完）——回访者最想要的一键
   let html = listenCardHtml('继续收听');
+
+  // 莲友共修群入口（重要模块，全球同闻）——在线数由 setLiveOnline 轮询到时回填
+  html += `<a class="home-qun" href="#qun">
+    <span class="hq-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="12" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="15.2" cy="10.5" r="0.6" fill="currentColor" stroke="none"/></svg></span>
+    <span class="hq-main"><strong>莲友共修群</strong><em id="hqSub">${liveOnlineN > 0 ? `<b>${liveOnlineN}</b> 位莲友正在群中 · 以法相会` : '与全球莲友以法相会 · 同称佛号'}</em></span>
+    <span class="hq-go">进入 ›</span></a>`;
 
   // 四门宫格（听经 / 有声书 / 念佛 / 阅读）
   html += '<div class="home-grid">' + HOME_DOORS.map((d) =>
@@ -2475,13 +2489,16 @@ function dmSpawn(text) {
   anim.oncancel = () => el.remove();
 }
 
-/* ================= 直播留言（同修在此） ================= */
+/* ================= 莲友共修群（聊天室）与直播留言 ================= */
 
 let cmtLastId = 0;
 let cmtLastTs = 0;      // 上一条留言时间：超过 10 分钟插一枚时间戳（微信式）
 let cmtTimer = 0;
+let cmtFast = null;     // 当前轮询节奏（快=聊天室开着），避免重复重置计时器
 let cmtBusy = false;
-let chatOpen = false;   // 聊天室全屏层是否打开（开着时轮询加密到 8 秒）
+let chatOpen = false;   // 共修群全屏层是否打开（开着时轮询加密到 6 秒）
+let chatBackHash = '#home';   // 聊天室关闭后返回的底层页
+let chatUnseen = 0;    // 翻看历史期间到达的新消息数（浮标用）
 let liveOnlineN = 0;    // 最近一次真实在线人数（直播海报用）
 
 // 本机匿名设备标识（封禁用）与自动法名（莲友·两字清净名）
@@ -2505,9 +2522,10 @@ function dharmaName() {
 }
 
 async function pollCmt() {
-  if (document.body.dataset.view !== 'live') return;
+  // 共修群开着或身处直播页时才轮询（拉留言 + 在线心跳 + 喂弹幕）
+  if (!chatOpen && document.body.dataset.view !== 'live') return;
   try {
-    const qs = new URLSearchParams({ dev: devId() });   // 附带设备标识：拉留言 + 在线心跳 + 标记自己的发言
+    const qs = new URLSearchParams({ dev: devId() });   // 附带设备标识：既拉留言，又上报在线心跳、标记自己的发言
     if (cmtLastId) qs.set('after', cmtLastId);
     const r = await fetch('/api/cmt?' + qs.toString());
     if (!r.ok) return;
@@ -2516,27 +2534,56 @@ async function pollCmt() {
     const notice = (d.notice || '').trim();
     $('#liveNotice').textContent = notice;
     $('#liveNotice').hidden = !notice;
+    $('#crNotice').textContent = notice;
+    $('#crNotice').hidden = !notice;
     if (d.items && d.items.length) {
       const list = $('#cmtList');
       const first = !cmtLastId;
-      if (first) { list.innerHTML = ''; cmtLastTs = 0; }
+      if (first) initChatList();
       cmtLastId = d.items[d.items.length - 1].id;
-      // 微信式追加：跨 10 分钟插时间戳；已翻看历史（不在底部）时不打扰滚动位置
-      const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 90;
-      let html = '';
-      for (const c of d.items) {
-        if (c.ts - cmtLastTs > 600000) html += cmtTimeHtml(c.ts);
-        cmtLastTs = c.ts;
-        html += cmtRowHtml(c);
-      }
-      list.insertAdjacentHTML('beforeend', html);
-      while (list.children.length > 160) list.firstChild.remove();   // 只留最近，防无限增长
-      if (first || nearBottom) list.scrollTop = list.scrollHeight;
+      const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 100;
+      appendCmts(d.items);
+      if (first || nearBottom) { scrollChatBottom(); hideChatJump(); }
+      else { chatUnseen += d.items.length; showChatJump(); }   // 翻看历史时新消息进浮标
       // 弹幕：新留言全部上屏；首次进页只取最近两条作氛围，不回放历史
       dmPush((first ? d.items.slice(-2) : d.items).map((c) => c.text));
     }
   } catch { /* 网络波动静默，下轮再试 */ }
 }
+
+// 追加一批留言：跨 10 分钟插时间戳；超上限裁剪最早；返回追加的 DOM 数
+function appendCmts(items) {
+  const list = $('#cmtList');
+  const empty = list.querySelector('.cmt-empty');
+  if (empty) empty.remove();
+  let html = '';
+  for (const c of items) {
+    if (c.ts - cmtLastTs > 600000) html += cmtTimeHtml(c.ts);
+    cmtLastTs = c.ts;
+    html += cmtRowHtml(c);
+  }
+  list.insertAdjacentHTML('beforeend', html);
+  while (list.children.length > 200) {
+    const f = list.firstChild;
+    if (f.classList && f.classList.contains('lc-sys')) break;   // 保留进群语
+    list.removeChild(f);
+  }
+}
+
+// 首次铺列表：清空并置顶进群语
+function initChatList() {
+  $('#cmtList').innerHTML = '<p class="lc-sys">莲友共修群 · 以法相会，敬请爱语，同称佛号</p>';
+  cmtLastTs = 0;
+}
+
+function scrollChatBottom() { const l = $('#cmtList'); l.scrollTop = l.scrollHeight; }
+function showChatJump() {
+  const b = $('#crJump'); if (!b) return;
+  $('#crJumpN').textContent = chatUnseen > 0 ? `${chatUnseen > 99 ? '99+' : chatUnseen} 条新消息` : '新消息';
+  b.hidden = false;
+}
+function hideChatJump() { chatUnseen = 0; const b = $('#crJump'); if (b) b.hidden = true; }
+
 // 时间戳分隔（北京时间）：今日只显时分，往日带月日
 function cmtTimeHtml(ts) {
   const p = bjParts(ts);
@@ -2544,14 +2591,23 @@ function cmtTimeHtml(ts) {
   const key = `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
   return `<p class="lc-time">${key === bjDateKey() ? hm : `${p.mo}月${p.d}日 ${hm}`}</p>`;
 }
-// 一行留言气泡：法名取「·」后首字作莲印；自己的发言靠右朱砂气泡（服务端按设备标识判定）
+
+// 头像取色：按法名哈希取一色，同一人恒定（微信式一人一色）
+const AV_COLORS = ['#bd3a26', '#b0602b', '#5f7d54', '#48697b', '#8a6a34', '#7c5548', '#6d6a37', '#9d4c3c'];
+function avColor(seed) {
+  const s = String(seed || '莲'); let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AV_COLORS[h % AV_COLORS.length];
+}
+// 一行留言气泡：法名取「·」后首字作莲印（按名取色）；自己的发言靠右朱砂气泡（服务端按设备标识判定）
 function cmtRowHtml(c) {
   const dn = c.name.includes('·') ? c.name.split('·').pop() : c.name;
   const av = esc([...String(dn)][0] || '莲');
-  return `<div class="lc-row${c.mine ? ' mine' : ''}"><span class="lc-av" aria-hidden="true">${av}</span>`
+  return `<div class="lc-row${c.mine ? ' mine' : ''}">`
+    + `<span class="lc-av" aria-hidden="true" style="background:${avColor(c.name)}">${av}</span>`
     + `<span class="lc-msg"><b>${esc(c.name)}</b><span>${esc(c.text)}</span></span></div>`;
 }
-// 同时在线人数：真实心跳统计，0 人时不显示（直播莲台 + 聊天室头部同步）
+// 同时在线人数：真实心跳统计，0 人时不显示（直播莲台 + 共修群头部同步）
 function setLiveOnline(n) {
   n = Number(n) || 0;
   liveOnlineN = n;
@@ -2560,31 +2616,44 @@ function setLiveOnline(n) {
     if (n > 0) { $('#liveOnlineN').textContent = n; box.hidden = false; }
     else box.hidden = true;
   }
-  $('#crSub').textContent = n > 0 ? `${n} 位同修在此 · 敬请爱语` : '以法相会 · 敬请爱语';
-}
-function startCmt() { $('#cmtWho').textContent = dharmaName(); pollCmt(); setCmtCadence(chatOpen); }
-function stopCmt() { if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; } setLiveOnline(0); }
-// 轮询节奏：聊天室开着 8 秒近实时，关着 30 秒（喂弹幕与在线数即可）
-function setCmtCadence(fast) {
-  if (cmtTimer) clearInterval(cmtTimer);
-  cmtTimer = setInterval(pollCmt, fast ? 8000 : 30000);
+  $('#crSub').innerHTML = n > 0 ? `<b>${n}</b> 位莲友在此 · 敬请爱语` : '以法相会 · 敬请爱语';
+  const hq = $('#hqSub');
+  if (hq) hq.innerHTML = n > 0 ? `<b>${n}</b> 位莲友正在群中 · 以法相会` : '与全球莲友以法相会 · 同称佛号';
 }
 
-/* ── 聊天室全屏层（直播页「留言」进入） ── */
-function openChatRoom() {
-  chatOpen = true;
-  $('#chatRoom').hidden = false;
-  $('#cmtWho').textContent = dharmaName();
-  const list = $('#cmtList');
-  list.scrollTop = list.scrollHeight;
-  pollCmt();
-  setCmtCadence(true);
+// 留言轮询节奏：共修群开着 6 秒近实时；只在直播页 30 秒（喂弹幕/在线数）；都不在则停
+function syncCmtPolling() {
+  const want = chatOpen || document.body.dataset.view === 'live';
+  if (!want) {
+    if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; }
+    cmtFast = null; setLiveOnline(0);
+    return;
+  }
+  const fast = chatOpen;
+  if (!cmtTimer) { $('#cmtWho').textContent = dharmaName(); pollCmt(); }
+  if (fast !== cmtFast) {
+    if (cmtTimer) clearInterval(cmtTimer);
+    cmtTimer = setInterval(pollCmt, fast ? 6000 : 30000);
+    cmtFast = fast;
+  }
 }
-function closeChatRoom() {
-  if (!chatOpen) return;
-  chatOpen = false;
-  $('#chatRoom').hidden = true;
-  if (cmtTimer) setCmtCadence(false);   // 仍在直播页：回落慢轮询
+
+/* ── 莲友共修群全屏层（#qun 路由进入） ── */
+function openChatRoom() {
+  if (!chatOpen) {
+    chatOpen = true;
+    $('#chatRoom').hidden = false;
+    document.title = '莲友共修群 · 佛乐';
+    const list = $('#cmtList');
+    if (!list.querySelector('.lc-row')) {   // 首开且无历史：先垫进群语 + 虚位以待
+      list.innerHTML = '<p class="lc-sys">莲友共修群 · 以法相会，敬请爱语，同称佛号</p>'
+        + '<p class="cmt-empty">虚位以待 · 说一句随喜，与全球莲友同修共勉</p>';
+    }
+  }
+  $('#cmtWho').textContent = dharmaName();
+  updateCmtCount();
+  syncCmtPolling();
+  setTimeout(scrollChatBottom, 20);   // preview 无 rAF，用 setTimeout 触底
 }
 
 async function sendCmt() {
@@ -2600,14 +2669,33 @@ async function sendCmt() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dev: devId(), name: dharmaName(), text,
-        ep: liveItem ? `${liveItem.ep.seriesTitle}·${liveItem.ep.title}` : '',
+        ep: (document.body.dataset.view === 'live' && liveItem)
+          ? `${liveItem.ep.seriesTitle}·${liveItem.ep.title}` : '共修群',
       }),
     });
-    if (r.ok) { input.value = ''; await pollCmt(); }
-    else $('#cmtNote').textContent = (await r.text()) || '发送失败，请稍后再试';
+    if (r.ok) {
+      input.value = '';
+      updateCmtCount();
+      // 自己的发言即刻上屏（用返回 id，next poll 用 after=id 不会重复）
+      const d = await r.json().catch(() => ({}));
+      if (d && d.id) {
+        if (!cmtLastId) initChatList();
+        cmtLastId = d.id;
+        appendCmts([{ id: d.id, name: dharmaName(), text, ts: Date.now(), mine: 1 }]);
+        scrollChatBottom(); hideChatJump();
+      } else { await pollCmt(); }
+    } else $('#cmtNote').textContent = (await r.text()) || '发送失败，请稍后再试';
   } catch { $('#cmtNote').textContent = '网络不畅，请稍后再试'; }
   cmtBusy = false;
   $('#btnCmtSend').disabled = false;
+}
+
+// 字数计数：接近上限时提示剩余
+function updateCmtCount() {
+  const el = $('#cmtCount'); if (!el) return;
+  const n = ($('#cmtText').value || '').length;
+  if (n > 120) { el.textContent = `${n} / 150`; el.classList.toggle('warn', n >= 150); }
+  else { el.textContent = ''; el.classList.remove('warn'); }
 }
 
 /* ================= 按集：随喜 + 闻法留言 ================= */
@@ -3342,9 +3430,11 @@ function bindEvents() {
   $('#btnReaderShare').addEventListener('click', () => openShare(readerShare()));
   $('#btnLiveShare').addEventListener('click', () => openShare(liveShare()));
 
-  // 莲友聊天室（直播页「留言」进入的全屏层）
-  $('#btnLiveChat').addEventListener('click', openChatRoom);
-  $('#chatRoomX').addEventListener('click', closeChatRoom);
+  // 莲友共修群（独立模块，#qun 路由）：直播「留言」入口、返回、新消息浮标
+  $('#btnLiveChat').addEventListener('click', () => { location.hash = '#qun'; });
+  $('#chatRoomX').addEventListener('click', () => { location.hash = chatBackHash || '#home'; });
+  $('#crJump').addEventListener('click', () => { scrollChatBottom(); hideChatJump(); });
+  $('#cmtText').addEventListener('input', updateCmtCount);
 
   // 分享法布施：阅读器内选中经文（上限 800 字），浮标一点生成长图
   let quoteText = '';

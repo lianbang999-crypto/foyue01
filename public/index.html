@@ -506,24 +506,31 @@
   </div>
 </div>
 
-<!-- 莲友聊天室：直播页「留言」进入的全屏聊天（全球同闻，微信群式布局） -->
+<!-- 莲友共修群：全屏聊天室（独立模块，全球同闻，微信群式）。经 #qun 路由进入，可深链/子域名直达 -->
 <div id="chatRoom" hidden>
   <div class="cr-box">
     <header class="cr-head">
+      <button class="cr-back" id="chatRoomX" aria-label="返回">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
       <div class="cr-title">
-        <h3>莲友聊天室</h3>
+        <h3>莲友共修群</h3>
         <p class="cr-sub" id="crSub">以法相会 · 敬请爱语</p>
       </div>
-      <button class="sheet-x" id="chatRoomX" aria-label="关闭聊天室"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <span class="cr-head-sp" aria-hidden="true"></span>
     </header>
-    <div class="cmt-list" id="cmtList"><p class="cmt-empty">虚位以待 · 说一句随喜，与全球莲友同闻共修</p></div>
+    <p class="cr-notice" id="crNotice" hidden></p>
+    <div class="cmt-list" id="cmtList"></div>
+    <button class="cr-jump" id="crJump" hidden>
+      <span id="crJumpN">新消息</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 10l6 6 6-6"/></svg>
+    </button>
     <div class="cr-foot">
-      <p class="lc-who">以 <button class="cmt-name" id="cmtWho" type="button">莲友</button> 的身份发言 · 轻触法名可改</p>
+      <p class="cr-who">以 <button class="cmt-name" id="cmtWho" type="button">莲友</button> 发言 · 轻触改名<span class="cmt-count" id="cmtCount"></span></p>
       <div class="cmt-input">
-        <input id="cmtText" type="text" maxlength="150" placeholder="写一句随喜 · 与大众共勉" aria-label="留言" enterkeyhint="send">
-        <button id="btnCmtSend" aria-label="发送留言">
+        <input id="cmtText" type="text" maxlength="150" placeholder="说一句随喜 · 与大众共勉 …" aria-label="发言" enterkeyhint="send">
+        <button id="btnCmtSend" aria-label="发送">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h12.5M11 6l6 6-6 6"/></svg>
-          <span>发送</span>
         </button>
       </div>
       <p class="cmt-note" id="cmtNote"></p>

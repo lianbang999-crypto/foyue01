@@ -247,6 +247,29 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
   border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 11px;
 }
 
+/* —— 首页 · 莲友共修群入口（重要模块，朱砂点睛） —— */
+.home-qun {
+  display: flex; align-items: center; gap: 13px; width: 100%;
+  text-decoration: none; font-family: var(--serif); color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 10px;
+  transition: border-color 0.25s, transform 0.18s ease;
+}
+.home-qun:hover { border-color: var(--accent-soft); }
+.home-qun:active { transform: scale(0.985); }
+.hq-ic {
+  flex: none; width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center;
+  color: #fdf6ea; background: var(--accent);
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.hq-ic svg { width: 22px; height: 22px; }
+.hq-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hq-main strong { font-size: 0.98rem; font-weight: 600; letter-spacing: 0.06em; }
+.hq-main em { font-style: normal; color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hq-main em b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.hq-go { flex: none; color: var(--accent); font-size: 0.8rem; letter-spacing: 0.04em; border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 11px; }
+
 /* —— 首页 · 佛号速取（极简两列，随手起一炉佛号循环恭听） —— */
 .home-fohao { margin: 6px 0 4px; }
 /* 板块标题与全站一致：泥金菱纹 + 疏排小字，右侧「经咒›」入口 */
@@ -1131,41 +1154,66 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
   padding: 14px 16px; margin-bottom: 14px;
 }
 
-/* 同修在此（直播留言 · 共修留言板） */
-/* —— 莲友聊天室（直播「留言」进入的全屏层，微信群式布局） —— */
+/* —— 莲友共修群（全屏聊天室，独立模块，微信群式布局） —— */
 #chatRoom {
   position: fixed; inset: 0; z-index: 66;
   background: var(--bg); background-image: var(--sky);
-  animation: crUp 0.3s ease;
+  animation: crUp 0.28s ease;
 }
 #chatRoom[hidden] { display: none; }
-@keyframes crUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes crUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 .cr-box {
+  position: relative;
   height: 100%; display: flex; flex-direction: column;
   width: 100%; max-width: 640px; margin: 0 auto;
-  padding: max(10px, env(safe-area-inset-top)) 16px 0;
+  padding: max(6px, env(safe-area-inset-top)) 14px 0;
 }
+/* 头部：返回 · 居中群名+在线 · 占位（三栏对称，微信式） */
 .cr-head {
-  flex: none; display: flex; align-items: center; gap: 12px;
-  padding: 8px 2px 12px; border-bottom: 1px solid var(--gold-line);
+  flex: none; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center;
+  padding: 6px 0 10px; border-bottom: 1px solid var(--gold-line);
 }
-.cr-title h3 { font-size: 1.04rem; font-weight: 600; letter-spacing: 0.14em; color: var(--ink); }
-.cr-sub { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.06em; margin-top: 3px; }
-.cr-head .sheet-x { position: static; margin-left: auto; flex: none; }
+.cr-back {
+  width: 40px; height: 40px; background: transparent; border: 0; cursor: pointer;
+  color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center;
+}
+.cr-back svg { width: 24px; height: 24px; }
+.cr-back:active { transform: scale(0.9); }
+.cr-title { text-align: center; min-width: 0; }
+.cr-title h3 { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.12em; color: var(--ink); }
+.cr-sub { color: var(--ink-3); font-size: 0.72rem; letter-spacing: 0.04em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-sub b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 群公告（后台可维护，泥金条，置顶） */
+.cr-notice {
+  flex: none; margin: 10px 0 0;
+  color: var(--gold-text); font-size: 0.8rem; line-height: 1.6; letter-spacing: 0.03em;
+  border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px 12px 8px 34px;
+  background: var(--card); position: relative;
+}
+.cr-notice::before {
+  content: ''; position: absolute; left: 12px; top: 50%; width: 14px; height: 14px;
+  margin-top: -7px;
+  background: var(--gold-text); opacity: 0.6;
+  -webkit-mask: no-repeat center/contain; mask: no-repeat center/contain;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l18-6v14l-18-6z'/%3E%3Cpath d='M8 12v5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l18-6v14l-18-6z'/%3E%3Cpath d='M8 12v5'/%3E%3C/svg%3E");
+}
+.cr-notice[hidden] { display: none; }
+/* 消息区：全高滚动，无边框，气泡呼吸 */
 #chatRoom .cmt-list {
   flex: 1; min-height: 0; max-height: none;
-  border: 0; background: transparent; padding: 14px 2px; margin-bottom: 0;
+  border: 0; background: transparent; padding: 14px 2px 8px; margin-bottom: 0;
+  gap: 14px; scroll-behavior: smooth;
 }
-.cr-foot {
-  flex: none; padding: 10px 2px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
+/* 系统提示行（进群语） */
+.lc-sys {
+  align-self: center; text-align: center; max-width: 88%;
+  color: var(--ink-3); font-size: 0.72rem; line-height: 1.6; letter-spacing: 0.04em;
 }
 /* 时间戳分隔（跨 10 分钟一枚，微信式） */
 .lc-time {
   align-self: center; color: var(--ink-3); font-size: 0.68rem; letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
-  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
-  padding: 2px 10px; margin: 2px 0;
 }
 /* 自己的发言：靠右朱砂气泡，不重复署名 */
 .lc-row.mine { flex-direction: row-reverse; }
@@ -1174,8 +1222,29 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 .lc-row.mine .lc-msg span {
   align-self: flex-end; color: #fdf6ea;
   background: var(--accent); border-color: var(--accent);
-  border-radius: 13px 4px 13px 13px;
+  border-radius: 14px 5px 14px 14px;
 }
+/* 新消息浮标（翻看历史时新消息到达） */
+.cr-jump {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(118px + env(safe-area-inset-bottom)); z-index: 3;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--serif); font-size: 0.78rem; letter-spacing: 0.04em;
+  color: var(--accent); background: var(--card);
+  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 6px 8px 6px 14px;
+  cursor: pointer; box-shadow: 0 8px 22px -10px rgba(60, 30, 10, 0.4);
+  animation: crUp 0.25s ease;
+}
+.cr-jump[hidden] { display: none; }
+.cr-jump svg { width: 15px; height: 15px; }
+/* 底部输入区 */
+.cr-foot {
+  flex: none; padding: 10px 2px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.cr-who { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.03em; margin-bottom: 9px; }
+.cmt-count { float: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cmt-count.warn { color: var(--accent); }
 .live-notice {
   color: var(--gold-text); font-size: 0.84rem; line-height: 1.7; letter-spacing: 0.04em;
   border: 1px solid var(--gold-line); border-radius: 10px; padding: 9px 14px; margin-bottom: 12px;
@@ -1189,25 +1258,27 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
   padding: 13px 14px; margin-bottom: 12px;
   display: flex; flex-direction: column; gap: 12px;
 }
-/* 一行留言：法名莲印 + 气泡 */
+/* 一行留言：法名莲印（按名哈希取色，同一人恒定色）+ 气泡 */
 .lc-row { display: flex; align-items: flex-start; gap: 10px; }
 .lc-av {
-  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center;
-  font-family: var(--serif); font-size: 0.9rem; color: #fdf6ea; line-height: 1;
-  background: linear-gradient(150deg, var(--accent), var(--gold-text));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  font-family: var(--serif); font-size: 0.96rem; color: #fdf6ea; line-height: 1;
+  background: var(--accent);   /* 兜底；实际由内联 style 按名取色 */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
-.lc-msg { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.lc-msg b { color: var(--gold-text); font-weight: 600; font-size: 0.75rem; letter-spacing: 0.04em; }
+.lc-msg { min-width: 0; max-width: 78%; display: flex; flex-direction: column; gap: 4px; }
+.lc-msg b { color: var(--ink-3); font-weight: 500; font-size: 0.74rem; letter-spacing: 0.03em; }
 .lc-msg span {
-  align-self: flex-start; color: var(--ink); font-size: 0.92rem; line-height: 1.6; overflow-wrap: anywhere;
-  background: var(--accent-wash); border: 1px solid var(--line);
-  border-radius: 4px 13px 13px 13px; padding: 7px 12px;
+  align-self: flex-start; color: var(--ink); font-size: 0.94rem; line-height: 1.62; overflow-wrap: anywhere;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 5px 14px 14px 14px; padding: 8px 13px;
 }
+/* 按集「闻法留言」抽屉的气泡坐落在 card 面上，改回微染避免与底同色 */
+#cmtSheetList .lc-msg span { background: var(--accent-wash); }
 .cmt-empty { color: var(--ink-3); font-size: 0.82rem; text-align: center; padding: 22px 0; }
 .lc-who { color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; margin-bottom: 9px; }
-.cmt-input { display: flex; gap: 8px; }
+.cmt-input { display: flex; gap: 8px; align-items: center; }
 .cmt-input input {
   flex: 1; min-width: 0; font-family: var(--serif); font-size: 0.92rem; color: var(--ink);
   background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 11px 18px;
@@ -1224,6 +1295,9 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 .cmt-input button svg { width: 16px; height: 16px; }
 .cmt-input button:active { transform: scale(0.96); }
 .cmt-input button:disabled { opacity: 0.5; cursor: default; }
+/* 聊天室发送键：圆形图标钮（纸飞机） */
+.cr-foot .cmt-input button { width: 44px; height: 44px; padding: 0; border-radius: 50%; justify-content: center; }
+.cr-foot .cmt-input button svg { width: 18px; height: 18px; }
 .cmt-note { color: var(--accent); font-size: 0.78rem; margin-top: 8px; min-height: 1.2em; letter-spacing: 0.04em; }
 
 /* 存储与缓存弹层 */
