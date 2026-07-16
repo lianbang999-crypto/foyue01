@@ -248,24 +248,11 @@
       <span class="hc-go">去计数 ›</span>
     </a>
 
-    <div id="wodeTrail" hidden>
-      <h3 class="wode-sub">足迹</h3>
-      <div id="wodeCards"></div>
-    </div>
-    <div id="wodeFavs"></div>
-    <div id="wodeDownloads"></div>
+    <!-- 我的内容：足迹 / 收藏 / 离线下载 / 划线——由 renderWode 动态铺行，点击开弹层，主页保持清爽 -->
+    <h3 class="wode-sub" id="wodeContentSub" hidden>我的内容</h3>
+    <div class="wode-group" id="wodeContentGroup" hidden></div>
 
-    <!-- 划线是修学内容，不与设置混排：紧随收藏/下载之后独立成组，显示条数 -->
-    <div class="wode-group">
-      <button class="wode-row" id="btnMyHl">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 19.5h13"/><path d="M8.5 13.2 15.2 6.5a1.9 1.9 0 0 1 2.7 2.7l-6.7 6.7-3.6.9z"/></svg></span>
-        <span class="wr-t">我的划线</span>
-        <span class="wr-n" id="hlCount"></span>
-        <span class="wr-go">›</span>
-      </button>
-    </div>
-
-    <h3 class="wode-sub">通用</h3>
+    <h3 class="wode-sub">设置</h3>
     <div class="wode-group">
       <div class="wode-set">
         <span class="wode-set-label">主题</span>
@@ -517,7 +504,9 @@
         <h3>莲友共修群</h3>
         <p class="cr-sub" id="crSub">以法相会 · 敬请爱语</p>
       </div>
-      <span class="cr-head-sp" aria-hidden="true"></span>
+      <button class="cr-more" id="crShare" aria-label="分享共修群">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></svg>
+      </button>
     </header>
     <p class="cr-notice" id="crNotice" hidden></p>
     <div class="cmt-list" id="cmtList"></div>

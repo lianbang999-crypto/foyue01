@@ -525,7 +525,7 @@ async function downloadOffline(o, idx) {
   const ep = o.list[idx], key = ep.key;
   if (offlineHas(key) || offlineDownloading.has(key)) return;
   offlineDownloading.add(key); offlineProgress[key] = 0;
-  updateDownloadBtn(); renderDownloads();
+  updateDownloadBtn(); refreshDownloadsUI();
   try {
     const resp = await fetch(audioUrl(o.bucket, key));
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -554,7 +554,7 @@ async function downloadOffline(o, idx) {
     toast('下载失败 · ' + (err && err.message ? err.message : '请重试'));
   } finally {
     offlineDownloading.delete(key); delete offlineProgress[key];
-    updateDownloadBtn(); renderDownloads();
+    updateDownloadBtn(); refreshDownloadsUI();
   }
 }
 
@@ -600,12 +600,12 @@ function iosOfflineHint() {
 }
 
 // 渲染「我的 · 已下载」
-function renderDownloads() {
-  const el = $('#wodeDownloads'); if (!el) return;
+// 离线下载清单 HTML（弹层内展示）
+function downloadsHtml() {
   const m = offlineMeta();
   const keys = Object.keys(m).sort((a, b) => (m[b].savedAt || 0) - (m[a].savedAt || 0));
   const dling = [...offlineDownloading].filter((k) => !m[k]);
-  if (!keys.length && !dling.length) { el.innerHTML = ''; return; }
+  if (!keys.length && !dling.length) return '<p class="bk-note">还没有离线下载。在播放器点「下载」即可离线恭听。</p>';
   let rows = keys.map((k) =>
     `<li data-dlplay="${esc(k)}" data-dlsid="${esc(m[k].sid)}">
         <span class="t">${esc(m[k].epTitle)}<small>《${esc(m[k].title)}》· ${((m[k].size || 0) / 1048576).toFixed(1)} MB</small></span>
@@ -614,8 +614,13 @@ function renderDownloads() {
     const p = Math.round((offlineProgress[k] || 0) * 100);
     return `<li class="dl-ing"><span class="t">正在下载 …<small>${p}%</small></span></li>`;
   }).join('');
-  el.innerHTML = `<h3 class="wode-sub">已下载 · 离线可听</h3><ol class="ep-list fav-list">${rows}</ol>
+  return `<ol class="ep-list fav-list">${rows}</ol>
     <p class="dl-total">共 ${keys.length} 集 · ${(offlineTotal() / 1048576).toFixed(1)} MB ${iosOfflineHint()}</p>`;
+}
+// 离线数据变动后刷新：弹层开着重绘弹层，在我的页则更新行计数
+function refreshDownloadsUI() {
+  if (cntSheetMode === 'downloads') $('#cntSheetBody').innerHTML = downloadsHtml();
+  if (document.body.dataset.view === 'wode') renderWode();
 }
 
 function switchMode(m) {
@@ -786,24 +791,27 @@ function favList() {
   return items;
 }
 
-function renderFavs() {
+// 收藏总数（听经 + 阅读书签），我的页行数用
+function favCount() { return favList().length + (library ? bkList().length : 0); }
+// 收藏清单 HTML（听经 + 阅读，弹层内展示）
+function favsHtml() {
   const items = favList();
   const bks = library ? bkList() : [];
   let html = items.length
-    ? '<h3 class="wode-sub">收藏 · 听经</h3><ol class="ep-list fav-list">' + items.map(({ s, i }) =>
+    ? '<p class="sheet-cat">听经</p><ol class="ep-list fav-list">' + items.map(({ s, i }) =>
       `<li data-fs="${s.id}" data-fi="${i}">
         <span class="t">${esc(s.episodes[i].title)}<small>《${esc(s.title)}》</small></span>
         <span class="d">${fmtDur(s.episodes[i].dur)}</span>
         <button class="fav-del" data-unfav="${esc(s.episodes[i].key)}" aria-label="移除收藏">✕</button></li>`).join('') + '</ol>'
     : '';
   html += bks.length
-    ? '<h3 class="wode-sub">收藏 · 阅读</h3><ol class="ep-list fav-list">' + bks.map(({ spec, s, c }) =>
+    ? '<p class="sheet-cat">阅读</p><ol class="ep-list fav-list">' + bks.map(({ spec, s, c }) =>
       `<li data-bkr="${spec}">
         <span class="t">${esc(c.title)}<small>《${esc(s.title)}》</small></span>
         ${chapProgLabel(c)}
         <button class="fav-del" data-unbk="${spec}" aria-label="移除收藏">✕</button></li>`).join('') + '</ol>'
     : '';
-  $('#wodeFavs').innerHTML = html;
+  return html;
 }
 
 /* ================= 节目单 ================= */
@@ -1836,13 +1844,51 @@ function renderWode() {
   const len = 2 * Math.PI * 32;
   $('#whRing').style.strokeDasharray = String(len);
   $('#whRing').style.strokeDashoffset = String(len * (1 - frac));
-  const html = listenCardHtml('最近在听') + readCardHtml('最近在读');
-  $('#wodeCards').innerHTML = html;
-  $('#wodeTrail').hidden = !html;
+
+  // 我的内容：只铺有内容的行（足迹 / 收藏 / 离线下载 / 划线），点击开弹层
+  const hasTrail = !!(listenCardHtml('') || readCardHtml(''));
+  const favN = favCount();
+  const dlN = Object.keys(offlineMeta()).length;
+  const dling = [...offlineDownloading].filter((x) => !offlineMeta()[x]).length;
   const hn = hlCount();
-  $('#hlCount').textContent = hn ? `${hn} 处` : '';
-  renderFavs();
-  renderDownloads();
+  const row = (act, icon, label, meta) => `<button class="wode-row" data-wact="${act}">
+    <span class="wr-ic">${icon}</span><span class="wr-t">${label}</span>
+    <span class="wr-n">${meta || ''}</span><span class="wr-go">›</span></button>`;
+  let rows = '';
+  if (hasTrail) rows += row('trail', WODE_IC.trail, '足迹', '');
+  if (favN) rows += row('favs', WODE_IC.star, '收藏', String(favN));
+  if (dlN || dling) rows += row('downloads', WODE_IC.download, '离线下载', dlN ? `${dlN} 集` : '下载中');
+  if (hn) rows += row('myhl', WODE_IC.hl, '我的划线', `${hn} 处`);
+  $('#wodeContentGroup').innerHTML = rows;
+  $('#wodeContentGroup').hidden = !rows;
+  $('#wodeContentSub').hidden = !rows;
+}
+
+// 我的内容行图标（描边线形）
+const WODE_IC = {
+  trail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M12 8v4.4l3 1.8"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.5 5.15 5.7.83-4.1 4 .97 5.66L12 17.9l-5.04 2.7.97-5.66-4.1-4 5.7-.83z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>',
+  hl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 19.5h13"/><path d="M8.5 13.2 15.2 6.5a1.9 1.9 0 0 1 2.7 2.7l-6.7 6.7-3.6.9z"/></svg>',
+};
+
+// 我的内容弹层：足迹 / 收藏 / 离线下载（划线复用 renderHlSheet）
+function renderTrailSheet() {
+  $('#cntSheetBody').innerHTML = (listenCardHtml('最近在听') + readCardHtml('最近在读')) || '<p class="bk-note">还没有足迹。</p>';
+}
+function renderFavsSheet() {
+  $('#cntSheetBody').innerHTML = favsHtml()
+    || '<p class="bk-note">还没有收藏。听经时点「收藏」、阅读时点书签，即可收入此处。</p>';
+}
+function renderDownloadsSheet() { $('#cntSheetBody').innerHTML = downloadsHtml(); }
+
+// 续听（首页 / 足迹弹层共用）
+function resumeListen() {
+  try {
+    const last = JSON.parse(localStorage.getItem('fy.last'));
+    const s = catalog.series.find((x) => x.id === last.sid);
+    if (s && s.episodes[last.idx]) playEpisode(s, last.idx);
+  } catch { /* 忽略 */ }
 }
 
 // 划线总条数（跨所有篇目，我的页入口显示）
@@ -2088,6 +2134,19 @@ function liveShare() {
       dur: ep.dur,
       online: liveOnlineN,   // 真实在线数，0 不上海报
     } : null,
+  };
+}
+
+function chatShare() {
+  // 分享莲友共修群：深链 #qun，对方打开即进群同修
+  const n = liveOnlineN;
+  return {
+    title: '莲友共修群',
+    sub: n > 0 ? `${n} 位莲友正在群中 · 以法相会` : '与全球莲友以法相会 · 同称佛号',
+    source: '莲友共修群',
+    text: '一起来「莲友共修群」，与全球莲友以法相会、同称佛号',
+    url: `${location.origin}/#qun`,
+    cta: '扫码进群',
   };
 }
 
@@ -2846,17 +2905,8 @@ function bindEvents() {
     b.addEventListener('click', () => { location.hash = b.dataset.back; }));
   $('#btnSeriesBack').addEventListener('click', () => { location.hash = $('#btnSeriesBack').dataset.back || '#ting'; });
 
-  // 续听卡（首页 / 我的共用）
-  const resumeListen = (e) => {
-    if (!e.target.closest('[data-resume-listen]')) return;
-    try {
-      const last = JSON.parse(localStorage.getItem('fy.last'));
-      const s = catalog.series.find((x) => x.id === last.sid);
-      if (s && s.episodes[last.idx]) playEpisode(s, last.idx);
-    } catch { /* 忽略 */ }
-  };
-  $('#homeCards').addEventListener('click', resumeListen);
-  $('#wodeCards').addEventListener('click', resumeListen);
+  // 续听卡（首页 / 足迹弹层共用 resumeListen 模块函数）
+  $('#homeCards').addEventListener('click', (e) => { if (e.target.closest('[data-resume-listen]')) resumeListen(); });
 
   // 首页佛号：横滑速取，点一条即进全屏播放器循环恭听
   $('#homeCards').addEventListener('click', (e) => {
@@ -2965,42 +3015,18 @@ function bindEvents() {
     if (s) playEpisode(s, Number(li.dataset.fi));
   });
 
-  // 我的 · 收藏清单：听经点行播放，阅读点行恭读，✕ 移除
-  $('#wodeFavs').addEventListener('click', (e) => {
-    const del = e.target.closest('[data-unfav]');
-    if (del) {
-      localStorage.removeItem('fy.fav.' + del.dataset.unfav);
-      renderFavs();
-      updateFav();   // 正在播放这集时同步播放器收藏态
-      return;
+  // 我的内容：足迹 / 收藏 / 离线下载 / 划线 —— 点行开对应弹层（清单操作在弹层内处理）
+  $('#wodeContentGroup').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-wact]');
+    if (!b) return;
+    const a = b.dataset.wact;
+    if (a === 'trail') { renderTrailSheet(); openCntSheet('trail', '足迹'); }
+    else if (a === 'favs') { renderFavsSheet(); openCntSheet('favs', '我的收藏'); }
+    else if (a === 'downloads') { renderDownloadsSheet(); openCntSheet('downloads', '离线下载'); }
+    else if (a === 'myhl') {
+      try { await ensureLibrary(); } catch { /* 离线时仍展示可解析的部分 */ }
+      renderHlSheet(); openCntSheet('myhl', '我的划线');
     }
-    const unbk = e.target.closest('[data-unbk]');
-    if (unbk) {
-      localStorage.removeItem('fy.bk.' + unbk.dataset.unbk);
-      renderFavs();
-      return;
-    }
-    const bkr = e.target.closest('li[data-bkr]');
-    if (bkr) { location.hash = '#read/' + bkr.dataset.bkr; return; }
-    const li = e.target.closest('li[data-fs]');
-    if (!li) return;
-    const s = catalog.series.find((x) => x.id === li.dataset.fs);
-    if (s) playEpisode(s, Number(li.dataset.fi));
-  });
-
-  // 我的 · 已下载：点条目离线播放，点 ✕ 删除
-  $('#wodeDownloads').addEventListener('click', (e) => {
-    const del = e.target.closest('[data-dldel]');
-    if (del) {
-      removeOffline(del.dataset.dldel).then(() => { renderDownloads(); updateDownloadBtn(); toast('已删除离线文件'); });
-      return;
-    }
-    const li = e.target.closest('li[data-dlplay]');
-    if (!li) return;
-    const s = catalog.series.find((x) => x.id === li.dataset.dlsid);
-    if (!s) { toast('该系列已更新，请重新下载'); return; }
-    const i = s.episodes.findIndex((x) => x.key === li.dataset.dlplay);
-    if (i >= 0) playEpisode(s, i);
   });
   hydrateOfflineURLs();   // 启动即把已下载 blob 建成可用的 objectURL（离线亦可）
 
@@ -3098,12 +3124,6 @@ function bindEvents() {
   audio.addEventListener('play', () => { if (tts.on) ttsStop(); });
 
   // 我的划线（我的页入口）；文库数据未就绪则先等一拍
-  $('#btnMyHl').addEventListener('click', async () => {
-    try { await ensureLibrary(); } catch { /* 离线时仍展示可解析的部分 */ }
-    renderHlSheet();
-    openCntSheet('myhl', '我的划线');
-  });
-
   // 文库标题搜索：即时过滤全库篇目
   $('#wkSearch').addEventListener('input', () => {
     let q = $('#wkSearch').value.trim();
@@ -3312,7 +3332,7 @@ function bindEvents() {
     } else if (cntSheetMode === 'storage') {
       if (e.target.closest('[data-offline-clear]')) {
         if (!window.confirm('清空全部离线音频？已下载的集将需要重新下载。')) return;
-        clearAllOffline().then(() => { renderStorageSheet(); renderDownloads(); updateDownloadBtn(); toast('已清空离线音频'); });
+        clearAllOffline().then(() => { renderStorageSheet(); refreshDownloadsUI(); updateDownloadBtn(); toast('已清空离线音频'); });
         return;
       }
       if (!e.target.closest('[data-st-clear]')) return;
@@ -3361,6 +3381,30 @@ function bindEvents() {
         closeCntSheet();
         $('#hxOverlay').hidden = false;
       }
+    } else if (cntSheetMode === 'trail') {
+      // 足迹：续听（按钮）/ 续读（锚点）—— 均关闭弹层
+      if (e.target.closest('[data-resume-listen]')) { closeCntSheet(); resumeListen(); }
+      else if (e.target.closest('a[href^="#"]')) closeCntSheet();   // 续读锚点自然跳转
+    } else if (cntSheetMode === 'favs') {
+      const del = e.target.closest('[data-unfav]');
+      if (del) { localStorage.removeItem('fy.fav.' + del.dataset.unfav); updateFav(); renderFavsSheet(); renderWode(); return; }
+      const unbk = e.target.closest('[data-unbk]');
+      if (unbk) { localStorage.removeItem('fy.bk.' + unbk.dataset.unbk); renderFavsSheet(); renderWode(); return; }
+      const bkr = e.target.closest('li[data-bkr]');
+      if (bkr) { closeCntSheet(); location.hash = '#read/' + bkr.dataset.bkr; return; }
+      const li = e.target.closest('li[data-fs]');
+      if (!li) return;
+      const s = catalog.series.find((x) => x.id === li.dataset.fs);
+      if (s) { closeCntSheet(); playEpisode(s, Number(li.dataset.fi)); }
+    } else if (cntSheetMode === 'downloads') {
+      const del = e.target.closest('[data-dldel]');
+      if (del) { removeOffline(del.dataset.dldel).then(() => { renderDownloadsSheet(); renderWode(); updateDownloadBtn(); toast('已删除离线文件'); }); return; }
+      const li = e.target.closest('li[data-dlplay]');
+      if (!li) return;
+      const s = catalog.series.find((x) => x.id === li.dataset.dlsid);
+      if (!s) { toast('该系列已更新，请重新下载'); return; }
+      const i = s.episodes.findIndex((x) => x.key === li.dataset.dlplay);
+      if (i >= 0) { closeCntSheet(); playEpisode(s, i); }
     }
   });
 
@@ -3408,6 +3452,7 @@ function bindEvents() {
   // 莲友共修群（独立模块，#qun 路由）：直播「留言」入口、返回、新消息浮标
   $('#btnLiveChat').addEventListener('click', () => { location.hash = '#qun'; });
   $('#chatRoomX').addEventListener('click', () => { location.hash = chatBackHash || '#home'; });
+  $('#crShare').addEventListener('click', () => openShare(chatShare()));   // 头部「…」分享共修群
   $('#crJump').addEventListener('click', () => { scrollChatBottom(); hideChatJump(); });
   $('#cmtText').addEventListener('input', updateCmtCount);
 
@@ -3617,7 +3662,7 @@ function bindEvents() {
     if (offlineDownloading.has(key)) { toast('正在下载 …'); return; }
     if (offlineHas(key)) {
       if (window.confirm('本集已离线下载。删除离线文件？')) {
-        removeOffline(key).then(() => { updateDownloadBtn(); renderDownloads(); toast('已删除离线文件'); });
+        removeOffline(key).then(() => { updateDownloadBtn(); refreshDownloadsUI(); toast('已删除离线文件'); });
       }
       return;
     }
