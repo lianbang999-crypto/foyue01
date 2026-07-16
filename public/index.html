@@ -136,7 +136,7 @@
           <span class="lt-t">弹幕</span>
         </button>
         <button class="live-tool" id="btnLiveChat" aria-label="进入共修群聊天室">
-          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.5" fill="currentColor"/><circle cx="12" cy="10.5" r="0.5" fill="currentColor"/><circle cx="15.2" cy="10.5" r="0.5" fill="currentColor"/></svg></span>
+          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5v3.2L12 17h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg></span>
           <span class="lt-t">留言</span>
         </button>
         <button class="live-tool" id="btnLiveLike" aria-label="随喜此刻节目">
@@ -558,6 +558,19 @@
 </div>
 
 <audio id="audio" preload="auto"></audio>
+
+<!-- 改法名（极简弹层） -->
+<div id="nameOverlay" hidden>
+  <div class="name-box">
+    <h3>改法名</h3>
+    <input id="nameInput" type="text" maxlength="12" placeholder="莲友·清净" aria-label="法名" enterkeyhint="done" autocomplete="off">
+    <p class="name-hint">2–12 字 · 只存本机</p>
+    <div class="name-acts">
+      <button id="nameCancel">取消</button>
+      <button id="nameSave" class="primary">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- 关于本站（弹窗） -->
 <div id="aboutOverlay" hidden>

@@ -1300,6 +1300,38 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 .cr-foot .cmt-input button svg { width: 18px; height: 18px; }
 .cmt-note { color: var(--accent); font-size: 0.78rem; margin-top: 8px; min-height: 1.2em; letter-spacing: 0.04em; }
 
+/* —— 改法名（极简弹层） —— */
+#nameOverlay {
+  position: fixed; inset: 0; z-index: 72;
+  background: rgba(30, 22, 10, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: fadein 0.25s ease;
+}
+#nameOverlay[hidden] { display: none; }
+.name-box {
+  width: 100%; max-width: 340px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 18px;
+  padding: 22px 20px 18px; text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(20, 12, 4, 0.5);
+  animation: sheet-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.name-box h3 { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); margin-bottom: 16px; }
+.name-box input {
+  width: 100%; font-family: var(--serif); font-size: 1.02rem; color: var(--ink); text-align: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px;
+  transition: border-color 0.2s;
+}
+.name-box input:focus { outline: none; border-color: var(--accent-soft); }
+.name-hint { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.06em; margin: 9px 0 18px; }
+.name-acts { display: flex; gap: 10px; }
+.name-acts button {
+  flex: 1; font-family: var(--serif); font-size: 0.94rem; letter-spacing: 0.1em; cursor: pointer;
+  border-radius: 999px; padding: 11px 0; transition: transform 0.15s ease, opacity 0.2s;
+  color: var(--ink-2); background: transparent; border: 1px solid var(--line);
+}
+.name-acts button.primary { color: #fdf6ea; background: var(--accent); border-color: var(--accent); }
+.name-acts button:active { transform: scale(0.97); }
+
 /* 存储与缓存弹层 */
 .st-rows { margin-bottom: 16px; }
 .st-row {

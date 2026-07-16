@@ -431,15 +431,9 @@ function fohaoHomeHtml() {
 }
 
 function buildHome() {
-  // 首页信息秩序（今日案头）：个人续听 → 共修群 → 四门导航 → 佛号速取
+  // 首页信息秩序（今日案头）：个人续听 → 四门导航 → 佛号速取
   // 继续收听（若有未听完）——回访者最想要的一键
   let html = listenCardHtml('继续收听');
-
-  // 莲友共修群入口（重要模块，全球同闻）——在线数由 setLiveOnline 轮询到时回填
-  html += `<a class="home-qun" href="#qun">
-    <span class="hq-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H10l-4 3.6V16H4z"/><circle cx="8.8" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="12" cy="10.5" r="0.6" fill="currentColor" stroke="none"/><circle cx="15.2" cy="10.5" r="0.6" fill="currentColor" stroke="none"/></svg></span>
-    <span class="hq-main"><strong>莲友共修群</strong><em id="hqSub">${liveOnlineN > 0 ? `<b>${liveOnlineN}</b> 位莲友正在群中 · 以法相会` : '与全球莲友以法相会 · 同称佛号'}</em></span>
-    <span class="hq-go">进入 ›</span></a>`;
 
   // 四门宫格（听经 / 有声书 / 念佛 / 阅读）
   html += '<div class="home-grid">' + HOME_DOORS.map((d) =>
@@ -2144,7 +2138,7 @@ function drawQR(ctx, text, x, y, size) {
   return true;
 }
 
-// 分享海报（极简）：大留白宣纸 + 细界栏 + 莲音标志 + 标题出处 + 二维码，750×1000，不落网址
+// 分享海报（极简）：大留白宣纸 + 细界栏 + 标题出处 + 二维码，750×1000，不落标识与网址
 function makePoster(p) {
   const W = 750, H = 1000;
   const cv = document.createElement('canvas');
@@ -2161,28 +2155,12 @@ function makePoster(p) {
   ctx.lineWidth = 1;
   ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
 
-  // 莲音标志（与站内同一标志：三瓣莲 + 法音涟漪）
-  ctx.save();
-  ctx.translate(W / 2 - 56, 138);
-  ctx.scale(1.75, 1.75);
-  ctx.strokeStyle = '#bd3a26';
-  ctx.lineWidth = 2.6 / 1.75;
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (const d of [
-    'M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z',
-    'M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z',
-    'M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z',
-    'M14 43 C22 50 42 50 50 43',
-    'M21 51 C27 56 37 56 43 51',
-  ]) ctx.stroke(new Path2D(d));
-  ctx.restore();
-
   // 标题（最多两行）与出处，居中大留白
   ctx.textAlign = 'center';
   ctx.fillStyle = '#33291b';
   ctx.font = `600 46px ${SERIF}`;
   const titleLines = wrapLines(ctx, T(p.title), W - 200, 2);
-  let y = titleLines.length > 1 ? 430 : 462;
+  let y = titleLines.length > 1 ? 388 : 420;
   for (const ln of titleLines) { ctx.fillText(ln, W / 2, y); y += 70; }
   ctx.fillStyle = '#a08b6b';
   ctx.font = `26px ${SERIF}`;
@@ -2217,7 +2195,7 @@ function rrPath(ctx, x, y, w, h, r) {
 // 直播分享海报：手绘一张与直播莲台同款式的「播放器卡片」——
 // 直播中标记 + 当下系列/集名 + 实时进度与已播时长 + 日期 +（有人时）在线人数 + 二维码
 function makeLivePoster(p) {
-  const W = 750, H = 1100;
+  const W = 750, H = 1040;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
@@ -2232,24 +2210,8 @@ function makeLivePoster(p) {
   ctx.lineWidth = 1;
   ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
 
-  // 莲音标志
-  ctx.save();
-  ctx.translate(W / 2 - 48, 70);
-  ctx.scale(1.5, 1.5);
-  ctx.strokeStyle = '#bd3a26';
-  ctx.lineWidth = 2.6 / 1.5;
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (const d of [
-    'M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z',
-    'M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z',
-    'M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z',
-    'M14 43 C22 50 42 50 50 43',
-    'M21 51 C27 56 37 56 43 51',
-  ]) ctx.stroke(new Path2D(d));
-  ctx.restore();
-
   // 播放器卡片（整块画进海报：胶囊 + 系列集名 + 进度 + 大播放钮 + 在线 + 日期）
-  const cx = 64, cy = 200, cw = W - 128, ch = 606;
+  const cx = 64, cy = 112, cw = W - 128, ch = 606;
   rrPath(ctx, cx, cy, cw, ch, 26);
   ctx.fillStyle = '#fbf7ec';
   ctx.fill();
@@ -2306,20 +2268,28 @@ function makeLivePoster(p) {
     ctx.fillText(fmtMMSS(lv.dur), bx + bw, by + 38);
   }
 
-  // 大播放钮（朱砂圆 + 光晕环 + 白色暂停双条，表「正在直播」）
-  const pcx = W / 2, pcy = cy + 416, pr = 54;
+  // 大播放钮（朱砂圆 + 双层光晕 + 内细白环 + 圆角播放三角，邀人同闻）
+  const pcx = W / 2, pcy = cy + 416, pr = 56;
+  ctx.beginPath(); ctx.arc(pcx, pcy, pr + 16, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(189, 58, 38, 0.07)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(pcx, pcy, pr + 8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(189, 58, 38, 0.13)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
+  ctx.fillStyle = '#bd3a26'; ctx.fill();
+  ctx.beginPath(); ctx.arc(pcx, pcy, pr - 7, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
+  // 白色播放三角（圆角、光学右移居中）
+  ctx.save();
+  ctx.fillStyle = '#faf6ea'; ctx.strokeStyle = '#faf6ea';
+  ctx.lineJoin = 'round'; ctx.lineWidth = 8;
+  const tl = pcx - 10, tr = pcx + 24, th = 20;
   ctx.beginPath();
-  ctx.arc(pcx, pcy, pr + 9, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(189, 58, 38, 0.12)';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
-  ctx.fillStyle = '#bd3a26';
-  ctx.fill();
-  ctx.fillStyle = '#faf6ea';
-  const barW = 12, barH = 42, barGap = 10, barY = pcy - barH / 2;
-  rrPath(ctx, pcx - barGap - barW, barY, barW, barH, 3); ctx.fill();
-  rrPath(ctx, pcx + barGap, barY, barW, barH, 3); ctx.fill();
+  ctx.moveTo(tl, pcy - th);
+  ctx.lineTo(tl, pcy + th);
+  ctx.lineTo(tr, pcy);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
 
   // （有人同闻时）真实在线人数 + 日期行
   const dp = bjParts(Date.now());
@@ -2850,15 +2820,20 @@ async function sendEpCmt() {
   cmtSheetBusy = false;
   $('#cmtSheetSend').disabled = false;
 }
+// 改法名：极简弹层（取代 window.prompt）
 function renameDharma() {
-  const cur = dharmaName();
-  const v = window.prompt('修改法名（只存本机，2–12 字）', cur);
-  if (v == null) return;
-  const name = v.replace(/\s+/g, ' ').trim().slice(0, 12);
+  const inp = $('#nameInput');
+  inp.value = dharmaName();
+  $('#nameOverlay').hidden = false;
+  setTimeout(() => { inp.focus(); inp.select(); }, 30);
+}
+function saveDharma() {
+  const name = ($('#nameInput').value || '').replace(/\s+/g, ' ').trim().slice(0, 12);
   if (name.length < 2) { toast('法名至少 2 字'); return; }
   localStorage.setItem('fy.fname', name);
   $('#cmtSheetName').textContent = name;
   $('#cmtWho').textContent = name;
+  $('#nameOverlay').hidden = true;
   toast('已改名 · ' + name);
 }
 
@@ -3435,6 +3410,12 @@ function bindEvents() {
   $('#chatRoomX').addEventListener('click', () => { location.hash = chatBackHash || '#home'; });
   $('#crJump').addEventListener('click', () => { scrollChatBottom(); hideChatJump(); });
   $('#cmtText').addEventListener('input', updateCmtCount);
+
+  // 改法名弹层：保存 / 取消 / 回车 / 点遮罩关
+  $('#nameSave').addEventListener('click', saveDharma);
+  $('#nameCancel').addEventListener('click', () => { $('#nameOverlay').hidden = true; });
+  $('#nameInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveDharma(); } });
+  $('#nameOverlay').addEventListener('click', (e) => { if (e.target === $('#nameOverlay')) $('#nameOverlay').hidden = true; });
 
   // 分享法布施：阅读器内选中经文（上限 800 字），浮标一点生成长图
   let quoteText = '';
