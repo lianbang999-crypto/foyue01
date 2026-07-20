@@ -39,6 +39,21 @@ def key_bg(img, opaque=226, clear=250):
     return Image.fromarray(np.dstack([a, al]).astype(np.uint8), "RGBA")
 
 
+def key_bg_night(img, opaque=226, clear=250, lift=0.50):
+    """夜间版：抠底阈值必须与日间一致 —— 收窄阈值会把抗锯齿边缘一并吃成实线，
+    描线变肥发糙，成了粉笔画。夜版只做一件事：整体抬明度、保住色相与饱和，
+    让在宣纸上本就浅淡的身姿衣纹，落到夜色里仍浮得起来。"""
+    a  = np.asarray(img.convert("RGB")).astype(np.float32) / 255.0
+    mx = a.max(axis=2)
+    al = np.clip((clear/255.0 - mx) / ((clear - opaque)/255.0), 0, 1)
+    al[al < 0.04] = 0
+    L  = (mx + a.min(axis=2)) / 2                       # HSL 明度
+    L2 = np.clip(L + (1 - L) * lift, 0, 1)
+    scale = np.where(L > 1e-4, L2 / np.maximum(L, 1e-4), 1.0)[..., None]
+    out = np.clip(a * scale, 0, 1)
+    return Image.fromarray(np.dstack([out * 255, al * 255]).astype(np.uint8), "RGBA")
+
+
 def trim(im):
     return im.crop(im.split()[-1].getbbox())
 
@@ -65,12 +80,17 @@ def plate(size, art, ratio, bg=PAPER):
 
 
 def main():
-    full = key_bg(Image.open(SRC))
+    src  = Image.open(SRC)
+    full = key_bg(src)
     mark = trim(full.crop(BOX_MARK))
     lock = trim(full.crop(BOX_LOCK))
 
     save_png(fit(mark, 640), "public/img/logo-mark.png")
     save_png(fit(lock, 800), "public/img/logo-full.png")
+
+    # 夜烛模式专用（CSS 按 data-theme="night" 换底图，只下其中一张）
+    night = trim(key_bg_night(src).crop(BOX_MARK))
+    save_png(fit(night, 640), "public/img/logo-mark-night.png")
 
     save_png(plate((512, 512),  mark, 0.80), "public/icon-512.png")
     save_png(plate((192, 192),  mark, 0.80), "public/icon-192.png")

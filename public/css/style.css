@@ -93,12 +93,15 @@ body {
   max-width: 720px; width: 100%; margin: 0 auto;
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
-/* 品牌标志（横式图形）：按高对齐，宽度自适应 */
-.lotus { height: 34px; width: auto; flex: none; display: block; }
-/* 夜间宣纸转暗，标志描线略提亮以免闷进底色 */
-body[data-theme="night"] .lotus,
-body[data-theme="night"] .dock-art img,
-body[data-theme="night"] .pl-lotus { filter: brightness(1.22) saturate(1.05); }
+/* —— 品牌标志 ——
+   横式图形（宽高 640×455）。用底图承载，好按昼夜换两张不同的图，
+   且浏览器只会下用得上的那张。夜烛模式换「夜墨版」：日间版靠一批极浅的
+   描线勾飞天身姿，那些线落在夜色里会整片消失，夜版把浅线补足并整体提亮。 */
+.lotus {
+  flex: none; display: block; height: 34px; aspect-ratio: 640 / 455;
+  background: url("/img/logo-mark.png") center / contain no-repeat;
+}
+body[data-theme="night"] .lotus { background-image: url("/img/logo-mark-night.png"); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
 .brand-text strong { font-size: 1.18rem; font-weight: 600; letter-spacing: 0.12em; }
 .brand-text small { font-size: 0.7rem; color: var(--ink-2); letter-spacing: 0.06em; white-space: nowrap; }
@@ -573,7 +576,7 @@ body[data-nf-playing="false"] #btnNf::after {
   background: var(--accent-wash); border: 1px solid var(--line);
   color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.dock-art img { width: 100%; height: 100%; object-fit: contain; }
+.dock-art .lotus { height: 100%; }
 .dock-info { flex: 1; min-width: 0; background: transparent; border: 0; text-align: left; cursor: pointer; padding: 0; font-family: var(--serif); }
 .mini-series { display: block; color: var(--ink-3); font-size: 0.7rem; letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-ep { display: block; color: var(--ink); font-size: 0.92rem; font-weight: 600; margin-top: 2px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -603,15 +606,26 @@ body[data-nf-playing="false"] #btnNf::after {
 .pl-tag { color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.26em; text-indent: 0.26em; }
 
 .pl-hero { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 120px; }
-.pl-art { position: relative; width: min(56vw, 230px); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; }
-.pl-art::before { content: ''; position: absolute; inset: -6%; border-radius: 50%; border: 1px solid var(--gold-line); }
-.pl-art::after { content: ''; position: absolute; inset: 15%; border-radius: 50%; border: 1px solid var(--gold-line); opacity: 0.5; }
+/* 莲台：不再套圆环 —— 标志自身的天衣已经圆转一周，外面再加两道就成了三重圆，
+   且圆框与横式标志本就打架。改为一轮柔光月轮托住飞天，播放时缓缓明灭。 */
+.pl-art {
+  position: relative; width: min(78vw, 300px); aspect-ratio: 640 / 455;
+  display: flex; align-items: center; justify-content: center;
+}
+.pl-art::before {
+  content: ''; position: absolute; inset: -24% -12%; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(166, 130, 60, 0.16), transparent 72%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gold-text) 22%, transparent), transparent 72%);
+  animation: plHalo 7s ease-in-out infinite; animation-play-state: paused;
+}
 .pl-lotus {
-  width: 84%; height: auto; object-fit: contain;
+  position: relative; width: 100%; height: 100%;
   animation: plBreathe 7s ease-in-out infinite; animation-play-state: paused;
 }
-body[data-od-playing="true"] .pl-lotus { animation-play-state: running; }
-@keyframes plBreathe { 0%, 100% { transform: scale(0.96); opacity: 0.82; } 50% { transform: scale(1.05); opacity: 1; } }
+body[data-od-playing="true"] .pl-lotus,
+body[data-od-playing="true"] .pl-art::before { animation-play-state: running; }
+@keyframes plBreathe { 0%, 100% { transform: scale(0.97); opacity: 0.88; } 50% { transform: scale(1.03); opacity: 1; } }
+@keyframes plHalo { 0%, 100% { opacity: 0.5; transform: scale(0.94); } 50% { opacity: 1; transform: scale(1.04); } }
 
 .pl-meta { text-align: center; margin: 10px 0 2px; }
 .pl-meta h3 { font-size: 1.24rem; font-weight: 600; color: var(--ink); letter-spacing: 0.03em; line-height: 1.5; }

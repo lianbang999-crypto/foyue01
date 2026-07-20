@@ -81,8 +81,9 @@
 
 <header class="top">
   <a class="brand" href="#home">
-    <!-- 佛乐标志：飞天伎乐持排箫，莲花出水，法音流布（foyue.org 品牌标识） -->
-    <img class="lotus" src="/img/logo-mark.png" alt="佛乐" width="640" height="455" decoding="async">
+    <!-- 佛乐标志：飞天伎乐持排箫，莲花出水，法音流布（foyue.org 品牌标识）。
+         用底图而非 <img>，好按昼夜换图且只下其中一张；名字由右侧「佛乐」承担 -->
+    <span class="lotus" aria-hidden="true"></span>
     <span class="brand-text">
       <strong>佛乐</strong>
       <small>净土法音</small>
@@ -410,7 +411,7 @@
   <div class="dock">
     <div class="mini-line" aria-hidden="true"><i id="miniLine"></i></div>
     <button class="dock-art" id="miniArt" aria-label="展开播放器">
-      <img src="/img/logo-mark.png" alt="" width="640" height="455" decoding="async">
+      <span class="lotus" aria-hidden="true"></span>
     </button>
     <button class="dock-info" id="miniTitles" aria-label="展开播放器">
       <span class="mini-series" id="miniSeries"></span>
@@ -441,7 +442,7 @@
 
     <div class="pl-hero">
       <div class="pl-art">
-        <img class="pl-lotus" src="/img/logo-mark.png" alt="" width="640" height="455" decoding="async">
+        <span class="lotus pl-lotus" aria-hidden="true"></span>
       </div>
     </div>
 
