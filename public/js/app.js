@@ -409,6 +409,30 @@ const HOME_DOORS = [
     icon: '<rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/>' },
 ];
 
+// 首页 · 选佛谱门户（game.foyue.org 互动·十法界须弥山世界）
+// 自成一方星夜宇宙，金线与站内泥金呼应，在案头一眼可辨「这是另一重天地」
+function gameBannerHtml() {
+  return `<a class="home-game" href="https://game.foyue.org/">
+    <span class="hg-sky" aria-hidden="true"></span>
+    <span class="hg-emblem" aria-hidden="true">
+      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="7.6" r="2.1" fill="currentColor" stroke="none"/>
+        <path d="M20 2.6v-1.4M14.5 7.6h-1.4M25.5 7.6h1.4M16.2 3.8 15.2 2.8M23.8 3.8 24.8 2.8" opacity="0.7"/>
+        <path d="M17 14.6h6l2 4.2H15l2-4.2z"/>
+        <path d="M15 18.8h10l3 4.6H12l3-4.6z"/>
+        <path d="M12 23.4h16l3.2 4.8H8.8l3.2-4.8z"/>
+        <path d="M7.6 30.8c2.1 1.5 4.1 1.5 6.2 0s4.1-1.5 6.2 0 4.1 1.5 6.2 0" opacity="0.72"/>
+      </svg>
+    </span>
+    <span class="hg-main">
+      <span class="hg-tag">十法界 · 须弥山世界</span>
+      <strong>选佛谱</strong>
+      <em>掷「南无阿弥陀佛」六字轮，行十法界，从凡直到成佛</em>
+    </span>
+    <span class="hg-go">开始选佛 ›</span>
+  </a>`;
+}
+
 // 首页佛号：七首东林佛号全数陈列，点一首即进全屏播放器循环恭听
 function fohaoHomeHtml() {
   const s = catalog.series.find((x) => x.id === 'fohao');
@@ -440,6 +464,9 @@ function buildHome() {
     `<a class="grid-card" href="${d.href}">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
       <strong>${d.name}</strong><span>${esc(d.sub)}</span></a>`).join('') + '</div>';
+
+  // 选佛谱门户（互动·十法界须弥山，星夜点睛，跳转独立子域）
+  html += gameBannerHtml();
 
   // 佛号速取（极简两列，随手起一炉佛号循环恭听）
   html += fohaoHomeHtml();
@@ -2283,11 +2310,11 @@ function makeLivePoster(p) {
   const tw = ctx.measureText(chipText).width;
   const pw = tw + 64, px = W / 2 - pw / 2, py = cy + 38;
   rrPath(ctx, px, py, pw, 44, 22);
-  ctx.fillStyle = 'rgba(189, 58, 38, 0.08)';
+  ctx.fillStyle = 'rgba(176, 98, 74, 0.08)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(189, 58, 38, 0.35)';
+  ctx.strokeStyle = 'rgba(176, 98, 74, 0.35)';
   ctx.stroke();
-  ctx.fillStyle = '#bd3a26';
+  ctx.fillStyle = '#b0624a';
   ctx.beginPath();
   ctx.arc(px + 24, py + 22, 5, 0, Math.PI * 2);
   ctx.fill();
@@ -2316,7 +2343,7 @@ function makeLivePoster(p) {
     const frac = Math.min(1, lv.elapsed / lv.dur);
     if (frac > 0.01) {
       rrPath(ctx, bx, by, Math.max(8, bw * frac), 6, 3);
-      ctx.fillStyle = '#bd3a26';
+      ctx.fillStyle = '#b0624a';
       ctx.fill();
     }
     ctx.fillStyle = '#a08b6b';
@@ -2330,11 +2357,11 @@ function makeLivePoster(p) {
   // 大播放钮（朱砂圆 + 双层光晕 + 内细白环 + 圆角播放三角，邀人同闻）
   const pcx = W / 2, pcy = cy + 416, pr = 56;
   ctx.beginPath(); ctx.arc(pcx, pcy, pr + 16, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(189, 58, 38, 0.07)'; ctx.fill();
+  ctx.fillStyle = 'rgba(176, 98, 74, 0.07)'; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr + 8, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(189, 58, 38, 0.13)'; ctx.fill();
+  ctx.fillStyle = 'rgba(176, 98, 74, 0.13)'; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
-  ctx.fillStyle = '#bd3a26'; ctx.fill();
+  ctx.fillStyle = '#b0624a'; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr - 7, 0, Math.PI * 2);
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
   // 白色播放三角（圆角、光学右移居中）
@@ -2354,7 +2381,7 @@ function makeLivePoster(p) {
   const dp = bjParts(Date.now());
   ctx.textAlign = 'center';
   if (lv && lv.online > 0) {
-    ctx.fillStyle = '#bd3a26';
+    ctx.fillStyle = '#b0624a';
     ctx.font = `23px ${SERIF}`;
     ctx.fillText(T(`${lv.online} 位同修在此同闻`), W / 2, cy + 522);
   }
@@ -2622,7 +2649,7 @@ function cmtTimeHtml(ts) {
 }
 
 // 头像取色：按法名哈希取一色，同一人恒定（微信式一人一色）
-const AV_COLORS = ['#bd3a26', '#b0602b', '#5f7d54', '#48697b', '#8a6a34', '#7c5548', '#6d6a37', '#9d4c3c'];
+const AV_COLORS = ['#a04a35', '#b0602b', '#5f7d54', '#48697b', '#8a6a34', '#7c5548', '#6d6a37', '#9d4c3c'];
 function avColor(seed) {
   const s = String(seed || '莲'); let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -3725,7 +3752,11 @@ function updateMediaSession(ep, tag) {
     title: ep.title,
     artist: '大安法师',
     album: `${ep.seriesTitle}${tag ? ' · ' + tag : ''} · 佛乐`,
-    artwork: [{ src: '/icon-512.png', sizes: '512x512', type: 'image/png' }],
+    // 锁屏封面：品牌标志（宣纸底方图），多尺寸供系统挑选
+    artwork: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
   });
   setMS('play', () => audio.play().catch(() => {}));
   setMS('pause', () => audio.pause());

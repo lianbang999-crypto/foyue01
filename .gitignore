@@ -3,3 +3,11 @@ node_modules/
 .DS_Store
 scripts/vectors.ndjson
 .dev.vars
+scripts/__pycache__/
+
+# 根目录随手落下的出图（标志原稿已归档在 brand/）
+/*.png
+
+# 极乐世界资料库：本地素材 260M（含 3D 素材包大图），不进仓库。
+# 若要入库，请只挑文稿与 JSON 单独 git add -f。
+极乐世界资料库/

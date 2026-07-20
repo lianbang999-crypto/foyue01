@@ -5,10 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>佛乐 · 净土法音</title>
 <meta name="description" content="佛乐：净土法音道场。听经台、有声书、佛号念诵、讲记阅读、念佛计数、问法答疑。">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<link rel="canonical" href="https://foyue.org/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="佛乐 · 净土法音">
+<meta property="og:description" content="净土法音道场：听经台、有声书、佛号念诵、讲记阅读、念佛计数与问法答疑。">
+<meta property="og:url" content="https://foyue.org/">
+<meta property="og:site_name" content="佛乐 · 净土法音">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://foyue.org/img/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="佛乐 · 净土法音">
+<meta name="twitter:description" content="净土法音道场：听经、阅读、念佛与问法。">
+<meta name="twitter:image" content="https://foyue.org/img/og-cover.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://foyue.org/#organization",
+      "name": "佛乐 · 净土法音",
+      "url": "https://foyue.org/",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://foyue.org/img/logo-full.png"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://foyue.org/#website",
+      "name": "佛乐 · 净土法音",
+      "alternateName": "佛乐",
+      "url": "https://foyue.org/",
+      "inLanguage": "zh-CN",
+      "publisher": { "@id": "https://foyue.org/#organization" },
+      "hasPart": [
+        { "@id": "https://wenchao.foyue.org/#website" },
+        { "@id": "https://game.foyue.org/#website" }
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://wenchao.foyue.org/#website",
+      "name": "印光法师文钞 · 文白对照",
+      "url": "https://wenchao.foyue.org/",
+      "inLanguage": "zh-Hans",
+      "isPartOf": { "@id": "https://foyue.org/#website" },
+      "publisher": { "@id": "https://foyue.org/#organization" }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://game.foyue.org/#website",
+      "name": "选佛谱 · 十法界须弥山世界",
+      "url": "https://game.foyue.org/",
+      "inLanguage": "zh-Hans",
+      "isPartOf": { "@id": "https://foyue.org/#website" },
+      "publisher": { "@id": "https://foyue.org/#organization" }
+    }
+  ]
+}
+</script>
 <meta name="theme-color" content="#f3ecda">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="96x96">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="stylesheet" href="/css/style.css">
 <script src="/js/qrcode.js" defer></script><!-- 二维码生成（MIT，分享海报用） -->
 </head>
@@ -18,16 +81,8 @@
 
 <header class="top">
   <a class="brand" href="#home">
-    <svg class="lotus" viewBox="0 0 64 64" aria-hidden="true">
-      <!-- 佛乐标志「莲音」：三瓣莲花 + 两道法音涟漪（莲花出水，法音流布） -->
-      <g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
-        <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
-        <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
-        <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
-        <path d="M14 43 C22 50 42 50 50 43"/>
-        <path d="M21 51 C27 56 37 56 43 51"/>
-      </g>
-    </svg>
+    <!-- 佛乐标志：飞天伎乐持排箫，莲花出水，法音流布（foyue.org 品牌标识） -->
+    <img class="lotus" src="/img/logo-mark.png" alt="佛乐" width="640" height="455" decoding="async">
     <span class="brand-text">
       <strong>佛乐</strong>
       <small>净土法音</small>
@@ -355,15 +410,7 @@
   <div class="dock">
     <div class="mini-line" aria-hidden="true"><i id="miniLine"></i></div>
     <button class="dock-art" id="miniArt" aria-label="展开播放器">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
-          <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
-          <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
-          <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
-          <path d="M14 43 C22 50 42 50 50 43"/>
-          <path d="M21 51 C27 56 37 56 43 51"/>
-        </g>
-      </svg>
+      <img src="/img/logo-mark.png" alt="" width="640" height="455" decoding="async">
     </button>
     <button class="dock-info" id="miniTitles" aria-label="展开播放器">
       <span class="mini-series" id="miniSeries"></span>
@@ -394,15 +441,7 @@
 
     <div class="pl-hero">
       <div class="pl-art">
-        <svg class="pl-lotus" viewBox="0 0 64 64" aria-hidden="true">
-          <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
-            <path d="M32 10 C38 18 38 28 32 36 C26 28 26 18 32 10 Z"/>
-            <path d="M18 18 C26 21 31 28 31 36 C23 34 18 27 18 18 Z"/>
-            <path d="M46 18 C38 21 33 28 33 36 C41 34 46 27 46 18 Z"/>
-            <path d="M14 43 C22 50 42 50 50 43"/>
-            <path d="M21 51 C27 56 37 56 43 51"/>
-          </g>
-        </svg>
+        <img class="pl-lotus" src="/img/logo-mark.png" alt="" width="640" height="455" decoding="async">
       </div>
     </div>
 
@@ -676,6 +715,7 @@
 
 <footer>
   <p>南无阿弥陀佛</p>
+  <p class="site-network"><a href="https://wenchao.foyue.org/">印光法师文钞 · 文白对照</a><a href="https://game.foyue.org/">选佛谱 · 十法界须弥山世界</a></p>
 </footer>
 
 <!-- 移动端底部导航 -->

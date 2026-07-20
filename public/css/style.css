@@ -10,8 +10,10 @@
 }
 
 /* —— 全站色（昼） —— */
+/* 点睛色取自品牌标志（飞天伎乐）本身的赭红，另备标志的黛青作辅色 */
 body {
-  --c-zhusha: #bd3a26;   /* 朱砂：唯一点睛色 */
+  --c-zhusha: #b0624a;   /* 赭红：唯一点睛色，同标志披帛/莲花 */
+  --c-daiqing: #6f8b81;  /* 黛青：标志天衣色，辅色，不做点睛 */
   --gold-line: rgba(166, 130, 60, 0.4);   /* 泥金描线 */
   --gold-text: #8f6f2e;
 }
@@ -40,8 +42,9 @@ body[data-theme="night"] {
   --ink: #ead9bd; --ink-2: #ad9b7e; --ink-3: #7b6c55;
   --card: rgba(38, 32, 23, 0.64); --line: rgba(224, 196, 148, 0.13);
   --sky: linear-gradient(180deg, #0d0a07 0%, #131009 55%, #17130e 100%);
-  /* 夜间朱砂提亮，保证纸暗字明 */
-  --c-zhusha: #e06e56;
+  /* 夜间赭红提亮，保证纸暗字明 */
+  --c-zhusha: #d18a6c;
+  --c-daiqing: #8fada2;
   --gold-line: rgba(212, 172, 100, 0.32);
   --gold-text: #d2a75f;
 }
@@ -50,8 +53,8 @@ body[data-theme="night"] {
 body {
   --accent: var(--c-zhusha);
   /* 回退色（不支持 color-mix 的旧浏览器） */
-  --accent-soft: rgba(189, 58, 38, 0.4);
-  --accent-wash: rgba(189, 58, 38, 0.06);
+  --accent-soft: rgba(176, 98, 74, 0.4);
+  --accent-wash: rgba(176, 98, 74, 0.06);
   --accent-soft: color-mix(in srgb, var(--accent) 45%, var(--bg));
   --accent-wash: color-mix(in srgb, var(--accent) 7%, transparent);
 }
@@ -90,7 +93,12 @@ body {
   max-width: 720px; width: 100%; margin: 0 auto;
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
-.lotus { width: 34px; height: 34px; color: var(--c-zhusha); flex: none; }
+/* 品牌标志（横式图形）：按高对齐，宽度自适应 */
+.lotus { height: 34px; width: auto; flex: none; display: block; }
+/* 夜间宣纸转暗，标志描线略提亮以免闷进底色 */
+body[data-theme="night"] .lotus,
+body[data-theme="night"] .dock-art img,
+body[data-theme="night"] .pl-lotus { filter: brightness(1.22) saturate(1.05); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
 .brand-text strong { font-size: 1.18rem; font-weight: 600; letter-spacing: 0.12em; }
 .brand-text small { font-size: 0.7rem; color: var(--ink-2); letter-spacing: 0.06em; white-space: nowrap; }
@@ -219,6 +227,63 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
 .grid-card strong { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.08em; }
 .grid-card span { font-size: 0.74rem; color: var(--ink-3); letter-spacing: 0.04em; }
 @media (min-width: 560px) { .home-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* —— 首页 · 选佛谱门户（game.foyue.org · 互动十法界须弥山世界）——
+   自成一方星夜，深蓝夜幕 + 泥金光明顶，与站内泥金描线同源，作案头唯一「异色之窗」 */
+.home-game {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  text-decoration: none; font-family: var(--serif); color: #f4e8c8;
+  background:
+    radial-gradient(130% 150% at 14% -20%, rgba(232, 199, 119, 0.20), transparent 52%),
+    radial-gradient(120% 130% at 108% 130%, rgba(96, 132, 196, 0.16), transparent 58%),
+    linear-gradient(148deg, #111524 0%, #0a0d18 58%, #0c1020 100%);
+  border: 1px solid rgba(214, 178, 106, 0.34);
+  border-radius: 16px; padding: 15px 17px; margin: 4px 0 14px;
+  box-shadow: 0 12px 30px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 246, 224, 0.05);
+  transition: border-color 0.28s, transform 0.18s ease, box-shadow 0.28s;
+}
+.home-game:hover { border-color: rgba(232, 202, 130, 0.62); box-shadow: 0 16px 42px -20px rgba(0, 0, 0, 0.82), inset 0 1px 0 rgba(255, 246, 224, 0.07); }
+.home-game:active { transform: scale(0.99); }
+/* 极乐光晕：左上一点星光缓缓呼吸（reduced-motion 下自动静止） */
+.hg-sky {
+  position: absolute; top: -40%; left: -12%; width: 62%; height: 180%;
+  background: radial-gradient(circle at 50% 50%, rgba(240, 214, 150, 0.16), transparent 62%);
+  pointer-events: none; animation: hgBreath 7.5s ease-in-out infinite;
+}
+@keyframes hgBreath { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.hg-emblem {
+  position: relative; flex: none; width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center; color: #ecca7e;
+  background: radial-gradient(circle at 50% 34%, rgba(236, 202, 126, 0.26), rgba(236, 202, 126, 0.04) 72%);
+  border: 1px solid rgba(232, 202, 130, 0.42);
+}
+.hg-emblem svg { width: 32px; height: 32px; }
+.hg-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hg-tag {
+  font-size: 0.64rem; letter-spacing: 0.2em; color: #d9b871;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.hg-tag::before { content: ''; width: 4px; height: 4px; flex: none; background: currentColor; transform: rotate(45deg); border-radius: 1px; opacity: 0.85; }
+.hg-main strong { font-size: 1.12rem; font-weight: 600; letter-spacing: 0.16em; color: #f7edd0; }
+.hg-main em {
+  font-style: normal; font-size: 0.72rem; letter-spacing: 0.02em; line-height: 1.4;
+  color: rgba(228, 213, 176, 0.72);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hg-go {
+  position: relative; flex: none; align-self: center; white-space: nowrap;
+  color: #241b0a; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #eccf8a, #d3ad63);
+  border-radius: 999px; padding: 6px 13px;
+  box-shadow: 0 4px 12px -6px rgba(236, 202, 126, 0.6);
+}
+@media (max-width: 400px) {
+  .home-game { gap: 12px; padding: 14px 15px; }
+  .hg-emblem { width: 42px; height: 42px; }
+  .hg-emblem svg { width: 28px; height: 28px; }
+  .hg-go { font-size: 0.74rem; padding: 5px 11px; }
+}
 
 /* —— 首页 · 今日案头卡 —— */
 .home-card {
@@ -504,11 +569,11 @@ body[data-nf-playing="false"] #btnNf::after {
 .mini-line { position: absolute; left: 0; right: 0; top: 0; height: 3px; }
 .mini-line i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 1s linear; }
 .dock-art {
-  flex: none; width: 40px; height: 40px; padding: 6px; border-radius: 11px;
+  flex: none; width: 54px; height: 40px; padding: 5px 6px; border-radius: 11px;
   background: var(--accent-wash); border: 1px solid var(--line);
   color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.dock-art svg { width: 100%; height: 100%; }
+.dock-art img { width: 100%; height: 100%; object-fit: contain; }
 .dock-info { flex: 1; min-width: 0; background: transparent; border: 0; text-align: left; cursor: pointer; padding: 0; font-family: var(--serif); }
 .mini-series { display: block; color: var(--ink-3); font-size: 0.7rem; letter-spacing: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mini-ep { display: block; color: var(--ink); font-size: 0.92rem; font-weight: 600; margin-top: 2px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -542,7 +607,7 @@ body[data-nf-playing="false"] #btnNf::after {
 .pl-art::before { content: ''; position: absolute; inset: -6%; border-radius: 50%; border: 1px solid var(--gold-line); }
 .pl-art::after { content: ''; position: absolute; inset: 15%; border-radius: 50%; border: 1px solid var(--gold-line); opacity: 0.5; }
 .pl-lotus {
-  width: 56%; height: 56%; color: var(--accent);
+  width: 84%; height: auto; object-fit: contain;
   animation: plBreathe 7s ease-in-out infinite; animation-play-state: paused;
 }
 body[data-od-playing="true"] .pl-lotus { animation-play-state: running; }
@@ -1392,7 +1457,6 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 @media (max-width: 719px) {
   .tabs { display: none; }
   main { padding-bottom: 90px; }
-  footer { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
   #mini.collapsed { bottom: calc(72px + env(safe-area-inset-bottom)); }
   body[data-mode="od"] main { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
 }
@@ -1405,7 +1469,18 @@ footer p:first-child {
 }
 footer p:first-child::before { content: ''; width: 38px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-line)); }
 footer p:first-child::after { content: ''; width: 38px; height: 1px; background: linear-gradient(270deg, transparent, var(--gold-line)); }
+.site-network {
+  margin: 10px 0 0; font-size: 13px;
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: center; gap: 8px 16px;
+}
+.site-network a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--gold-line); transition: color 0.2s; }
+.site-network a:hover { color: var(--gold-text); }
 .foot-small { font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.08em; }
+/* 移动端：页脚需让开固定底部导航（置于 footer 简写 padding 之后方能生效） */
+@media (max-width: 719px) {
+  footer { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+}
 
 /* 无障碍与动效偏好 */
 @media (prefers-reduced-motion: reduce) {
