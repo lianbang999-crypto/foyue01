@@ -124,9 +124,9 @@ function showLibError() {
   document.body.appendChild(el);
 }
 
-// 外观偏好：auto 跟随时段（由 tick 依直播时段流转）/ day 固定浅色 / night 固定深色
+// 外观偏好：首次访问默认全天浅色；用户仍可选择跟随时段或固定深色。
 function applyThemePref() {
-  const pref = localStorage.getItem('fy.theme') || 'auto';
+  const pref = localStorage.getItem('fy.theme') || 'day';
   document.querySelectorAll('#themeChips button').forEach((b) =>
     b.classList.toggle('on', b.dataset.theme === pref));
   let theme = pref;
@@ -296,8 +296,8 @@ function tick() {
   $('#nowDate').textContent = dateStr;
   $('#homeDate').textContent = dateStr;
 
-  // 外观：跟随时段（auto）自动昼夜流转；或用户固定浅色/深色
-  const themePref = localStorage.getItem('fy.theme') || 'auto';
+  // 外观：默认全天浅色；用户选择 auto 时才随直播时段昼夜流转
+  const themePref = localStorage.getItem('fy.theme') || 'day';
   const theme = themePref === 'auto' ? item.block.theme : themePref;
   document.body.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]')
