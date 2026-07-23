@@ -19,6 +19,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["wrangler", "dev", "--port", "8788"],
       "port": 8788
+    },
+    {
+      "name": "foyue-shop",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/bincai/Downloads/foyue-shop && npx wrangler dev --port 8790"],
+      "port": 8790
     }
   ]
 }

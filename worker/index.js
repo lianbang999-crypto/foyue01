@@ -29,6 +29,9 @@ export default {
     if (url.pathname === '/api/i18n') {
       return serveI18n(request, env, ctx);
     }
+    if (url.pathname === '/api/translate') {
+      return serveTranslate(request, env, ctx);
+    }
     if (url.pathname === '/api/cmt') {
       return serveCmt(request, env);
     }
@@ -168,6 +171,127 @@ async function serveI18n(request, env, ctx) {
   }
 
   return json({ map });
+}
+
+/* ================= 正文 / 经典 多语言（整站翻译） =================
+   POST /api/translate {lang, texts[]} → { map:{原文:译文}, model, note }
+   与 /api/i18n 分工：i18n 走免费小模型只翻界面标签；本接口走 OpenRouter 高质量模型，
+   翻讲记正文 / 经典 / 长段落，供 game·wenchao·foyue 三站「AI 翻译」按钮整站调用。
+   铁律：机器翻译只作参考，中文原文为准；前端并列展示、可随时切回原文，绝不销毁原文。
+   逐条 SHA-256 边缘缓存（正文稳定、命中率高，缓存 90 天）；跨站 CORS 放行 *.foyue.org。 */
+
+const TRANS_LANGS = {
+  en: 'English', ja: 'Japanese', ko: 'Korean', 'zh-Hant': 'Traditional Chinese',
+  fr: 'French', de: 'German', es: 'Spanish', pt: 'Portuguese', it: 'Italian',
+  ru: 'Russian', th: 'Thai', vi: 'Vietnamese', id: 'Indonesian', hi: 'Hindi', ar: 'Arabic',
+};
+const TRANS_NOTE = 'AI机器翻译，仅供参考，以中文原文为准';
+
+// 只放行 foyue.org 及其子域（game / wenchao 等），外加本地开发
+const ALLOW_ORIGIN = /^https?:\/\/([a-z0-9-]+\.)?foyue\.org$|^http:\/\/localhost(:\d+)?$/i;
+function corsHeaders(request) {
+  const origin = request.headers.get('Origin') || '';
+  const h = { Vary: 'Origin' };
+  if (ALLOW_ORIGIN.test(origin)) {
+    h['Access-Control-Allow-Origin'] = origin;
+    h['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+    h['Access-Control-Allow-Headers'] = 'Content-Type';
+    h['Access-Control-Max-Age'] = '86400';
+  }
+  return h;
+}
+const corsJson = (request, data, status = 200) =>
+  new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(request) },
+  });
+
+async function transCacheKey(model, lang, text) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`trans-v1:${model}:${lang}${text}`));
+  const hex = [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return new Request(`https://trans-cache.bojingtai.internal/${lang}/${hex}`);
+}
+
+async function serveTranslate(request, env, ctx) {
+  // CORS 预检
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request) });
+  if (request.method !== 'POST') return corsJson(request, { error: 'Method Not Allowed' }, 405);
+  if (!env.OPENROUTER_KEY) return corsJson(request, { error: '翻译服务未配置' }, 503);
+
+  const model = env.OR_TRANSLATE_MODEL || 'deepseek/deepseek-chat';
+
+  let lang, texts;
+  try {
+    const body = await request.json();
+    lang = String(body.lang || '');
+    texts = (Array.isArray(body.texts) ? body.texts : [])
+      .map((t) => String(t).replace(/\s+/g, ' ').trim()).filter((t) => t && t.length <= 2000);
+  } catch { return corsJson(request, { error: 'Bad Request' }, 400); }
+  if (!TRANS_LANGS[lang] || !texts.length) return corsJson(request, { error: 'Bad Request' }, 400);
+  texts = [...new Set(texts)].slice(0, 40);   // 每批最多 40 段，前端自行分批
+
+  // 先取边缘缓存，只把没见过的送模型
+  const map = {};
+  const misses = [];
+  for (const t of texts) {
+    const hit = await caches.default.match(await transCacheKey(model, lang, t));
+    if (hit) map[t] = await hit.text();
+    else misses.push(t);
+  }
+
+  if (misses.length) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    try {
+      if (env.TRANS_RL) {
+        const { success } = await env.TRANS_RL.limit({ key: ip });
+        if (!success) return corsJson(request, { error: '翻译请求太频繁，请稍候再试' }, 429);
+      }
+    } catch { /* 限流器故障不阻断 */ }
+
+    const or = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.OPENROUTER_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://foyue.org',
+        'X-Title': 'Foyue Buddhist Translator',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content:
+            'You are a professional translator of Chinese Pure Land Buddhist teachings and scriptures. '
+            + `Translate each Chinese passage into ${TRANS_LANGS[lang]}.\n`
+            + 'Rules:\n'
+            + '- Use established Buddhist terminology (南无阿弥陀佛 → Namo Amitābha; 净土 → Pure Land; 往生 → rebirth in the Pure Land; 娑婆 → Sahā world).\n'
+            + '- Be faithful and accurate. Do NOT add, omit, summarize, or reinterpret. This is a reference rendering of sacred/teaching material — fidelity over embellishment.\n'
+            + '- Preserve paragraph meaning, numbers, proper names of masters and sutras (add romanization where helpful), and target-language punctuation.\n'
+            + '- Reply with ONLY a JSON array of translated strings, same length and order as the input array. No commentary, no markdown.' },
+          { role: 'user', content: JSON.stringify(misses) },
+        ],
+        temperature: 0.2, max_tokens: 4000,
+      }),
+    });
+    if (!or.ok) return corsJson(request, { error: '翻译服务暂不可用' }, 502);
+    let out = [];
+    try {
+      const raw = (await or.json()).choices?.[0]?.message?.content || '';
+      const m = raw.match(/\[[\s\S]*\]/);
+      out = JSON.parse(m ? m[0] : raw);
+    } catch { out = []; }
+    if (Array.isArray(out) && out.length === misses.length) {
+      for (let i = 0; i < misses.length; i++) {
+        const v = String(out[i] ?? '').trim();
+        if (!v) continue;
+        map[misses[i]] = v;
+        const key = await transCacheKey(model, lang, misses[i]);
+        const res = new Response(v, { headers: { 'Cache-Control': 'public, max-age=7776000' } }); // 90 天
+        if (ctx) ctx.waitUntil(caches.default.put(key, res));
+      }
+    }
+  }
+
+  return corsJson(request, { map, model, note: TRANS_NOTE });
 }
 
 /* ================= 直播留言（同修在此） =================
