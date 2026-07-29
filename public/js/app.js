@@ -133,7 +133,12 @@ function applyThemePref() {
   if (pref === 'auto') theme = station.liveAt(stationNow()).item.block.theme;
   document.body.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', theme === 'night' ? '#17130e' : '#f3ecda');
+    ?.setAttribute('content', themeMetaColor(theme));
+}
+
+// 系统状态栏底色须与主题纸色一致，否则安全区上下露出异色条
+function themeMetaColor(theme) {
+  return theme === 'night' ? '#17130e' : theme === 'dunhuang' ? '#f1e6cf' : '#f3ecda';
 }
 
 /* ================= 简繁转换 =================
@@ -236,6 +241,7 @@ let routeSeq = 0;
 async function route() {
   const seq = ++routeSeq;
   const h = location.hash || '#home';
+  $('#zenOverlay').hidden = true;   // 静念全屏随换页收起（如安卓返回键退出计数页）
   // 莲友共修群：全屏覆盖的独立模块，底层视图保持不变（可深链/子域名直达）
   if (h.startsWith('#qun')) { openChatRoom(); return; }
   chatBackHash = h;                                   // 记住底层页，供聊天室返回
@@ -301,7 +307,7 @@ function tick() {
   const theme = themePref === 'auto' ? item.block.theme : themePref;
   document.body.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', theme === 'night' ? '#17130e' : '#f3ecda');
+    ?.setAttribute('content', themeMetaColor(theme));
 
   if (!liveItem || liveItem.start !== item.start) {
     liveItem = item;
@@ -1645,10 +1651,11 @@ function vibrate(pattern) {
 function beadFull() {
   vibrate([24, 60, 36]);
   playMuyu(); setTimeout(playMuyu, 160);
-  const b = $('#btnBead');
-  b.classList.remove('full');
-  void b.offsetWidth;   // 重启动画
-  b.classList.add('full');
+  for (const el of [$('#btnBead'), $('#zenNum')]) {
+    el.classList.remove('full');
+    void el.offsetWidth;   // 重启动画
+    el.classList.add('full');
+  }
 }
 
 function goalDone() {
@@ -1681,6 +1688,11 @@ function renderCount() {
   $('#njRing').style.strokeDashoffset = String(RING_LEN * (1 - frac));
   $('#countSub').textContent =
     `本串 ${mine % 108} / 108　·　${nj.goal ? `定课 ${dayTotal} / ${nj.goal}` : '未设定课'}`;
+  // 静念全屏同步（层未开时更新也无妨，开启瞬间即是现值）
+  $('#zenName').textContent = it.name;
+  $('#zenNum').textContent = mine;
+  $('#zenSub').textContent =
+    `今日 · 声　·　本串 ${mine % 108} / 108${nj.goal ? `　·　定课 ${dayTotal} / ${nj.goal}` : ''}`;
 }
 
 /* ── 木鱼音效（Web Audio 合成，无需音频文件） ── */
@@ -1712,16 +1724,15 @@ async function requestWake() {
 }
 async function releaseWake() { try { await _wakeLock?.release(); } catch { /* 忽略 */ } _wakeLock = null; }
 
-/* ── 点击涟漪 ── */
-function spawnBeadRipple(e) {
-  const bead = $('#btnBead');
-  const r = bead.getBoundingClientRect();
+/* ── 点击涟漪（大念珠与静念全屏共用） ── */
+function spawnBeadRipple(host, e) {
+  const r = host.getBoundingClientRect();
   const x = (e.clientX || r.left + r.width / 2) - r.left;
   const y = (e.clientY || r.top + r.height / 2) - r.top;
   const s = document.createElement('span');
   s.className = 'bead-ripple';
   s.style.left = x + 'px'; s.style.top = y + 'px';
-  bead.appendChild(s);
+  host.appendChild(s);
   setTimeout(() => s.remove(), 620);
 }
 
@@ -1765,6 +1776,8 @@ function renderHubSheet() {
     <button class="sheet-row" data-hub="history"><span class="pr-main"><span>念佛历史</span>
       <small class="pr-stat">累计 ${njGrandTotal().toLocaleString()} 声 · 连续 ${njStreak()} 日</small></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="huixiang"><span class="pr-main"><span>回向偈</span></span><span class="hub-go">›</span></button>
+    <button class="sheet-row" data-hub="reset"><span class="pr-main"><span>重置今日</span>
+      <small class="pr-stat">当前功课今日归零 · 累计同步扣除</small></span><span class="hub-go">›</span></button>
     <div class="hub-toggles">
       ${tg('fy.muyu', false, '木鱼音效')}
       ${tg('fy.wake', true, '屏幕常亮')}
@@ -3269,17 +3282,16 @@ function bindEvents() {
   });
 
   // 念佛计数器：大念珠（涟漪 + 木鱼 + 计一声）· 十念 · 撤销 · 重置
-  $('#btnBead').addEventListener('click', (e) => { spawnBeadRipple(e); playMuyu(); addNj(1); });
+  $('#btnBead').addEventListener('click', (e) => { spawnBeadRipple($('#btnBead'), e); playMuyu(); addNj(1); });
   $('#btnTen').addEventListener('click', () => addNj(10));
   $('#btnUndo').addEventListener('click', () => addNj(-1));
-  $('#btnReset').addEventListener('click', () => {
-    // 重置＝当前功课今日归零（累计同步扣除今日声数），须确认
-    const it = njItem();
-    const mine = (nj.days[bjDateKey()] || {})[it.id] || 0;
-    if (!mine) { toast('「' + it.name + '」今日尚未计数'); return; }
-    if (!window.confirm(`将「${it.name}」今日 ${mine} 声清零？\n累计将同步扣除这 ${mine} 声。`)) return;
-    addNj(-mine);
-    toast('今日计数已清零');
+
+  // 静念全屏：整屏皆是念珠，轻触任意处计一声（闭目、行走念佛不必找珠）
+  $('#btnZen').addEventListener('click', () => { renderCount(); $('#zenOverlay').hidden = false; });
+  $('#btnZenExit').addEventListener('click', (e) => { e.stopPropagation(); $('#zenOverlay').hidden = true; });
+  $('#zenOverlay').addEventListener('click', (e) => {
+    if (e.target.closest('.zen-exit')) return;
+    spawnBeadRipple($('#zenOverlay'), e); playMuyu(); addNj(1);
   });
 
   // 功课中心（管理 / 定课 / 历史 / 回向 / 器物开关）+ 主屏快捷入口
@@ -3420,6 +3432,16 @@ function bindEvents() {
       } else if (nav.dataset.hub === 'huixiang') {
         closeCntSheet();
         $('#hxOverlay').hidden = false;
+      } else if (nav.dataset.hub === 'reset') {
+        // 重置＝当前功课今日归零（累计同步扣除今日声数），须确认；
+        // 从主屏移进功课中心，主屏不留破坏性按键
+        const it = njItem();
+        const mine = (nj.days[bjDateKey()] || {})[it.id] || 0;
+        if (!mine) { toast('「' + it.name + '」今日尚未计数'); return; }
+        if (!window.confirm(`将「${it.name}」今日 ${mine} 声清零？\n累计将同步扣除这 ${mine} 声。`)) return;
+        addNj(-mine);
+        closeCntSheet();
+        toast('今日计数已清零');
       }
     } else if (cntSheetMode === 'trail') {
       // 足迹：续听（按钮）/ 续读（锚点）—— 均关闭弹层

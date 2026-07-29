@@ -317,6 +317,7 @@
           <button data-theme="auto">跟随时段</button>
           <button data-theme="day">浅色</button>
           <button data-theme="night">深色</button>
+          <button data-theme="dunhuang">敦煌</button>
         </div>
       </div>
       <div class="wode-set">
@@ -344,7 +345,7 @@
         <span class="wr-go">›</span>
       </button>
     </div>
-    <p class="ai-note">计数与收听进度只保存在本机 · 换机或清数据前请先在「备份与迁移」中导出</p>
+    <p class="ai-note">数据只存本机 · 换机前请先在「备份与迁移」中导出</p>
   </section>
 
   <!-- 念佛计数器（极简主屏：功课名 + 大念珠 + 三键；其余归「功课」中心） -->
@@ -373,7 +374,7 @@
       <div class="nj-actions">
         <button id="btnTen">十念 +10</button>
         <button id="btnUndo">撤销 −1</button>
-        <button id="btnReset">重 置</button>
+        <button id="btnZen">静 念</button>
       </div>
     </div>
   </section>
@@ -623,6 +624,17 @@
     <button class="hx-btn" id="btnGdHx">回 向</button>
     <small>轻触任意处返回</small>
   </div>
+</div>
+
+<!-- 静念全屏计数：整屏皆是念珠，抬手即计，闭目行走皆可念 -->
+<div id="zenOverlay" hidden>
+  <button class="zen-exit" id="btnZenExit">收 起</button>
+  <div class="zen-center" aria-hidden="true">
+    <small class="zen-name" id="zenName"></small>
+    <strong id="zenNum">0</strong>
+    <small class="zen-sub" id="zenSub"></small>
+  </div>
+  <p class="zen-hint">轻触任意处 · 计一声</p>
 </div>
 
 <!-- 选中文字浮标：划线 + 分享法布施 -->

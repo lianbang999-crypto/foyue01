@@ -2,7 +2,8 @@
    设计语言：写经格局 —— 纸、墨、一枚朱印、几道金界栏。
    全站一套配色：宣纸为底，墨字三阶，朱砂是唯一点睛色（只给可点的、
    正在进行的），泥金只做结构细线（标题引线/分隔/页脚），不做按钮。
-   页面氛围随播出时段流转：晨曦 / 纸墨（昼）/ 暮色 / 夜烛。 */
+   页面氛围随播出时段流转：晨曦 / 纸墨（昼）/ 暮色 / 夜烛。
+   另备「敦煌」矿彩主题（我的→设置→主题 手动选择，见 data-theme="dunhuang"）。 */
 
 :root {
   --serif: "Noto Serif SC", "Songti SC", "STSongti-SC-Regular", "STSong",
@@ -47,6 +48,20 @@ body[data-theme="night"] {
   --c-daiqing: #8fada2;
   --gold-line: rgba(212, 172, 100, 0.32);
   --gold-text: #d2a75f;
+}
+/* —— 敦煌 · 矿彩主题（我的→设置→主题 手动选择，不入时段轮转） ——
+   四色实测取自品牌标志：土红 #983a26（披帛/璎珞）、石绿 #81947a（天衣/
+   宝瓶箜篌）、赭金 #d49b59（祥云/环带）、墨褐 #442818（发髻）。
+   洞窟暖纸为底，土红点睛，赭金界栏更显，石绿备作辅色。 */
+body[data-theme="dunhuang"] {
+  --bg: #f1e6cf; --bg-deep: #e7d6b4;
+  --ink: #3c2a18; --ink-2: #75603f; --ink-3: #a3895f;
+  --card: rgba(253, 247, 233, 0.72); --line: rgba(107, 78, 44, 0.18);
+  --sky: linear-gradient(180deg, #ecd9b4 0%, #efe0c2 48%, #f1e6cf 100%);
+  --c-zhusha: #9c3b26;
+  --c-daiqing: #6f8b6d;
+  --gold-line: rgba(178, 128, 58, 0.5);
+  --gold-text: #96702c;
 }
 
 /* —— 点睛色：全站统一朱砂 —— */
@@ -94,11 +109,11 @@ body {
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
 /* —— 品牌标志 ——
-   横式图形（宽高 640×455）。用底图承载，好按昼夜换两张不同的图，
-   且浏览器只会下用得上的那张。夜烛模式换「夜墨版」：日间版靠一批极浅的
-   描线勾飞天身姿，那些线落在夜色里会整片消失，夜版把浅线补足并整体提亮。 */
+   云纹圆章构图（宽高 1074×1089，近正方）。用底图承载，好按昼夜换两张
+   不同的图，且浏览器只会下用得上的那张。夜烛模式换「夜墨版」：矿彩
+   整体抬明度、保色相，宣纸上沉稳的颜色落到夜色里仍浮得起来。 */
 .lotus {
-  flex: none; display: block; height: 34px; aspect-ratio: 640 / 455;
+  flex: none; display: block; height: 34px; aspect-ratio: 1074 / 1089;
   background: url("/img/logo-mark.png") center / contain no-repeat;
 }
 body[data-theme="night"] .lotus { background-image: url("/img/logo-mark-night.png"); }
@@ -788,10 +803,11 @@ body[data-mode="od"] main { padding-bottom: 96px; }
 .theme-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .theme-chips button {
   font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.8rem; padding: 5px 12px; cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
+  border-radius: 999px; color: var(--ink-2); font-size: 0.8rem; padding: 6px 13px; cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
-.theme-chips button.on { color: var(--c-zhusha); border-color: var(--accent-soft); }
+.theme-chips button:active { background: var(--accent-wash); }
+.theme-chips button.on { color: var(--c-zhusha); border-color: var(--accent-soft); background: var(--accent-wash); }
 
 /* —— 念佛计数器页 —— */
 .count-label { text-align: center; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.3em; text-indent: 0.3em; margin-top: 4px; }
@@ -934,6 +950,35 @@ body[data-mode="od"] main { padding-bottom: 96px; }
 .cal-cell.today i { color: var(--c-zhusha); }
 .cal-total { text-align: center; color: var(--ink-2); font-size: 0.84rem; margin-top: 14px; letter-spacing: 0.06em; }
 
+/* —— 静念全屏计数：整屏皆是念珠 ——
+   z-index 38 压在计数页之上、圆满/回向层（40）之下：
+   静念中定课圆满，圆满层照常浮现在最上。 */
+#zenOverlay {
+  position: fixed; inset: 0; z-index: 38; overflow: hidden;
+  background: var(--sky); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+#zenOverlay[hidden] { display: none; }
+.zen-exit {
+  position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px;
+  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
+  border-radius: 999px; color: var(--ink-3); font-size: 0.8rem; padding: 6px 15px;
+  letter-spacing: 0.14em; text-indent: 0.14em; cursor: pointer;
+}
+.zen-center { text-align: center; pointer-events: none; }
+.zen-name { display: block; color: var(--ink-2); font-size: 0.95rem; letter-spacing: 0.3em; text-indent: 0.3em; margin-bottom: 22px; }
+#zenNum {
+  display: block; color: var(--ink); font-weight: 600; line-height: 1;
+  font-size: clamp(4.2rem, 24vw, 6.4rem); font-variant-numeric: tabular-nums;
+}
+#zenNum.full { animation: bead-pulse 0.7s ease; }
+.zen-sub { display: block; margin-top: 18px; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; }
+.zen-hint {
+  position: absolute; left: 0; right: 0; bottom: max(28px, env(safe-area-inset-bottom));
+  text-align: center; color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.2em; text-indent: 0.2em;
+}
+
 /* 回向偈 / 定课圆满 全屏静念层 */
 #hxOverlay, #gdOverlay {
   position: fixed; inset: 0; z-index: 40; cursor: pointer;
@@ -963,6 +1008,7 @@ body[data-mode="od"] main { padding-bottom: 96px; }
   transition: border-color 0.25s;
 }
 .wode-row:hover { border-color: var(--accent-soft); }
+.wode-row:active { background: var(--accent-wash); }
 .wr-ic { flex: none; width: 19px; height: 19px; color: var(--ink-3); display: flex; }
 .wr-ic svg { width: 100%; height: 100%; }
 .wr-t { flex: 1; text-align: left; }
