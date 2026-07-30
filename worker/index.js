@@ -33,7 +33,16 @@ export default {
       return serveTranslate(request, env, ctx);
     }
     if (url.pathname === '/api/cmt') {
-      return serveCmt(request, env);
+      // 跨域放行：game 等子站也能读写留言（预检开放 GET/POST，业务逻辑不动 serveCmt）
+      if (request.method === 'OPTIONS') {
+        const h = corsHeaders(request);
+        if (h['Access-Control-Allow-Origin']) h['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
+        return new Response(null, { status: 204, headers: h });
+      }
+      return withCors(await serveCmt(request, env), request);
+    }
+    if (url.pathname === '/api/report') {
+      return serveReport(request, env);
     }
     if (url.pathname === '/api/like') {
       return serveLike(request, env);
@@ -205,6 +214,16 @@ const corsJson = (request, data, status = 200) =>
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders(request) },
   });
+
+// 给既有响应补跨域头：Origin 命中白名单时回显 + Vary（路由层套用，不动原处理函数逻辑）
+function withCors(resp, request) {
+  const origin = request.headers.get('Origin') || '';
+  if (!ALLOW_ORIGIN.test(origin)) return resp;
+  const out = new Response(resp.body, resp);   // 复制响应后改头（原响应头可能不可变）
+  out.headers.set('Access-Control-Allow-Origin', origin);
+  out.headers.append('Vary', 'Origin');
+  return out;
+}
 
 async function transCacheKey(model, lang, text) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`trans-v1:${model}:${lang}${text}`));
@@ -387,6 +406,51 @@ async function serveCmt(request, env) {
   return json({ ok: true, id: r.meta.last_row_id });
 }
 
+/* ================= 报错 / 纠错上报 =================
+   POST /api/report {dev,site,kind,target,text,contact} → { ok, id }
+   主站与游戏站共用（CORS 放行 *.foyue.org），后台 admin 统一处理。 */
+
+async function serveReport(request, env) {
+  // CORS 预检
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(request) });
+  if (request.method !== 'POST') return corsJson(request, { error: 'Method Not Allowed' }, 405);
+
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  let dev, site, kind, target, text, contact;
+  try {
+    const body = await request.json();
+    dev = String(body.dev || '').trim();
+    site = String(body.site || '').trim().slice(0, 20);
+    kind = String(body.kind || '').replace(/\s+/g, ' ').trim().slice(0, 20);
+    target = String(body.target || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    text = String(body.text || '').replace(/\s+/g, ' ').trim();
+    contact = String(body.contact || '').replace(/\s+/g, ' ').trim().slice(0, 100);
+  } catch { return corsJson(request, { error: 'Bad Request' }, 400); }
+  if (!/^[a-zA-Z0-9-]{8,40}$/.test(dev)) return corsJson(request, { error: 'Bad Request' }, 400);
+  if (site !== 'game' && site !== 'foyue') site = '';   // 来源只认两站，其余归空
+  if (!text) return corsJson(request, { error: '请填写问题描述' }, 400);
+  if (text.length > 300) return corsJson(request, { error: '描述最长 300 字' }, 400);
+  const ua = (request.headers.get('User-Agent') || '').slice(0, 200);
+
+  // 频控：REPORT_RL 优先，缺省退用留言限流 CMT_RL；限流器故障不阻断
+  try {
+    const rl = env.REPORT_RL || env.CMT_RL;
+    if (rl) {
+      const { success } = await rl.limit({ key: `${dev}:${ip}` });
+      if (!success) return corsJson(request, { error: '提交太频繁，请稍候再试' }, 429);
+    }
+  } catch { /* 限流器故障不阻断 */ }
+
+  // 封禁校验（与留言共用 banned 表）
+  const ban = await env.DB.prepare('SELECT dev FROM banned WHERE dev = ?').bind(dev).first();
+  if (ban) return corsJson(request, { error: '上报功能暂不可用' }, 403);
+
+  const r = await env.DB.prepare(
+    'INSERT INTO reports (dev,site,kind,target,text,contact,ua,status,ts) VALUES (?,?,?,?,?,?,?,?,?)')
+    .bind(dev, site, kind, target, text, contact, ua, 'open', Date.now()).run();
+  return corsJson(request, { ok: true, id: r.meta.last_row_id });
+}
+
 /* ================= 随喜（功德点赞，按集计数） =================
    GET  /api/like?ep=<集>&dev=<设备>  → { count, liked }
    POST /api/like {ep,dev}            → 切换随喜（同设备同集只算一次），返回最新 { count, liked } */
@@ -459,6 +523,15 @@ async function serveAdmin(request, env, url) {
       'SELECT c.id,c.dev,c.name,c.text,c.ep,c.ts,(b.dev IS NOT NULL) banned FROM comments c LEFT JOIN banned b ON b.dev = c.dev ORDER BY c.id DESC LIMIT 200').all();
     return json({ items: results });
   }
+  if (request.method === 'GET' && path === 'reports') {
+    // 报错/纠错列表：?status=open|done|ignored 过滤，缺省全部；openCount 供概览与标题计数
+    const st = String(url.searchParams.get('status') || '');
+    const { results } = ['open', 'done', 'ignored'].includes(st)
+      ? await env.DB.prepare('SELECT id,dev,site,kind,target,text,contact,ua,status,ts FROM reports WHERE status = ? ORDER BY id DESC LIMIT 200').bind(st).all()
+      : await env.DB.prepare('SELECT id,dev,site,kind,target,text,contact,ua,status,ts FROM reports ORDER BY id DESC LIMIT 200').all();
+    const openCount = (await env.DB.prepare("SELECT COUNT(*) n FROM reports WHERE status = 'open'").first()).n;
+    return json({ items: results, openCount });
+  }
   if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   let body;
@@ -480,6 +553,14 @@ async function serveAdmin(request, env, url) {
   if (path === 'notice') {
     await env.DB.prepare('INSERT OR REPLACE INTO meta (k,v) VALUES (?,?)')
       .bind('notice', String(body.text || '').trim().slice(0, 200)).run();
+    return json({ ok: true });
+  }
+  if (path === 'reports/mark') {
+    // 报错处理状态流转：open（待处理）/ done（已办）/ ignored（忽略）
+    const id = Number(body.id);
+    const status = String(body.status || '');
+    if (!id || !['open', 'done', 'ignored'].includes(status)) return new Response('Bad Request', { status: 400 });
+    await env.DB.prepare('UPDATE reports SET status = ? WHERE id = ?').bind(status, id).run();
     return json({ ok: true });
   }
   if (path === 'badwords') {

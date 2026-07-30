@@ -31,7 +31,8 @@
     "OR_TRANSLATE_MODEL": "deepseek/deepseek-chat"
   },
   // 接口限流：问道每 IP 每分钟 8 次；留言每 IP 每分钟 6 条；朗读每 IP 每分钟 20 段；
-  // 界面翻译每 IP 每分钟 20 批；正文/经典翻译每 IP 每分钟 12 批（较重，走 OpenRouter）
+  // 界面翻译每 IP 每分钟 20 批；正文/经典翻译每 IP 每分钟 12 批（较重，走 OpenRouter）；
+  // 报错/纠错上报每设备+IP 每分钟 2 件
   // （音频转文字/字幕接口已关闭，原 1104 命名空间停用）
   "unsafe": {
     "bindings": [
@@ -39,7 +40,8 @@
       { "name": "CMT_RL", "type": "ratelimit", "namespace_id": "1102", "simple": { "limit": 6, "period": 60 } },
       { "name": "TTS_RL", "type": "ratelimit", "namespace_id": "1103", "simple": { "limit": 20, "period": 60 } },
       { "name": "I18N_RL", "type": "ratelimit", "namespace_id": "1105", "simple": { "limit": 20, "period": 60 } },
-      { "name": "TRANS_RL", "type": "ratelimit", "namespace_id": "1106", "simple": { "limit": 12, "period": 60 } }
+      { "name": "TRANS_RL", "type": "ratelimit", "namespace_id": "1106", "simple": { "limit": 12, "period": 60 } },
+      { "name": "REPORT_RL", "type": "ratelimit", "namespace_id": "1107", "simple": { "limit": 2, "period": 60 } }
     ]
   },
   "workers_dev": true,

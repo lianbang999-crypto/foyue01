@@ -37,3 +37,19 @@ CREATE TABLE IF NOT EXISTS meta (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL
 );
+
+-- 报错/纠错上报（主站与游戏共用，admin 统一处理）
+CREATE TABLE IF NOT EXISTS reports (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  dev     TEXT NOT NULL,
+  site    TEXT NOT NULL DEFAULT '',
+  kind    TEXT DEFAULT '',
+  target  TEXT DEFAULT '',
+  text    TEXT NOT NULL,
+  contact TEXT DEFAULT '',
+  ua      TEXT DEFAULT '',
+  status  TEXT NOT NULL DEFAULT 'open',
+  ts      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reports_id ON reports(id DESC);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status, id DESC);

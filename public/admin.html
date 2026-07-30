@@ -73,6 +73,7 @@
         <div><b id="stToday">–</b><span>今日留言</span></div>
         <div><b id="stTotal">–</b><span>累计留言</span></div>
         <div><b id="stBanned">–</b><span>封禁设备</span></div>
+        <div><b id="stRptOpen">–</b><span>待处理报错</span></div>
       </div>
     </section>
 
@@ -94,6 +95,15 @@
       <div class="table-wrap"><table>
         <thead><tr><th>时间</th><th>法名 / 内容</th><th class="ops">操作</th></tr></thead>
         <tbody id="rows"></tbody>
+      </table></div>
+    </section>
+
+    <section>
+      <h2>报错 / 纠错（待处理 <span id="rptOpen">–</span> 件）</h2>
+      <div class="row" style="margin:0 0 10px"><button class="plain" id="btnRptReload">刷 新</button><span class="msg" id="rptMsg"></span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>时间</th><th>来源·类型</th><th>定位</th><th>内容</th><th>状态</th><th class="ops">操作</th></tr></thead>
+        <tbody id="rptRows"></tbody>
       </table></div>
     </section>
 
@@ -153,6 +163,24 @@
          ? `<button class="plain" data-unban="${esc(c.dev)}">解封</button>`
          : `<button class="plain" data-ban="${esc(c.dev)}">封禁</button>`}</td></tr>`).join('')
       || '<tr><td class="t">暂无留言</td></tr>';
+    await loadReports();
+  }
+
+  // 报错/纠错列表（可单独局部刷新，不动其它区块）
+  const RPT_STATUS = { open: '待处理', done: '已办', ignored: '已忽略' };
+  async function loadReports() {
+    const { items, openCount } = await api('reports');
+    $('#stRptOpen').textContent = openCount;
+    $('#rptOpen').textContent = openCount;
+    // target/text/contact 均为外部自由文本，一律 esc() 转义防注入
+    $('#rptRows').innerHTML = items.map((r) =>
+      `<tr><td class="t">${fmtT(r.ts)}</td>
+       <td>${esc(r.site || '—')}${r.kind ? `<span class="ep">${esc(r.kind)}</span>` : ''}</td>
+       <td>${esc(r.target || '')}</td>
+       <td>${esc(r.text)}${r.contact ? `<span class="ep">联系：${esc(r.contact)}</span>` : ''}<span class="dev">${esc(r.dev)}</span></td>
+       <td class="t">${RPT_STATUS[r.status] || esc(r.status)}</td>
+       <td class="ops">${r.status === 'done' ? '' : `<button data-done="${r.id}">已办</button>`}${r.status === 'ignored' ? '' : `<button class="plain" data-ignore="${r.id}">忽略</button>`}</td></tr>`).join('')
+      || '<tr><td class="t">暂无上报</td></tr>';
   }
 
   $('#btnLogin').addEventListener('click', async () => {
@@ -168,6 +196,7 @@
   });
 
   $('#btnReload').addEventListener('click', () => loadAll().catch((e) => { $('#cmtMsg').textContent = e.message; }));
+  $('#btnRptReload').addEventListener('click', () => loadReports().catch((e) => { $('#rptMsg').textContent = e.message; }));
   $('#btnNotice').addEventListener('click', async () => {
     try { await api('notice', { text: $('#notice').value }); $('#noticeMsg').textContent = '已保存'; }
     catch (e) { $('#noticeMsg').textContent = e.message; }
@@ -183,6 +212,17 @@
     const del = e.target.closest('[data-del]');
     const ban = e.target.closest('[data-ban]');
     const unban = e.target.closest('[data-unban]');
+    const done = e.target.closest('[data-done]');
+    const ignore = e.target.closest('[data-ignore]');
+    // 报错处理只局部刷新报错区块，不动其它区块
+    if (done || ignore) {
+      try {
+        if (done) await api('reports/mark', { id: Number(done.dataset.done), status: 'done' });
+        else await api('reports/mark', { id: Number(ignore.dataset.ignore), status: 'ignored' });
+        await loadReports();
+      } catch (err) { $('#rptMsg').textContent = err.message; }
+      return;
+    }
     try {
       if (del) { if (!confirm('删除这条留言？')) return; await api('del', { id: Number(del.dataset.del) }); }
       else if (ban) { if (!confirm('封禁该设备？其后续留言将被拒收。')) return; await api('ban', { dev: ban.dataset.ban }); }
