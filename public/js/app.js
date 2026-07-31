@@ -79,7 +79,19 @@ async function init() {
   applyLangChips(lang);
   if (lang === 't') setZhTrad(true);
   else if (lang === 'en' || lang === 'ja') initI18n(lang);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { /* 忽略 */ });
+  // Service Worker：新版本接管时自动刷一次，关掉「新页面配旧样式」的错配窗口
+  //（老客户端本次打开仍由旧 SW 供样式，刷这一下才见新版）。
+  // 首次安装本来就没有 controller，不刷；正在放音也不刷，免得打断听经。
+  if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || swReloaded || !audio.paused) return;
+      swReloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* 忽略 */ });
+  }
 }
 
 async function fetchJson(url) {
@@ -97,6 +109,7 @@ function ensureLibrary() {
       buildWenku();
       buildWenda();
       if (document.body.dataset.view === 'wode') renderWode();   // 我的页续读卡依赖 library
+      if (document.body.dataset.view === 'home') buildHome();    // 首页「继续阅读」同样依赖 library
     })
     .catch((e) => { libPromise = null; throw e; });
   return libPromise;
@@ -321,8 +334,11 @@ function tick() {
   $('#lsEp').textContent = item.ep.title;
   $('#hlSeries').textContent = item.ep.seriesTitle;
   $('#hlEp').textContent = item.ep.title;
+  $('#hlBlock').textContent = item.block.name;   // 首页正在播出卡多一层时段（子夜讲堂/晨诵…）
 
-  $('#liveFill').style.width = `${Math.min(100, (offset / item.ep.dur) * 100)}%`;
+  const pct = `${Math.min(100, (offset / item.ep.dur) * 100)}%`;
+  $('#liveFill').style.width = pct;
+  $('#hlFill').style.width = pct;                // 首页卡底缘细线＝本集已播进度
   $('#liveElapsed').textContent = fmtMMSS(offset);
   $('#liveTotal').textContent = fmtMMSS(item.ep.dur);
 
@@ -403,40 +419,52 @@ function readCardHtml(label) {
     <span class="hc-go">续读 ›</span></a>`;
 }
 
-// 首页四门入口（发现枢纽）：图标复用底部导航语汇，朱砂点睛
+// 首页四门（发现枢纽）：图标一律 24 格线描，朱砂点睛；副题让位于内容，只留门名
 const HOME_DOORS = [
-  { href: '#ting', name: '听经', sub: '二十四小时讲经',
+  { href: '#ting', name: '听经',
     icon: '<circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.9v6.2l5.3-3.1z" fill="currentColor" stroke="none"/>' },
-  { href: '#shu', name: '有声书', sub: '故事 · 传记',
+  { href: '#shu', name: '有声书',
     icon: '<path d="M12 6c-1.8-1.4-4.2-1.8-7-1.6v13.2c2.8-.2 5.2.2 7 1.6 1.8-1.4 4.2-1.8 7-1.6V4.4c-2.8-.2-5.2.2-7 1.6z"/><path d="M12 6v13.2"/>' },
-  { href: '#count', name: '念佛', sub: '数珠 · 定课',
+  { href: '#count', name: '念佛',
     icon: '<path d="M12 4.5c2.2 3 2.2 6.7 0 9.7-2.2-3-2.2-6.7 0-9.7z"/><path d="M6.2 8c2.8.9 4.6 3.1 4.8 6.4-3-.6-4.8-3-4.8-6.4zM17.8 8c-2.8.9-4.6 3.1-4.8 6.4 3-.6 4.8-3 4.8-6.4z"/><path d="M4.5 15c2.3 3 12.7 3 15 0-1.6 4.2-13.4 4.2-15 0z"/>' },
-  { href: '#wenku', name: '阅读', sub: '讲记原文',
+  { href: '#wenku', name: '阅读',
     icon: '<rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/>' },
 ];
 
-// 首页 · 选佛谱门户（game.foyue.org 互动·十法界须弥山世界）
-// 自成一方星夜宇宙，金线与站内泥金呼应，在案头一眼可辨「这是另一重天地」
-function gameBannerHtml() {
-  return `<a class="home-game" href="https://game.foyue.org/">
-    <span class="hg-sky" aria-hidden="true"></span>
-    <span class="hg-emblem" aria-hidden="true">
-      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="20" cy="7.6" r="2.1" fill="currentColor" stroke="none"/>
-        <path d="M20 2.6v-1.4M14.5 7.6h-1.4M25.5 7.6h1.4M16.2 3.8 15.2 2.8M23.8 3.8 24.8 2.8" opacity="0.7"/>
-        <path d="M17 14.6h6l2 4.2H15l2-4.2z"/>
-        <path d="M15 18.8h10l3 4.6H12l3-4.6z"/>
-        <path d="M12 23.4h16l3.2 4.8H8.8l3.2-4.8z"/>
-        <path d="M7.6 30.8c2.1 1.5 4.1 1.5 6.2 0s4.1-1.5 6.2 0 4.1 1.5 6.2 0" opacity="0.72"/>
-      </svg>
-    </span>
-    <span class="hg-main">
-      <span class="hg-tag">十法界 · 须弥山世界</span>
-      <strong>选佛谱</strong>
-      <em>掷「南无阿弥陀佛」六字轮，行十法界，从凡直到成佛</em>
-    </span>
-    <span class="hg-go">开始选佛 ›</span>
-  </a>`;
+// 首页 · 别院（同源分站）：选佛谱自成一方星夜天地，与主站的宣纸案头相照。
+// 独立站点故新窗打开，右上角 ↗ 明示外链；卡面一眼交代「是什么·怎么行·有多大」，
+// 不叫新访者对着「十法界 · 须弥山世界」六字猜谜。
+// 须弥山徽记依经作束腰形：顶为天宫，日月半山而转，山根四面香水海。
+function branchHtml() {
+  return `<section class="home-branch">
+    <div class="fh-head"><span class="fh-title">别院</span></div>
+    <a class="xf-card" href="https://game.foyue.org/" target="_blank" rel="noopener"
+       aria-label="选佛谱 · 十法界须弥山世界，另开新窗">
+      <span class="xf-sky" aria-hidden="true"></span>
+      <span class="xf-stars" aria-hidden="true"></span>
+      <span class="xf-out" aria-hidden="true">↗</span>
+      <span class="xf-emblem" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="24" cy="6.4" r="1.3" fill="currentColor" stroke="none"/>
+          <path d="M24 9.4V7.7"/>
+          <path d="M18.6 12V9.4h10.8V12" opacity="0.9"/>
+          <path d="M13.6 12h20.8"/>
+          <path d="M13.6 12c1.7 5.6 4.6 9.8 6.6 13-1.8 4.6-5.6 8.8-10 12h27.6c-4.4-3.2-8.2-7.4-10-12 2-3.2 4.9-7.4 6.6-13"/>
+          <circle cx="6.8" cy="24.6" r="2" fill="currentColor" stroke="none" opacity="0.92"/>
+          <circle cx="41.2" cy="24.6" r="2" stroke-width="1.3" opacity="0.78"/>
+          <path d="M8.2 38.8c2.6 1.7 5.3 1.7 7.9 0s5.3-1.7 7.9 0 5.3 1.7 7.9 0 5.3-1.7 7.9 0" opacity="0.6"/>
+          <path d="M11.6 42.6c2.2 1.5 4.4 1.5 6.6 0s4.4-1.5 6.6 0 4.4 1.5 6.6 0" opacity="0.38"/>
+        </svg>
+      </span>
+      <span class="xf-main">
+        <span class="xf-tag">十法界 · 须弥山世界</span>
+        <strong>选佛谱</strong>
+        <em>掷占察轮行棋，自初发心直到成佛</em>
+        <span class="xf-facts"><i>十五门</i><i>二百二十位</i><i>四人同行</i></span>
+      </span>
+      <span class="xf-go">入 谱 ›</span>
+    </a>
+  </section>`;
 }
 
 // 首页佛号：七首东林佛号全数陈列，点一首即进全屏播放器循环恭听
@@ -461,18 +489,19 @@ function fohaoHomeHtml() {
 }
 
 function buildHome() {
-  // 首页信息秩序（今日案头）：个人续听 → 四门导航 → 佛号速取
-  // 继续收听（若有未听完）——回访者最想要的一键
-  let html = listenCardHtml('继续收听');
+  // 首页信息秩序（今日案头）：正在播出（在 HTML 里，常驻首屏）
+  // → 个人续接（续听 / 续读）→ 四门导航 → 别院 → 佛号速取
+  // 续听、续读只在有足迹时出现；新访者看到的是「直播 + 四门 + 别院 + 佛号」的干净案头
+  let html = listenCardHtml('继续收听') + readCardHtml('继续阅读');
 
-  // 四门宫格（听经 / 有声书 / 念佛 / 阅读）
-  html += '<div class="home-grid">' + HOME_DOORS.map((d) =>
-    `<a class="grid-card" href="${d.href}">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg>
-      <strong>${d.name}</strong><span>${esc(d.sub)}</span></a>`).join('') + '</div>';
+  // 四门一行（听经 / 有声书 / 念佛 / 阅读）——只占一行，把首屏让给内容
+  html += '<nav class="home-doors" aria-label="板块入口">' + HOME_DOORS.map((d) =>
+    `<a class="door" href="${d.href}">
+      <span class="door-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d.icon}</svg></span>
+      <span class="door-t">${d.name}</span></a>`).join('') + '</nav>';
 
-  // 选佛谱门户（互动·十法界须弥山，星夜点睛，跳转独立子域）
-  html += gameBannerHtml();
+  // 别院（选佛谱，独立站点）
+  html += branchHtml();
 
   // 佛号速取（极简两列，随手起一炉佛号循环恭听）
   html += fohaoHomeHtml();
@@ -739,6 +768,15 @@ function backToLive() {
   switchMode('live');
   wantLive = true;
   loadLive();
+}
+
+// 直播播放/暂停（直播页莲台钮与首页正在播出卡共用）
+// data-playing 由 tick 每秒校正，这里先乐观置位，按下即变图标，不等一秒
+function toggleLive() {
+  if (mode !== 'live') { backToLive(); }
+  else if (audio.paused) { wantLive = true; loadLive(); hint('正与大众同闻'); }
+  else { audio.pause(); wantLive = false; hint('已暂停 · 轻触回到直播'); }
+  document.body.dataset.playing = String(wantLive);
 }
 
 /* ================= 点播 ================= */
@@ -2977,12 +3015,9 @@ function bindEvents() {
     if (e.key === 'Enter') { e.preventDefault(); sendCmt(); }
   });
 
-  // 直播
-  $('#btnLive').addEventListener('click', () => {
-    if (mode !== 'live') backToLive();
-    else if (audio.paused) { wantLive = true; loadLive(); hint('正与大众同闻'); }
-    else { audio.pause(); wantLive = false; hint('已暂停 · 轻触回到直播'); }
-  });
+  // 直播：莲台大钮（直播页）与首页「正在播出」卡上的小钮同一行为
+  $('#btnLive').addEventListener('click', toggleLive);
+  $('#btnHomeLive').addEventListener('click', toggleLive);
 
   // 音频事件
   audio.addEventListener('loadedmetadata', () => {

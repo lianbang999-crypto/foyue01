@@ -112,13 +112,32 @@
   <section id="view-home" class="view">
     <h2 class="page-title">今日</h2>
     <p class="page-note" id="homeDate"></p>
-    <a class="live-strip" href="#live">
-      <span class="live-dot" aria-hidden="true"></span>
-      <span class="ls-label">直播中</span>
-      <span class="ls-info"><strong id="hlSeries"></strong><em id="hlEp"></em></span>
-      <span class="ls-go">进入 ›</span>
-    </a>
-    <div id="homeCards"></div>
+
+    <!-- 正在播出：卡面进直播页，右侧莲台钮就地起播（不必先跳页），底缘细线即本集进度 -->
+    <div class="home-live">
+      <a class="hl-body" href="#live">
+        <span class="hl-top">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span class="hl-now">直播中</span>
+          <span class="hl-block" id="hlBlock"></span>
+        </span>
+        <strong class="hl-series" id="hlSeries">正在接通电台 …</strong>
+        <em class="hl-ep" id="hlEp"></em>
+      </a>
+      <button class="hl-play" id="btnHomeLive" aria-label="播放或暂停直播">
+        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+      </button>
+      <span class="hl-line" aria-hidden="true"><i id="hlFill"></i></span>
+    </div>
+
+    <!-- 目录未到时的骨架，buildHome 一到即覆盖，避免首屏跳动 -->
+    <div id="homeCards">
+      <div class="home-skel" aria-hidden="true">
+        <span class="sk-door"></span><span class="sk-door"></span>
+        <span class="sk-door"></span><span class="sk-door"></span>
+      </div>
+    </div>
   </section>
 
   <!-- 听经：听经台 / 有声书 / 佛号 -->
@@ -308,6 +327,29 @@
     <!-- 我的内容：足迹 / 收藏 / 离线下载 / 划线——由 renderWode 动态铺行，点击开弹层，主页保持清爽 -->
     <h3 class="wode-sub" id="wodeContentSub" hidden>我的内容</h3>
     <div class="wode-group" id="wodeContentGroup" hidden></div>
+
+    <!-- 别院：同源分站（各自独立站点，新窗打开，本站数据互不相通） -->
+    <h3 class="wode-sub">别院</h3>
+    <div class="wode-group">
+      <a class="wode-row wode-ext" href="https://wenchao.foyue.org/" target="_blank" rel="noopener">
+        <span class="wr-ic wr-seal" aria-hidden="true">文钞</span>
+        <span class="wr-t">印光法师文钞<small>文白对照 · 10 部 2565 篇</small></span>
+        <span class="wr-go wr-out" aria-hidden="true">↗</span>
+      </a>
+      <a class="wode-row wode-ext" href="https://game.foyue.org/" target="_blank" rel="noopener">
+        <span class="wr-ic wr-sumeru" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="4.2" r="1.4" fill="currentColor" stroke="none"/>
+            <path d="M10 9.2h4l1.4 2.6H8.6z"/>
+            <path d="M8.6 11.8h6.8l2 2.9H6.6z"/>
+            <path d="M6.6 14.7h10.8l2.2 3.1H4.4z"/>
+            <path d="M4.6 20.6c1.5 1 2.9 1 4.4 0s2.9-1 4.4 0 2.9 1 4.4 0" opacity="0.7"/>
+          </svg>
+        </span>
+        <span class="wr-t">选佛谱<small>十法界 · 须弥山世界</small></span>
+        <span class="wr-go wr-out" aria-hidden="true">↗</span>
+      </a>
+    </div>
 
     <h3 class="wode-sub">设置</h3>
     <div class="wode-group">

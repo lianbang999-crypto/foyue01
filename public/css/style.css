@@ -231,104 +231,235 @@ body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
   border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 10px;
 }
 
-/* —— 首页 · 四门入口宫格 —— */
-.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.grid-card {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 17px 16px; text-decoration: none; color: var(--ink);
-  transition: border-color 0.25s, transform 0.18s ease;
-}
-.grid-card:hover { border-color: var(--accent-soft); }
-.grid-card:active { transform: scale(0.98); }
-.grid-card svg { width: 26px; height: 26px; color: var(--c-zhusha); margin-bottom: 6px; }
-.grid-card strong { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.08em; }
-.grid-card span { font-size: 0.74rem; color: var(--ink-3); letter-spacing: 0.04em; }
-@media (min-width: 560px) { .home-grid { grid-template-columns: repeat(4, 1fr); } }
-
-/* —— 首页 · 选佛谱门户（game.foyue.org · 互动十法界须弥山世界）——
-   自成一方星夜，深蓝夜幕 + 泥金光明顶，与站内泥金描线同源，作案头唯一「异色之窗」 */
-.home-game {
+/* —— 首页 · 正在播出 ——
+   听经台的直播条在首页升格为「卡」：左侧卡面进直播页，右侧莲台钮就地起播
+   （听一段无须先跳页），底缘一道细线即本集已播进度。 */
+.home-live {
   position: relative; overflow: hidden;
-  display: flex; align-items: center; gap: 14px; width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--c-zhusha);
+  border-radius: 6px 16px 16px 6px;
+  padding: 13px 13px 14px 14px; margin: 6px 0 16px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.25s;
+}
+.home-live:hover { border-color: var(--accent-soft); border-left-color: var(--c-zhusha); }
+.hl-body {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;
+  text-decoration: none; color: var(--ink);
+}
+.hl-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.hl-now { flex: none; color: var(--c-zhusha); font-size: 0.76rem; letter-spacing: 0.14em; }
+/* 时段（子夜讲堂 / 晨诵 …）：泥金细界栏分隔，只作背景信息 */
+.hl-block {
+  min-width: 0; color: var(--ink-3); font-size: 0.7rem; letter-spacing: 0.1em;
+  padding-left: 8px; border-left: 1px solid var(--gold-line);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hl-series { font-size: 1rem; font-weight: 600; letter-spacing: 0.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-ep { font-style: normal; color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 同上：<button> 不能用 grid 居中，旧 WebKit 不认，图标会歪到左上角 */
+.hl-play {
+  flex: none; width: 46px; height: 46px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; border: 0;
+  color: #fdf6ea; background: var(--accent);
+  box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.18s ease, filter 0.25s;
+}
+.hl-play:hover { filter: brightness(1.07); }
+.hl-play:active { transform: scale(0.93); }
+.hl-play svg { width: 20px; height: 20px; fill: currentColor; }
+.hl-play .ic-pause { display: none; }
+body[data-playing="true"] .hl-play .ic-play { display: none; }
+body[data-playing="true"] .hl-play .ic-pause { display: block; }
+.hl-line { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--line); }
+.hl-line i { display: block; height: 100%; width: 0; background: var(--accent); opacity: 0.72; transition: width 1s linear; }
+
+/* —— 首页 · 四门（听经 / 有声书 / 念佛 / 阅读）——
+   一行四枚，只留门名：首屏留给直播与足迹，导航退作细节 */
+.home-doors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 2px 0 20px; }
+.door { display: flex; flex-direction: column; align-items: center; gap: 7px; text-decoration: none; color: var(--ink-2); }
+.door-ic {
+  width: 56px; height: 56px; display: grid; place-items: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  color: var(--c-zhusha);
+  transition: border-color 0.25s, background 0.25s, transform 0.18s ease;
+}
+.door-ic svg { width: 23px; height: 23px; }
+.door:hover .door-ic { border-color: var(--accent-soft); }
+.door:active .door-ic { transform: scale(0.93); background: var(--accent-wash); }
+.door-t { font-size: 0.8rem; letter-spacing: 0.06em; }
+
+/* —— 首页 · 别院（选佛谱门户）——
+   主站是宣纸案头，选佛谱是星夜一方，整幅一卡自成天地。
+   信息三层：标目（是什么）→ 谱名 → 一句话行法，末行三则实据（十五门 /
+   二百二十位 / 四人同行）压住卡脚；右侧「入谱」钮 44px 合触控，
+   右上 ↗ 明示另开新窗。徽记是束腰须弥山，日月半山而转。 */
+.home-branch { margin: 4px 0 22px; }
+.xf-card {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 14px;
+  padding: 16px 15px; border-radius: 18px;
   text-decoration: none; font-family: var(--serif); color: #f4e8c8;
   background:
-    radial-gradient(130% 150% at 14% -20%, rgba(232, 199, 119, 0.20), transparent 52%),
-    radial-gradient(120% 130% at 108% 130%, rgba(96, 132, 196, 0.16), transparent 58%),
+    radial-gradient(130% 150% at 12% -25%, rgba(232, 199, 119, 0.20), transparent 54%),
+    radial-gradient(120% 130% at 106% 128%, rgba(96, 132, 196, 0.17), transparent 58%),
     linear-gradient(148deg, #111524 0%, #0a0d18 58%, #0c1020 100%);
   border: 1px solid rgba(214, 178, 106, 0.34);
-  border-radius: 16px; padding: 15px 17px; margin: 4px 0 14px;
   box-shadow: 0 12px 30px -20px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 246, 224, 0.05);
   transition: border-color 0.28s, transform 0.18s ease, box-shadow 0.28s;
 }
-.home-game:hover { border-color: rgba(232, 202, 130, 0.62); box-shadow: 0 16px 42px -20px rgba(0, 0, 0, 0.82), inset 0 1px 0 rgba(255, 246, 224, 0.07); }
-.home-game:active { transform: scale(0.99); }
-/* 极乐光晕：左上一点星光缓缓呼吸（reduced-motion 下自动静止） */
-.hg-sky {
-  position: absolute; top: -40%; left: -12%; width: 62%; height: 180%;
-  background: radial-gradient(circle at 50% 50%, rgba(240, 214, 150, 0.16), transparent 62%);
+.xf-card:hover {
+  border-color: rgba(232, 202, 130, 0.62);
+  box-shadow: 0 16px 42px -20px rgba(0, 0, 0, 0.82), inset 0 1px 0 rgba(255, 246, 224, 0.07);
+}
+.xf-card:active { transform: scale(0.99); }
+
+/* 极乐光晕：左上一片金光缓缓呼吸（reduced-motion 下全站已静止） */
+.xf-sky {
+  position: absolute; top: -60%; left: -14%; width: 62%; height: 200%;
+  background: radial-gradient(circle at 50% 50%, rgba(240, 214, 150, 0.18), transparent 62%);
   pointer-events: none; animation: hgBreath 7.5s ease-in-out infinite;
 }
 @keyframes hgBreath { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-.hg-emblem {
-  position: relative; flex: none; width: 48px; height: 48px; border-radius: 50%;
-  display: grid; place-items: center; color: #ecca7e;
-  background: radial-gradient(circle at 50% 34%, rgba(236, 202, 126, 0.26), rgba(236, 202, 126, 0.04) 72%);
-  border: 1px solid rgba(232, 202, 130, 0.42);
+/* 星点：定位固定的几粒微光，整层同呼吸，不逐粒动，省电 */
+.xf-stars {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.9;
+  background-image:
+    radial-gradient(1.5px 1.5px at 22% 24%, rgba(255, 247, 224, 0.85), transparent 60%),
+    radial-gradient(1.2px 1.2px at 46% 14%, rgba(255, 247, 224, 0.5), transparent 60%),
+    radial-gradient(1.6px 1.6px at 68% 32%, rgba(255, 247, 224, 0.62), transparent 60%),
+    radial-gradient(1.2px 1.2px at 84% 18%, rgba(255, 247, 224, 0.42), transparent 60%),
+    radial-gradient(1.3px 1.3px at 58% 76%, rgba(255, 247, 224, 0.34), transparent 60%),
+    radial-gradient(1.4px 1.4px at 92% 62%, rgba(255, 247, 224, 0.46), transparent 60%);
+  animation: xfTwinkle 9s ease-in-out infinite;
 }
-.hg-emblem svg { width: 32px; height: 32px; }
-.hg-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.hg-tag {
-  font-size: 0.64rem; letter-spacing: 0.2em; color: #d9b871;
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.hg-tag::before { content: ''; width: 4px; height: 4px; flex: none; background: currentColor; transform: rotate(45deg); border-radius: 1px; opacity: 0.85; }
-.hg-main strong { font-size: 1.12rem; font-weight: 600; letter-spacing: 0.16em; color: #f7edd0; }
-.hg-main em {
-  font-style: normal; font-size: 0.72rem; letter-spacing: 0.02em; line-height: 1.4;
-  color: rgba(228, 213, 176, 0.72);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.hg-go {
-  position: relative; flex: none; align-self: center; white-space: nowrap;
-  color: #241b0a; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.04em;
-  background: linear-gradient(180deg, #eccf8a, #d3ad63);
-  border-radius: 999px; padding: 6px 13px;
-  box-shadow: 0 4px 12px -6px rgba(236, 202, 126, 0.6);
-}
-@media (max-width: 400px) {
-  .home-game { gap: 12px; padding: 14px 15px; }
-  .hg-emblem { width: 42px; height: 42px; }
-  .hg-emblem svg { width: 28px; height: 28px; }
-  .hg-go { font-size: 0.74rem; padding: 5px 11px; }
+@keyframes xfTwinkle { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+/* 外链角标：与「我的 · 别院」行的 ↗ 同一语汇 */
+.xf-out {
+  position: absolute; top: 9px; right: 11px;
+  font-size: 0.72rem; line-height: 1; color: rgba(228, 200, 140, 0.55);
 }
 
-/* —— 首页 · 今日案头卡 —— */
+/* 徽记：星夜圆章里的泥金须弥山 */
+.xf-emblem {
+  position: relative; flex: none; width: 60px; height: 60px;
+  display: grid; place-items: center; border-radius: 50%; color: #ecca7e;
+  background: radial-gradient(circle at 50% 34%, rgba(236, 202, 126, 0.26), rgba(236, 202, 126, 0.04) 72%);
+  border: 1px solid rgba(232, 202, 130, 0.42);
+  transition: border-color 0.28s, background 0.28s;
+}
+.xf-card:hover .xf-emblem {
+  border-color: rgba(240, 214, 150, 0.66);
+  background: radial-gradient(circle at 50% 34%, rgba(236, 202, 126, 0.36), rgba(236, 202, 126, 0.06) 72%);
+}
+.xf-emblem svg { width: 40px; height: 40px; }
+
+.xf-main { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.xf-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.66rem; letter-spacing: 0.14em; color: rgba(224, 190, 124, 0.82);
+}
+.xf-tag::before {
+  content: ''; width: 4px; height: 4px; flex: none;
+  background: currentColor; transform: rotate(45deg); border-radius: 1px; opacity: 0.85;
+}
+.xf-main strong {
+  font-size: 1.12rem; font-weight: 600; letter-spacing: 0.16em;
+  color: #f7edd0; margin-top: 3px;
+}
+.xf-main em {
+  font-style: normal; font-size: 0.74rem; line-height: 1.55;
+  color: rgba(228, 213, 176, 0.72); margin-top: 3px;
+}
+/* 三则实据：泥金细线上一行，压住卡脚 */
+.xf-facts {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px;
+  margin-top: 9px; padding-top: 8px;
+  border-top: 1px solid rgba(214, 178, 106, 0.2);
+  font-size: 0.65rem; letter-spacing: 0.06em; color: rgba(224, 200, 150, 0.68);
+}
+.xf-facts i { font-style: normal; display: inline-flex; align-items: center; }
+.xf-facts i + i::before {
+  content: ''; width: 3px; height: 3px; margin-right: 9px;
+  background: currentColor; border-radius: 50%; opacity: 0.5;
+}
+/* 入谱钮：描金药丸，44px 合触控；悬停填一层薄金 */
+.xf-go {
+  position: relative; flex: none; display: inline-flex; align-items: center;
+  min-height: 40px; padding: 0 15px; border-radius: 999px;
+  font-size: 0.78rem; letter-spacing: 0.06em; white-space: nowrap; color: #f0d69a;
+  background: rgba(236, 202, 126, 0.09);
+  border: 1px solid rgba(232, 202, 130, 0.44);
+  transition: background 0.24s, border-color 0.24s, color 0.24s;
+}
+.xf-card:hover .xf-go {
+  background: rgba(236, 202, 126, 0.2); border-color: rgba(240, 214, 150, 0.7); color: #fbeec6;
+}
+
+/* —— 首页骨架：目录到位前占位，不让四门凭空跳出来 —— */
+.home-skel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 2px 0 20px; justify-items: center; }
+.sk-door {
+  width: 56px; height: 56px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--line);
+  animation: skPulse 1.6s ease-in-out infinite;
+}
+.sk-door:nth-child(2) { animation-delay: 0.16s; }
+.sk-door:nth-child(3) { animation-delay: 0.32s; }
+.sk-door:nth-child(4) { animation-delay: 0.48s; }
+@keyframes skPulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.9; } }
+
+/* 窄屏（iPhone SE 一档）：徽记收小，「入谱」钮落到卡底整行，
+   免得三栏挤成「须弥山｜两字标题｜钮」的碎条 */
+@media (max-width: 400px) {
+  .xf-card { grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 15px 13px; }
+  .xf-emblem { width: 52px; height: 52px; }
+  .xf-emblem svg { width: 34px; height: 34px; }
+  .xf-main strong { font-size: 1.05rem; letter-spacing: 0.12em; }
+  .xf-main em { font-size: 0.7rem; }   /* 320 档留出右缘余白，不贴边 */
+  .xf-go { grid-column: 1 / -1; justify-content: center; margin-top: 12px; }
+  .hl-play { width: 42px; height: 42px; }
+}
+
+/* —— 首页 · 今日案头卡 ——
+   与「正在播出」同一内构：标目一行在上，篇名整行在下（原先标目与篇名同挤一行，
+   长书名十有八九被省略号吃掉），右侧行动钮竖向居中。
+   ⚠ 这里必须用 flex 换行、不能用 grid：本卡有 <button> 形态（继续收听 / 下一篇），
+   而 WebKit 到 Safari 16.4 才支持 <button> 当 grid 容器，旧微信 WKWebView 会整卡塌掉。 */
 .home-card {
-  display: flex; align-items: center; gap: 12px; width: 100%;
+  display: flex; flex-wrap: wrap; align-items: center;
+  column-gap: 12px; width: 100%;
   text-align: left; text-decoration: none; cursor: pointer;
   font-family: var(--serif); color: var(--ink);
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 15px 16px; margin-bottom: 10px;
+  padding: 13px 16px 14px; margin-bottom: 10px;
   transition: border-color 0.25s, transform 0.18s ease;
 }
 .home-card:hover { border-color: var(--accent-soft); }
 .home-card:active { transform: scale(0.985); }
+/* flex: 0 0 100% —— 标目独占一行，把篇名与行动钮挤到下一行 */
 .hc-label {
-  flex: none; display: inline-flex; align-items: center; gap: 7px;
-  color: var(--ink-2); font-size: 0.78rem; letter-spacing: 0.14em;
+  flex: 0 0 100%; margin-bottom: 5px;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--ink-2); font-size: 0.76rem; letter-spacing: 0.14em;
 }
 .hc-label::before {
   content: ''; width: 6px; height: 6px; flex: none;
   background: var(--gold-text); opacity: 0.75; transform: rotate(45deg); border-radius: 1.5px;
 }
-.hc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hc-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .hc-main strong { font-size: 0.97rem; font-weight: 600; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc-main em { font-style: normal; color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc-go {
-  flex: none; color: var(--accent); font-size: 0.8rem; letter-spacing: 0.04em;
+  flex: none; align-self: center; white-space: nowrap;
+  color: var(--accent); font-size: 0.8rem; letter-spacing: 0.04em;
   border: 1px solid var(--accent-soft); border-radius: 999px; padding: 4px 11px;
 }
+/* 只在案头卡里靠右；.wode-hero 里同名的「去计数 ›」不受影响 */
+.home-card .hc-go { margin-left: auto; }
 
 /* —— 首页 · 莲友共修群入口（重要模块，朱砂点睛） —— */
 .home-qun {
@@ -1546,6 +1677,8 @@ footer p:first-child::after { content: ''; width: 38px; height: 1px; background:
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+/* 键盘可达：只在键盘操作时描朱砂焦点圈，鼠标/触摸点击不显 */
+:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 2px; }
 
 /* —— 听经搜索 —— */
 .search-wrap { position: relative; margin: 0 0 16px; }
@@ -1807,3 +1940,26 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
 .wode-group .wode-set + .wode-row,
 .wode-group .wode-row + .wode-row { border-top: 1px solid var(--line); }
 #view-wode .wode-sub { margin-bottom: 10px; }
+
+/* —— 我的 · 别院行（文钞 / 选佛谱，各自独立站点，新窗打开） —— */
+.wode-ext { text-decoration: none; }
+.wode-row .wr-t small {
+  display: block; margin-top: 3px;
+  color: var(--ink-3); font-size: 0.72rem; letter-spacing: 0.04em;
+}
+/* 文钞：一枚朱砂方章，两字竖排 */
+.wr-seal {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: grid; place-items: center;
+  background: var(--accent); color: #fdf6ea;
+  writing-mode: vertical-rl; font-size: 0.62rem; font-weight: 600; line-height: 1.14; letter-spacing: 0;
+}
+/* 选佛谱：星夜圆章里的泥金须弥山，与朱印分量相当 */
+.wr-sumeru {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; color: #ecca7e;
+  background: linear-gradient(150deg, #141829, #0a0d18);
+  border: 1px solid rgba(232, 202, 130, 0.42);
+}
+.wr-sumeru svg { width: 17px; height: 17px; }
+.wr-out { color: var(--ink-3); font-size: 0.92rem; }

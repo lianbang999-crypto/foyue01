@@ -2,7 +2,7 @@
 // 音频（/audio/*，Range 分段）与问道接口（/api/*）不经缓存，永远直连网络。
 // 改动壳资源清单或需要强制刷新客户端缓存时，把 VER 加一。
 
-const VER = 'fy-v29';
+const VER = 'fy-v32';
 const SHELL = [
   '/',
   '/css/style.css',
@@ -57,7 +57,24 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // 其余静态资源与数据（css/js/json/text）：缓存优先 + 后台更新（下次访问用新版本）
+  // 壳代码（css/js）：网络优先，失败才回退缓存。
+  // 页面导航是网络优先、必拿新 index.html；壳代码若还走缓存优先，版本一升级
+  // 就会出现「新页面配旧样式」——首页整块塌掉，且要再刷一次才好，
+  // 微信 WebView 尤其顽固。二者同为网络优先，才不会错配。离线仍由缓存兜底。
+  if (/\.(css|js)$/.test(url.pathname)) {
+    e.respondWith(
+      fetch(req).then((r) => {
+        if (r.ok) {
+          const copy = r.clone();
+          caches.open(VER).then((c) => c.put(req, copy));
+        }
+        return r;
+      }).catch(async () => (await caches.match(req)) || Response.error())
+    );
+    return;
+  }
+
+  // 其余静态资源与数据（json/text/图片）：缓存优先 + 后台更新（下次访问用新版本）
   e.respondWith(
     caches.match(req).then((cached) => {
       const refresh = fetch(req).then((r) => {

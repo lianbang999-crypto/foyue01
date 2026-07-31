@@ -76,7 +76,8 @@ const SEED = {
 const SKIP_SEL = [
   '#readerBody', '#chatLog', '#cmtList', '#dmLayer', '#liveCc', '#plCc',
   '.ep-list', '.chat-starters', '.share-prev', '.cite-x',
-  '.ls-info', '.hc-main', '.wh-main', '.series-title', '.ep-title',
+  '.ls-info', '.hl-series', '.hl-ep', '.hc-main', '.wh-main', '.series-title', '.ep-title',
+  '.wr-seal',   // 朱印只两字，翻了就不成章
   '#seriesName', '#seriesIntro', '#nextList', '#schedList', '#wkSeriesName',
   '#miniTitles', '.pl-meta', '#plListEps', '#countName',
   'script', 'style', 'textarea',
