@@ -140,8 +140,11 @@ function showLibError() {
 // 外观偏好：首次访问默认全天浅色；用户仍可选择跟随时段或固定深色。
 function applyThemePref() {
   const pref = localStorage.getItem('fy.theme') || 'day';
-  document.querySelectorAll('#themeChips button').forEach((b) =>
-    b.classList.toggle('on', b.dataset.theme === pref));
+  document.querySelectorAll('#themeChips button').forEach((b) => {
+    const on = b.dataset.theme === pref;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
   let theme = pref;
   if (pref === 'auto') theme = station.liveAt(stationNow()).item.block.theme;
   document.body.dataset.theme = theme;
@@ -149,9 +152,17 @@ function applyThemePref() {
     ?.setAttribute('content', themeMetaColor(theme));
 }
 
-// 系统状态栏底色须与主题纸色一致，否则安全区上下露出异色条
+// 系统状态栏底色须与页面顶边一致，否则安全区上下露出异色条。
+// 取的是各主题 --sky 渐变的**首色**而非 --bg：.sky 是铺满视口的 fixed 层
+// （style.css .sky { position: fixed; inset: 0 }），顶边真正露出来的是渐变起点。
+// 暮色一档尤其明显 —— --bg 是 #ebe6dc，而顶边其实是 #d9c8b1，差着一眼能看出的一截。
+// 改这里时请对着 style.css 里的 --sky 首色同步。
+const THEME_BG = {
+  day: '#e5e4d9', dawn: '#e8ddcf', dusk: '#d9c8b1',
+  night: '#0c0a08', dunhuang: '#e1d7c3',
+};
 function themeMetaColor(theme) {
-  return theme === 'night' ? '#17130e' : theme === 'dunhuang' ? '#f1e6cf' : '#f3ecda';
+  return THEME_BG[theme] || THEME_BG.day;
 }
 
 /* ================= 简繁转换 =================
@@ -216,7 +227,7 @@ function getLang() {
 
 function applyLangChips(l) {
   document.querySelectorAll('#langChips button').forEach((b) =>
-    b.classList.toggle('on', b.dataset.lang === l));
+    { const on = b.dataset.lang === l; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
 }
 
 async function setZhTrad(on) {
@@ -1534,8 +1545,21 @@ async function renderStorageSheet() {
 let toastT = 0;
 function toast(text) {
   let el = $('#toast');
-  if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
-  el.textContent = text;
+  let fresh = false;
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    // 全站唯一的提示通道，对读屏必须发声。属性要在插入 DOM 之前就位，
+    // 否则读屏可能来不及把它认成实时区域，第一条提示就哑了。
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-atomic', 'true');
+    document.body.appendChild(el);
+    fresh = true;
+  }
+  // 首次创建时延一帧再写文案，给读屏留出登记实时区域的时间
+  if (fresh) requestAnimationFrame(() => { el.textContent = text; });
+  else el.textContent = text;
   el.classList.add('show');
   clearTimeout(toastT);
   toastT = setTimeout(() => el.classList.remove('show'), 2600);
@@ -1915,8 +1939,16 @@ function renderWode() {
   $('#wcProgress').textContent = nj.goal ? `今日 ${t} / 定课 ${nj.goal}` : `今日 ${t} 声`;
   $('#whToday').textContent = t >= 10000 ? (t / 1000).toFixed(1) + 'k' : t;
   const rtMin = Math.floor((Number(localStorage.getItem('fy.rt.' + k)) || 0) / 60);
-  $('#whStats').textContent = `累计 ${njGrandTotal().toLocaleString()} 声 · 连续 ${njStreak()} 日`
-    + (rtMin > 0 ? ` · 今日恭读 ${rtMin} 分` : '');
+  // 段内空格用不断行空格：窄屏折行只许断在「·」上，
+  // 否则会折出「连续 1 ／ 日」这样数与量词分家的孤字
+  const NB = '\u00A0';   // 不断行空格（写成转义，免得被编辑器/格式化吃成普通空格）
+  const stats = [
+    `累计${NB}${njGrandTotal().toLocaleString()}${NB}声`,
+    `连续${NB}${njStreak()}${NB}日`,
+  ];
+  if (rtMin > 0) stats.push(`今日恭读${NB}${rtMin}${NB}分`);
+  // 分隔点用不断行空格粘在上一段尾部，折行时「·」留在行末而非行首（避头尾）
+  $('#whStats').textContent = stats.join(`${NB}· `);
   // 进度环：设了定课按定课走，未设按本串（108）走
   const frac = nj.goal ? Math.min(1, t / nj.goal) : (t % 108) / 108;
   const len = 2 * Math.PI * 32;
@@ -2160,6 +2192,8 @@ function shareAnswer(q, a, sources) {
 
 let sharePayload = null;
 let posterCv = null;
+let posterUrl = null;   // 预览用 objectURL，关闭海报即释放
+let posterSeq = 0;      // 生成序号：异步编码回来时用它判断自己是否已被取代
 
 function playerShare() {
   // 分享当前点播集：深链 #series/<id>/<第n集>，对方打开定位到该集
@@ -2237,21 +2271,83 @@ function openShare(p) {
   $('#shareSheet').hidden = false;
 }
 
-// 逐字换行（中文无空格），超出行数截断加省略号
+/* ================= 分享海报 =================
+   海报是站外唯一的门面，配色必须与站内同源。下面这套值即 style.css 的
+   昼间纸墨（--bg、--card、--ink 三阶、--c-zhusha、--gold 两色）降饱和后的对应色，
+   改站内主题色时此处需同步，否则转发出去的是「另一版佛乐」。
+   海报固定用昼间素宣纸底 —— 分享落地的聊天窗背景不可控，浅底最稳。 */
+const POSTER = {
+  paper: '#f0ede7',                      // 素宣纸底（较站内 --bg 略提亮）
+  paperHi: '#f6f4ee',                    // 钮内白（播放三角）
+  card: '#f7f5f0',                       // 播放器卡片底
+  cardLine: '#d7d1c1',                   // 卡片描边
+  track: '#dbd5c7',                      // 进度槽
+  ink: '#2d271f',                        // 正文墨   （--ink）
+  ink2: '#5f574a',                       // 次墨     （--ink-2）
+  ink3: '#6f6455',                       // 三级墨   （--ink-3）
+  zhusha: '#8c5647',                     // 朱砂     （--c-zhusha）
+  zhushaWash: 'rgba(140, 86, 71, 0.08)',
+  zhushaSoft: 'rgba(140, 86, 71, 0.35)',
+  halo1: 'rgba(140, 86, 71, 0.07)',     // 播放钮外层光晕
+  halo2: 'rgba(140, 86, 71, 0.13)',     // 播放钮内层光晕
+  gold: '#7c673c',                       // 泥金字   （--gold-text）
+  ruleSoft: 'rgba(149, 125, 77, 0.34)',  // 海报专用淡界栏（纸底比站内亮，故比站内界栏再淡一档）
+  rule: 'rgba(149, 125, 77, 0.42)',      // 界栏     （= --gold-line）
+  ringInner: 'rgba(246, 244, 238, 0.22)',// 播放钮内环（纸白描一道，不与 paperHi 拼 alpha —— 拼接一改就静默失效）
+  qr: '#26211a',                         // 二维码模块
+};
+
+/* 高清画布：canvas 按 CSS 像素排版，再乘设备像素比出图，
+   否则 2x/3x 手机上预览与保存的海报都是糊的。上限 3 倍，
+   再高只是徒增内存（750×1040@3x 已是 2250×3120）。 */
+const CANVAS_MAX_AREA = 16000000;   // iOS Safari 的画布上限约 16.78M 像素，留一点余量
+const CANVAS_MAX_SIDE = 8192;       // 单边上限，保守取值
+function hiCanvas(w, h) {
+  let dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+  // 超限的画布在 iOS 上不会报错，只会画出一张全白图 —— 宁可降清晰度也不能出空白。
+  // 法布施长图的高度随所选文字增长，dpr=3 时很容易撞上，故按面积与单边逐级回落。
+  while (dpr > 1 && (w * dpr * h * dpr > CANVAS_MAX_AREA
+                     || h * dpr > CANVAS_MAX_SIDE || w * dpr > CANVAS_MAX_SIDE)) dpr--;
+  const cv = document.createElement('canvas');
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { cv, ctx };
+}
+
+// 逐字换行（中文无空格），超出行数截断加省略号。
+// 数字与西文按整串走，否则「第01讲」会断成「第0 / 1讲」、时间与卷号同理；
+// 单串本身就超过行宽时（极长英文）才退回逐字断。
 function wrapLines(ctx, text, maxW, maxLines) {
   const out = [];
   let line = '';
-  for (const ch of String(text)) {
-    if (ch === '\n') { if (line) out.push(line); line = ''; continue; }
-    if (line && ctx.measureText(line + ch).width > maxW) { out.push(line); line = ch; }
-    else line += ch;
+  const tokens = String(text).match(/[0-9A-Za-z]+|[\s\S]/g) || [];
+  const push = (tk) => {
+    const blank = /^\s$/.test(tk);
+    if (!line && blank) return;                  // 行首不留空格
+    if (line && ctx.measureText(line + tk).width > maxW) {
+      out.push(line);
+      line = blank ? '' : tk;                    // 断在空格上时把它丢掉，别带到下一行开头
+    } else line += tk;
+  };
+  for (const tk of tokens) {
+    if (tk === '\n') { if (line) out.push(line); line = ''; continue; }
+    if (tk.length > 1 && ctx.measureText(tk).width > maxW) { for (const ch of tk) push(ch); }
+    else push(tk);
   }
   if (line) out.push(line);
   if (out.length > maxLines) {
     out.length = maxLines;
-    out[maxLines - 1] = out[maxLines - 1].slice(0, -1) + '…';
+    out[maxLines - 1] = ellipsize(ctx, out[maxLines - 1], maxW);
   }
   return out;
+}
+
+// 把一行压进 maxW 并补省略号。按码点退（Array.from），避免把代理对切成半个字
+function ellipsize(ctx, line, maxW) {
+  const cs = Array.from(line);
+  while (cs.length && ctx.measureText(cs.join('') + '…').width > maxW) cs.pop();
+  return cs.join('') + '…';
 }
 
 // 二维码：直接落在宣纸底上（四周留白即静区），依赖 /js/qrcode.js 全局 qrcode（MIT）
@@ -2265,8 +2361,8 @@ function drawQR(ctx, text, x, y, size) {
   } catch { return false; }
   const n = qr.getModuleCount();
   const cell = Math.floor(size / n);   // 格宽取整保证边缘清晰
-  const off = (size - cell * n) / 2;
-  ctx.fillStyle = '#2a2216';
+  const off = Math.floor((size - cell * n) / 2);   // 同样取整，否则半像素偏移把上面取整的意义抵消掉
+  ctx.fillStyle = POSTER.qr;
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
       if (qr.isDark(r, c)) ctx.fillRect(x + off + c * cell, y + off + r * cell, cell, cell);
@@ -2278,40 +2374,38 @@ function drawQR(ctx, text, x, y, size) {
 // 分享海报（极简）：大留白宣纸 + 细界栏 + 标题出处 + 二维码，750×1000，不落标识与网址
 function makePoster(p) {
   const W = 750, H = 1000;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
+  const { cv, ctx } = hiCanvas(W, H);
   const SERIF = '"Noto Serif SC", "Songti SC", "STSong", serif';
   // 繁体模式下海报文字同步转繁（canvas 不经 DOM 转换器）
   const T = (zhMap && zhTradOn()) ? ((s) => zhConv(s, zhMap)) : ((s) => s);
 
   // 素宣纸底 + 一道极细界栏
-  ctx.fillStyle = '#f4efe2';
+  ctx.fillStyle = POSTER.paper;
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(166, 130, 60, 0.32)';
+  ctx.strokeStyle = POSTER.ruleSoft;
   ctx.lineWidth = 1;
   ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
 
   // 标题（最多两行）与出处，居中大留白
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#33291b';
+  ctx.fillStyle = POSTER.ink;
   ctx.font = `600 46px ${SERIF}`;
   const titleLines = wrapLines(ctx, T(p.title), W - 200, 2);
   let y = titleLines.length > 1 ? 388 : 420;
   for (const ln of titleLines) { ctx.fillText(ln, W / 2, y); y += 70; }
-  ctx.fillStyle = '#a08b6b';
+  ctx.fillStyle = POSTER.ink3;
   ctx.font = `26px ${SERIF}`;
   ctx.fillText(T(p.source || p.sub), W / 2, y + 14);
 
   // 底部：裸二维码居中 + 品牌小字（不落网址）
   const qsize = 150;
   if (drawQR(ctx, p.url, W / 2 - qsize / 2, H - 322, qsize)) {
-    ctx.fillStyle = '#8f6f2e';
+    ctx.fillStyle = POSTER.gold;
     ctx.font = `22px ${SERIF}`;
     ctx.fillText(T(p.cta || '扫二维码 听经闻法'), W / 2, H - 116);
   } else {
     // 二维码库未就绪：退回品牌小字
-    ctx.fillStyle = '#8f6f2e';
+    ctx.fillStyle = POSTER.gold;
     ctx.font = `24px ${SERIF}`;
     ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, H - 150);
   }
@@ -2333,26 +2427,24 @@ function rrPath(ctx, x, y, w, h, r) {
 // 直播中标记 + 当下系列/集名 + 实时进度与已播时长 + 日期 +（有人时）在线人数 + 二维码
 function makeLivePoster(p) {
   const W = 750, H = 1040;
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
+  const { cv, ctx } = hiCanvas(W, H);
   const SERIF = '"Noto Serif SC", "Songti SC", "STSong", serif';
   const T = (zhMap && zhTradOn()) ? ((s) => zhConv(s, zhMap)) : ((s) => s);
   const lv = p.live;
 
   // 素宣纸底 + 一道极细界栏
-  ctx.fillStyle = '#f4efe2';
+  ctx.fillStyle = POSTER.paper;
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(166, 130, 60, 0.32)';
+  ctx.strokeStyle = POSTER.ruleSoft;
   ctx.lineWidth = 1;
   ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
 
   // 播放器卡片（整块画进海报：胶囊 + 系列集名 + 进度 + 大播放钮 + 在线 + 日期）
   const cx = 64, cy = 112, cw = W - 128, ch = 606;
   rrPath(ctx, cx, cy, cw, ch, 26);
-  ctx.fillStyle = '#fbf7ec';
+  ctx.fillStyle = POSTER.card;
   ctx.fill();
-  ctx.strokeStyle = '#e2d5b6';
+  ctx.strokeStyle = POSTER.cardLine;
   ctx.stroke();
 
   // 「直播中」胶囊（朱砂点 + 时段名）
@@ -2361,11 +2453,11 @@ function makeLivePoster(p) {
   const tw = ctx.measureText(chipText).width;
   const pw = tw + 64, px = W / 2 - pw / 2, py = cy + 38;
   rrPath(ctx, px, py, pw, 44, 22);
-  ctx.fillStyle = 'rgba(176, 98, 74, 0.08)';
+  ctx.fillStyle = POSTER.zhushaWash;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(176, 98, 74, 0.35)';
+  ctx.strokeStyle = POSTER.zhushaSoft;
   ctx.stroke();
-  ctx.fillStyle = '#b0624a';
+  ctx.fillStyle = POSTER.zhusha;
   ctx.beginPath();
   ctx.arc(px + 24, py + 22, 5, 0, Math.PI * 2);
   ctx.fill();
@@ -2374,13 +2466,13 @@ function makeLivePoster(p) {
 
   // 系列名（大字，最多两行）与集名
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#33291b';
+  ctx.fillStyle = POSTER.ink;
   ctx.font = `600 40px ${SERIF}`;
   const titleLines = lv ? wrapLines(ctx, T(`《${lv.series}》`), cw - 110, 2) : [T('二十四时 · 佛号讲经不断')];
   let ty = titleLines.length > 1 ? cy + 146 : cy + 160;
   for (const ln of titleLines) { ctx.fillText(ln, W / 2, ty); ty += 54; }
   if (lv) {
-    ctx.fillStyle = '#6b5d42';
+    ctx.fillStyle = POSTER.ink2;
     ctx.font = `26px ${SERIF}`;
     ctx.fillText(T(lv.ep), W / 2, cy + 236);
   }
@@ -2389,15 +2481,15 @@ function makeLivePoster(p) {
   if (lv && lv.dur > 0) {
     const bx = cx + 82, bw = cw - 164, by = cy + 286;
     rrPath(ctx, bx, by, bw, 6, 3);
-    ctx.fillStyle = '#e5d9bd';
+    ctx.fillStyle = POSTER.track;
     ctx.fill();
     const frac = Math.min(1, lv.elapsed / lv.dur);
     if (frac > 0.01) {
       rrPath(ctx, bx, by, Math.max(8, bw * frac), 6, 3);
-      ctx.fillStyle = '#b0624a';
+      ctx.fillStyle = POSTER.zhusha;
       ctx.fill();
     }
-    ctx.fillStyle = '#a08b6b';
+    ctx.fillStyle = POSTER.ink3;
     ctx.font = `22px ${SERIF}`;
     ctx.textAlign = 'left';
     ctx.fillText(fmtMMSS(lv.elapsed), bx, by + 38);
@@ -2408,16 +2500,16 @@ function makeLivePoster(p) {
   // 大播放钮（朱砂圆 + 双层光晕 + 内细白环 + 圆角播放三角，邀人同闻）
   const pcx = W / 2, pcy = cy + 416, pr = 56;
   ctx.beginPath(); ctx.arc(pcx, pcy, pr + 16, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(176, 98, 74, 0.07)'; ctx.fill();
+  ctx.fillStyle = POSTER.halo1; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr + 8, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(176, 98, 74, 0.13)'; ctx.fill();
+  ctx.fillStyle = POSTER.halo2; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, Math.PI * 2);
-  ctx.fillStyle = '#b0624a'; ctx.fill();
+  ctx.fillStyle = POSTER.zhusha; ctx.fill();
   ctx.beginPath(); ctx.arc(pcx, pcy, pr - 7, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = POSTER.ringInner; ctx.lineWidth = 1.5; ctx.stroke();
   // 白色播放三角（圆角、光学右移居中）
   ctx.save();
-  ctx.fillStyle = '#faf6ea'; ctx.strokeStyle = '#faf6ea';
+  ctx.fillStyle = POSTER.paperHi; ctx.strokeStyle = POSTER.paperHi;
   ctx.lineJoin = 'round'; ctx.lineWidth = 8;
   const tl = pcx - 10, tr = pcx + 24, th = 20;
   ctx.beginPath();
@@ -2432,11 +2524,11 @@ function makeLivePoster(p) {
   const dp = bjParts(Date.now());
   ctx.textAlign = 'center';
   if (lv && lv.online > 0) {
-    ctx.fillStyle = '#b0624a';
+    ctx.fillStyle = POSTER.zhusha;
     ctx.font = `23px ${SERIF}`;
     ctx.fillText(T(`${lv.online} 位同修在此同闻`), W / 2, cy + 522);
   }
-  ctx.fillStyle = '#a08b6b';
+  ctx.fillStyle = POSTER.ink3;
   ctx.font = `22px ${SERIF}`;
   ctx.fillText(
     T(`${dp.y}年${dp.mo}月${dp.d}日 · 周${WEEK[dp.day]} · 北京时间 ${String(dp.h).padStart(2, '0')}:${String(dp.mi).padStart(2, '0')}`),
@@ -2445,11 +2537,11 @@ function makeLivePoster(p) {
   // 底部：二维码 + 扫码同闻
   const qsize = 150, qy = cy + ch + 40;
   if (drawQR(ctx, p.url, W / 2 - qsize / 2, qy, qsize)) {
-    ctx.fillStyle = '#8f6f2e';
+    ctx.fillStyle = POSTER.gold;
     ctx.font = `22px ${SERIF}`;
     ctx.fillText(T(p.cta || '扫二维码 听经闻法'), W / 2, qy + qsize + 40);
   } else {
-    ctx.fillStyle = '#8f6f2e';
+    ctx.fillStyle = POSTER.gold;
     ctx.font = `24px ${SERIF}`;
     ctx.fillText(T('佛 乐 · 净 土 法 音'), W / 2, qy + 40);
   }
@@ -2476,28 +2568,54 @@ function makeQuotePoster(p) {
   // 先离屏排版量高，再按内容高度生成正式画布（canvas 改尺寸会清空，需两步）
   const mc = document.createElement('canvas').getContext('2d');
   mc.font = bodyFont;
-  const paras = T(p.quote).split('\n').map((x) => x.trim()).filter(Boolean)
-    .map((para) => wrapLines(mc, para, bodyW, 99));
-  const bodyH = paras.reduce((h, ls) => h + ls.length * lineH, 0) + (paras.length - 1) * paraGap;
+  // 正文高度必须封顶。所选文字最多 800 字，但若是偈颂/对答那样的短句，
+  // 80 个段落就能排出 7000px 的正文 —— 画布会撞上 iOS 的面积上限画成一张白图，
+  // 就算没撞上，一张七千像素高的长图在聊天窗里也没法读。逐段累计，超预算即截断。
+  const MAX_BODY_H = 2850;
+  const paras = [];
+  let bodyH = 0;
+  const rawParas = T(p.quote).split('\n').map((x) => x.trim()).filter(Boolean);
+  let truncated = false;
+  for (let i = 0; i < rawParas.length; i++) {
+    const gap = paras.length ? paraGap : 0;
+    const room = MAX_BODY_H - bodyH - gap;
+    if (room < lineH) { truncated = true; break; }         // 恰好卡在段落边界
+    const lines = wrapLines(mc, rawParas[i], bodyW, 99);
+    const fit = Math.floor(room / lineH);
+    if (lines.length > fit) {                              // 段落中途截断
+      lines.length = fit;
+      lines[fit - 1] = ellipsize(mc, lines[fit - 1], bodyW);
+      paras.push(lines); bodyH += gap + fit * lineH;
+      truncated = true; break;
+    }
+    paras.push(lines); bodyH += gap + lines.length * lineH;
+    if (i < rawParas.length - 1 && MAX_BODY_H - bodyH - paraGap < lineH) { truncated = true; break; }
+  }
+  // 断在段落边界时上面那支不会补省略号，读者会以为引文本来就到此为止。
+  // 统一在末行补一个，让「还有下文」这件事看得见。
+  if (truncated && paras.length) {
+    const last = paras[paras.length - 1];
+    if (!last[last.length - 1].endsWith('…')) {
+      last[last.length - 1] = ellipsize(mc, last[last.length - 1], bodyW);
+    }
+  }
   const bodyY = 158;                  // 顶部大留白直接进正文，不设标识
   const srcY = bodyY + bodyH + 60;    // 出处行（右缩）
   const qrY = srcY + 64;              // 二维码
   const H = Math.max(860, qrY + 140 + 44 + 84);
 
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  const ctx = cv.getContext('2d');
+  const { cv, ctx } = hiCanvas(W, H);
 
   // 素宣纸底 + 一道极细界栏
-  ctx.fillStyle = '#f4efe2';
+  ctx.fillStyle = POSTER.paper;
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(166, 130, 60, 0.32)';
+  ctx.strokeStyle = POSTER.ruleSoft;
   ctx.lineWidth = 1;
   ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
 
   // 正文：左起、按原文分段，行距疏朗贴近阅读器排版
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#33291b';
+  ctx.fillStyle = POSTER.ink;
   ctx.font = bodyFont;
   let y = bodyY;
   for (const lines of paras) {
@@ -2506,13 +2624,13 @@ function makeQuotePoster(p) {
   }
 
   // 出处：右缩排，上方一道细金线呼应正文收束
-  ctx.strokeStyle = 'rgba(166, 130, 60, 0.4)';
+  ctx.strokeStyle = POSTER.rule;
   ctx.beginPath();
   ctx.moveTo(W - bodyX - 120, srcY - 34);
   ctx.lineTo(W - bodyX, srcY - 34);
   ctx.stroke();
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#a08b6b';
+  ctx.fillStyle = POSTER.ink3;
   ctx.font = `24px ${SERIF}`;
   const src = wrapLines(ctx, T(p.srcLine || `—— ${p.source || p.sub} · ${p.title}`), bodyW, 1)[0] || '';
   ctx.fillText(src, W - bodyX, srcY);
@@ -2521,7 +2639,7 @@ function makeQuotePoster(p) {
   ctx.textAlign = 'center';
   const qsize = 140;
   if (drawQR(ctx, p.url, W / 2 - qsize / 2, qrY, qsize)) {
-    ctx.fillStyle = '#8f6f2e';
+    ctx.fillStyle = POSTER.gold;
     ctx.font = `22px ${SERIF}`;
     ctx.fillText(T('扫码查询原文出处'), W / 2, qrY + qsize + 44);
   }
@@ -2531,7 +2649,7 @@ function makeQuotePoster(p) {
 // 海报统一出口：填预览图并按设备能力显示「分享至社交软件」
 function showPoster(cv) {
   posterCv = cv;
-  $('#posterImg').src = cv.toDataURL('image/png');
+  const seq = ++posterSeq;          // 本次生成的序号，用来作废在途的旧回调
   let canShare = false;
   try {
     canShare = !!(navigator.canShare
@@ -2539,6 +2657,24 @@ function showPoster(cv) {
   } catch { /* 不支持 files 分享 */ }
   $('#posterShare').hidden = !canShare;
   $('#posterOverlay').hidden = false;
+  // 预览走 blob 而非 dataURL：高清画布下 PNG 有数 MB，转成 base64 字符串
+  // 还要再涨三分之一，低端机上足以卡一下。
+  // toBlob 是异步编码：连着生成两张时，第一张的回调可能晚于第二张回来，
+  // 既会把旧图盖到新预览上，创建的 objectURL 也再没人释放。故以 seq 作废旧回调。
+  revokePoster();
+  cv.toBlob((blob) => {
+    if (seq !== posterSeq) return;                     // 已被更新的一次生成取代
+    if (!blob) {                                       // 编码失败：收掉空壳浮层，别让人对着白板
+      $('#posterOverlay').hidden = true;
+      toast('海报生成失败 · 请缩短所选文字再试');
+      return;
+    }
+    posterUrl = URL.createObjectURL(blob);
+    $('#posterImg').src = posterUrl;
+  }, 'image/png');
+}
+function revokePoster() {
+  if (posterUrl) { URL.revokeObjectURL(posterUrl); posterUrl = null; }
 }
 
 /* ================= 直播弹幕 =================
@@ -2700,7 +2836,9 @@ function cmtTimeHtml(ts) {
 }
 
 // 头像取色：按法名哈希取一色，同一人恒定（微信式一人一色）
-const AV_COLORS = ['#a04a35', '#b0602b', '#5f7d54', '#48697b', '#8a6a34', '#7c5548', '#6d6a37', '#9d4c3c'];
+// 留言头像的八色印。与全站同批降饱和（原值是改造前的高彩度矿色，
+// 排在低饱和的纸墨里格外跳），并压低明度保证白字对比都在 4.5:1 以上。
+const AV_COLORS = ['#8c5649', '#936343', '#63755c', '#526671', '#7a6644', '#725a52', '#636141', '#89574d'];
 function avColor(seed) {
   const s = String(seed || '莲'); let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
@@ -3213,7 +3351,14 @@ function bindEvents() {
 
   // 我的划线（我的页入口）；文库数据未就绪则先等一拍
   // 文库标题搜索：即时过滤全库篇目
+  // 与听经搜索同一节奏防抖：这里每次按键要全量扫 241 篇再重写 innerHTML，
+  // 而中文输入法组字期间 input 会连发十几次，不防抖等于每敲一个拼音字母就重排一次列表
+  let wkSearchTimer = 0;
   $('#wkSearch').addEventListener('input', () => {
+    clearTimeout(wkSearchTimer);
+    wkSearchTimer = setTimeout(runWkSearch, 160);
+  });
+  function runWkSearch() {
     let q = $('#wkSearch').value.trim();
     const res = $('#wkSearchResults');
     if (!q || !library) {
@@ -3238,7 +3383,7 @@ function bindEvents() {
     res.hidden = false;
     $('#wkGrid').hidden = true;
     $('#wkResume').hidden = true;
-  });
+  }
   $('#wkSearchResults').addEventListener('click', (e) => {
     const li = e.target.closest('li[data-read]');
     if (li) location.hash = '#read/' + li.dataset.read;
@@ -3322,6 +3467,57 @@ function bindEvents() {
   $('#btnUndo').addEventListener('click', () => addNj(-1));
 
   // 静念全屏：整屏皆是念珠，轻触任意处计一声（闭目、行走念佛不必找珠）
+  /* ========== 浮层的键盘出入口 ==========
+     全站十来个浮层原先只能用指针关：没有 Esc、焦点也不归还，
+     键盘与读屏用户一旦进去就出不来（#hxOverlay 内更是一个可聚焦元素都没有）。
+     这里统一补两件事，且都不改各浮层自己的关闭逻辑 ——
+     能点关闭钮的就去点它（复用原有副作用），没有钮的才直接置 hidden。 */
+  const OVERLAYS = [
+    // 顺序即栈序，靠后的压在上面；Esc 关最上面那一个
+    { el: '#cmtSheet', x: '#cmtSheetX' },
+    { el: '#plListSheet', x: '#plListX' },
+    { el: '#cntSheet', x: '#cntSheetX' },
+    { el: '#aboutOverlay', x: '#btnAboutClose' },
+    { el: '#nameOverlay', x: '#nameCancel' },
+    { el: '#shareSheet', x: '#shareX' },
+    { el: '#posterOverlay', x: '#posterClose' },
+    { el: '#zenOverlay', x: '#btnZenExit' },
+    { el: '#gdOverlay' },
+    { el: '#hxOverlay' },
+  ];
+  let lastFocus = null;
+  // 浮层显隐由各处直接改 hidden，故用属性观察统一接管焦点存还，
+  // 免得去改十几个打开点、漏掉哪个又成新的不一致
+  const openSet = new Set();
+  for (const o of OVERLAYS) {
+    const el = $(o.el);
+    if (!el) continue;
+    new MutationObserver(() => {
+      if (!el.hidden && !openSet.has(el)) {
+        openSet.add(el);
+        if (!lastFocus) lastFocus = document.activeElement;
+        // 让焦点落进浮层，否则读屏还停在背后的页面上
+        const first = el.querySelector('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
+        if (first) first.focus({ preventScroll: true });
+        else { el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
+      } else if (el.hidden && openSet.has(el)) {
+        openSet.delete(el);
+        if (!openSet.size && lastFocus) { try { lastFocus.focus({ preventScroll: true }); } catch { /* 已移除 */ } lastFocus = null; }
+      }
+    }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    for (let i = OVERLAYS.length - 1; i >= 0; i--) {
+      const el = $(OVERLAYS[i].el);
+      if (!el || el.hidden) continue;
+      const x = OVERLAYS[i].x && $(OVERLAYS[i].x);
+      if (x) x.click(); else el.hidden = true;   // 有关闭钮就复用它，副作用一并跑到
+      e.preventDefault();
+      return;
+    }
+  });
+
   $('#btnZen').addEventListener('click', () => { renderCount(); $('#zenOverlay').hidden = false; });
   $('#btnZenExit').addEventListener('click', (e) => { e.stopPropagation(); $('#zenOverlay').hidden = true; });
   $('#zenOverlay').addEventListener('click', (e) => {
@@ -3610,12 +3806,20 @@ function bindEvents() {
     // 直播分享走专版海报（带当下播放内容与进度），其余走通用版
     showPoster(sharePayload.kind === 'live' ? makeLivePoster(sharePayload) : makePoster(sharePayload));
   });
-  $('#posterClose').addEventListener('click', () => { $('#posterOverlay').hidden = true; });
-  $('#posterOverlay').addEventListener('click', (e) => { if (e.target === $('#posterOverlay')) $('#posterOverlay').hidden = true; });
+  const closePoster = () => {
+    $('#posterOverlay').hidden = true;
+    $('#posterImg').removeAttribute('src');
+    revokePoster();
+    posterSeq++;        // 作废在途回调，免得它给已关闭的预览挂上 src 又钉住一个 blob
+    posterCv = null;    // 断开引用即可回收；不置零宽高——保存正在异步编码时会存出空白图
+  };
+  $('#posterClose').addEventListener('click', closePoster);
+  $('#posterOverlay').addEventListener('click', (e) => { if (e.target === $('#posterOverlay')) closePoster(); });
   // 分享至社交软件：走系统分享面板（微信等均在其中）；不支持的环境按钮不显示
   $('#posterShare').addEventListener('click', () => {
     if (!posterCv) return;
     posterCv.toBlob((blob) => {
+      if (!blob) { toast('海报生成失败 · 请缩短所选文字再试'); return; }
       const file = new File([blob], 'foyue-share.png', { type: 'image/png' });
       navigator.share({ files: [file] }).catch(() => { /* 用户取消 */ });
     });
@@ -3623,6 +3827,7 @@ function bindEvents() {
   $('#posterSave').addEventListener('click', () => {
     if (!posterCv) return;
     posterCv.toBlob((blob) => {
+      if (!blob) { toast('海报生成失败 · 请缩短所选文字再试'); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'foyue-share.png';

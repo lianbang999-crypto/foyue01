@@ -78,6 +78,7 @@ const SKIP_SEL = [
   '.ep-list', '.chat-starters', '.share-prev', '.cite-x',
   '.ls-info', '.hl-series', '.hl-ep', '.hc-main', '.wh-main', '.series-title', '.ep-title',
   '.wr-seal',   // 朱印只两字，翻了就不成章
+  '#langChips', // 语言选择器：各语言历来以自身文字列出（简体/繁體/EN/日本語），翻了反而认不出
   '#seriesName', '#seriesIntro', '#nextList', '#schedList', '#wkSeriesName',
   '#miniTitles', '.pl-meta', '#plListEps', '#countName',
   'script', 'style', 'textarea',

@@ -1,0 +1,52 @@
+# 问道智能体 —— 独立站（发起人 2026-08-04 定：自有 API 端口，独立部署）
+#
+# 【定位】公网即正门：/ 出极简问答页，POST /v1/ask 为公开 API（CORS 允许 foyue.org 系）。
+#   公网生成双限流（PUB_RL 每IP 8/分＋隔离实例兜底，与现行 /api/ask 同水位）；
+#   主站将来接线可走 service binding（ask.internal 免限流内门，前端零改动）。
+#   知识底本＝文库全库（Vectorize foyue-wenku 8999 块＝241 篇讲记＋820 问答）。
+#
+# 【自定义域】部署验证后由发起人定子域（如 wendao.foyue.org / ask.foyue.org），
+#   取消下面 routes 注释即自动绑定（foyue.org zone 在本账号，shop 同款先例）：
+# [[routes]]
+# pattern = "wendao.foyue.org"
+# custom_domain = true
+#
+# 【部署前须】wrangler secret put SILICONFLOW_API_KEY --config agent/worker/wrangler.toml
+# 【部署命令】npx wrangler deploy --config agent/worker/wrangler.toml
+#   ⚠️ 必须显式 --config：在仓内裸跑 wrangler 会取到仓根 wrangler.jsonc 误部主站
+#   （选佛谱 08-04 同型事故之教训）。
+
+name = "foyue-wendao-agent"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+# 综述模型。现与主站问道一致；选佛谱实测 DeepSeek-V4-Pro ttft 更优（1.6s vs 数秒），
+# 是否换由发起人定——换后必跑 eval 全套再上。
+COMPOSE_MODEL = "Qwen/Qwen3.5-35B-A3B"
+# service binding 内转每客户端综述日配额；额满降级不拒答
+ASK_GEN_DAILY = "60"
+# 公网生成开关：off＝独立站只出定本/目录/降级链（应急阀，烧钱异常时一行关闸）
+PUBLIC_GEN = "on"
+
+# 公网每 IP 每分钟生成限流（namespace_id 账号内唯一：主站用 1101-1107、shop 用 1201/1202）
+[[unsafe.bindings]]
+name = "PUB_RL"
+type = "ratelimit"
+namespace_id = "1301"
+simple = { limit = 8, period = 60 }
+
+# 讲记语料向量索引（与主站共用同一 Vectorize 索引，只读）
+[[vectorize]]
+binding = "WENKU"
+index_name = "foyue-wenku"
+
+# 配额与答案快取（M2 兑现：`wrangler kv namespace create foyue-wendao-rl` 后回填 id 取消注释；
+# 缺绑时 guard 只分级不计数、快取直穿，皆 fail-open 不断服务）
+# [[kv_namespaces]]
+# binding = "RL"
+# id = ""
