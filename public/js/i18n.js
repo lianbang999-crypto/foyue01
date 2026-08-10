@@ -24,7 +24,7 @@ const SEED = {
     '海报': 'Poster', '下载': 'Download', '保存': 'Save', '划 线': 'Highlight',
     '点播': 'On demand', '轻触莲台 · 与大众同闻': 'Tap the lotus · listen with the assembly',
     '足迹': 'Trail', '通用': 'General', '主题': 'Theme', '语言': 'Language',
-    '跟随时段': 'Auto', '浅色': 'Light', '深色': 'Dark', '敦煌': 'Dunhuang',
+    '纸墨': 'Paper & Ink', '四时流转': 'Follow the hours',
     '我的划线': 'My highlights', '存储与缓存': 'Storage & cache',
     '备份与迁移': 'Backup & transfer', '关于本站': 'About', '关于我们': 'About us',
     '联系方式': 'Contact', '去计数 ›': 'Count ›', '最近在听': 'Recently played',
@@ -56,7 +56,7 @@ const SEED = {
     '海报': 'ポスター', '下载': 'ダウンロード', '保存': '保存', '划 线': 'ハイライト',
     '点播': 'オンデマンド', '轻触莲台 · 与大众同闻': '蓮台に触れて · 大衆と共に聞く',
     '足迹': '足あと', '通用': '一般', '主题': 'テーマ', '语言': '言語',
-    '跟随时段': '自動', '浅色': 'ライト', '深色': 'ダーク', '敦煌': '敦煌',
+    '纸墨': '紙と墨', '四时流转': '時間帯に従う',
     '我的划线': 'マイハイライト', '存储与缓存': 'ストレージとキャッシュ',
     '备份与迁移': 'バックアップと移行', '关于本站': '当サイトについて', '关于我们': '私たちについて',
     '联系方式': '連絡先', '去计数 ›': 'カウントへ ›', '最近在听': '最近聴いた',
@@ -78,7 +78,8 @@ const SKIP_SEL = [
   '.ep-list', '.chat-starters', '.share-prev', '.cite-x',
   '.ls-info', '.hl-series', '.hl-ep', '.hc-main', '.wh-main', '.series-title', '.ep-title',
   '.wr-seal',   // 朱印只两字，翻了就不成章
-  '#langChips', // 语言选择器：各语言历来以自身文字列出（简体/繁體/EN/日本語），翻了反而认不出
+  '#langList', '#langVal', // 语言选择器（弹层选项 + 设置页当前值）：
+                           // 各语言历来以自身文字列出（简体中文/繁體中文/English/日本語），翻了反而认不出
   '#seriesName', '#seriesIntro', '#nextList', '#schedList', '#wkSeriesName',
   '#miniTitles', '.pl-meta', '#plListEps', '#countName',
   'script', 'style', 'textarea',

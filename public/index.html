@@ -68,7 +68,7 @@
   ]
 }
 </script>
-<meta name="theme-color" content="#e5e4d9">
+<meta name="theme-color" content="#efe7d4">
 <link rel="icon" href="/favicon.png" type="image/png" sizes="96x96">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -356,21 +356,17 @@
       <div class="wode-set">
         <span class="wode-set-label">主题</span>
         <div class="theme-chips" id="themeChips">
-          <button data-theme="auto">跟随时段</button>
-          <button data-theme="day">浅色</button>
-          <button data-theme="night">深色</button>
-          <button data-theme="dunhuang">敦煌</button>
+          <button data-theme="day">纸墨</button>
+          <button data-theme="auto">四时流转</button>
         </div>
       </div>
-      <div class="wode-set">
-        <span class="wode-set-label">语言</span>
-        <div class="theme-chips" id="langChips">
-          <button data-lang="s" class="on">简体</button>
-          <button data-lang="t">繁體</button>
-          <button data-lang="en">EN</button>
-          <button data-lang="ja">日本語</button>
-        </div>
-      </div>
+      <!-- 语言：行式条目 + 弹层。语种会持续增加，chips 是定长控件、一多就换行堆叠 -->
+      <button class="wode-row" id="btnLang">
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.2 2.4 3.4 5.4 3.4 8.6s-1.2 6.2-3.4 8.6c-2.2-2.4-3.4-5.4-3.4-8.6s1.2-6.2 3.4-8.6z"/></svg></span>
+        <span class="wr-t">语言</span>
+        <span class="wr-val" id="langVal">简体中文</span>
+        <span class="wr-go">›</span>
+      </button>
       <button class="wode-row" id="btnStorage">
         <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"/><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></svg></span>
         <span class="wr-t">存储与缓存</span>
@@ -655,6 +651,15 @@
     <h4>联系方式</h4>
     <p>如有问题或建议反馈，欢迎来信告知。</p>
     <p class="about-mail"><a href="mailto:lebang001@qq.com">lebang001@qq.com</a></p>
+  </div>
+</div>
+
+<!-- 语言（弹窗）。选项行由 app.js 按 LANGS 清单生成：加语种只改那一处 -->
+<div id="langOverlay" hidden>
+  <div class="about-sheet">
+    <button class="sheet-x" id="btnLangClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <h3 class="sheet-title">语言 / Language</h3>
+    <div id="langList"></div>
   </div>
 </div>
 

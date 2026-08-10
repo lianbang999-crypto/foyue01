@@ -76,7 +76,7 @@ async function init() {
   ensureLibrary().catch(() => { /* 预取失败静默：进入相关页时会重试 */ });
   // 语言偏好：繁体走字表转换，外文走 AI 词典（均接管后续动态内容）
   const lang = getLang();
-  applyLangChips(lang);
+  applyLangRow(lang);
   if (lang === 't') setZhTrad(true);
   else if (lang === 'en' || lang === 'ja') initI18n(lang);
   // Service Worker：新版本接管时自动刷一次，关掉「新页面配旧样式」的错配窗口
@@ -137,9 +137,24 @@ function showLibError() {
   document.body.appendChild(el);
 }
 
-// 外观偏好：首次访问默认全天浅色；用户仍可选择跟随时段或固定深色。
+// 外观偏好只两档：'day' 纸墨（固定）/ 'auto' 四时流转（随节目单时段走）。
+const THEME_PREFS = ['day', 'auto'];
+
+// 读取并校正主题偏好。旧版另有「深色 night」「敦煌 dunhuang」两个固定档，
+// 其 CSS 块已随主题精简删除；老用户本机还存着旧值，若不迁回，
+// body[data-theme] 会落到一个没有定义的档上，--bg / --ink / --accent
+// 全部无处取值，整页配色当场塌掉。故凡读这个偏好的地方一律走这里，
+// 不要各自 localStorage.getItem —— 每秒的 tick() 也在读它。
+function themePref() {
+  const v = localStorage.getItem('fy.theme') || 'day';
+  if (THEME_PREFS.includes(v)) return v;
+  localStorage.setItem('fy.theme', 'day');
+  return 'day';
+}
+
+// 外观偏好：首次访问默认纸墨；用户可改为四时流转。
 function applyThemePref() {
-  const pref = localStorage.getItem('fy.theme') || 'day';
+  const pref = themePref();
   document.querySelectorAll('#themeChips button').forEach((b) => {
     const on = b.dataset.theme === pref;
     b.classList.toggle('on', on);
@@ -155,11 +170,11 @@ function applyThemePref() {
 // 系统状态栏底色须与页面顶边一致，否则安全区上下露出异色条。
 // 取的是各主题 --sky 渐变的**首色**而非 --bg：.sky 是铺满视口的 fixed 层
 // （style.css .sky { position: fixed; inset: 0 }），顶边真正露出来的是渐变起点。
-// 暮色一档尤其明显 —— --bg 是 #ebe6dc，而顶边其实是 #d9c8b1，差着一眼能看出的一截。
-// 改这里时请对着 style.css 里的 --sky 首色同步。
+// 晨曦、暮色两档尤其明显 —— --bg 是宣纸 #f6f1e6 / #efe7d4，
+// 而顶边其实是更重一阶的 #e7dcc4，差着一眼能看出的一截。
+// 改这里时请对着 style.css 里的 --sky 首色同步（现为文钞纸阶）。
 const THEME_BG = {
-  day: '#e5e4d9', dawn: '#e8ddcf', dusk: '#d9c8b1',
-  night: '#0c0a08', dunhuang: '#e1d7c3',
+  day: '#efe7d4', dawn: '#e7dcc4', dusk: '#e7dcc4', night: '#171310',
 };
 function themeMetaColor(theme) {
   return THEME_BG[theme] || THEME_BG.day;
@@ -219,15 +234,30 @@ function zhApply(root) {
 
 function zhTradOn() { return getLang() === 't'; }
 
+// 语言清单：单一数据源 —— 设置页那一行的当前值、弹层里的选项都从这里出。
+// 加语种只需在此加一行，另在 i18n.js 的 SEED 里补上该语种的种子词典。
+// 各语言一律以自身文字列出，不随界面语言翻译（见 i18n.js 的 SKIP_SEL）。
+const LANGS = [
+  { id: 's',  name: '简体中文' },
+  { id: 't',  name: '繁體中文' },
+  { id: 'en', name: 'English' },
+  { id: 'ja', name: '日本語' },
+];
+
 // 语言偏好：s 简体 / t 繁體 / en English / ja 日本語（旧键 fy.zh 自动迁移）
 function getLang() {
   return localStorage.getItem('fy.lang')
     || (localStorage.getItem('fy.zh') === 't' ? 't' : 's');
 }
 
-function applyLangChips(l) {
-  document.querySelectorAll('#langChips button').forEach((b) =>
-    { const on = b.dataset.lang === l; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+function langName(l) {
+  return (LANGS.find((x) => x.id === l) || LANGS[0]).name;
+}
+
+// 设置页「语言」一行右侧的当前值。弹层里的选中态在 openLang() 打开时现铺。
+function applyLangRow(l) {
+  const el = $('#langVal');
+  if (el) el.textContent = langName(l);
 }
 
 async function setZhTrad(on) {
@@ -326,9 +356,9 @@ function tick() {
   $('#nowDate').textContent = dateStr;
   $('#homeDate').textContent = dateStr;
 
-  // 外观：默认全天浅色；用户选择 auto 时才随直播时段昼夜流转
-  const themePref = localStorage.getItem('fy.theme') || 'day';
-  const theme = themePref === 'auto' ? item.block.theme : themePref;
+  // 外观：默认纸墨固定档；用户选择 auto（四时流转）时才随直播时段昼夜走
+  const pref = themePref();
+  const theme = pref === 'auto' ? item.block.theme : pref;
   document.body.dataset.theme = theme;
   document.querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', themeMetaColor(theme));
@@ -2273,28 +2303,29 @@ function openShare(p) {
 
 /* ================= 分享海报 =================
    海报是站外唯一的门面，配色必须与站内同源。下面这套值即 style.css 的
-   昼间纸墨（--bg、--card、--ink 三阶、--c-zhusha、--gold 两色）降饱和后的对应色，
+   昼间纸墨（--bg、--card、--ink 三阶、--c-zhusha、--gold 两色）的对应色 ——
+   自配色与《印光法师文钞》站合流后，这里不再降饱和，直接取文钞纸墨原值。
    改站内主题色时此处需同步，否则转发出去的是「另一版佛乐」。
    海报固定用昼间素宣纸底 —— 分享落地的聊天窗背景不可控，浅底最稳。 */
 const POSTER = {
-  paper: '#f0ede7',                      // 素宣纸底（较站内 --bg 略提亮）
-  paperHi: '#f6f4ee',                    // 钮内白（播放三角）
-  card: '#f7f5f0',                       // 播放器卡片底
-  cardLine: '#d7d1c1',                   // 卡片描边
-  track: '#dbd5c7',                      // 进度槽
-  ink: '#2d271f',                        // 正文墨   （--ink）
-  ink2: '#5f574a',                       // 次墨     （--ink-2）
-  ink3: '#6f6455',                       // 三级墨   （--ink-3）
-  zhusha: '#8c5647',                     // 朱砂     （--c-zhusha）
-  zhushaWash: 'rgba(140, 86, 71, 0.08)',
-  zhushaSoft: 'rgba(140, 86, 71, 0.35)',
-  halo1: 'rgba(140, 86, 71, 0.07)',     // 播放钮外层光晕
-  halo2: 'rgba(140, 86, 71, 0.13)',     // 播放钮内层光晕
-  gold: '#7c673c',                       // 泥金字   （--gold-text）
+  paper: '#f6f1e6',                      // 宣纸底（= 昼间 --bg，即文钞 --paper）
+  paperHi: '#fcf9f2',                    // 钮内白（播放三角）＝ --card 的不透明版
+  card: '#fcf9f2',                       // 播放器卡片底（同上，浮起的纸）
+  cardLine: '#d9cdb2',                   // 卡片描边 （= --line，文钞界栏）
+  track: '#e7dcc4',                      // 进度槽   （文钞 --paper-3）
+  ink: '#322a1e',                        // 正文墨   （--ink）
+  ink2: '#6d5f49',                       // 次墨     （--ink-2）
+  ink3: '#72644f',                       // 三级墨   （--ink-3）
+  zhusha: '#b03a26',                     // 朱砂     （--c-zhusha，文钞 --cinnabar）
+  zhushaWash: 'rgba(176, 58, 38, 0.08)',
+  zhushaSoft: 'rgba(176, 58, 38, 0.35)',
+  halo1: 'rgba(176, 58, 38, 0.07)',     // 播放钮外层光晕
+  halo2: 'rgba(176, 58, 38, 0.13)',     // 播放钮内层光晕
+  gold: '#79643a',                       // 泥金字   （--gold-text）
   ruleSoft: 'rgba(149, 125, 77, 0.34)',  // 海报专用淡界栏（纸底比站内亮，故比站内界栏再淡一档）
   rule: 'rgba(149, 125, 77, 0.42)',      // 界栏     （= --gold-line）
-  ringInner: 'rgba(246, 244, 238, 0.22)',// 播放钮内环（纸白描一道，不与 paperHi 拼 alpha —— 拼接一改就静默失效）
-  qr: '#26211a',                         // 二维码模块
+  ringInner: 'rgba(252, 249, 242, 0.22)',// 播放钮内环（纸白描一道，不与 paperHi 拼 alpha —— 拼接一改就静默失效）
+  qr: '#26211a',                         // 二维码模块：功能色不随主题走，扫码要的是尽可能深
 };
 
 /* 高清画布：canvas 按 CSS 像素排版，再乘设备像素比出图，
@@ -3844,16 +3875,29 @@ function bindEvents() {
     applyThemePref();
   });
 
-  // 语言：简体 / 繁體 / English / 日本語
-  $('#langChips').addEventListener('click', (e) => {
+  // 语言：行式条目 → 弹层选择。选项按 LANGS 现铺，日后加语种不必动这里。
+  const openLang = () => {
+    const cur = getLang();
+    $('#langList').innerHTML = LANGS.map((x) => `<button class="sheet-row${x.id === cur ? ' on' : ''}" data-lang="${x.id}"><span>${x.name}</span>${
+      x.id === cur ? '<span class="sheet-tick">✓</span>' : ''}</button>`).join('');
+    $('#langOverlay').hidden = false;
+  };
+  const closeLang = () => { $('#langOverlay').hidden = true; };
+  $('#btnLang').addEventListener('click', openLang);
+  $('#btnLangClose').addEventListener('click', closeLang);
+  $('#langOverlay').addEventListener('click', (e) => {
+    if (e.target === $('#langOverlay')) closeLang();   // 点遮罩关闭，点内容不关
+  });
+  $('#langList').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-lang]');
     if (!b) return;
+    closeLang();
     const cur = getLang();
     const next = b.dataset.lang;
     if (next === cur) return;
     localStorage.setItem('fy.lang', next);
     localStorage.setItem('fy.zh', next === 't' ? 't' : 's');   // 兼容旧键
-    applyLangChips(next);
+    applyLangRow(next);
     // 从简体出发可就地转换；其余切换（如繁→英）重载后按偏好初始化最可靠
     if (cur === 's' && next === 't') { setZhTrad(true); return; }
     if (cur === 's' && (next === 'en' || next === 'ja')) { initI18n(next); return; }

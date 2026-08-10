@@ -3,7 +3,21 @@
    全站一套配色：宣纸为底，墨字三阶，朱砂是唯一点睛色（只给可点的、
    正在进行的），泥金只做结构细线（标题引线/分隔/页脚），不做按钮。
    页面氛围随播出时段流转：晨曦 / 纸墨（昼）/ 暮色 / 夜烛。
-   另备「敦煌」矿彩主题（我的→设置→主题 手动选择，见 data-theme="dunhuang"）。 */
+
+   —— 配色源自《印光法师文钞》站（wenchao.foyue.org）的「纸墨」主题 ——
+   两站同宗，色值直接照搬，不另调一色：
+     宣纸 --paper   #f6f1e6      重一度 --paper-2 #efe7d4   再重 --paper-3 #e7dcc4
+     浓墨 --ink     #322a1e      淡墨   --ink-2   #6d5f49
+     朱砂 --cinnabar #b03a26     界栏   --line    #d9cdb2
+     夜档 纸 #171310 / 墨 #d9cfbc / 朱砂 #d4694e
+   四时流转即在文钞自己的纸阶上走（晨曦↔正午用 paper、暮色用 paper-2、
+   夜烛用夜档），未引入任何文钞之外的新色。
+
+   仅三处按无障碍实测微调（原值在本站的用法下达不到 AA，详见各处注释）：
+     ① 昼 --ink-3  #a3937a → #72644f    ② 夜 --ink-3 #6e6450 → #8c7f65
+     ③ --gold-text #7c673c → #79643a
+   注：paper-3 #e7dcc4 只用于 .sky 装饰渐变，不做正文纸底 ——
+   飞白压在它上面只有 4.23:1、泥金 4.00:1，都掉出 AA。 */
 
 :root {
   --serif: "Noto Serif SC", "Songti SC", "STSongti-SC-Regular", "STSong",
@@ -21,70 +35,62 @@
 }
 
 /* —— 全站色（昼） ——
-   低饱和基调：纸与墨一律压低彩度（中性化约五成），只留极淡暖意；
-   点睛色只压三成，底噪安静之后，一点赭红反而更抓眼。 */
-/* 点睛色取自品牌标志（飞天伎乐）本身的赭红，另备标志的黛青作辅色 */
+   点睛色即文钞的朱砂，未降饱和：文钞把它压在同一张宣纸上验过 5.36:1，
+   本站三档纸阶（paper / paper-2）上是 5.36 / 4.90，均达 AA。 */
 body {
-  --c-zhusha: #8c5647;   /* 赭红（褪色矿彩）：唯一点睛色，同标志披帛/莲花 */
-  --c-zhusha-rgb: 140, 86, 71;    /* 同色的通道值，供 rgba() 调透明度用（见下方 --accent-soft） */
-  /* 此色比初版降饱和稿(#9f6554)再压暗一档。原值对浅色纸底只有 3.78–4.06:1，
-     而它同时是底栏当前页、各处「播放 ›/续读 ›」入口的文字色，达不到 AA；
-     压暗后 4.77–5.12:1，白字压在它上面也从 4.33 升到 5.46:1。
-     饱和度几乎没动（31%→33%），仍是同一枚褪色赭红，只是不再发虚。 */
-  --c-daiqing: #728880;  /* 黛青：标志天衣色，备用辅色。当前全站零引用，
-                            也未在任何真实底色上验过对比度，启用前需先算一遍 */
-  --gold-line: rgba(149, 125, 77, 0.42);   /* 泥金描线 */
-  --gold-text: #7c673c;
+  --c-zhusha: #b03a26;   /* 朱砂：唯一点睛色，同文钞 --cinnabar */
+  --c-zhusha-rgb: 176, 58, 38;    /* 同色的通道值，供 rgba() 调透明度用（见下方 --accent-soft） */
+  /* 这枚朱砂比本站上一版的褪色赭红(#8c5647)更正、更亮一档，
+     但它同时是底栏当前页、各处「播放 ›/续读 ›」入口的文字色，故仍逐档验过：
+     paper 5.36:1、paper-2 4.90:1，纸白压在它上面 5.36:1 —— 全部过 AA。 */
+  --gold-line: rgba(149, 125, 77, 0.42);   /* 泥金描线：非文钞三色，属本站结构语言，保留 */
+  --gold-text: #79643a;
+  /* 泥金文字原为 #7c673c，在 paper 上 4.83:1 尚可，落到暮色档的 paper-2
+     只剩 4.41:1。仅压暗 1% 明度（L36%→35%）即回到 5.04 / 4.61，肉眼几乎无差。 */
 }
 
 /* —— 四时氛围 ——
-   各档的 --bg-deep 目前全站零引用，留作备用。注意它是不透明色，
+   墨字三阶与界栏在昼间三档是同一套（文钞原值），四时之别只在纸阶与天空：
+   晨曦、正午同用宣纸 paper，暮色沉到 paper-2，夜烛换文钞夜档。
+   .sky 是铺满视口的装饰层、不承载文字，故渐变里可以用到更深的 paper-3。
+
+   --card 是唯一一个文钞没有的纸色：文钞是通栏读物，没有浮起的卡片。
+   取宣纸提亮一档（#fcf9f2）作「浮起的纸」，压在 paper 上 1.07:1、
+   paper-2 上 1.17:1，配合 --line 的实色界栏足够分出层次。
+   各档的 --bg-deep 全站零引用，留作备用。注意它是不透明色，
    若日后拿去替 --card 需另行评估：--card 带 alpha，是配合毛玻璃用的。 */
 body[data-theme="day"] {
-  --bg: #efece4; --bg-deep: #e3ded1;
-  --ink: #2d271f; --ink-2: #5f574a; --ink-3: #6f6455;
-  --card: rgba(252, 250, 246, 0.72); --line: rgba(75, 66, 53, 0.16);
-  --sky: linear-gradient(180deg, #e5e4d9 0%, #ebe8de 46%, #efebe2 100%);
+  --bg: #f6f1e6; --bg-deep: #efe7d4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  --sky: linear-gradient(180deg, #efe7d4 0%, #f6f1e6 60%, #f6f1e6 100%);
 }
 body[data-theme="dawn"] {
-  --bg: #f1eee7; --bg-deep: #e5dcd0;
-  --ink: #312a21; --ink-2: #685f50; --ink-3: #756a5a;
-  --card: rgba(251, 249, 244, 0.72); --line: rgba(87, 75, 61, 0.17);
-  --sky: linear-gradient(180deg, #e8ddcf 0%, #ebe4d7 52%, #f1eee5 100%);
+  --bg: #f6f1e6; --bg-deep: #efe7d4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  /* 晨曦：天边最重，往下透亮，走 paper-3 → paper-2 → paper 三阶 */
+  --sky: linear-gradient(180deg, #e7dcc4 0%, #efe7d4 50%, #f6f1e6 100%);
 }
 body[data-theme="dusk"] {
-  --bg: #ebe6dc; --bg-deep: #dbd1c2;
-  --ink: #302820; --ink-2: #665a4a; --ink-3: #726555;
-  --card: rgba(250, 248, 243, 0.68); --line: rgba(85, 72, 58, 0.19);
-  --sky: linear-gradient(180deg, #d9c8b1 0%, #e3d8c5 55%, #ebe6da 100%);
+  --bg: #efe7d4; --bg-deep: #e7dcc4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  /* 暮色：纸整体沉一阶（正文底为 paper-2），天空压到 paper-3 */
+  --sky: linear-gradient(180deg, #e7dcc4 0%, #e7dcc4 40%, #efe7d4 100%);
 }
 body[data-theme="night"] {
-  --bg: #151310; --bg-deep: #0d0c0a;
-  --ink: #e3d9c9; --ink-2: #a59b8b; --ink-3: #8d8474;
-  --card: rgba(34, 31, 27, 0.66); --line: rgba(205, 191, 167, 0.13);
-  --sky: linear-gradient(180deg, #0c0a08 0%, #110f0b 55%, #151310 100%);
-  /* 夜间赭红提亮，保证纸暗字明 */
-  --c-zhusha: #c6927c;
-  --c-zhusha-rgb: 198, 146, 124;
-  --c-daiqing: #92aaa1;
+  --bg: #171310; --bg-deep: #0f0c0a;
+  --ink: #d9cfbc; --ink-2: #a29478; --ink-3: #8c7f65;
+  --card: rgba(31, 26, 20, 0.66); --line: #383021;
+  --sky: linear-gradient(180deg, #171310 0%, #1f1a14 55%, #171310 100%);
+  /* 夜间朱砂提亮，保证纸暗字明（文钞夜档原值，压在夜纸上 5.22:1） */
+  --c-zhusha: #d4694e;
+  --c-zhusha-rgb: 212, 105, 78;
   --gold-line: rgba(194, 167, 118, 0.34);
   --gold-text: #c0a271;
-}
-/* —— 敦煌 · 矿彩主题（我的→设置→主题 手动选择，不入时段轮转） ——
-   四色实测取自品牌标志：土红 #983a26（披帛/璎珞）、石绿 #81947a（天衣/
-   宝瓶箜篌）、赭金 #d49b59（祥云/环带）、墨褐 #442818（发髻）。
-   洞窟暖纸为底，土红点睛，赭金界栏更显，石绿备作辅色。
-   本主题是全站彩度最高的一档，但同样按低饱和基调整体压过一轮。 */
-body[data-theme="dunhuang"] {
-  --bg: #ebe6db; --bg-deep: #dcd4c4;
-  --ink: #33291e; --ink-2: #625745; --ink-3: #6d6151;
-  --card: rgba(247, 245, 238, 0.74); --line: rgba(91, 77, 60, 0.18);
-  --sky: linear-gradient(180deg, #e1d7c3 0%, #e6decf 48%, #ebe5d9 100%);
-  --c-zhusha: #884132;
-  --c-zhusha-rgb: 136, 65, 50;
-  --c-daiqing: #728870;
-  --gold-line: rgba(159, 125, 77, 0.5);
-  --gold-text: #82683b;
+  /* 夜档飞白：文钞原值 #6e6450 压在夜纸上只有 3.17:1。同色相同彩度
+     提亮到 L47% 得 #8c7f65（4.70:1）。全站 84 处引用，必须过 AA。 */
 }
 
 /* —— 点睛色：全站统一朱砂 —— */
@@ -99,11 +105,12 @@ body {
   --accent-soft: rgba(var(--accent-rgb), 0.45);
   --accent-wash: rgba(var(--accent-rgb), 0.08);
 
-  /* 朱砂底上的前景色。浅色各档用纸白；夜烛档的朱砂被提亮成浅赭，
-     再压白字只有 2.48:1，远不到 AA，故翻成墨色（6.9:1）。 */
-  --on-accent: #f9f5ee;
+  /* 朱砂底上的前景色。浅色各档用文钞宣纸本色（压在朱砂上 5.36:1）；
+     夜烛档的朱砂被提亮成浅赭，再压纸白只有 2.5:1 左右，远不到 AA，
+     故翻成文钞夜纸的墨色（5.22:1）。 */
+  --on-accent: #f6f1e6;
 }
-body[data-theme="night"] { --on-accent: #1a1611; }
+body[data-theme="night"] { --on-accent: #171310; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
 /* touch-action: manipulation —— 禁双击放大（保留滚动与双指缩放），并消除移动端 300ms 点击延迟 */
@@ -1234,16 +1241,20 @@ html[lang="en"] .theme-chips button { font-size: 0.72rem; letter-spacing: 0; }
 .wr-n { flex: none; color: var(--accent); font-size: 0.8rem; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 .wr-n:empty { display: none; }
 .wr-go { color: var(--ink-3); font-size: 1.1rem; }
+/* 行式设置项右侧的当前值（语言名等）。.wr-t 占 flex:1，故它与 › 自然靠右 */
+.wr-val { color: var(--ink-3); font-size: 0.88rem; letter-spacing: 0.04em; }
+/* 语言弹层的选项行：末行不留底线，免得贴着弹层内边缘多一道 */
+#langList .sheet-row:last-child { border-bottom: 0; }
 
 /* 关于本站 · 弹窗 */
-#aboutOverlay {
+#aboutOverlay, #langOverlay {
   position: fixed; inset: 0; z-index: 40;
   background: rgba(26, 21, 14, 0.34);
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; padding: 22px;
   animation: fadein 0.3s var(--e-out);
 }
-#aboutOverlay[hidden] { display: none; }
+#aboutOverlay[hidden], #langOverlay[hidden] { display: none; }
 .about-sheet {
   position: relative; width: 100%; max-width: 440px; max-height: 84vh; overflow-y: auto;
   text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 18px;
@@ -1635,7 +1646,7 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 .lc-av {
   flex: none; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center;
-  font-family: var(--serif); font-size: 0.96rem; color: #f9f5ee; line-height: 1;
+  font-family: var(--serif); font-size: 0.96rem; color: var(--on-accent); line-height: 1;
   background: var(--accent);   /* 兜底；实际由内联 style 按名取色 */
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }
