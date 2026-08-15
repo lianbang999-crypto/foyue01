@@ -1,9 +1,101 @@
 {
- "generatedAt": "2026-07-02",
- "seriesCount": 38,
- "chapterCount": 241,
+ "generatedAt": "2026-08-15",
+ "seriesCount": 39,
+ "chapterCount": 255,
  "qaCount": 820,
  "series": [
+  {
+   "id": "jing",
+   "num": 0,
+   "title": "净土五经（印光大师校订本）",
+   "count": 14,
+   "chapters": [
+    {
+     "n": 1,
+     "title": "校印说明",
+     "path": "jing/01.txt",
+     "chars": 330
+    },
+    {
+     "n": 2,
+     "title": "净土五经重刊序",
+     "path": "jing/02.txt",
+     "chars": 993
+    },
+    {
+     "n": 3,
+     "title": "起诵仪",
+     "path": "jing/03.txt",
+     "chars": 246
+    },
+    {
+     "n": 4,
+     "title": "佛说阿弥陀经",
+     "path": "jing/04.txt",
+     "chars": 2765
+    },
+    {
+     "n": 5,
+     "title": "御制无量寿佛赞",
+     "path": "jing/05.txt",
+     "chars": 450
+    },
+    {
+     "n": 6,
+     "title": "佛说观无量寿佛经",
+     "path": "jing/06.txt",
+     "chars": 8875
+    },
+    {
+     "n": 7,
+     "title": "佛说无量寿经卷上",
+     "path": "jing/07.txt",
+     "chars": 10203
+    },
+    {
+     "n": 8,
+     "title": "佛说无量寿经卷下",
+     "path": "jing/08.txt",
+     "chars": 10969
+    },
+    {
+     "n": 9,
+     "title": "大佛顶首楞严经大势至菩萨念佛圆通章",
+     "path": "jing/09.txt",
+     "chars": 326
+    },
+    {
+     "n": 10,
+     "title": "大方广佛华严经普贤菩萨行愿品",
+     "path": "jing/10.txt",
+     "chars": 6249
+    },
+    {
+     "n": 11,
+     "title": "大方广佛华严经净行品",
+     "path": "jing/11.txt",
+     "chars": 4354
+    },
+    {
+     "n": 12,
+     "title": "大佛顶首楞严经卷第六 四种决定清净明诲",
+     "path": "jing/12.txt",
+     "chars": 2318
+    },
+    {
+     "n": 13,
+     "title": "结诵仪",
+     "path": "jing/13.txt",
+     "chars": 1681
+    },
+    {
+     "n": 14,
+     "title": "印送净土五经跋",
+     "path": "jing/14.txt",
+     "chars": 951
+    }
+   ]
+  },
   {
    "id": "s01",
    "num": 1,

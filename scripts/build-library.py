@@ -2,11 +2,17 @@
 # 文库构建管线：把「大安法师（讲法集）TXT」的混合格式文本（docx/doc/GBK-txt）
 # 统一转为 UTF-8 纯文本，输出到 public/text/，并生成目录索引 public/library.json
 #
-# 依赖 macOS 自带 textutil（doc/docx 转换）
+# 经典原文（《净土五经》）由 build_sutra 模块在本管线内一并构建 —— 必须走同一个
+# 入口，因为下面会 rmtree(public/text) 全量重建，另跑一个脚本产出的文本会被抹掉。
+# 经文与讲记的处理规则不同（前者逐字保真、不做任何规整），故分在两个文件里。
+#
+# 依赖 macOS 自带 textutil（doc/docx 转换）；经典原文一路只用标准库
 # 运行：python3 scripts/build-library.py
 
 import json, os, re, subprocess, sys, unicodedata
 from pathlib import Path
+
+import build_sutra   # 同目录模块：经典原文（净土五经）
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / '大安法师（讲法集）TXT'
@@ -142,6 +148,14 @@ for f in sorted(SRC.iterdir()):
         written += 1
 if loose:
     series_index.append({'id': 'loose', 'num': 99, 'title': '单篇开示', 'count': len(loose), 'chapters': loose})
+
+# ---- 经典原文：《净土五经》（印光大师校订本）----
+# 列于卷首：其余各部都是围绕这几部经的讲记与开示，经为所依。
+# build_sutra 内含逐字保真校验，一旦源文与写出有出入会直接中止构建。
+sutra = build_sutra.build(OUT_TEXT)
+if sutra:
+    series_index.insert(0, sutra)
+    written += sutra['count']
 
 # ---- 大安法师800问 ----
 qa_dir = SRC / '大安法师800问'

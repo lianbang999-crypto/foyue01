@@ -1141,7 +1141,8 @@ function chapProgLabel(c) {
   const pr = readProg(c.path);
   if (pr && pr.pct >= 0.98) return '<span class="d rd-done">已读 ✓</span>';
   if (pr && pr.pct > 0.02) return `<span class="d rd-part">读至 ${Math.round(pr.pct * 100)}%</span>`;
-  return `<span class="d">${Math.round(c.chars / 500)} 分钟</span>`;
+  // 至少记 1 分钟：经文里有「起诵仪」这类两三百字的短章，四舍五入会得 0
+  return `<span class="d">${Math.max(1, Math.round(c.chars / 500))} 分钟</span>`;
 }
 
 function openWkSeries(sid) {
