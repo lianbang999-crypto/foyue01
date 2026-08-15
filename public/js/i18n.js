@@ -25,6 +25,9 @@ const SEED = {
     '点播': 'On demand', '轻触莲台 · 与大众同闻': 'Tap the lotus · listen with the assembly',
     '足迹': 'Trail', '通用': 'General', '主题': 'Theme', '语言': 'Language',
     '纸墨': 'Paper & Ink', '四时流转': 'Follow the hours',
+    '宣纸为底，终日不变': 'Xuan paper ground, unchanging all day',
+    '随播出时段在晨曦·纸墨·暮色·夜烛之间流转':
+      'Shifts with the broadcast hours: Dawn · Paper & Ink · Dusk · Night',
     '我的划线': 'My highlights', '存储与缓存': 'Storage & cache',
     '备份与迁移': 'Backup & transfer', '关于本站': 'About', '关于我们': 'About us',
     '联系方式': 'Contact', '去计数 ›': 'Count ›', '最近在听': 'Recently played',
@@ -57,6 +60,9 @@ const SEED = {
     '点播': 'オンデマンド', '轻触莲台 · 与大众同闻': '蓮台に触れて · 大衆と共に聞く',
     '足迹': '足あと', '通用': '一般', '主题': 'テーマ', '语言': '言語',
     '纸墨': '紙と墨', '四时流转': '時間帯に従う',
+    '宣纸为底，终日不变': '宣紙を地に、終日変わらず',
+    '随播出时段在晨曦·纸墨·暮色·夜烛之间流转':
+      '放送時間帯に応じて 暁・紙墨・黄昏・夜燭 と移ろう',
     '我的划线': 'マイハイライト', '存储与缓存': 'ストレージとキャッシュ',
     '备份与迁移': 'バックアップと移行', '关于本站': '当サイトについて', '关于我们': '私たちについて',
     '联系方式': '連絡先', '去计数 ›': 'カウントへ ›', '最近在听': '最近聴いた',

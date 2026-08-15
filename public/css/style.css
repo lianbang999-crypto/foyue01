@@ -991,47 +991,13 @@ body[data-mode="od"] main { padding-bottom: 96px; }
 #view-wode #wodeTrail { margin-bottom: 12px; }
 #view-wode .ai-note { margin-top: 18px; }
 
-/* 我的 · 外观设置：主题与语言各收成一条分段器 ——
-   原先两行共 8 枚独立描边药丸，8 个框互相竞争，宽度还参差不齐；且高仅
-   32px，指腹按不准。改为一个外框、内部细线等分，选中项落一块淡朱砂底：
-   框从 8 个降到 2 个，等分后边界自然对齐，高度提到 38px（同系统分段控件量级）。 */
-.wode-set {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-  padding: 11px 14px; margin-bottom: 12px;
-}
-.wode-set-label { color: var(--ink); font-size: 0.94rem; letter-spacing: 0.06em; flex: none; }
-.theme-chips {
-  display: flex; flex: 1; min-width: 0;
-  border: 1px solid var(--line); border-radius: 11px; overflow: hidden;
-}
-.theme-chips button {
-  flex: 1 1 0; min-width: 0; white-space: nowrap;
-  font-family: var(--serif); background: transparent;
-  border: 0; border-left: 1px solid var(--line); border-radius: 0;
-  color: var(--ink-2); font-size: 0.78rem; letter-spacing: 0.02em;
-  min-height: 38px; padding: 0 4px; cursor: pointer;
-  transition: color var(--t-2) var(--e-out), background var(--t-2) var(--e-out);
-}
-.theme-chips button:first-child { border-left: 0; }
-.theme-chips button:active { background: var(--accent-wash); }
-.theme-chips button.on { color: var(--c-zhusha); background: var(--accent-wash); }
-/* 西文一档收字号：等分四格是按中文两三字排的，英文「Dunhuang」八个字母
-   在同样字号下会顶到格边（外框 overflow:hidden，会被切掉尾字母）。 */
-html[lang="en"] .theme-chips button { font-size: 0.72rem; letter-spacing: 0; }
-/* 选中态不能只靠颜色（WCAG 1.4.1：不以颜色为唯一区分手段）。
-   这里不加粗字重 —— 格子是 nowrap + 定宽等分，加粗会把「跟随时段」顶出格被裁；
-   改在格底压一道朱砂细线，不占位、不影响可用宽度。 */
-.theme-chips button { position: relative; }
-.theme-chips button.on::after {
-  content: ''; position: absolute; left: 24%; right: 24%; bottom: 5px;
-  height: 2px; border-radius: 1px; background: var(--accent);
-}
-/* 窄屏（SE 一档）：等分四格放不下「跟随时段」，标目让到上一行，分段器占满 */
-@media (max-width: 360px) {
-  .wode-set { flex-direction: column; align-items: stretch; gap: 8px; }
-  .wode-set-label { font-size: 0.88rem; }
-}
+/* 我的 · 外观设置：主题与语言都并入 .wode-row 行式条目 + 弹层 ——
+   原先各是一条等分分段器，那套控件是按 4 个档设计的（英文 Dunhuang
+   八字母要单独收字号、窄屏放不下「跟随时段」要把标目让到上一行、
+   选中态怕加粗把字顶出格所以改压朱砂细线）。档位收到 2 个之后，
+   这些补丁全在解决已经不存在的问题，连同 .wode-set / .theme-chips
+   一并删去：设置区自此只剩 .wode-row 一种控件。
+   选项与说明改由弹层承载，见 index.html 的 #themeOverlay / #langOverlay。 */
 
 /* —— 念佛计数器页 —— */
 .count-label { text-align: center; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.3em; text-indent: 0.3em; margin-top: 4px; }
@@ -1243,18 +1209,21 @@ html[lang="en"] .theme-chips button { font-size: 0.72rem; letter-spacing: 0; }
 .wr-go { color: var(--ink-3); font-size: 1.1rem; }
 /* 行式设置项右侧的当前值（语言名等）。.wr-t 占 flex:1，故它与 › 自然靠右 */
 .wr-val { color: var(--ink-3); font-size: 0.88rem; letter-spacing: 0.04em; }
-/* 语言弹层的选项行：末行不留底线，免得贴着弹层内边缘多一道 */
-#langList .sheet-row:last-child { border-bottom: 0; }
+/* 主题/语言弹层的选项行：末行不留底线，免得贴着弹层内边缘多一道 */
+#langList .sheet-row:last-child, #themeList .sheet-row:last-child { border-bottom: 0; }
+/* 主题弹层的说明小字：.pr-stat 原为一行统计数字，此处承载整句解释，
+   故解掉 nowrap 语境下的紧凑行距，并给出换行宽度上限 */
+#themeList .pr-stat { max-width: 22em; line-height: 1.7; white-space: normal; text-align: left; }
 
 /* 关于本站 · 弹窗 */
-#aboutOverlay, #langOverlay {
+#aboutOverlay, #langOverlay, #themeOverlay {
   position: fixed; inset: 0; z-index: 40;
   background: rgba(26, 21, 14, 0.34);
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; padding: 22px;
   animation: fadein 0.3s var(--e-out);
 }
-#aboutOverlay[hidden], #langOverlay[hidden] { display: none; }
+#aboutOverlay[hidden], #langOverlay[hidden], #themeOverlay[hidden] { display: none; }
 .about-sheet {
   position: relative; width: 100%; max-width: 440px; max-height: 84vh; overflow-y: auto;
   text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 18px;
@@ -2102,11 +2071,9 @@ body:not([data-view="reader"]) .top-fab { display: none !important; }
   background: var(--card); border: 1px solid var(--line); border-radius: 14px;
   overflow: hidden; margin: 14px 0 4px;
 }
-.wode-group .wode-set, .wode-group .wode-row {
+.wode-group .wode-row {
   background: transparent; border: 0; border-radius: 0; margin: 0;
 }
-.wode-group .wode-set + .wode-set,
-.wode-group .wode-set + .wode-row,
 .wode-group .wode-row + .wode-row { border-top: 1px solid var(--line); }
 #view-wode .wode-sub { margin-bottom: 10px; }
 

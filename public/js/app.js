@@ -137,8 +137,17 @@ function showLibError() {
   document.body.appendChild(el);
 }
 
-// 外观偏好只两档：'day' 纸墨（固定）/ 'auto' 四时流转（随节目单时段走）。
-const THEME_PREFS = ['day', 'auto'];
+// 外观偏好只两档。这份清单是单一数据源 —— 设置页那一行的当前值、
+// 弹层里的选项与说明都从这里出，与 LANGS 同一套路。
+const THEMES = [
+  { id: 'day',  name: '纸墨',     desc: '宣纸为底，终日不变' },
+  { id: 'auto', name: '四时流转', desc: '随播出时段在晨曦·纸墨·暮色·夜烛之间流转' },
+];
+const THEME_PREFS = THEMES.map((t) => t.id);
+
+function themeName(v) {
+  return (THEMES.find((t) => t.id === v) || THEMES[0]).name;
+}
 
 // 读取并校正主题偏好。旧版另有「深色 night」「敦煌 dunhuang」两个固定档，
 // 其 CSS 块已随主题精简删除；老用户本机还存着旧值，若不迁回，
@@ -153,13 +162,11 @@ function themePref() {
 }
 
 // 外观偏好：首次访问默认纸墨；用户可改为四时流转。
+// 设置页那一行的当前值在此更新；弹层里的选中态在 openTheme() 打开时现铺。
 function applyThemePref() {
   const pref = themePref();
-  document.querySelectorAll('#themeChips button').forEach((b) => {
-    const on = b.dataset.theme === pref;
-    b.classList.toggle('on', on);
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
-  });
+  const el = $('#themeVal');
+  if (el) el.textContent = themeName(pref);
   let theme = pref;
   if (pref === 'auto') theme = station.liveAt(stationNow()).item.block.theme;
   document.body.dataset.theme = theme;
@@ -3868,9 +3875,23 @@ function bindEvents() {
   });
 
   // 外观设置
-  $('#themeChips').addEventListener('click', (e) => {
+  // 主题：行式条目 → 弹层选择，与语言同一套路。
+  const openTheme = () => {
+    const cur = themePref();
+    $('#themeList').innerHTML = THEMES.map((x) => `<button class="sheet-row${x.id === cur ? ' on' : ''}" data-theme="${x.id}"><span class="pr-main"><span>${x.name}</span><small class="pr-stat">${x.desc}</small></span>${
+      x.id === cur ? '<span class="sheet-tick">✓</span>' : ''}</button>`).join('');
+    $('#themeOverlay').hidden = false;
+  };
+  const closeTheme = () => { $('#themeOverlay').hidden = true; };
+  $('#btnTheme').addEventListener('click', openTheme);
+  $('#btnThemeClose').addEventListener('click', closeTheme);
+  $('#themeOverlay').addEventListener('click', (e) => {
+    if (e.target === $('#themeOverlay')) closeTheme();   // 点遮罩关闭，点内容不关
+  });
+  $('#themeList').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-theme]');
     if (!b) return;
+    closeTheme();
     localStorage.setItem('fy.theme', b.dataset.theme);
     applyThemePref();
   });

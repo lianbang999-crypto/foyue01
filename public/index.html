@@ -353,13 +353,14 @@
 
     <h3 class="wode-sub">设置</h3>
     <div class="wode-group">
-      <div class="wode-set">
-        <span class="wode-set-label">主题</span>
-        <div class="theme-chips" id="themeChips">
-          <button data-theme="day">纸墨</button>
-          <button data-theme="auto">四时流转</button>
-        </div>
-      </div>
+      <!-- 主题：行式条目 + 弹层，与语言同形。弹层里放得下一句说明 ——
+           「四时流转」四个字不自明，分段控件里塞不进解释 -->
+      <button class="wode-row" id="btnTheme">
+        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="currentColor" stroke="none"/></svg></span>
+        <span class="wr-t">主题</span>
+        <span class="wr-val" id="themeVal">纸墨</span>
+        <span class="wr-go">›</span>
+      </button>
       <!-- 语言：行式条目 + 弹层。语种会持续增加，chips 是定长控件、一多就换行堆叠 -->
       <button class="wode-row" id="btnLang">
         <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.2 2.4 3.4 5.4 3.4 8.6s-1.2 6.2-3.4 8.6c-2.2-2.4-3.4-5.4-3.4-8.6s1.2-6.2 3.4-8.6z"/></svg></span>
@@ -651,6 +652,15 @@
     <h4>联系方式</h4>
     <p>如有问题或建议反馈，欢迎来信告知。</p>
     <p class="about-mail"><a href="mailto:lebang001@qq.com">lebang001@qq.com</a></p>
+  </div>
+</div>
+
+<!-- 主题（弹窗）。选项行由 app.js 按 THEMES 清单生成 -->
+<div id="themeOverlay" hidden>
+  <div class="about-sheet">
+    <button class="sheet-x" id="btnThemeClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <h3 class="sheet-title">主题</h3>
+    <div id="themeList"></div>
   </div>
 </div>
 
