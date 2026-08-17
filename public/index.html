@@ -77,6 +77,8 @@
 </head>
 <body data-theme="day" data-view="home" data-tab="home" data-seg="ting" data-mode="live">
 
+<a class="skip-link" href="#main">跳到主内容</a>
+
 <div class="sky" aria-hidden="true"></div>
 
 <header class="top">
@@ -97,7 +99,7 @@
   </nav>
   <a class="ask-btn" href="#wenda" data-tab="wenda" aria-label="问法">
     <!-- 问法：圆话泡 + 问号（一望即「问」，与留言的方话泡区分） -->
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3 16.5a9 9 0 1 1 3.9 3.9l-4.4 1.3a.8.8 0 0 1-1-1z"/>
       <path d="M9.3 9.2a2.8 2.8 0 0 1 5.4.9c0 1.9-2.8 2.8-2.8 2.8"/>
       <path d="M12 16.9h.01" stroke-width="2.2"/>
@@ -106,7 +108,7 @@
   </a>
 </header>
 
-<main>
+<main id="main" tabindex="-1">
 
   <!-- 首页：今日修行案头 -->
   <section id="view-home" class="view">
@@ -125,8 +127,8 @@
         <em class="hl-ep" id="hlEp"></em>
       </a>
       <button class="hl-play" id="btnHomeLive" aria-label="播放或暂停直播">
-        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
-        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+        <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <span class="hl-line" aria-hidden="true"><i id="hlFill"></i></span>
     </div>
@@ -160,7 +162,7 @@
         <span class="live-dot" aria-hidden="true"></span>
         <span class="ls-label">直播中</span>
         <span class="ls-info"><strong id="lsSeries"></strong><em id="lsEp"></em></span>
-        <span class="ls-go">进入 ›</span>
+        <span class="ls-go">进入<span aria-hidden="true"> ›</span></span>
       </a>
       <div id="tingGroups"></div>
     </div>
@@ -178,7 +180,7 @@
 
   <!-- 系列详情（听经台/有声书共用） -->
   <section id="view-series" class="view">
-    <button class="back-btn" id="btnSeriesBack">‹ 返回</button>
+    <button class="back-btn" id="btnSeriesBack"><span aria-hidden="true">‹</span> 返回</button>
     <h2 id="seriesName"></h2>
     <p class="page-note" id="seriesMeta"></p>
     <p class="series-intro" id="seriesIntro" hidden></p>
@@ -188,7 +190,7 @@
 
   <!-- 直播（从听经台进入的栏目） -->
   <section id="view-live" class="view">
-    <button class="back-btn" data-back="#ting">‹ 返回听经</button>
+    <button class="back-btn" data-back="#ting"><span aria-hidden="true">‹</span> 返回听经</button>
     <p class="now-date" id="nowDate"></p>
     <div class="live-card">
       <div class="dm-layer" id="dmLayer" aria-hidden="true"></div>
@@ -200,8 +202,8 @@
         <div class="progress-times"><span id="liveElapsed">--:--</span><span id="liveTotal">--:--</span></div>
       </div>
       <button class="play-big" id="btnLive" aria-label="播放">
-        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
-        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+        <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
       <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
@@ -240,7 +242,7 @@
 
   <!-- 节目单 -->
   <section id="view-schedule" class="view">
-    <button class="back-btn" data-back="#live">‹ 返回直播</button>
+    <button class="back-btn" data-back="#live"><span aria-hidden="true">‹</span> 返回直播</button>
     <div class="sched-head">
       <h2>节目单</h2>
       <div class="day-toggle" role="tablist">
@@ -264,7 +266,7 @@
       <div class="lib-grid" id="wkGrid"></div>
     </div>
     <div id="wkSeries" hidden>
-      <button class="back-btn" data-back="#wenku">‹ 返回阅读</button>
+      <button class="back-btn" data-back="#wenku"><span aria-hidden="true">‹</span> 返回阅读</button>
       <h2 id="wkSeriesName"></h2>
       <p class="page-note" id="wkSeriesMeta"></p>
       <ol class="ep-list" id="wkChapList"></ol>
@@ -274,17 +276,17 @@
   <!-- 阅读器 -->
   <section id="view-reader" class="view">
     <div class="reader-bar">
-      <button class="back-btn" id="btnReaderBack">‹ 返回</button>
+      <button class="back-btn" id="btnReaderBack"><span aria-hidden="true">‹</span> 返回</button>
       <span class="reader-pos" id="readerPos"></span>
       <div class="reader-tools">
         <button id="btnBookmark" aria-label="收藏本篇">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.4L7 20z"/></svg>
         </button>
         <button id="btnReaderShare" aria-label="分享本篇">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.6" cy="5.4" r="2.5"/><circle cx="6.4" cy="12" r="2.5"/><circle cx="17.6" cy="18.6" r="2.5"/><path d="M8.6 10.7l6.8-4M8.6 13.3l6.8 4"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="17.6" cy="5.4" r="2.5"/><circle cx="6.4" cy="12" r="2.5"/><circle cx="17.6" cy="18.6" r="2.5"/><path d="M8.6 10.7l6.8-4M8.6 13.3l6.8 4"/></svg>
         </button>
         <button id="btnTtsToggle" aria-label="朗读本篇">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.6v4.8h3l4.3 3.8V5.8L7.5 9.6z"/><path d="M15.2 9.2c1.6 1.6 1.6 4 0 5.6"/><path d="M17.8 6.8c2.9 2.9 2.9 7.5 0 10.4"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.6v4.8h3l4.3 3.8V5.8L7.5 9.6z"/><path d="M15.2 9.2c1.6 1.6 1.6 4 0 5.6"/><path d="M17.8 6.8c2.9 2.9 2.9 7.5 0 10.4"/></svg>
         </button>
         <button id="btnRdSet" aria-label="阅读设置">Aa</button>
       </div>
@@ -294,12 +296,12 @@
     <nav class="reader-nav">
       <div id="readerNextCard"></div>
       <div class="reader-nav-row">
-        <button id="btnPrevChap">‹ 上一篇</button>
+        <button id="btnPrevChap"><span aria-hidden="true">‹</span> 上一篇</button>
         <button id="btnChapList">目 录</button>
       </div>
     </nav>
     <button id="btnTop" class="top-fab" hidden aria-label="回到顶部">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14.5 12 8.5l6 6"/></svg>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14.5 12 8.5l6 6"/></svg>
     </button>
   </section>
 
@@ -310,7 +312,7 @@
     <!-- 修行概览：定课进度环 + 今日/累计/连续 -->
     <a class="wode-hero" href="#count" aria-label="进入念佛计数">
       <div class="wh-ring" aria-hidden="true">
-        <svg viewBox="0 0 76 76">
+        <svg aria-hidden="true" viewBox="0 0 76 76">
           <circle class="whr-bg" cx="38" cy="38" r="32" fill="none" stroke-width="5"/>
           <circle class="whr-fg" id="whRing" cx="38" cy="38" r="32" fill="none" stroke-width="5"
             stroke-linecap="round" transform="rotate(-90 38 38)"/>
@@ -322,7 +324,7 @@
         <em id="wcProgress"></em>
         <small id="whStats"></small>
       </div>
-      <span class="hc-go">去计数 ›</span>
+      <span class="hc-go">去计数<span aria-hidden="true"> ›</span></span>
     </a>
 
     <!-- 我的内容：足迹 / 收藏 / 离线下载 / 划线——由 renderWode 动态铺行，点击开弹层，主页保持清爽 -->
@@ -339,7 +341,7 @@
       </a>
       <a class="wode-row wode-ext" href="https://game.foyue.org/" target="_blank" rel="noopener">
         <span class="wr-ic wr-sumeru" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="4.2" r="1.4" fill="currentColor" stroke="none"/>
             <path d="M10 9.2h4l1.4 2.6H8.6z"/>
             <path d="M8.6 11.8h6.8l2 2.9H6.6z"/>
@@ -357,32 +359,32 @@
       <!-- 主题：行式条目 + 弹层，与语言同形。弹层里放得下一句说明 ——
            「四时流转」四个字不自明，分段控件里塞不进解释 -->
       <button class="wode-row" id="btnTheme">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="currentColor" stroke="none"/></svg></span>
+        <span class="wr-ic" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4a8.6 8.6 0 0 1 0 17.2z" fill="currentColor" stroke="none"/></svg></span>
         <span class="wr-t">主题</span>
         <span class="wr-val" id="themeVal">纸墨</span>
-        <span class="wr-go">›</span>
+        <span class="wr-go" aria-hidden="true">›</span>
       </button>
       <!-- 语言：行式条目 + 弹层。语种会持续增加，chips 是定长控件、一多就换行堆叠 -->
       <button class="wode-row" id="btnLang">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.2 2.4 3.4 5.4 3.4 8.6s-1.2 6.2-3.4 8.6c-2.2-2.4-3.4-5.4-3.4-8.6s1.2-6.2 3.4-8.6z"/></svg></span>
+        <span class="wr-ic" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2"/><path d="M12 3.4c2.2 2.4 3.4 5.4 3.4 8.6s-1.2 6.2-3.4 8.6c-2.2-2.4-3.4-5.4-3.4-8.6s1.2-6.2 3.4-8.6z"/></svg></span>
         <span class="wr-t">语言</span>
         <span class="wr-val" id="langVal">简体中文</span>
-        <span class="wr-go">›</span>
+        <span class="wr-go" aria-hidden="true">›</span>
       </button>
       <button class="wode-row" id="btnStorage">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"/><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></svg></span>
+        <span class="wr-ic" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.7"/><path d="M5 6v12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7V6"/><path d="M5 12c0 1.5 3.1 2.7 7 2.7s7-1.2 7-2.7"/></svg></span>
         <span class="wr-t">存储与缓存</span>
-        <span class="wr-go">›</span>
+        <span class="wr-go" aria-hidden="true">›</span>
       </button>
       <button class="wode-row" id="btnBackup">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8.2h10"/><path d="M13.8 4.8 17.2 8.2l-3.4 3.4"/><path d="M17 15.8H7"/><path d="M10.2 12.4 6.8 15.8l3.4 3.4"/></svg></span>
+        <span class="wr-ic" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8.2h10"/><path d="M13.8 4.8 17.2 8.2l-3.4 3.4"/><path d="M17 15.8H7"/><path d="M10.2 12.4 6.8 15.8l3.4 3.4"/></svg></span>
         <span class="wr-t">备份与迁移</span>
-        <span class="wr-go">›</span>
+        <span class="wr-go" aria-hidden="true">›</span>
       </button>
       <button class="wode-row" id="btnAbout">
-        <span class="wr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5"/><path d="M12 7.6h.01" stroke-width="2.2"/></svg></span>
+        <span class="wr-ic" aria-hidden="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 11v5"/><path d="M12 7.6h.01" stroke-width="2.2"/></svg></span>
         <span class="wr-t">关于本站</span>
-        <span class="wr-go">›</span>
+        <span class="wr-go" aria-hidden="true">›</span>
       </button>
     </div>
     <p class="ai-note">数据只存本机 · 换机前请先在「备份与迁移」中导出</p>
@@ -392,12 +394,12 @@
   <section id="view-count" class="view">
     <div class="cnt-top">
       <button class="back-btn cnt-back" data-back="#wode" aria-label="返回">‹</button>
-      <button class="cnt-hub" id="btnHub">功课 ›</button>
+      <button class="cnt-hub" id="btnHub">功课 <span aria-hidden="true">›</span></button>
     </div>
     <div class="cnt-hall">
-      <button class="cnt-practice" id="btnPractice">
+      <button class="cnt-practice" id="btnPractice" aria-label="切换功课">
         <span id="countName"></span>
-        <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg aria-hidden="true" class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <button class="nj-bead nj-bead-big" id="btnBead" aria-label="计一声">
         <svg class="nj-svg" viewBox="0 0 120 120" aria-hidden="true">
@@ -410,10 +412,10 @@
           <small>今日 · 声</small>
         </span>
       </button>
-      <button class="cnt-goal" id="btnGoal"><span id="countSub"></span></button>
+      <button class="cnt-goal" id="btnGoal" aria-label="设置每日定课"><span id="countSub"></span></button>
       <div class="nj-actions">
-        <button id="btnTen">十念 +10</button>
-        <button id="btnUndo">撤销 −1</button>
+        <button id="btnTen" aria-label="十念，加十声">十念 +10</button>
+        <button id="btnUndo" aria-label="撤销，减一声">撤销 −1</button>
         <button id="btnZen">静 念</button>
       </div>
     </div>
@@ -436,8 +438,8 @@
     <div class="chat-input">
       <textarea id="wdInput" rows="1" maxlength="300" placeholder="向文库提问 …"></textarea>
       <button id="btnAsk" aria-label="提问">
-        <svg class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <svg class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+        <svg aria-hidden="true" class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg aria-hidden="true" class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
       </button>
     </div>
     <p class="ai-note">答案由 AI 依据大安法师讲记原文生成，仅供参考；修学请以原文与善知识为准。</p>
@@ -459,11 +461,11 @@
       <span class="mini-ep" id="miniEp"></span>
     </button>
     <button class="mini-pp" id="btnMiniPlaySm" aria-label="播放/暂停">
-      <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
-      <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+      <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+      <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
     </button>
     <button class="dock-up" id="btnMiniToggle" aria-label="展开播放器">
-      <svg viewBox="0 0 24 24"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 14l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
   </div>
 
@@ -471,12 +473,12 @@
   <div class="player">
     <div class="pl-top">
       <button class="pl-icon" id="btnPlayerDown" aria-label="收起播放器">
-        <svg viewBox="0 0 24 24"><path d="M6 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 10l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <span class="pl-tag" id="plTag">听经</span>
       <div class="pl-top-right">
         <button class="pl-icon" id="btnShare" aria-label="分享本集">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.4"/><circle cx="17.5" cy="6" r="2.4"/><circle cx="17.5" cy="18" r="2.4"/><path d="M8.1 10.9 15.4 7.1M8.1 13.1l7.3 3.8"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.4"/><circle cx="17.5" cy="6" r="2.4"/><circle cx="17.5" cy="18" r="2.4"/><path d="M8.1 10.9 15.4 7.1M8.1 13.1l7.3 3.8"/></svg>
         </button>
       </div>
     </div>
@@ -495,14 +497,14 @@
     <div class="pl-seek">
       <div class="mini-seekrow">
         <button class="pl-jump" id="btnBack15" aria-label="后退15秒">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8"/><path d="M3.5 3.4v4.6h4.6"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 8.5-8.5 9.2 9.2 0 0 0-6.4 2.6L3.5 8"/><path d="M3.5 3.4v4.6h4.6"/></svg>
           <b class="pl-jump-n">15</b>
         </button>
         <span id="miniCur">0:00</span>
         <input type="range" id="miniSeek" min="0" max="1000" value="0" aria-label="播放进度">
         <span id="miniDur">0:00</span>
         <button class="pl-jump" id="btnFwd15" aria-label="前进15秒">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-8.5-8.5 9.2 9.2 0 0 1 6.4 2.6L20.5 8"/><path d="M20.5 3.4v4.6h-4.6"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 1 1-8.5-8.5 9.2 9.2 0 0 1 6.4 2.6L20.5 8"/><path d="M20.5 3.4v4.6h-4.6"/></svg>
           <b class="pl-jump-n">15</b>
         </button>
       </div>
@@ -511,46 +513,46 @@
 
     <div class="pl-main">
       <button class="pl-mode m-list" id="btnPlayMode" aria-label="播放模式">
-        <svg class="ic-mode ic-mode-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M4 12V10a4 4 0 0 1 4-4h12"/><path d="M7 21l-3-3 3-3"/><path d="M20 12v2a4 4 0 0 1-4 4H4"/></svg>
-        <svg class="ic-mode ic-mode-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h4l10 12h4"/><path d="M3 18h4l3-3.6M14.5 8l2.5-2h4"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>
+        <svg aria-hidden="true" class="ic-mode ic-mode-loop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l3 3-3 3"/><path d="M4 12V10a4 4 0 0 1 4-4h12"/><path d="M7 21l-3-3 3-3"/><path d="M20 12v2a4 4 0 0 1-4 4H4"/></svg>
+        <svg aria-hidden="true" class="ic-mode ic-mode-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h4l10 12h4"/><path d="M3 18h4l3-3.6M14.5 8l2.5-2h4"/><path d="M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>
         <b class="pl-mode-1">1</b>
       </button>
       <button class="pl-step" id="btnPrevEp" aria-label="上一集">
-        <svg viewBox="0 0 24 24"><path d="M8 6v12H6V6zM18 6v12l-9-6z"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 6v12H6V6zM18 6v12l-9-6z"/></svg>
       </button>
       <button class="pl-play" id="btnMiniPlay" aria-label="播放/暂停">
-        <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
-        <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
+        <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
       <button class="pl-step" id="btnNextEp" aria-label="下一集">
-        <svg viewBox="0 0 24 24"><path d="M16 6v12h2V6zM6 6l9 6-9 6z"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 6v12h2V6zM6 6l9 6-9 6z"/></svg>
       </button>
       <button class="pl-mainbtn" id="btnSleep" aria-label="睡眠定时">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.2"/><path d="M12 9.6V13l2.4 1.6"/><path d="M5.2 3.4 2.8 5.8"/><path d="M18.8 3.4 21.2 5.8"/><path d="M7.4 19.8 5.8 21.6"/><path d="M16.6 19.8 18.2 21.6"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.2"/><path d="M12 9.6V13l2.4 1.6"/><path d="M5.2 3.4 2.8 5.8"/><path d="M18.8 3.4 21.2 5.8"/><path d="M7.4 19.8 5.8 21.6"/><path d="M16.6 19.8 18.2 21.6"/></svg>
         <span id="sleepVal">定时</span>
       </button>
     </div>
 
     <div class="pl-sec">
       <button class="pl-secbtn" id="btnPlaylist" aria-label="本系列目录">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M4 12h10M4 17h6"/><path d="M18 8v8.2"/><circle cx="16.4" cy="17.2" r="1.6"/></svg>
         <span>目录</span>
       </button>
       <button class="pl-secbtn" id="btnFav" aria-label="收藏本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.35 5.9.86-4.27 4.16 1.01 5.87L12 17.9l-5.25 2.8 1.01-5.87L3.5 10.67l5.9-.86z"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.6 5.35 5.9.86-4.27 4.16 1.01 5.87L12 17.9l-5.25 2.8 1.01-5.87L3.5 10.67l5.9-.86z"/></svg>
         <span>收藏</span>
       </button>
       <button class="pl-secbtn" id="btnLike" aria-label="随喜">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.5v9.5H4.5a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1z"/><path d="M7 10.5l4.2-6.6a1.9 1.9 0 0 1 2.7 1.7V9h4.3a2 2 0 0 1 2 2.4l-1.3 6.2a2 2 0 0 1-2 1.4H7"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.5v9.5H4.5a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1z"/><path d="M7 10.5l4.2-6.6a1.9 1.9 0 0 1 2.7 1.7V9h4.3a2 2 0 0 1 2 2.4l-1.3 6.2a2 2 0 0 1-2 1.4H7"/></svg>
         <b class="pl-count" id="likeCount" hidden></b>
         <span>随喜</span>
       </button>
       <button class="pl-secbtn" id="btnComment" aria-label="留言">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5v3.2L12 17h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5v3.2L12 17h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>
         <span>留言</span>
       </button>
       <button class="pl-secbtn" id="btnDownload" aria-label="下载本集">
-        <svg class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+        <svg aria-hidden="true" class="pl-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
         <span>下载</span>
       </button>
     </div>
@@ -568,10 +570,10 @@
     <div class="cnt-sheet-grip" aria-hidden="true"></div>
     <div class="cnt-sheet-head">
       <h3 id="plListTitle">目录</h3>
-      <button class="sheet-x" id="plListX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="sheet-x" id="plListX" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <ol class="ep-list pls-eps" id="plListEps"></ol>
-    <button class="pls-go" id="plListGo">前往系列页 ›</button>
+    <button class="pls-go" id="plListGo">前往系列页 <span aria-hidden="true">›</span></button>
   </div>
 </div>
 
@@ -615,7 +617,7 @@
     <div class="cnt-sheet-grip" aria-hidden="true"></div>
     <div class="cnt-sheet-head">
       <h3>闻法留言 · 同修在此</h3>
-      <button class="sheet-x" id="cmtSheetX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="sheet-x" id="cmtSheetX" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <p class="cmt-ep" id="cmtSheetEp"></p>
     <div class="cmt-list" id="cmtSheetList"></div>
@@ -646,7 +648,7 @@
 <!-- 关于本站（弹窗） -->
 <div id="aboutOverlay" hidden>
   <div class="about-sheet">
-    <button class="sheet-x" id="btnAboutClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <button class="sheet-x" id="btnAboutClose" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <h3 class="sheet-title">关于本站</h3>
     <h4>关于我们</h4>
     <p>音频内容主要来源于<a href="https://www.lsdls.cn/" target="_blank" rel="noopener">庐山东林寺</a>官网等官方渠道。为方便莲友随时随地听经闻法，特此整理收录。所有音频版权归原寺院及讲法法师所有。</p>
@@ -659,7 +661,7 @@
 <!-- 主题（弹窗）。选项行由 app.js 按 THEMES 清单生成 -->
 <div id="themeOverlay" hidden>
   <div class="about-sheet">
-    <button class="sheet-x" id="btnThemeClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <button class="sheet-x" id="btnThemeClose" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <h3 class="sheet-title">主题</h3>
     <div id="themeList"></div>
   </div>
@@ -668,7 +670,7 @@
 <!-- 语言（弹窗）。选项行由 app.js 按 LANGS 清单生成：加语种只改那一处 -->
 <div id="langOverlay" hidden>
   <div class="about-sheet">
-    <button class="sheet-x" id="btnLangClose" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <button class="sheet-x" id="btnLangClose" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     <h3 class="sheet-title">语言 / Language</h3>
     <div id="langList"></div>
   </div>
@@ -698,18 +700,18 @@
 <!-- 选中文字浮标：划线 + 分享法布施 -->
 <div id="quoteChip" hidden>
   <button id="chipHl">划 线</button>
-  <button id="chipShare">❝ 分享</button>
+  <button id="chipShare"><span aria-hidden="true">❝</span> 分享</button>
 </div>
 
 <!-- 朗读控制条（文转音频） -->
 <div id="ttsBar" hidden>
   <button id="ttsPlay" aria-label="暂停/继续">
-    <svg class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
-    <svg class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>
+    <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
+    <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z" fill="currentColor"/></svg>
   </button>
   <span id="ttsInfo">朗读中 …</span>
   <button id="ttsStopBtn" aria-label="停止朗读">
-    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
 </div>
 
@@ -719,20 +721,20 @@
     <div class="cnt-sheet-grip" aria-hidden="true"></div>
     <div class="cnt-sheet-head">
       <h3>分享 · 法布施</h3>
-      <button class="sheet-x" id="shareX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="sheet-x" id="shareX" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div class="share-prev" id="sharePrev"></div>
     <div class="share-acts">
       <button class="share-act" id="shareSys">
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
+        <span class="sa-ic"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
         <span>转发</span>
       </button>
       <button class="share-act" id="shareCopy">
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 13.6a3.8 3.8 0 0 0 5.4 0l3-3a3.8 3.8 0 0 0-5.4-5.4l-1.5 1.5"/><path d="M13.6 10.4a3.8 3.8 0 0 0-5.4 0l-3 3a3.8 3.8 0 0 0 5.4 5.4l1.5-1.5"/></svg></span>
+        <span class="sa-ic"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.4 13.6a3.8 3.8 0 0 0 5.4 0l3-3a3.8 3.8 0 0 0-5.4-5.4l-1.5 1.5"/><path d="M13.6 10.4a3.8 3.8 0 0 0-5.4 0l-3 3a3.8 3.8 0 0 0 5.4 5.4l1.5-1.5"/></svg></span>
         <span>链接</span>
       </button>
       <button class="share-act" id="sharePoster">
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9.2" cy="10" r="1.4"/><path d="M4.5 16.8 9.5 12l4 3.6 2.8-2.4 3.2 2.9"/></svg></span>
+        <span class="sa-ic"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9.2" cy="10" r="1.4"/><path d="M4.5 16.8 9.5 12l4 3.6 2.8-2.4 3.2 2.9"/></svg></span>
         <span>海报</span>
       </button>
     </div>
@@ -744,16 +746,16 @@
 <div id="posterOverlay" hidden>
   <div class="poster-box">
     <button class="poster-x" id="posterClose" aria-label="关闭">
-      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     </button>
     <img id="posterImg" alt="分享海报">
     <div class="poster-acts">
       <button class="share-act poster-act" id="posterShare" hidden>
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
+        <span class="sa-ic"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5V3.6"/><path d="M8.2 7.2 12 3.5l3.8 3.7"/><path d="M8 10.5H5.5v10h13v-10H16"/></svg></span>
         <span>转发</span>
       </button>
       <button class="share-act poster-act" id="posterSave">
-        <span class="sa-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg></span>
+        <span class="sa-ic"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14.5v-11"/><path d="M8.2 11.2 12 14.8l3.8-3.6"/><path d="M4 18.6h16"/></svg></span>
         <span>保存</span>
       </button>
     </div>
@@ -778,7 +780,7 @@
     <div class="cnt-sheet-grip" aria-hidden="true"></div>
     <div class="cnt-sheet-head">
       <h3 id="cntSheetTitle"></h3>
-      <button class="sheet-x" id="cntSheetX" aria-label="关闭"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+      <button class="sheet-x" id="cntSheetX" aria-label="关闭"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
     </div>
     <div id="cntSheetBody"></div>
   </div>
@@ -791,16 +793,16 @@
 <!-- 移动端底部导航 -->
 <nav class="bottom-nav" aria-label="底部导航">
   <a href="#home" data-tab="home">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 12 4.5l7.5 7"/><path d="M6.5 10.2V19.5h11v-9.3"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11.5 12 4.5l7.5 7"/><path d="M6.5 10.2V19.5h11v-9.3"/></svg>
     <span>首页</span></a>
   <a href="#ting" data-tab="ting">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.9v6.2l5.3-3.1z" fill="currentColor" stroke="none"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M10.2 8.9v6.2l5.3-3.1z" fill="currentColor" stroke="none"/></svg>
     <span>听经</span></a>
   <a href="#wenku" data-tab="wenku">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="16" rx="2.2"/><path d="M8.6 4v16"/><path d="M11.6 9.2h4.6M11.6 13h4.6"/></svg>
     <span>阅读</span></a>
   <a href="#wode" data-tab="wode">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.4"/><path d="M5.2 19.5c1-3.9 3.8-5.8 6.8-5.8s5.8 1.9 6.8 5.8"/></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.4"/><path d="M5.2 19.5c1-3.9 3.8-5.8 6.8-5.8s5.8 1.9 6.8 5.8"/></svg>
     <span>我的</span></a>
 </nav>
 

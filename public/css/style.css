@@ -2251,3 +2251,20 @@ button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
   .home-card:active, .series-card:active { transform: scale(0.985); }
   .xf-card:active { transform: scale(0.99); }
 }
+
+/* —— 无障碍 ——
+   sr-only：视觉上取走、读屏仍可读。用于动态播报区与跳转链接。
+   不用 display:none / visibility:hidden —— 那两者读屏也一并跳过。 */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* 跳转到主内容：键盘 Tab 第一下即可越过顶栏与标签，聚焦时才现身 */
+.skip-link {
+  position: absolute; left: 50%; top: 0; transform: translate(-50%, -120%);
+  z-index: 999; padding: 10px 20px; border-radius: 0 0 12px 12px;
+  background: var(--accent); color: #fff; font-family: var(--serif);
+  font-size: 0.9rem; letter-spacing: 0.08em; text-decoration: none;
+  transition: transform 0.18s var(--e-out);
+}
+.skip-link:focus { transform: translate(-50%, 0); }

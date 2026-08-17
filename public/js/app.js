@@ -8,6 +8,9 @@ import {
 } from './station.js';
 import { SERIES_INTROS } from './intros.js';
 import { initI18n } from './i18n.js';
+import {
+  markDialog, setBackgroundInert, trapTab, initSkipLink, announce,
+} from './a11y.js';
 
 const $ = (s) => document.querySelector(s);
 const audio = $('#audio');
@@ -70,6 +73,7 @@ async function init() {
   buildHome();
   applyThemePref();
   bindEvents();
+  initSkipLink();
   route();
   tick();
   setInterval(tick, 1000);
@@ -1751,6 +1755,8 @@ function vibrate(pattern) {
 function beadFull() {
   vibrate([24, 60, 36]);
   playMuyu(); setTimeout(playMuyu, 160);
+  // 满串靠震动与木鱼提示，读屏用户两者都收不到，补一句播报
+  announce(`满一串，一百零八声。今日共 ${njDayTotal(bjDateKey())} 声`);
   for (const el of [$('#btnBead'), $('#zenNum')]) {
     el.classList.remove('full');
     void el.offsetWidth;   // 重启动画
@@ -1760,6 +1766,7 @@ function beadFull() {
 
 function goalDone() {
   vibrate([40, 80, 60, 80, 90]);
+  announce('今日定课圆满');
   $('#gdOverlay').hidden = false;
 }
 
@@ -2145,6 +2152,10 @@ async function sendQuestion(q) {
   chat.streaming = false;
   askCtrl = null;
   document.querySelector('.chat-input').classList.remove('asking');
+  // 流式作答是逐字追加的，读屏不会主动读；答毕整段播报一次
+  announce(botDiv.querySelector('.chat-retry')
+    ? '作答失败，可重试'
+    : '作答完毕。' + botDiv.textContent.trim().slice(0, 200));
 }
 
 // 引用按钮统一带出处数据（s=系列 t=篇名 x=摘录），点击弹出处预览不打断对话
@@ -3513,16 +3524,21 @@ function bindEvents() {
      能点关闭钮的就去点它（复用原有副作用），没有钮的才直接置 hidden。 */
   const OVERLAYS = [
     // 顺序即栈序，靠后的压在上面；Esc 关最上面那一个
-    { el: '#cmtSheet', x: '#cmtSheetX' },
-    { el: '#plListSheet', x: '#plListX' },
-    { el: '#cntSheet', x: '#cntSheetX' },
-    { el: '#aboutOverlay', x: '#btnAboutClose' },
-    { el: '#nameOverlay', x: '#nameCancel' },
-    { el: '#shareSheet', x: '#shareX' },
-    { el: '#posterOverlay', x: '#posterClose' },
-    { el: '#zenOverlay', x: '#btnZenExit' },
-    { el: '#gdOverlay' },
-    { el: '#hxOverlay' },
+    // name 供读屏播报浮层身份（role=dialog 的可及名称）
+    { el: '#cmtSheet', x: '#cmtSheetX', name: '闻法留言' },
+    { el: '#plListSheet', x: '#plListX', name: '本系列目录' },
+    { el: '#cntSheet', x: '#cntSheetX', name: '念佛功课' },
+    { el: '#aboutOverlay', x: '#btnAboutClose', name: '关于本站' },
+    // 主题与语言改弹层后一直漏在此清单外，故这两个至今没有 Esc、焦点也不归还
+    { el: '#themeOverlay', x: '#btnThemeClose', name: '主题' },
+    { el: '#langOverlay', x: '#btnLangClose', name: '语言' },
+    { el: '#chatRoom', x: '#chatRoomX', name: '莲友共修群' },
+    { el: '#nameOverlay', x: '#nameCancel', name: '改法名' },
+    { el: '#shareSheet', x: '#shareX', name: '分享 · 法布施' },
+    { el: '#posterOverlay', x: '#posterClose', name: '分享海报' },
+    { el: '#zenOverlay', x: '#btnZenExit', name: '静念计数' },
+    { el: '#gdOverlay', name: '今日定课圆满' },
+    { el: '#hxOverlay', name: '回向偈' },
   ];
   let lastFocus = null;
   // 浮层显隐由各处直接改 hidden，故用属性观察统一接管焦点存还，
@@ -3531,30 +3547,39 @@ function bindEvents() {
   for (const o of OVERLAYS) {
     const el = $(o.el);
     if (!el) continue;
+    markDialog(el, o.name);   // role=dialog + aria-modal + 可及名称
     new MutationObserver(() => {
       if (!el.hidden && !openSet.has(el)) {
         openSet.add(el);
         if (!lastFocus) lastFocus = document.activeElement;
+        // 背景置 inert：只靠 aria-modal 时部分读屏仍会读到背后的页面
+        setBackgroundInert(openSet);
         // 让焦点落进浮层，否则读屏还停在背后的页面上
         const first = el.querySelector('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])');
         if (first) first.focus({ preventScroll: true });
         else { el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
       } else if (el.hidden && openSet.has(el)) {
         openSet.delete(el);
+        setBackgroundInert(openSet);   // 须先解 inert，否则来处还在 inert 里，聚不回去
         if (!openSet.size && lastFocus) { try { lastFocus.focus({ preventScroll: true }); } catch { /* 已移除 */ } lastFocus = null; }
       }
     }).observe(el, { attributes: true, attributeFilter: ['hidden'] });
   }
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
+  // 最上层浮层：Esc 与 Tab 循环都只作用于它
+  const topOverlay = () => {
     for (let i = OVERLAYS.length - 1; i >= 0; i--) {
       const el = $(OVERLAYS[i].el);
-      if (!el || el.hidden) continue;
-      const x = OVERLAYS[i].x && $(OVERLAYS[i].x);
-      if (x) x.click(); else el.hidden = true;   // 有关闭钮就复用它，副作用一并跑到
-      e.preventDefault();
-      return;
+      if (el && !el.hidden) return { el, x: OVERLAYS[i].x && $(OVERLAYS[i].x) };
     }
+    return null;
+  };
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') { trapTab(e, topOverlay()?.el); return; }
+    if (e.key !== 'Escape') return;
+    const top = topOverlay();
+    if (!top) return;
+    if (top.x) top.x.click(); else top.el.hidden = true;   // 有关闭钮就复用它，副作用一并跑到
+    e.preventDefault();
   });
 
   $('#btnZen').addEventListener('click', () => { renderCount(); $('#zenOverlay').hidden = false; });

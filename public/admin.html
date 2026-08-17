@@ -77,6 +77,23 @@
       </div>
     </section>
 
+    <!-- 须弥山 App 装机（2026-08-17）：数据在 game.foyue.org 的广场 DO 里，此处跨站取用。
+         该站已把本域列入白名单并认 ADMIN_TOKEN（与本站同一枚），故沿用同一口令即可。 -->
+    <section>
+      <h2>须弥山 App（game.foyue.org）</h2>
+      <div class="stats">
+        <div><b id="apInstalls">–</b><span>装机台数</span></div>
+        <div><b id="apA1">–</b><span>今日活跃</span></div>
+        <div><b id="apA7">–</b><span>七日活跃</span></div>
+        <div><b id="apNew7">–</b><span>七日新装</span></div>
+        <div><b id="apDl">–</b><span>APK 下载次数</span></div>
+      </div>
+      <div class="row" style="margin:10px 0 0">
+        <button class="plain" id="btnApp">刷 新</button><span class="msg" id="appMsg"></span>
+      </div>
+      <div id="apVerBox" style="margin-top:10px;font-size:13px;line-height:1.9;color:#555"></div>
+    </section>
+
     <section>
       <h2>公告（显示在直播页「同修在此」上方，留空即撤下）</h2>
       <textarea id="notice" maxlength="200" placeholder="如：今晚七点共修《无量寿经》第十讲，欢迎莲友同闻。"></textarea>
@@ -164,6 +181,8 @@
          : `<button class="plain" data-ban="${esc(c.dev)}">封禁</button>`}</td></tr>`).join('')
       || '<tr><td class="t">暂无留言</td></tr>';
     await loadReports();
+    // 装机数跨站取，慢些也罢——不叫它拖住本域这几块，失手只在本区出一行字
+    loadApp().catch((e) => { $('#appMsg').textContent = e.message; });
   }
 
   // 报错/纠错列表（可单独局部刷新，不动其它区块）
@@ -194,6 +213,28 @@
       loadAll();
     } catch (e) { $('#loginMsg').textContent = e.message; }
   });
+
+  // 须弥山 App 装机（2026-08-17）：数据在 game.foyue.org，跨站取用，故不走 api()（那是本域的）。
+  // 该站认同一枚 ADMIN_TOKEN，并已把本域列入白名单；他站取不走。
+  async function loadApp() {
+    const r = await fetch('https://game.foyue.org/api/admin/app-stat', {
+      headers: { Authorization: 'Bearer ' + TOKEN },
+    });
+    if (r.status === 401) throw new Error('口令错误（game 站未认）');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    $('#apInstalls').textContent = d.installs;
+    $('#apA1').textContent = d.active1;
+    $('#apA7').textContent = d.active7;
+    $('#apNew7').textContent = d.new7;
+    $('#apDl').textContent = d.downloads;
+    const line = (title, arr) => !arr?.length ? ''
+      : `<div><b>${title}</b>　${arr.map((x) => `${esc(x.ver || x.act)} <span style="color:#999">${x.n}</span>`).join('　')}</div>`;
+    $('#apVerBox').innerHTML = line('运行版本', d.byVer) + line('安装包版本', d.byNat)
+      + line('热更事件', (d.ota || []).map((o) => ({ ver: o.act, n: o.n })));
+    $('#appMsg').textContent = '';
+  }
+  $('#btnApp').addEventListener('click', () => loadApp().catch((e) => { $('#appMsg').textContent = e.message; }));
 
   $('#btnReload').addEventListener('click', () => loadAll().catch((e) => { $('#cmtMsg').textContent = e.message; }));
   $('#btnRptReload').addEventListener('click', () => loadReports().catch((e) => { $('#rptMsg').textContent = e.message; }));
