@@ -1817,24 +1817,80 @@ function renderCount() {
     `今日 · 声　·　本串 ${mine % 108} / 108${nj.goal ? `　·　定课 ${dayTotal} / ${nj.goal}` : ''}`;
 }
 
-/* ── 木鱼音效（Web Audio 合成，无需音频文件） ── */
+/* ── 木鱼音效（Web Audio 合成，无需音频文件） ──
+   原先是一条 triangle 波从 640 滑到 170：那是电子音，不是木头。
+   木鱼是掏空的木腔，敲下去分两截 ——
+     一截是槌头触木的「哒」：几毫秒的宽频噪声，木字全在这里；
+     一截是木腔的余响：木非丝弦，泛音不按整数倍排，故三条分音各走各的频率与衰减。
+   两截叠起来才像木鱼。全程合成，不取音频文件。 */
 let _audioCtx = null;
-function playMuyu() {
-  if (localStorage.getItem('fy.muyu') !== '1') return;
+let _muyuNoise = null;
+
+function audioCtx() {
   try {
     _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (_audioCtx.state === 'suspended') _audioCtx.resume();
-    const t0 = _audioCtx.currentTime;
-    const o = _audioCtx.createOscillator();
-    const g = _audioCtx.createGain();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(640, t0);
-    o.frequency.exponentialRampToValueAtTime(170, t0 + 0.07);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.17);
-    o.connect(g).connect(_audioCtx.destination);
-    o.start(t0); o.stop(t0 + 0.2);
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();   // 不 await：随后排程的音会等 resume 完自行出声
+    return _audioCtx;
+  } catch { return null; }   // 无音频环境
+}
+
+/* 进计数页即预热：iOS 首次出声必须发生在用户手势内，
+   而「进入计数页」本身由点击导航触发，正落在手势里。
+   不预热的话，第一声木鱼常常是哑的 —— 恰恰是用户初次尝试的那一声。 */
+function primeAudio() {
+  const ctx = audioCtx();
+  if (!ctx || _muyuNoise) return;
+  const n = Math.ceil(ctx.sampleRate * 0.05);
+  _muyuNoise = ctx.createBuffer(1, n, ctx.sampleRate);
+  const ch = _muyuNoise.getChannelData(0);
+  for (let i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+  // 播一记 0 增益的空音，把音频管线整条走通（iOS 解锁）
+  const s = ctx.createBufferSource();
+  const g = ctx.createGain();
+  g.gain.value = 0;
+  s.buffer = _muyuNoise;
+  s.connect(g).connect(ctx.destination);
+  s.start(); s.stop(ctx.currentTime + 0.01);
+}
+
+// soft=true 用于满十声的轻点（十念记数的支点），音量收一半，不抢正声
+function playMuyu(soft = false) {
+  if (localStorage.getItem('fy.muyu') === '0') return;   // 默认开：念佛计数没有木鱼声，等于哑的
+  const ctx = audioCtx();
+  if (!ctx) return;
+  try {
+    if (!_muyuNoise) primeAudio();
+    const t0 = ctx.currentTime + 0.001;
+    const out = ctx.createGain();
+    out.gain.value = soft ? 0.45 : 1;
+    out.connect(ctx.destination);
+
+    // 一、槌头触木：极短噪声过带通，「哒」的那一下
+    if (_muyuNoise) {
+      const n = ctx.createBufferSource();
+      const nf = ctx.createBiquadFilter();
+      const ng = ctx.createGain();
+      n.buffer = _muyuNoise;
+      nf.type = 'bandpass'; nf.frequency.value = 2000; nf.Q.value = 1.1;
+      ng.gain.setValueAtTime(0.42, t0);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
+      n.connect(nf).connect(ng).connect(out);
+      n.start(t0); n.stop(t0 + 0.05);
+    }
+
+    // 二、木腔余响：[频率, 相对音量, 衰减秒数]，频率刻意不成整数倍
+    for (const [f, amp, dur] of [[548, 1, 0.21], [934, 0.4, 0.13], [1495, 0.18, 0.07]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f * 1.055, t0);                    // 起振略高，20ms 内落定：
+      o.frequency.exponentialRampToValueAtTime(f, t0 + 0.02);       // 敲击时木头被压住又弹回的那点「啵」
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.3 * amp, t0 + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(out);
+      o.start(t0); o.stop(t0 + dur + 0.02);
+    }
   } catch { /* 无音频环境 */ }
 }
 
@@ -1901,7 +1957,7 @@ function renderHubSheet() {
     <button class="sheet-row" data-hub="reset"><span class="pr-main"><span>重置今日</span>
       <small class="pr-stat">当前功课今日归零 · 累计同步扣除</small></span><span class="hub-go">›</span></button>
     <div class="hub-toggles">
-      ${tg('fy.muyu', false, '木鱼音效')}
+      ${tg('fy.muyu', true, '木鱼音效')}
       ${tg('fy.wake', true, '屏幕常亮')}
       ${tg('fy.vib', true, '计数震动')}
     </div>`;

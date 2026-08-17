@@ -20,16 +20,22 @@ export function markDialog(el, name) {
 }
 
 /**
- * 背景遮蔽：浮层开着时，body 下其余直接子元素一律 inert。
+ * 背景遮蔽：只有最上面那层浮层可操作，其余（含被它盖住的下层浮层）一律 inert。
  * 只有 aria-modal 时，部分读屏仍会把背后的页面读出来；inert 连 Tab 一并挡住。
- * 传入当前所有开着的浮层，叠开时它们彼此都不遮。
+ *
+ * openEls 按打开先后传入，最后一个即最上层。
+ * 开着的那一层必须**主动摘掉** inert，不能跳过不管 —— 它很可能是在自己打开之前、
+ * 被别的浮层遮蔽时被设上的：分享抽屉一开，还关着的海报浮层就吃到了 inert；
+ * 随后海报叠上来，若只是跳过，那个 inert 便再没人摘，浮层看得见却整块点不动
+ * （转发、保存、连关闭都失灵，人被困在预览里出不来）。
  */
 export function setBackgroundInert(openEls) {
-  const open = new Set(openEls);
+  const open = [...openEls];
+  const top = open[open.length - 1] || null;
   for (const el of document.body.children) {
-    if (el.tagName === 'AUDIO' || el.tagName === 'SCRIPT' || open.has(el)) continue;
-    if (open.size) el.setAttribute('inert', '');
-    else el.removeAttribute('inert');
+    if (el.tagName === 'AUDIO' || el.tagName === 'SCRIPT') continue;
+    if (!top || el === top) el.removeAttribute('inert');
+    else el.setAttribute('inert', '');
   }
 }
 
