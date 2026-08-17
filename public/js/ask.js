@@ -4,7 +4,7 @@
 // 事件层要摸它时走下面几个访问器，不直接改状态，免得两处各记一份。
 // 繁简转换与海报由外部注入：在此 import 简繁那套，依赖链会绕回 app.js 成环。
 
-import { $, esc, toast, copyText } from './util.js';
+import { $, esc, toast, copyText, setLS, delLS } from './util.js';
 import { makeQuotePoster, showPoster, trimQuote } from './poster.js';
 import { bjParts } from './station.js';
 import { announce } from './a11y.js';
@@ -176,7 +176,7 @@ const ANS_ACTS = `<div class="ans-acts">
 
 // 对话持久化：刷新/换页回来还在；「新问」清空
 export function saveChat() {
-  localStorage.setItem('fy.chat', JSON.stringify({ msgs: chat.msgs.slice(-40) }));
+  setLS('fy.chat', JSON.stringify({ msgs: chat.msgs.slice(-40) }), true);
 }
 export function loadChat() {
   try { chat.msgs = JSON.parse(localStorage.getItem('fy.chat')).msgs || []; } catch { chat.msgs = []; }
@@ -196,7 +196,7 @@ export function pruneRt() {
     const k = localStorage.key(i);
     if (k && k.startsWith('fy.rt.') && k.slice(6) < cut) stale.push(k);
   }
-  for (const k of stale) localStorage.removeItem(k);
+  for (const k of stale) delLS(k);
 }
 
 // 分享问答：复用法布施长图（问 + 答 + 依据篇目 + 二维码）

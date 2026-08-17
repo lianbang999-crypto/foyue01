@@ -11,7 +11,7 @@ import { initI18n } from './i18n.js';
 import {
   markDialog, setBackgroundInert, trapTab, initSkipLink, announce,
 } from './a11y.js';
-import { $, esc, toast, copyText, vibrate } from './util.js';
+import { $, esc, toast, copyText, vibrate, setLS, delLS } from './util.js';
 import { WEEK } from './const.js';
 import {
   makePoster, makeLivePoster, makeQuotePoster, showPoster, revokePoster,
@@ -38,6 +38,8 @@ let mode = 'live';          // live | od | nianfo
 let playMode = localStorage.getItem('foyue_playmode_v1') || 'list';  // list 列表循环 | one 单曲循环 | shuffle 随机
 let liveItem = null;
 let wantLive = false;
+let liveRetry = 0;          // 直播连续失败次数，用于退避
+let liveRetryT = 0;         // 在途的重试定时器
 let od = null;              // 点播状态 { title, list, idx, progress, seriesId, bucket }
 let schedDay = 0;
 let seekPending = null;
@@ -176,7 +178,7 @@ function themeName(v) {
 function themePref() {
   const v = localStorage.getItem('fy.theme') || 'day';
   if (THEME_PREFS.includes(v)) return v;
-  localStorage.setItem('fy.theme', 'day');
+  setLS('fy.theme', 'day');
   return 'day';
 }
 
@@ -434,7 +436,7 @@ function tick() {
   // 阅读时长：恭读页且前台可见时逐秒累计（fy.rt.<日期>，我的页显示今日分钟数）
   if (document.body.dataset.view === 'reader' && document.visibilityState === 'visible' && reader.path) {
     const rk = 'fy.rt.' + bjDateKey();
-    localStorage.setItem(rk, String((Number(localStorage.getItem(rk)) || 0) + 1));
+    setLS(rk, String((Number(localStorage.getItem(rk)) || 0) + 1), true);
   }
 
   document.body.dataset.playing = String(mode === 'live' && !audio.paused);
@@ -630,7 +632,7 @@ function odbDel(key) {
 }
 
 function offlineMeta() { try { return JSON.parse(localStorage.getItem(OFF_META) || '{}'); } catch { return {}; } }
-function saveOfflineMeta(m) { localStorage.setItem(OFF_META, JSON.stringify(m)); }
+function saveOfflineMeta(m) { setLS(OFF_META, JSON.stringify(m), true); }
 function offlineHas(key) { return !!offlineMeta()[key]; }
 function offlineTotal() { const m = offlineMeta(); return Object.keys(m).reduce((s, k) => s + (m[k].size || 0), 0); }
 
@@ -773,7 +775,7 @@ function setSleep(min) {
 
 function setMiniExpanded(v) {
   miniExpanded = v;
-  localStorage.setItem('fy.miniExp', v ? '1' : '0');
+  setLS('fy.miniExp', v ? '1' : '0');
   $('#mini').classList.toggle('collapsed', !v);
 }
 
@@ -811,12 +813,16 @@ function renderLive(item, next) {
   if (document.body.dataset.view === 'live') refreshLiveLike();   // 换节目即刷新随喜态
 }
 
-function loadLive() {
+// retry=true 表示这是断流后的重连：此时 URL 通常与刚才失败的那次相同，
+// 只赋 src 浏览器认作没变、不会重新取流，必须显式 load() 才真的再连一次。
+function loadLive(retry = false) {
   const { item } = station.liveAt(stationNow());
   const url = audioUrl(item.ep.bucket, item.ep.key);
   if (!audio.src.endsWith(url)) {
     audio.src = url;
     audio.playbackRate = 1;
+  } else if (retry) {
+    audio.load();
   }
   seekPending = Math.max(0, stationNow() - item.start);
   // 同一集内续播时 loadedmetadata 不会再触发：元数据已就绪则立即跳到直播位置，
@@ -826,7 +832,16 @@ function loadLive() {
     seekPending = null;
   }
   updateMediaSession(item.ep, '直播');
-  audio.play().catch(() => { wantLive = false; hint('轻触莲台 · 与大众同闻'); });
+  audio.play().catch((e) => {
+    // 只有「浏览器要用户先动手」才收手。原先不分缘由一律清掉 wantLive，
+    // 于是网络/解码失败时，下面 error 处理器的 if (wantLive) 永不成立 ——
+    // 直播断流后既不重连、提示也被这句盖成「轻触莲台」，等于自动重连从未生效。
+    if (!e || e.name === 'NotAllowedError' || e.name === 'AbortError') {
+      wantLive = false;
+      hint('轻触莲台 · 与大众同闻');
+    }
+    // 其余（NotSupportedError 等取流失败）留给 error 处理器退避重试
+  });
 }
 
 function hint(text) { $('#liveHint').textContent = text; }
@@ -888,7 +903,7 @@ function startOd() {
   plsMark();
   // 记住最后收听位置（首页"继续收听"用）
   if (od.progress && od.seriesId) {
-    localStorage.setItem('fy.last', JSON.stringify({ sid: od.seriesId, idx: od.idx }));
+    setLS('fy.last', JSON.stringify({ sid: od.seriesId, idx: od.idx }), true);
   }
 }
 
@@ -899,9 +914,9 @@ function saveProgress() {
   if (mode !== 'od' || !od || !od.progress) return;
   const ep = od.list[od.idx];
   if (audio.currentTime > 10 && audio.currentTime < ep.dur - 30) {
-    localStorage.setItem('fy.p.' + ep.key, String(Math.floor(audio.currentTime)));
+    setLS('fy.p.' + ep.key, String(Math.floor(audio.currentTime)), true);
   } else if (audio.currentTime >= ep.dur - 30) {
-    localStorage.removeItem('fy.p.' + ep.key);
+    delLS('fy.p.' + ep.key);
   }
 }
 
@@ -910,7 +925,8 @@ function favKey() { return (mode === 'od' && od) ? 'fy.fav.' + od.list[od.idx].k
 function updateFav() { const k = favKey(); $('#btnFav').classList.toggle('on', !!(k && localStorage.getItem(k))); }
 function toggleFav() {
   const k = favKey(); if (!k) return;
-  if (localStorage.getItem(k)) localStorage.removeItem(k); else localStorage.setItem(k, '1');
+  if (localStorage.getItem(k)) delLS(k);
+  else if (!setLS(k, '1')) toast('未能收藏 · 本机存储不可写');
   updateFav();
 }
 
@@ -1192,7 +1208,7 @@ async function openChapter(spec) {
     title: chap.title, series: s.title, shareHash: `#read/${spec}`, bkSpec: spec,   // 篇目快切/分享/书签用
     sharePath: `/read/${spec}`,   // 对外分享用真实路径：# 之后的部分搜索引擎看不见，转不成外链
   };
-  localStorage.setItem('fy.lastRead', spec);   // 文库"继续阅读"用
+  setLS('fy.lastRead', spec, true);   // 文库"继续阅读"用
   updateBookmark();
   $('#readerPos').textContent = `${reader.idx + 1} / ${s.chapters.length}`;
   await renderReader(chap.title, chap.path, s.title);
@@ -1290,8 +1306,8 @@ function getHls(path) {
   try { return JSON.parse(localStorage.getItem('fy.hl.' + path)) || []; } catch { return []; }
 }
 function saveHls(path, arr) {
-  if (arr.length) localStorage.setItem('fy.hl.' + path, JSON.stringify(arr));
-  else localStorage.removeItem('fy.hl.' + path);
+  if (arr.length) setLS('fy.hl.' + path, JSON.stringify(arr), true);
+  else delLS('fy.hl.' + path);
 }
 
 // (node, off) 边界在段落 el 内的文本偏移：量 el 起点到边界的文本长度
@@ -1714,7 +1730,7 @@ function importOldStore() {
   const g = Number(old.practices[old.practice]?.goal) || 0;
   if (g > 0 && g !== 108) nj.goal = g;   // 旧站默认 108 与本站一致，非默认才覆盖
 
-  localStorage.setItem('fy.njOldImport', '1');
+  setLS('fy.njOldImport', '1');
   saveNj();
 }
 
@@ -1722,7 +1738,7 @@ function saveNj() {
   // 只保留最近 90 天明细
   const keys = Object.keys(nj.days).sort();
   for (const k of keys.slice(0, Math.max(0, keys.length - 90))) delete nj.days[k];
-  localStorage.setItem('fy.nj', JSON.stringify(nj));
+  setLS('fy.nj', JSON.stringify(nj), true);
 }
 
 function njItem() { return nj.items.find((x) => x.id === nj.cur) || nj.items[0]; }
@@ -1948,8 +1964,11 @@ function restoreBackup(code) {
   if (!obj || obj.v !== 1 || !obj.data) throw new Error('bad');
   const keys = Object.keys(obj.data).filter((k) => k.startsWith('fy.'));
   if (!keys.length) throw new Error('empty');
-  for (const k of keys) localStorage.setItem(k, obj.data[k]);
-  return keys.length;
+  // 逐项记成败：换机恢复时存储写不进（配额满、隐私模式）不能报「已恢复」，
+  // 否则用户以为记录回来了，实则一项没落地
+  let ok = 0;
+  for (const k of keys) { if (setLS(k, obj.data[k])) ok++; }
+  return { ok, total: keys.length };
 }
 
 
@@ -2141,7 +2160,7 @@ let dmLane = 0;
 
 function dmSet(on) {
   dmOn = on;
-  localStorage.setItem('fy.dm', on ? '1' : '0');
+  setLS('fy.dm', on ? '1' : '0');
   $('#btnDm').classList.toggle('on', on);
   if (!on) dmClear();
 }
@@ -2203,7 +2222,7 @@ function devId() {
   if (!d) {
     d = crypto.randomUUID ? crypto.randomUUID()
       : 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem('fy.dev', d);
+    setLS('fy.dev', d);
   }
   return d;
 }
@@ -2212,7 +2231,7 @@ function dharmaName() {
   if (!n) {
     const A = ['静', '慧', '明', '安', '和', '清', '悟', '善', '慈', '定', '莲', '净', '朗', '素', '澄', '恒'];
     n = '莲友·' + A[Math.floor(Math.random() * A.length)] + A[Math.floor(Math.random() * A.length)];
-    localStorage.setItem('fy.fname', n);
+    setLS('fy.fname', n);
   }
   return n;
 }
@@ -2558,7 +2577,7 @@ function renameDharma() {
 function saveDharma() {
   const name = ($('#nameInput').value || '').replace(/\s+/g, ' ').trim().slice(0, 12);
   if (name.length < 2) { toast('法名至少 2 字'); return; }
-  localStorage.setItem('fy.fname', name);
+  setLS('fy.fname', name);
   $('#cmtSheetName').textContent = name;
   $('#cmtWho').textContent = name;
   $('#nameOverlay').hidden = true;
@@ -2621,7 +2640,7 @@ function bindEvents() {
     if (mode === 'live') { if (wantLive) loadLive(); }
     else if (mode === 'od' && od) {
       const ep = od.list[od.idx];
-      if (od.progress) localStorage.removeItem('fy.p.' + ep.key);
+      if (od.progress) delLS('fy.p.' + ep.key);
       const n = od.list.length;
       if (playMode === 'one') {
         startOd();                                        // 单曲循环：重播本集
@@ -2634,8 +2653,15 @@ function bindEvents() {
     }
   });
   audio.addEventListener('error', () => {
-    if (mode === 'live' && wantLive) setTimeout(loadLive, 4000);
-    else if (mode === 'od' && od) {
+    if (mode === 'live' && wantLive) {
+      // 原先只是闷头重试：莲台仍显示「直播中」，却没声音也没有一句交代。
+      // 出声说明，并逐次拉长间隔 —— 源站真出故障时，固定 4 秒会一直空转。
+      liveRetry = Math.min(liveRetry + 1, 4);
+      const wait = 4000 * 2 ** (liveRetry - 1);          // 4s → 8s → 16s → 32s 封顶
+      hint(`网络不稳，${Math.round(wait / 1000)} 秒后重试 …`);
+      clearTimeout(liveRetryT);
+      liveRetryT = setTimeout(() => { if (mode === 'live' && wantLive) loadLive(true); }, wait);
+    } else if (mode === 'od' && od) {
       playStatus('网络不稳，正在重试 …');
       const pos = audio.currentTime || 0;
       setTimeout(() => {
@@ -2649,7 +2675,10 @@ function bindEvents() {
   // 缓冲与恢复反馈
   audio.addEventListener('waiting', () => playStatus('缓冲中 …'));
   audio.addEventListener('stalled', () => playStatus('缓冲中 …'));
-  audio.addEventListener('playing', () => playStatus(''));
+  audio.addEventListener('playing', () => {
+    liveRetry = 0;   // 接上了就把退避清零，下次断流仍从 4 秒起
+    playStatus('');
+  });
   // 暂停即存进度（含睡眠定时暂停），不留 5 秒空窗
   audio.addEventListener('pause', saveProgress);
   audio.addEventListener('timeupdate', () => {
@@ -2778,7 +2807,7 @@ function bindEvents() {
     if (sel && !sel.isCollapsed) return;
     const zen = document.body.classList.toggle('rd-zen');
     if (zen && !localStorage.getItem('fy.zenTip')) {
-      localStorage.setItem('fy.zenTip', '1');
+      setLS('fy.zenTip', '1');
       toast('已进入沉浸阅读 · 轻触正文恢复');
     }
   });
@@ -2787,8 +2816,9 @@ function bindEvents() {
   $('#btnBookmark').addEventListener('click', () => {
     if (!reader.sid) return;
     const k = 'fy.bk.' + reader.bkSpec;
-    if (localStorage.getItem(k)) { localStorage.removeItem(k); toast('已取消收藏'); }
-    else { localStorage.setItem(k, '1'); toast('已收藏 · 「我的」页可回看'); }
+    if (localStorage.getItem(k)) { delLS(k); toast('已取消收藏'); }
+    // 存不进就别报「已收藏」——那比不出声更误导
+    else toast(setLS(k, '1') ? '已收藏 · 「我的」页可回看' : '未能收藏 · 本机存储不可写');
     updateBookmark();
   });
 
@@ -2884,8 +2914,8 @@ function bindEvents() {
     for (let i = 0; i < kids.length; i++) {
       if (kids[i].getBoundingClientRect().bottom > topLine) { p = i; break; }
     }
-    localStorage.setItem('fy.rp.' + reader.path,
-      JSON.stringify({ p, pct: Math.round(pct * 1000) / 1000 }));
+    setLS('fy.rp.' + reader.path,
+      JSON.stringify({ p, pct: Math.round(pct * 1000) / 1000 }), true);
     if (pct > 0.8) prefetchNext();
   }
   window.addEventListener('scroll', () => {
@@ -3063,9 +3093,12 @@ function bindEvents() {
         if (!code.startsWith('FY1.')) { msg('备份码无效，应以 FY1. 开头'); return; }
         if (!window.confirm('导入将覆盖本机现有的计数与进度记录，确定恢复？')) return;
         try {
-          const n = restoreBackup(code);
-          msg(`已恢复 ${n} 项数据，即将刷新 …`);
-          setTimeout(() => location.reload(), 900);
+          const { ok, total } = restoreBackup(code);
+          if (!ok) { msg('本机存储不可写，未能恢复 · 请检查浏览器存储设置'); return; }
+          msg(ok === total
+            ? `已恢复 ${ok} 项数据，即将刷新 …`
+            : `仅恢复 ${ok} / ${total} 项，本机存储可能已满，即将刷新 …`);
+          setTimeout(() => location.reload(), ok === total ? 900 : 2200);
         } catch { msg('备份码无效或不完整，请重新复制'); }
       }
     } else if (cntSheetMode === 'chapters') {
@@ -3077,7 +3110,7 @@ function bindEvents() {
       const b = e.target.closest('[data-rs]');
       if (!b) return;
       const [k, v] = b.dataset.rs.split(':');
-      localStorage.setItem('fy.' + k, v);
+      setLS('fy.' + k, v);
       applyReaderPrefs();
       renderRdSetSheet();
     } else if (cntSheetMode === 'storage') {
@@ -3114,7 +3147,7 @@ function bindEvents() {
         const key = tg.dataset.hubtg;
         const v = localStorage.getItem(key);
         const on = v === null ? key !== 'fy.muyu' : v === '1';
-        localStorage.setItem(key, on ? '0' : '1');
+        setLS(key, on ? '0' : '1');
         if (key === 'fy.muyu' && !on) playMuyu();
         if (key === 'fy.wake') { if (on) releaseWake(); else requestWake(); }
         renderHubSheet();
@@ -3148,9 +3181,9 @@ function bindEvents() {
       else if (e.target.closest('a[href^="#"]')) closeCntSheet();   // 续读锚点自然跳转
     } else if (cntSheetMode === 'favs') {
       const del = e.target.closest('[data-unfav]');
-      if (del) { localStorage.removeItem('fy.fav.' + del.dataset.unfav); updateFav(); renderFavsSheet(); renderWode(); return; }
+      if (del) { delLS('fy.fav.' + del.dataset.unfav); updateFav(); renderFavsSheet(); renderWode(); return; }
       const unbk = e.target.closest('[data-unbk]');
-      if (unbk) { localStorage.removeItem('fy.bk.' + unbk.dataset.unbk); renderFavsSheet(); renderWode(); return; }
+      if (unbk) { delLS('fy.bk.' + unbk.dataset.unbk); renderFavsSheet(); renderWode(); return; }
       const bkr = e.target.closest('li[data-bkr]');
       if (bkr) { closeCntSheet(); location.hash = '#read/' + bkr.dataset.bkr; return; }
       const li = e.target.closest('li[data-fs]');
@@ -3320,7 +3353,7 @@ function bindEvents() {
     const b = e.target.closest('button[data-theme]');
     if (!b) return;
     closeTheme();
-    localStorage.setItem('fy.theme', b.dataset.theme);
+    setLS('fy.theme', b.dataset.theme);
     applyThemePref();
   });
 
@@ -3344,8 +3377,8 @@ function bindEvents() {
     const cur = getLang();
     const next = b.dataset.lang;
     if (next === cur) return;
-    localStorage.setItem('fy.lang', next);
-    localStorage.setItem('fy.zh', next === 't' ? 't' : 's');   // 兼容旧键
+    setLS('fy.lang', next);
+    setLS('fy.zh', next === 't' ? 't' : 's');   // 兼容旧键
     applyLangRow(next);
     // 从简体出发可就地转换；其余切换（如繁→英）重载后按偏好初始化最可靠
     if (cur === 's' && next === 't') { setZhTrad(true); return; }
@@ -3433,7 +3466,7 @@ function bindEvents() {
   applyPlayMode();
   $('#btnPlayMode').addEventListener('click', () => {
     playMode = playMode === 'list' ? 'one' : playMode === 'one' ? 'shuffle' : 'list';
-    localStorage.setItem('foyue_playmode_v1', playMode);
+    setLS('foyue_playmode_v1', playMode);
     applyPlayMode();
     toast(playMode === 'one' ? '单曲循环' : playMode === 'shuffle' ? '随机播放' : '列表循环');
   });
@@ -3470,7 +3503,7 @@ function bindEvents() {
   $('#btnFwd15').addEventListener('click', () => { audio.currentTime = audio.currentTime + 15; });
   $('#btnRate').addEventListener('click', () => {
     const next = RATES[(RATES.indexOf(currentRate()) + 1) % RATES.length];
-    localStorage.setItem('fy.rate', String(next));
+    setLS('fy.rate', String(next));
     audio.playbackRate = next;
     $('#rateVal').textContent = `${next}×`;
   });

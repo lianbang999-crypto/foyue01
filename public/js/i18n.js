@@ -5,6 +5,8 @@
 // 内容区不翻译（讲记正文/篇目名/留言/问答）：经文义理以原文为准，界面翻译只服务导航。
 
 // —— 种子词典：高频核心字符串，保证首屏质量与零等待 ——
+import { setLS } from './util.js';
+
 const SEED = {
   en: {
     '佛乐': '佛乐',   // 品牌名保持原字
@@ -212,7 +214,6 @@ function saveSoon() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
     if (dict.size > 1500) return;   // 防止本机缓存无限膨胀（边缘缓存仍生效）
-    try { localStorage.setItem('fy.i18n.' + lang, JSON.stringify(Object.fromEntries(dict))); }
-    catch { /* 存储满则放弃本机缓存 */ }
+    setLS('fy.i18n.' + lang, JSON.stringify(Object.fromEntries(dict)));   // 存不下就算了，边缘缓存仍在
   }, 1500);
 }

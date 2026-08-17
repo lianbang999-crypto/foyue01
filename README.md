@@ -95,6 +95,17 @@ python3 scripts/build-library.py   # 本地讲记文本变更后重建文库
 ## 注意
 
 - `EPOCH_UTC_MS`（开播纪元）与排播算法一经上线不可轻改，否则全网节目单错位
+- 排播是从纪元逐集推演到此刻的，成本随开播时长线性增长。低端手机（6× CPU 减速）实测
+  首次建台：48 天 32ms / 1 年 71ms / 2 年 191ms / 3 年 309ms；稳态每秒 tick 只 0.1ms，
+  开销全在首次那一下。**两三年后会变成首屏可察觉的一顿**。届时不必动排播算法（那会让
+  全网节目单错位）：把推演状态（各池指针 `state.ptr` + 时刻 `state.t`）定期存一份到
+  localStorage，下次从那里续推即可，结果完全一致
+- 本机存储一律走 `util.js` 的 `setLS/delLS`，不要直接 `localStorage.setItem`：
+  iOS 隐私浏览下配额为 0、配额满时 setItem 会抛，裸调一抛就把调用方后面的渲染也打断了
+  （念佛计数曾因此静默失效：念珠点了数字不动，且一句提示都没有）。要紧的数据传第三参
+  `true`，写失败会出声提示（按分钟节流）
+- 直播 `loadLive(retry)` 断流重连必须传 `retry=true`：重连时 URL 与刚才失败的那次相同，
+  只赋 `audio.src` 浏览器认作没变、不会重新取流，得显式 `load()`
 - 文字稿是润饰稿、音频是原声，问答两库标题多不对应，故并列呈现不强行匹配
 - 旧站（Cloudflare Pages 的 foyue.org）整体归档不迁移；域名切换到本 Worker 需用户确认后操作
 - 域名切到本站后，首次访问会自动把旧站念佛计数（localStorage `foyue_store.counter`）累加并入 `fy.nj`（见 app.js `importOldStore`，凭 `fy.njOldImport` 标记只执行一次）

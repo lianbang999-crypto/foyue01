@@ -48,3 +48,29 @@ export async function copyText(text) {
 export function vibrate(pattern) {
   if (localStorage.getItem('fy.vib') !== '0' && navigator.vibrate) navigator.vibrate(pattern);
 }
+
+/* —— 本机存储 ——
+   localStorage.setItem 会抛：配额满、iOS 隐私浏览下配额为 0、用户禁了站点数据。
+   原先各处直接裸调，一抛就把调用方后面的活也打断了 —— 念佛计数最典型：
+   写盘一失败，后面的 renderCount() 就不执行，念珠点了数字纹丝不动，
+   还一句提示都没有，用户念了半天才发现一声没存。
+   这里改为：失败不外抛（调用方照常渲染，内存里的数是真的），
+   要紧的数据另给一句提示，并按分钟节流 —— 念佛时每声弹一次比不弹还糟。 */
+
+let warnedAt = 0;
+export function setLS(key, value, critical = false) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    if (critical && Date.now() - warnedAt > 60000) {
+      warnedAt = Date.now();
+      toast('未能存入本机 · 请检查浏览器存储设置');
+    }
+    return false;
+  }
+}
+
+export function delLS(key) {
+  try { localStorage.removeItem(key); return true; } catch { return false; }
+}
