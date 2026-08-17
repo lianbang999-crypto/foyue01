@@ -58,9 +58,18 @@ export function vibrate(pattern) {
    要紧的数据另给一句提示，并按分钟节流 —— 念佛时每声弹一次比不弹还糟。 */
 
 let warnedAt = 0;
+
+/* 写入回调：云同步据此知道哪一类数据变了。
+   挂在这里而不是逐个改写入点 —— 全站几十处写盘，逐个改必漏，
+   漏掉的那一处就是「这台手机上的收藏死活同步不过去」。
+   sync.js 自己落盘时走原生 setItem，不经这里，免得转圈。 */
+let onWrite = null;
+export function setLSHook(fn) { onWrite = fn; }
+
 export function setLS(key, value, critical = false) {
   try {
     localStorage.setItem(key, value);
+    try { onWrite?.(key); } catch { /* 同步的事不该反过来搅黄写盘 */ }
     return true;
   } catch {
     if (critical && Date.now() - warnedAt > 60000) {
@@ -72,5 +81,9 @@ export function setLS(key, value, critical = false) {
 }
 
 export function delLS(key) {
-  try { localStorage.removeItem(key); return true; } catch { return false; }
+  try {
+    localStorage.removeItem(key);
+    try { onWrite?.(key); } catch { /* 同上 */ }
+    return true;
+  } catch { return false; }
 }

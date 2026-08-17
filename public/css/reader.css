@@ -137,36 +137,3 @@ body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inse
 }
 .wk-search input:focus { outline: none; border-color: var(--accent-soft); }
 .wk-none { color: var(--ink-3); font-size: 0.86rem; padding: 16px 4px; }
-
-/* 问法：页头新问键 / 停止态 / 回答操作行 / 重试 / 出处预览 */
-/* 标题让 flex:1 —— 否则「问法」被「新问」挤成收缩宽度，标题里那道
-   泥金引线（.page-title::after）宽度归零，全站只有这一页秃着 */
-.wd-head { display: flex; align-items: center; gap: 12px; }
-.wd-head .page-title { flex: 1; min-width: 0; }
-.chat-new {
-  flex: none; font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 6px 16px; cursor: pointer;
-}
-#btnAsk .ic-stop { display: none; }
-.chat-input.asking #btnAsk .ic-send { display: none; }
-.chat-input.asking #btnAsk .ic-stop { display: block; }
-/* 回答操作行：纯图标按钮（复制 / 分享） */
-/* 复制/分享：原 29px 见方，指腹按不准；提到 38px（图标不变，只放大热区） */
-.ans-acts { display: flex; gap: 4px; margin-top: 8px; margin-left: -10px; }
-.ans-acts button {
-  background: transparent; border: 0; width: 38px; height: 38px; padding: 0; cursor: pointer;
-  color: var(--ink-3); display: flex; align-items: center; justify-content: center;
-  border-radius: 10px; transition: color 0.2s var(--e-out), background 0.2s var(--e-out);
-}
-.ans-acts button svg { width: 17px; height: 17px; }
-.ans-acts button:active { color: var(--accent); background: var(--accent-wash); }
-.chat-retry {
-  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
-  color: var(--accent); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 6px;
-}
-.cite-src { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; margin-bottom: 10px; }
-.cite-x {
-  color: var(--ink); font-size: 0.92rem; line-height: 2; text-align: justify;
-  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-  padding: 14px 16px; margin-bottom: 14px;
-}

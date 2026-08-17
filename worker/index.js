@@ -3,6 +3,7 @@
 
 import { SSR_PATH, serveSSR, serveSitemap } from './ssr.js';
 import { serveCss } from './css.js';
+import { serveLian, serveSync, serveGongxiu } from './lian.js';
 
 const BUCKETS = {
   daan: 'AUDIO_DAAN',           // 大安法师讲经
@@ -52,6 +53,16 @@ export default {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       return serveAdmin(request, env, url);
+    }
+    // 莲号与功课同步（详见 worker/lian.js）
+    if (url.pathname === '/api/lian') {
+      return serveLian(request, env);
+    }
+    if (url.pathname === '/api/sync') {
+      return serveSync(request, env);
+    }
+    if (url.pathname === '/api/gongxiu') {
+      return serveGongxiu(request, env);
     }
     // 样式：源码按板块分文件，在边缘拼成一份下发（详见 worker/css.js）
     if (url.pathname === '/css/all.css') {

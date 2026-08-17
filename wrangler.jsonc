@@ -41,7 +41,12 @@
       { "name": "TTS_RL", "type": "ratelimit", "namespace_id": "1103", "simple": { "limit": 20, "period": 60 } },
       { "name": "I18N_RL", "type": "ratelimit", "namespace_id": "1105", "simple": { "limit": 20, "period": 60 } },
       { "name": "TRANS_RL", "type": "ratelimit", "namespace_id": "1106", "simple": { "limit": 12, "period": 60 } },
-      { "name": "REPORT_RL", "type": "ratelimit", "namespace_id": "1107", "simple": { "limit": 2, "period": 60 } }
+      { "name": "REPORT_RL", "type": "ratelimit", "namespace_id": "1107", "simple": { "limit": 2, "period": 60 } },
+      // 莲号开号/认回每 IP 每分钟 5 次：护念码只有六位数字，这道限次才是真防线
+      { "name": "SYNC_RL", "type": "ratelimit", "namespace_id": "1108", "simple": { "limit": 5, "period": 60 } },
+      // 功课同步每莲号每分钟 30 次：正常用法（20 秒节流 + 5 分钟一轮）远够，
+      // 挡的是拿到凭据后照着 D1 猛打的客户端
+      { "name": "PUSH_RL", "type": "ratelimit", "namespace_id": "1109", "simple": { "limit": 30, "period": 60 } }
     ]
   },
   "workers_dev": true,

@@ -11,7 +11,12 @@ import { initI18n } from './i18n.js';
 import {
   markDialog, setBackgroundInert, trapTab, initSkipLink, announce,
 } from './a11y.js';
-import { $, esc, toast, copyText, vibrate, setLS, delLS } from './util.js';
+import { $, esc, toast, copyText, vibrate, setLS, delLS, setLSHook } from './util.js';
+import { vaultPersist, vaultMirror, vaultMirrorAll, vaultRestore } from './vault.js';
+import {
+  syncInit, syncMarkKey, syncAccount, syncOpen, syncClaim, syncRepass,
+  syncUnlink, syncRun, syncGongxiu, syncLastError,
+} from './sync.js';
 import { WEEK } from './const.js';
 import {
   makePoster, makeLivePoster, makeQuotePoster, showPoster, revokePoster,
@@ -19,7 +24,7 @@ import {
 } from './poster.js';
 import {
   initAsk, buildWenda, loadChat, saveChat, sendQuestion, shareAnswer, pruneRt, pathToHash,
-  isAsking, abortAsk, chatMsg, chatCount, clearChat,
+  isAsking, abortAsk, chatMsg, chatCount, clearChat, growInput,
 } from './ask.js';
 
 const audio = $('#audio');
@@ -79,7 +84,19 @@ async function init() {
   }
   station = createStation(catalog);
 
+  // 先从镜像捞回被清掉的要紧键（只补缺失，不覆盖），再读计数 —— 顺序不可颠倒
+  const back = await vaultRestore();
   loadNj();
+  if (back.includes('fy.nj')) toast('已从本机备份找回念佛记录');
+  vaultPersist();      // 申请持久化配额，此后浏览器不再主动清理本站数据
+  vaultMirrorAll();    // 补齐镜像（首次运行、或刚导入过备份）
+
+  // 云同步：写盘即标脏（挂在 setLS 上，不逐个改写入点），随后后台自行推拉
+  setLSHook(syncMarkKey);
+  syncInit({
+    onNjChanged: () => { loadNj(); renderCount(); renderWode(); },
+    onAuthLost: () => toast('莲号凭据已过期 · 请到「功课 → 莲号」重新认回'),
+  });
   loadChat();
   pruneRt();
   buildTing();
@@ -353,8 +370,16 @@ async function route() {
   else if (h.startsWith('#wode') || h.startsWith('#nianfo')) { view = 'wode'; tab = 'wode'; renderWode(); }
   else if (h.startsWith('#wenda')) { view = 'wenda'; tab = 'wenda'; }
   // 计数器页：刷新工具态并按需申请屏幕常亮；离开则释放
-  if (view === 'count') { if (localStorage.getItem('fy.wake') !== '0') requestWake(); }
-  else if (_wakeLock) releaseWake();
+  if (view === 'count') {
+    if (localStorage.getItem('fy.wake') !== '0') requestWake();
+    // 进页即预热音频：iOS 首次出声须在用户手势内，而「进计数页」正由点击导航触发。
+    // 不预热的话第一声木鱼常是哑的 —— 偏偏就是用户初次尝试的那一声。
+    primeAudio();
+    startGongxiu();
+  } else {
+    stopGongxiu();
+    if (_wakeLock) releaseWake();
+  }
   if (view !== 'reader') {
     document.body.classList.remove('rd-zen');   // 离开阅读器退出沉浸
     ttsStop();                                  // 离开阅读器停朗读
@@ -1735,43 +1760,94 @@ function importOldStore() {
 }
 
 function saveNj() {
-  // 只保留最近 90 天明细
+  // 明细仍只留近 90 天，但退场之前先并进月总数 ——
+  // 原先是直接丢弃，于是三个月前的功课在日历上一片灰，
+  // 一年到头究竟念了多少，再也说不清。
+  // 月总数一个月才一条，攒十年也就一百二十条，留着不占什么。
+  nj.months = nj.months || {};
   const keys = Object.keys(nj.days).sort();
-  for (const k of keys.slice(0, Math.max(0, keys.length - 90))) delete nj.days[k];
-  setLS('fy.nj', JSON.stringify(nj), true);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 90))) {
+    const ym = k.slice(0, 7);
+    nj.months[ym] = (nj.months[ym] || 0) + njDayTotal(k);   // 须在 delete 之前取
+    delete nj.days[k];
+  }
+  const json = JSON.stringify(nj);
+  setLS('fy.nj', json, true);
+  vaultMirror('fy.nj', json);   // 同步镜像一份，localStorage 若被清可捞回
 }
 
 function njItem() { return nj.items.find((x) => x.id === nj.cur) || nj.items[0]; }
 function njDayTotal(k) { const d = nj.days[k]; return d ? Object.values(d).reduce((a, b) => a + b, 0) : 0; }
 function njGrandTotal() { return Object.values(nj.totals).reduce((a, b) => a + b, 0); }
 
-function addNj(delta) {
+/* 撤销栈：记下每一笔加计，撤销按「最近一次操作」整笔退回。
+   原先撤销固定 −1，误触一下「+10」要连点十次才退得干净。 */
+const njUndo = [];
+
+/* delta 正为计入、负为退回。声与震都在这里发，调用处只管自己的涟漪，
+   免得「十念」「撤销」这些入口各自漏掉或重复一套反馈。
+   opts.silent：不出声不震（迁移、重置、云端合并等非人为计数走这条）。 */
+function addNj(delta, opts = {}) {
   const k = bjDateKey();
   const day = nj.days[k] || (nj.days[k] = {});
   const cur = njItem().id;
   const t = day[cur] || 0;
   const d = Math.max(delta, -t); // 撤销不越过零
-  if (d === 0) return;
+  if (d === 0) return 0;
   const dayBefore = njDayTotal(k);
   day[cur] = t + d;
   nj.totals[cur] = Math.max(0, (nj.totals[cur] || 0) + d);
   saveNj();
   renderCount();
   if (d > 0) {
-    vibrate(12);
-    // 满一串（108 声）：念珠脉冲 + 木鱼双响 + 加重震动
-    if (Math.floor((t + d) / 108) > Math.floor(t / 108)) beadFull();
+    njLastCount = Date.now();   // 供「此刻在念」的心跳判定
+    if (!opts.noUndo) {
+      njUndo.push({ k, id: cur, n: d });
+      if (njUndo.length > 60) njUndo.shift();
+    }
+    const tenth = Math.floor((t + d) / 10) > Math.floor(t / 10);
+    const full = Math.floor((t + d) / 108) > Math.floor(t / 108);
+    if (!opts.silent) playMuyu();
+    if (!full) vibrate(tenth ? 22 : 12);   // 满串的震动归 beadFull，不在这里抢
+    // 十念记数的支点：印光大师十念记数法从一至十循环摄心，
+    // 闭目行走时不看屏也得知道念到第几位 —— 每满十声补一记轻响，就是那个支点。
+    // 满串时不补，免得与满串的双响挤成一团。
+    if (tenth && !full && !opts.silent) {
+      setTimeout(() => playMuyu(true), 90);
+      // 静念全屏最适合闭目与视障莲友，可整屏的数字对读屏是关着的（aria-hidden）。
+      // 每满十声报一次数，读屏用户才有十念记数的听觉支点；明眼人听不见，无扰。
+      if (!$('#zenOverlay').hidden) announce(`${t + d} 声`);
+    }
+    if (full) beadFull();
     // 定课圆满：当日总声数首次达标（跨功课合计）
     if (nj.goal > 0 && dayBefore < nj.goal && dayBefore + d >= nj.goal) goalDone();
   }
+  return d;
+}
+
+// 撤销一笔：退回最近一次加计（那一天那一门功课），不是死减一声
+// quiet：不出提示（静念的双指收起会顺手撤掉手势自己带出的那一声）
+function undoNj(opts = {}) {
+  const last = njUndo.pop();
+  if (!last) { if (!opts.quiet) toast('没有可撤销的计数'); return; }
+  const day = nj.days[last.k];
+  const have = (day && day[last.id]) || 0;
+  const back = Math.min(last.n, have);   // 期间被重置过就只退还剩下的
+  if (back <= 0) { if (!opts.quiet) toast('这笔计数已不在'); return; }
+  day[last.id] = have - back;
+  nj.totals[last.id] = Math.max(0, (nj.totals[last.id] || 0) - back);
+  saveNj();
+  renderCount();
+  if (!opts.quiet) { vibrate(10); toast(`已撤销 ${back} 声`); }
 }
 
 
 function beadFull() {
   vibrate([24, 60, 36]);
-  playMuyu(); setTimeout(playMuyu, 160);
+  setTimeout(playMuyu, 150);   // 正声已由 addNj 发出，这里补第二响，合成「哒—哒」
   // 满串靠震动与木鱼提示，读屏用户两者都收不到，补一句播报
   announce(`满一串，一百零八声。今日共 ${njDayTotal(bjDateKey())} 声`);
+  lianTip();   // 攒到分量了才劝开莲号，每满一串顺路看一眼
   for (const el of [$('#btnBead'), $('#zenNum')]) {
     el.classList.remove('full');
     void el.offsetWidth;   // 重启动画
@@ -1779,9 +1855,53 @@ function beadFull() {
   }
 }
 
+/* ── 全站共念 ──
+   只报总数与此刻在念的人数，不设个人排名：
+   共修是彼此增上，不是比谁念得多。 */
+let gxTimer = null;
+let njLastCount = 0;
+
+async function refreshGongxiu() {
+  const el = $('#cntGx');
+  if (!el) return;
+  // 三分钟内计过数才报心跳，免得把「开着页面发呆」也算成在念
+  const d = await syncGongxiu(Date.now() - njLastCount < 180000);
+  if (!d || !d.total) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = `莲友共念 ${d.total.toLocaleString()} 声`
+    + (d.live > 0 ? ` · 此刻 ${d.live} 位同在` : '');
+}
+
+function startGongxiu() {
+  refreshGongxiu();
+  clearInterval(gxTimer);
+  gxTimer = setInterval(refreshGongxiu, 60000);
+}
+function stopGongxiu() { clearInterval(gxTimer); gxTimer = null; }
+
+/* 攒到一定分量再劝人开莲号：一上来就弹，是打扰；
+   念到几万声还只存在一台手机里，才是真要紧的事。只说一次。 */
+function lianTip() {
+  if (syncAccount() || localStorage.getItem('fy.lianTip')) return;
+  if (njGrandTotal() < 10000 && njStreak() < 7) return;
+  setLS('fy.lianTip', '1');
+  toast('功课已积起来了 · 到「功课 → 莲号」开一枚，换手机也不丢');
+}
+
+let zenGoalTimer = null;
+
 function goalDone() {
   vibrate([40, 80, 60, 80, 90]);
   announce('今日定课圆满');
+  // 静念中不弹全屏层：它压在静念层之上（z40 对 z38），闭目念的下一声
+  // 会先去关它，那一声就丢了，而人还当是计上了。改浮一条不拦点击的提示。
+  if (!$('#zenOverlay').hidden) {
+    const el = $('#zenGoal');
+    el.hidden = false;
+    clearTimeout(zenGoalTimer);
+    zenGoalTimer = setTimeout(() => { el.hidden = true; }, 4500);
+    return;
+  }
   $('#gdOverlay').hidden = false;
 }
 
@@ -1797,10 +1917,19 @@ function njStreak() {
   return n;
 }
 
+let njLastDay = null;
+
 function renderCount() {
   // 念佛计数器（极简）：当前功课 + 大念珠今日声数 + 本串/定课 + 累计/连续摘要
   const it = njItem();
   const k = bjDateKey();
+  // 跨零点归零是对的，但不打一声招呼就清空，晚课念到深夜的人会以为白念了。
+  // 日界按北京时间（全站共修同一个「今日」），海外莲友尤其要这一句。
+  if (njLastDay && njLastDay !== k) {
+    const y = njDayTotal(njLastDay);
+    if (y > 0) toast(`已入次日 · 昨日 ${y.toLocaleString()} 声已归档`);
+  }
+  njLastDay = k;
   const mine = (nj.days[k] || {})[it.id] || 0;
   const dayTotal = njDayTotal(k);
   $('#countName').textContent = it.name;
@@ -1953,6 +2082,8 @@ function renderHubSheet() {
       <small class="pr-stat">${nj.goal ? nj.goal.toLocaleString() + ' 声' : '未设定课'}</small></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="history"><span class="pr-main"><span>念佛历史</span>
       <small class="pr-stat">累计 ${njGrandTotal().toLocaleString()} 声 · 连续 ${njStreak()} 日</small></span><span class="hub-go">›</span></button>
+    <button class="sheet-row" data-hub="lian"><span class="pr-main"><span>莲号 · 功课同步</span>
+      <small class="pr-stat">${lianStatLine()}</small></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="huixiang"><span class="pr-main"><span>回向偈</span></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="reset"><span class="pr-main"><span>重置今日</span>
       <small class="pr-stat">当前功课今日归零 · 累计同步扣除</small></span><span class="hub-go">›</span></button>
@@ -1962,6 +2093,66 @@ function renderHubSheet() {
       ${tg('fy.vib', true, '计数震动')}
     </div>`;
 }
+/* ── 莲号：跨设备认回功课 ──
+   计数原先只在本机 localStorage，清一次缓存、换一台手机就没了。
+   认人只要一枚莲号加一道六位护念码 —— 不收邮箱手机，抄纸上即可。
+   莲友多是上了年纪的人，越少的字越好。 */
+
+const fmtLian = (s) => String(s || '').replace(/(.{4})(.{4})/, '$1-$2');
+
+function lianStatLine() {
+  const a = syncAccount();
+  if (!a) return '未开号 · 换手机或清缓存将丢失记录';
+  const err = syncLastError();
+  return `已接通 ${fmtLian(a.lian)}${err ? ' · ' + err : ''}`;
+}
+
+function renderLianSheet() {
+  const a = syncAccount();
+  if (!a) {
+    $('#cntSheetBody').innerHTML = `
+      <p class="lian-lead">功课眼下只存在这一台手机里。清一次浏览器缓存、换一台手机，
+        几万几十万声就找不回来了。开一枚莲号，功课便同时存在云端。</p>
+      <p class="lian-lead lian-quiet">不收邮箱，不收手机号。只有一枚莲号与一道六位护念码，
+        抄在纸上或拍张照就行。</p>
+      <button class="lian-main" data-lian="open">开 一 枚 莲 号</button>
+      <button class="sheet-add" data-lian="claim">我已有莲号 · 认回功课</button>
+      <div class="lian-form" id="lianForm" hidden>
+        <input id="lianIn" placeholder="莲号 八位" autocomplete="off" maxlength="9" spellcheck="false">
+        <input id="passIn" placeholder="护念码 六位数字" autocomplete="off" inputmode="numeric" maxlength="6">
+        <button data-lian="do-claim">认 回</button>
+        <p class="lian-msg" id="lianMsg"></p>
+      </div>`;
+    return;
+  }
+  $('#cntSheetBody').innerHTML = `
+    <div class="lian-on">
+      <p class="lc-row"><span>莲号</span><b>${fmtLian(a.lian)}</b></p>
+      <p class="lian-lead lian-quiet">功课已在云端。换手机时，用这枚莲号与护念码即可认回
+        念佛计数、阅读进度、收藏划线与听经足迹。</p>
+      <p class="lian-msg" id="lianMsg">${esc(syncLastError() || '')}</p>
+    </div>
+    <button class="sheet-row" data-lian="sync"><span class="pr-main"><span>立即同步一次</span></span><span class="hub-go">›</span></button>
+    <button class="sheet-row" data-lian="repass"><span class="pr-main"><span>换一道护念码</span>
+      <small class="pr-stat">须先报出现用的那道</small></span><span class="hub-go">›</span></button>
+    <button class="sheet-row" data-lian="unlink"><span class="pr-main"><span>在本机解除</span>
+      <small class="pr-stat">云端功课与本机数据都不删，随时可再认回</small></span><span class="hub-go">›</span></button>`;
+}
+
+/** 开号/换码后展示凭据。护念码只此一次露面，站方不留明文。 */
+function showLianCard(lian, pass, title) {
+  $('#cntSheetTitle').textContent = title;
+  $('#cntSheetBody').innerHTML = `
+    <div class="lian-card">
+      <p class="lc-note">请把这两行抄下来，或截一张图存好</p>
+      <p class="lc-row"><span>莲 号</span><b>${fmtLian(lian)}</b></p>
+      <p class="lc-row"><span>护念码</span><b>${esc(pass)}</b></p>
+      <p class="lc-warn">护念码只此一次显示。站方只存散列、不留明文，丢了便找不回来。</p>
+    </div>
+    <button class="lian-main" data-lian="copy" data-l="${esc(lian)}" data-p="${esc(pass)}">复 制 这 两 行</button>
+    <button class="sheet-add" data-lian="done">已经存好了</button>`;
+}
+
 function renderGoalSheet() {
   $('#cntSheetBody').innerHTML = '<div class="goal-grid">' + GOAL_PRESETS.map((g) =>
     `<button class="goal-cell${(nj.goal || 0) === g ? ' on' : ''}" data-goal="${g}">${g === 0 ? '不设' : g.toLocaleString()}</button>`).join('')
@@ -1990,12 +2181,34 @@ function renderCalendar() {
     const vs = v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v;
     cells += `<span class="cal-cell lvl${lvl}${key === todayKey ? ' today' : ''}"><i>${d}</i>${v ? `<b>${vs}</b>` : ''}</span>`;
   }
+  // 明细退场时已并进月总数，故本月合计＝还留着的日明细 + 已归档的那部分
+  const ym = `${y}-${String(m).padStart(2, '0')}`;
+  monthTotal += (nj.months || {})[ym] || 0;
   const dows = ['日', '一', '二', '三', '四', '五', '六'].map((d) => `<span class="cal-dow">${d}</span>`).join('');
   $('#cntSheetBody').innerHTML =
     `<div class="cal-nav"><button data-cal="-1" aria-label="上月">‹</button><strong>${y} 年 ${m} 月</strong><button data-cal="1" aria-label="下月">›</button></div>
     <div class="cal-grid">${dows}${cells}</div>
     <p class="cal-total">本月共 ${monthTotal.toLocaleString()} 声</p>` +
-    (hasGone ? '<p class="cal-note">灰色日期的每日明细只保留 90 天 · 累计总数不受影响</p>' : '');
+    `<p class="cal-note">日界以北京时间零点为准${hasGone ? '<br>灰色日期的逐日明细只留 90 天 · 当月与累计总数都照旧算数' : ''}</p>`
+    + njYearsHtml();
+}
+
+/* 历年月账：逐日明细满 90 天即归档为月总数，永久留着。
+   一年到头念了多少、哪几个月精进、哪几个月松了，都在这一栏里。 */
+function njYearsHtml() {
+  const ms = nj.months || {};
+  const keys = Object.keys(ms).filter((k) => ms[k] > 0).sort().reverse();
+  if (!keys.length) return '';
+  const byYear = {};
+  for (const k of keys) (byYear[k.slice(0, 4)] ||= []).push(k);
+  const years = Object.keys(byYear).sort().reverse().map((yy) => {
+    const total = byYear[yy].reduce((a, k) => a + ms[k], 0);
+    const cells = byYear[yy].sort().map((k) =>
+      `<span class="yr-m"><i>${Number(k.slice(5, 7))}月</i><b>${ms[k].toLocaleString()}</b></span>`).join('');
+    return `<div class="yr-row"><p class="yr-head">${yy} 年 · 共 ${total.toLocaleString()} 声</p>
+      <div class="yr-grid">${cells}</div></div>`;
+  }).join('');
+  return `<div class="yr-wrap"><p class="yr-title">历年月账</p>${years}</div>`;
 }
 
 /* ── 备份与迁移：本机全部数据（fy.*）导出/导入 ── */
@@ -3001,10 +3214,20 @@ function bindEvents() {
     if (s) playEpisode(s, Number(li.dataset.idx));
   });
 
-  // 念佛计数器：大念珠（涟漪 + 木鱼 + 计一声）· 十念 · 撤销 · 重置
-  $('#btnBead').addEventListener('click', (e) => { spawnBeadRipple($('#btnBead'), e); playMuyu(); addNj(1); });
+  /* 念佛计数器：大念珠（涟漪 + 木鱼 + 计一声）· 补十声 · 撤销 · 重置
+
+     计数走 pointerdown 而非 click —— 真念珠是按下即响，click 要等到抬指（touchend）
+     才发，一秒三五声时那点滞后就是「跟不上手」的由来。
+     键盘用户按不出 pointerdown，故 click 兜底：键盘激活按钮时 e.detail 为 0，
+     以此与指针引发的 click 分开，两条路都通且不会重复计。 */
+  const beadTap = (e) => { spawnBeadRipple($('#btnBead'), e); addNj(1); };
+  $('#btnBead').addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;   // 右键/中键不计
+    beadTap(e);
+  });
+  $('#btnBead').addEventListener('click', (e) => { if (e.detail === 0) beadTap(e); });
   $('#btnTen').addEventListener('click', () => addNj(10));
-  $('#btnUndo').addEventListener('click', () => addNj(-1));
+  $('#btnUndo').addEventListener('click', () => undoNj());   // 不直接挂：事件对象会被当成 opts
 
   // 静念全屏：整屏皆是念珠，轻触任意处计一声（闭目、行走念佛不必找珠）
   /* ========== 浮层的键盘出入口 ==========
@@ -3073,11 +3296,36 @@ function bindEvents() {
   });
 
   $('#btnZen').addEventListener('click', () => { renderCount(); $('#zenOverlay').hidden = false; });
-  $('#btnZenExit').addEventListener('click', (e) => { e.stopPropagation(); $('#zenOverlay').hidden = true; });
-  $('#zenOverlay').addEventListener('click', (e) => {
-    if (e.target.closest('.zen-exit')) return;
-    spawnBeadRipple($('#zenOverlay'), e); playMuyu(); addNj(1);
+
+  const zenExit = () => {
+    $('#zenOverlay').hidden = true;
+    $('#zenGoal').hidden = true;
+    clearTimeout(zenGoalTimer);
+    toast(`已收起静念 · 今日 ${njDayTotal(bjDateKey())} 声`);
+  };
+  $('#btnZenExit').addEventListener('click', (e) => { e.stopPropagation(); zenExit(); });
+  $('#btnZenHint').addEventListener('click', (e) => { e.stopPropagation(); zenExit(); });
+
+  /* 静念计数：pointerdown 即计（同大念珠），另挡两类误计 ——
+       · 第二根手指落下＝收起手势，不是一声。手势自己带出的那一声顺手撤掉，
+         否则每次退出都平白多一声。
+       · 50ms 内的重复触点多半是衣料摩擦或手抖。念得再快一秒七八声，
+         间隔也在 130ms 上下，这道闸挡不着正经念佛。 */
+  let zenLastTap = 0;
+  const zenTap = (e) => {
+    const now = Date.now();
+    if (now - zenLastTap < 50) return;
+    zenLastTap = now;
+    spawnBeadRipple($('#zenOverlay'), e);
+    addNj(1);
+  };
+  $('#btnZenTap').addEventListener('pointerdown', (e) => {
+    if (!e.isPrimary) { undoNj({ quiet: true }); zenExit(); return; }
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    zenTap(e);
   });
+  // 键盘（空格/回车激活按钮）走这条：e.detail 为 0 即非指针引发，不会与上面重复计
+  $('#btnZenTap').addEventListener('click', (e) => { if (e.detail === 0) zenTap(e); });
 
   // 功课中心（管理 / 定课 / 历史 / 回向 / 器物开关）+ 主屏快捷入口
   $('#btnHub').addEventListener('click', () => { renderHubSheet(); openCntSheet('hub', '功课'); });
@@ -3217,6 +3465,8 @@ function bindEvents() {
         const p = bjParts(Date.now());
         calYM = { y: p.y, m: p.mo };
         renderCalendar(); openCntSheet('history', '念佛历史');
+      } else if (nav.dataset.hub === 'lian') {
+        renderLianSheet(); openCntSheet('lian', '莲号 · 功课同步');
       } else if (nav.dataset.hub === 'huixiang') {
         closeCntSheet();
         $('#hxOverlay').hidden = false;
@@ -3230,6 +3480,59 @@ function bindEvents() {
         addNj(-mine);
         closeCntSheet();
         toast('今日计数已清零');
+      }
+    } else if (cntSheetMode === 'lian') {
+      const b = e.target.closest('[data-lian]');
+      if (!b) return;
+      const act = b.dataset.lian;
+      const msg = (s) => { const el = $('#lianMsg'); if (el) el.textContent = s; };
+
+      if (act === 'claim') { $('#lianForm').hidden = false; $('#lianIn').focus(); return; }
+
+      if (act === 'open') {
+        b.disabled = true; b.textContent = '开 号 中 …';
+        syncOpen(devId())
+          .then((r) => showLianCard(r.lian, r.pass, '莲号已开'))
+          .catch((err) => { b.disabled = false; b.textContent = '开 一 枚 莲 号'; msg(err.message || '开号未成'); });
+        return;
+      }
+      if (act === 'do-claim') {
+        const l = ($('#lianIn').value || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+        const p = ($('#passIn').value || '').replace(/\D/g, '');
+        if (l.length !== 8 || p.length !== 6) { msg('莲号八位，护念码六位数字'); return; }
+        b.disabled = true; msg('认回中 …');
+        syncClaim(l, p).then(() => {
+          loadNj(); renderCount(); renderWode();
+          renderLianSheet();
+          toast('功课已认回');
+        }).catch((err) => { b.disabled = false; msg(err.message || '认回未成'); });
+        return;
+      }
+      if (act === 'copy') {
+        copyText(`佛乐 · 莲号 ${fmtLian(b.dataset.l)}　护念码 ${b.dataset.p}`)
+          .then((ok) => toast(ok ? '已复制 · 请存到稳妥处' : '复制未成，请手抄'));
+        return;
+      }
+      if (act === 'done') { $('#cntSheetTitle').textContent = '莲号 · 功课同步'; renderLianSheet(); return; }
+      if (act === 'sync') {
+        msg('同步中 …');
+        syncRun({ now: true }).then((ok) => {
+          loadNj(); renderCount(); renderWode();
+          msg(ok ? '已同步' : (syncLastError() || '同步未成'));
+        });
+        return;
+      }
+      if (act === 'repass') {
+        const p = (window.prompt('请先报出现用的护念码（六位数字）') || '').replace(/\D/g, '');
+        if (p.length !== 6) return;
+        syncRepass(syncAccount().lian, p)
+          .then((r) => showLianCard(r.lian, r.pass, '护念码已换'))
+          .catch((err) => msg(err.message || '未能更换'));
+        return;
+      }
+      if (act === 'unlink') {
+        if (!window.confirm('在本机解除莲号？\n云端功课与本机记录都不删，随时可以再认回。')) return;
+        syncUnlink(); renderLianSheet(); toast('已在本机解除');
       }
     } else if (cntSheetMode === 'trail') {
       // 足迹：续听（按钮）/ 续读（锚点）—— 均关闭弹层
@@ -3457,6 +3760,10 @@ function bindEvents() {
   $('#wdInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion($('#wdInput').value); }
   });
+  // 随字数长高。原先 rows=1 死守一行，问句稍长就只看得见最后一行，
+  // 写到一半回看不了自己写了什么 —— 打字慢的人尤其难受。
+  // 上限只写在 CSS（.chat-input textarea 的 max-height），此处不复述那个数字。
+  $('#wdInput').addEventListener('input', () => growInput());
   $('#chatStarters').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (b) sendQuestion(b.textContent);

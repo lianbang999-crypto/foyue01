@@ -19,6 +19,40 @@ export function initAsk(o) {
   trans = o.trans || trans;
 }
 
+/* —— 作答时的滚动跟随 ——
+   原先只在插入占位时滚过一次，此后再不管：回答一长，正在生成的字就跑到屏幕外，
+   人得一边读一边手动往下划，流式「边生成边读」的意思就没了。
+   判断沿用聊天室那套「贴底才跟、翻看前文不打断」（见 app.js 的 nearBottom），
+   区别只在问法是整页滚动、聊天室是容器内滚动。 */
+
+const STICK_SLACK = 120;   // 距底多少像素之内算「还贴着底」
+
+function nearPageBottom() {
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  return max - window.scrollY < STICK_SLACK;
+}
+
+let stickRaf = 0;
+function stickToBottom() {
+  // 逐字追加会密集触发，合并到下一帧滚一次；用瞬时而非平滑 ——
+  // 连续发起平滑滚动会彼此打架，反而抖
+  cancelAnimationFrame(stickRaf);
+  stickRaf = requestAnimationFrame(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+  });
+}
+
+/** 输入框随字数长高。上限只写在 CSS（.chat-input textarea 的 max-height），
+    此处不复述那个数字；超上限后 textarea 自己出滚动条。
+    传 reset 则回到单行（发送后清空时用）。 */
+export function growInput(reset = false) {
+  const el = $('#wdInput');
+  if (!el) return;
+  el.style.height = '';                     // 先撤掉行内高度，才能量到内容真实所需
+  if (reset) return;
+  el.style.height = el.scrollHeight + 'px'; // 全局 box-sizing: border-box，可直接用
+}
+
 /* —— 供事件层使用的访问器（不外露可变状态） —— */
 export const isAsking = () => chat.streaming;
 export const abortAsk = () => askCtrl?.abort();
@@ -50,6 +84,7 @@ export async function sendQuestion(q) {
   chat.streaming = true;
   askCtrl = new AbortController();
   $('#wdInput').value = '';
+  growInput(true);          // 清空后收回单行，免得留一块空白
   document.querySelector('.chat-input').classList.add('asking');   // 发送键变「停止」
   $('#chatStarters').hidden = true;
 
@@ -65,11 +100,13 @@ export async function sendQuestion(q) {
   let answer = '';
   // 回答落定：入历史 + 渲染 + 操作行（复制/分享）
   const settle = () => {
+    const stick = nearPageBottom();
     botDiv.classList.remove('streaming');
     chat.msgs.push({ role: 'assistant', content: answer, sources });
     botDiv.dataset.mi = chat.msgs.length - 1;
     botDiv.innerHTML = renderAnswer(answer, sources, false) + ANS_ACTS;
     saveChat();
+    if (stick) stickToBottom();       // 出处栏与操作行一并落地，别把它们顶到屏外
   };
   try {
     const history = chat.msgs.slice(-7, -1).map((m) => ({ role: m.role, content: m.content }));
@@ -97,11 +134,15 @@ export async function sendQuestion(q) {
         const data = JSON.parse(dataLine);
         if (ev === 'sources') {
           sources = data;
+          const stick = nearPageBottom();
           // 检索阶段反馈：让人知道系统正翻文库
           botDiv.innerHTML = `<p class="thinking">已找到 ${sources.length} 篇相关开示，正在作答 …</p>`;
+          if (stick) stickToBottom();
         } else if (ev === 'delta') {
           answer += data.text;
+          const stick = nearPageBottom();   // 必须在重渲染前问，渲染后高度就变了
           botDiv.innerHTML = renderAnswer(answer, sources, true);
+          if (stick) stickToBottom();
         }
       }
     }
