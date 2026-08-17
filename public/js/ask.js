@@ -53,6 +53,15 @@ export function growInput(reset = false) {
   el.style.height = el.scrollHeight + 'px'; // 全局 box-sizing: border-box，可直接用
 }
 
+/* 页面态：有无对话（决定「新问」与用法说明的存留）、发送键是否可按。
+   都由这一处统一刷新 —— 分散在各调用点必漏，漏掉的那次就是一个死键。 */
+export function syncAskUI() {
+  document.body.toggleAttribute('data-chatting', chat.msgs.length > 0);
+  const btn = $('#btnAsk');
+  const inp = $('#wdInput');
+  if (btn && inp) btn.disabled = !chat.streaming && !inp.value.trim();
+}
+
 /* —— 供事件层使用的访问器（不外露可变状态） —— */
 export const isAsking = () => chat.streaming;
 export const abortAsk = () => askCtrl?.abort();
@@ -63,6 +72,7 @@ export function clearChat() {
   saveChat();
   $('#chatLog').innerHTML = '';
   $('#chatStarters').hidden = false;
+  syncAskUI();
 }
 
 /* ================= 问道（文库 RAG） ================= */
@@ -85,14 +95,15 @@ export async function sendQuestion(q) {
   askCtrl = new AbortController();
   $('#wdInput').value = '';
   growInput(true);          // 清空后收回单行，免得留一块空白
+  syncAskUI();              // 发送键转入「停止」态，页头也该现出「新问」
   document.querySelector('.chat-input').classList.add('asking');   // 发送键变「停止」
   $('#chatStarters').hidden = true;
 
   chat.msgs.push({ role: 'user', content: q });
   saveChat();
   const log = $('#chatLog');
-  log.insertAdjacentHTML('beforeend', `<div class="msg user"><p>${esc(q)}</p></div>`);
-  log.insertAdjacentHTML('beforeend', '<div class="msg bot streaming"><p class="thinking">检索文库中 …</p></div>');
+  log.insertAdjacentHTML('beforeend', `<div class="msg user msg-new"><p>${esc(q)}</p></div>`);
+  log.insertAdjacentHTML('beforeend', '<div class="msg bot streaming msg-new"><p class="thinking">检索文库中 …</p></div>');
   const botDiv = log.lastElementChild;
   botDiv.scrollIntoView({ block: 'end' });
 
@@ -168,6 +179,7 @@ export async function sendQuestion(q) {
   chat.streaming = false;
   askCtrl = null;
   document.querySelector('.chat-input').classList.remove('asking');
+  syncAskUI();
   // 流式作答是逐字追加的，读屏不会主动读；答毕整段播报一次
   announce(botDiv.querySelector('.chat-retry')
     ? '作答失败，可重试'
@@ -221,11 +233,12 @@ export function saveChat() {
 }
 export function loadChat() {
   try { chat.msgs = JSON.parse(localStorage.getItem('fy.chat')).msgs || []; } catch { chat.msgs = []; }
-  if (!chat.msgs.length) return;
+  if (!chat.msgs.length) { syncAskUI(); return; }   // 空对话也要刷一次：发送键该是素的
   $('#chatLog').innerHTML = chat.msgs.map((m, i) => m.role === 'user'
     ? `<div class="msg user"><p>${esc(m.content)}</p></div>`
     : `<div class="msg bot" data-mi="${i}">${renderAnswer(m.content, m.sources || [], false)}${ANS_ACTS}</div>`).join('');
   $('#chatStarters').hidden = true;
+  syncAskUI();
 }
 
 // 阅读时长明细只留近 7 天

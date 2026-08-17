@@ -5,6 +5,7 @@
 
 import {
   createStation, stationNow, fmtClock, fmtDur, fmtMMSS, bjParts,
+  nowMs, setClockSkew, clockSkewMs,
 } from './station.js';
 import { SERIES_INTROS } from './intros.js';
 import { initI18n } from './i18n.js';
@@ -24,7 +25,7 @@ import {
 } from './poster.js';
 import {
   initAsk, buildWenda, loadChat, saveChat, sendQuestion, shareAnswer, pruneRt, pathToHash,
-  isAsking, abortAsk, chatMsg, chatCount, clearChat, growInput,
+  isAsking, abortAsk, chatMsg, chatCount, clearChat, growInput, syncAskUI,
 } from './ask.js';
 
 const audio = $('#audio');
@@ -45,6 +46,8 @@ let liveItem = null;
 let wantLive = false;
 let liveRetry = 0;          // 直播连续失败次数，用于退避
 let liveRetryT = 0;         // 在途的重试定时器
+let liveWatchSec = 0;       // 播放位置已停滞几秒
+let liveWatchPos = -1;      // 上一秒的播放位置
 let od = null;              // 点播状态 { title, list, idx, progress, seriesId, bucket }
 let schedDay = 0;
 let seekPending = null;
@@ -75,6 +78,9 @@ async function init() {
     if (/^bo\./i.test(location.hostname)) location.replace('#live');          // 直播台
     else if (/^(qun|liao)\./i.test(location.hostname)) location.replace('#qun'); // 莲友共修群
   }
+  // 与站方对表。跟 catalog 并行发出，不额外占首屏时间；
+  // 排在 createStation 之前，好让推演与快照一开始就用对的「现在」。
+  const clockReady = syncClock();
   // 首屏只等 catalog（听经/直播立即可用）；library/qa 后台预取，进相关页时再等
   try {
     catalog = await fetchJson('/catalog.json');
@@ -82,6 +88,7 @@ async function init() {
     showLoadError();
     return;
   }
+  await clockReady;
   station = createStation(catalog);
 
   // 先从镜像捞回被清掉的要紧键（只补缺失，不覆盖），再读计数 —— 顺序不可颠倒
@@ -397,13 +404,37 @@ async function route() {
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
 }
 
+/* ── 与站方对表 ──
+   排播由各客户端自行推演，靠的是大家时钟一致。本机时钟一偏，
+   听到的就不是大众此刻正听的那一句 —— 而人不自知，还当自己正与大众同闻。
+   问一次 /api/time，以往返时延的一半作补偿。整件事失败也不要紧：
+   退回本机时钟，与从前一样，不比从前更差。 */
+async function syncClock() {
+  try {
+    const t0 = Date.now();
+    const r = await fetch('/api/time', { cache: 'no-store' });
+    if (!r.ok) return;
+    const server = Number(await r.text());
+    const t1 = Date.now();
+    if (!Number.isFinite(server) || server <= 0) return;
+    const rtt = t1 - t0;
+    if (rtt > 8000) return;            // 往返太久，补偿不可信，宁可不校
+    setClockSkew(server + rtt / 2 - t1);
+    const off = Math.abs(clockSkewMs());
+    // 差得离谱才出声：多数人并不知道自己手机时间不准，说一句，也让他去系统里改
+    if (off > 120000) {
+      toast(`本机时间差了约 ${Math.round(off / 60000)} 分钟 · 直播已按标准时间对齐`);
+    }
+  } catch { /* 没网就按本机时钟走 */ }
+}
+
 /* ================= 主循环 ================= */
 
 function tick() {
   const t = stationNow();
   const { item, offset, next } = station.liveAt(t, 3);
 
-  const p = bjParts(Date.now());
+  const p = bjParts(nowMs());
   const dateStr =
     `${p.y}年${p.mo}月${p.d}日 · 周${WEEK[p.day]} · 北京时间 ${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`;
   $('#nowDate').textContent = dateStr;
@@ -436,9 +467,24 @@ function tick() {
   $('#liveElapsed').textContent = fmtMMSS(offset);
   $('#liveTotal').textContent = fmtMMSS(item.ep.dur);
 
+  /* 与直播位置对齐。原先是「差 40 秒之内不管，超了硬跳」——
+     两头都不妥：40 秒之内两位莲友听的不是同一句；一旦硬跳，
+     正听着的那半句话就被切掉了，讲经不比音乐，断在句中很难受。
+     改成差得多才跳，差得少用快慢慢慢找齐：4% 的速差听不出来
+     （浏览器默认保音高），差十秒也就几分钟内无声无息地对上。 */
   if (mode === 'live' && !audio.paused && seekPending === null) {
-    if (Math.abs(audio.currentTime - offset) > 40) audio.currentTime = offset;
+    const drift = audio.currentTime - offset;   // 正＝走快了，负＝落后了
+    const ad = Math.abs(drift);
+    if (ad > 40) {
+      audio.currentTime = offset;               // 多半是刚从后台回来，此时切一句也无妨
+      audio.playbackRate = 1;
+    } else if (ad > 2) {
+      audio.playbackRate = drift > 0 ? 0.96 : 1.04;
+    } else if (audio.playbackRate !== 1) {
+      audio.playbackRate = 1;                   // 对上了，回原速
+    }
   }
+  watchLiveStall();   // 每秒盘一次：位置久不动即断流，不指望 stalled 事件
 
   if (mode === 'nianfo' && nf.deadline && !audio.paused) {
     if (Date.now() >= nf.deadline) endNianfoSession();
@@ -785,7 +831,14 @@ function switchMode(m) {
   audio.loop = (m === 'nianfo');
   if (m !== 'od') { $('#mini').hidden = true; od = null; markPlayingRow(); }
   if (m === 'nianfo') setSleep(0);   // 念佛堂有自己的定课计时，睡眠定时让位
-  if (m !== 'live') wantLive = false;
+  if (m !== 'live') {
+    wantLive = false;
+    // 直播为对齐进度可能正微调着快慢，走之前务必归位，
+    // 否则这点速差会跟着带进点播与佛号里
+    audio.playbackRate = 1;
+    clearLiveWatch();
+    clearTimeout(liveRetryT);
+  }
 }
 
 function setSleep(min) {
@@ -871,6 +924,49 @@ function loadLive(retry = false) {
 
 function hint(text) { $('#liveHint').textContent = text; }
 
+/* ── 直播断流：退避重连 ──
+   两处会走到这里 ——
+     · audio 报 error：取流明确失败；
+     · 看门狗：播放位置十几秒纹丝不动。整段音频走 Range 请求，中途被掐断时
+       Chrome 多半报 error，而 Safari 常常只是卡在 stalled、一声不响。
+       原先只认 error，于是 iPhone 上放着听经睡去，半夜网络一抖，
+       屏上「缓冲中 …」挂到天亮也接不回来。 */
+function liveFail(why) {
+  if (mode !== 'live' || !wantLive) return;
+  clearLiveWatch();
+  liveRetry = Math.min(liveRetry + 1, 4);
+  const wait = 4000 * 2 ** (liveRetry - 1);          // 4s → 8s → 16s → 32s 封顶
+  hint(`${why}，${Math.round(wait / 1000)} 秒后重试 …`);
+  clearTimeout(liveRetryT);
+  liveRetryT = setTimeout(() => {
+    liveRetryT = 0;      // 归零，好让停滞盘点重新上岗
+    if (mode === 'live' && wantLive) loadLive(true);
+  }, wait);
+}
+
+/* 卡住判定放在 tick 里按秒盘点，不挂在 stalled/waiting 事件上 ——
+   那两个事件各家浏览器给不给、什么时候给都不一样，指望它们等于把成败交给运气。
+   每秒看一眼位置有没有动，十五秒纹丝不动就是断了：
+   寻常缓冲几秒即回，误判不了；而真断了，事件给不给都拦得住。 */
+const LIVE_STALL_SEC = 15;
+
+function clearLiveWatch() { liveWatchSec = 0; liveWatchPos = -1; }
+
+function watchLiveStall() {
+  // 重连本就在途中时不再盘点，免得把退避的节奏打乱
+  if (mode !== 'live' || !wantLive || audio.paused || liveRetryT) { clearLiveWatch(); return; }
+  const now = audio.currentTime;
+  if (liveWatchPos < 0 || Math.abs(now - liveWatchPos) > 0.5) {
+    liveWatchPos = now;      // 还在走
+    liveWatchSec = 0;
+    return;
+  }
+  if (++liveWatchSec >= LIVE_STALL_SEC) {
+    clearLiveWatch();
+    liveFail('直播卡住');
+  }
+}
+
 function backToLive() {
   switchMode('live');
   wantLive = true;
@@ -882,7 +978,12 @@ function backToLive() {
 function toggleLive() {
   if (mode !== 'live') { backToLive(); }
   else if (audio.paused) { wantLive = true; loadLive(); hint('正与大众同闻'); }
-  else { audio.pause(); wantLive = false; hint('已暂停 · 轻触回到直播'); }
+  else {
+    audio.pause(); wantLive = false;
+    audio.playbackRate = 1;            // 暂停即归位，免得下次接上还带着速差
+    clearLiveWatch(); clearTimeout(liveRetryT);
+    hint('已暂停 · 轻触回到直播');
+  }
   document.body.dataset.playing = String(wantLive);
 }
 
@@ -1685,7 +1786,7 @@ function endNianfoSession() {
 /* ================= 我的 · 数珠计数 ================= */
 
 function bjDateKey() {
-  const p = bjParts(Date.now());
+  const p = bjParts(nowMs());
   return `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
 }
 
@@ -1910,7 +2011,7 @@ function njStreak() {
   let n = 0;
   let i = njDayTotal(bjDateKey()) > 0 ? 0 : 1;
   for (; i < 400; i++) {
-    const p = bjParts(Date.now() - i * 86400000);
+    const p = bjParts(nowMs() - i * 86400000);
     const k = `${p.y}-${String(p.mo).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
     if (njDayTotal(k) > 0) n++; else break;
   }
@@ -2164,7 +2265,7 @@ function renderCalendar() {
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const todayKey = bjDateKey();
   // 每日明细只保留近 90 天：更早日期显示为「无记录」而非 0，以免误读为没念
-  const p90 = bjParts(Date.now() - 89 * 86400000);
+  const p90 = bjParts(nowMs() - 89 * 86400000);
   const cutoffKey = `${p90.y}-${String(p90.mo).padStart(2, '0')}-${String(p90.d).padStart(2, '0')}`;
   let monthTotal = 0, cells = '', hasGone = false;
   for (let i = 0; i < startDow; i++) cells += '<span class="cal-cell empty"></span>';
@@ -2609,7 +2710,10 @@ function setLiveOnline(n) {
 
 // 留言轮询节奏：共修群开着 6 秒近实时；只在直播页 30 秒（喂弹幕/在线数）；都不在则停
 function syncCmtPolling() {
-  const want = chatOpen || document.body.dataset.view === 'live';
+  // 在线心跳搭在这趟轮询上。原先只认「在直播页或聊天室开着」，
+  // 于是在首页「正在播出」卡里听的人一概不计，报出来的人数偏少。
+  const want = chatOpen || document.body.dataset.view === 'live'
+    || (mode === 'live' && !audio.paused);
   if (!want) {
     if (cmtTimer) { clearInterval(cmtTimer); cmtTimer = 0; }
     cmtFast = null; setLiveOnline(0);
@@ -2923,13 +3027,8 @@ function bindEvents() {
   });
   audio.addEventListener('error', () => {
     if (mode === 'live' && wantLive) {
-      // 原先只是闷头重试：莲台仍显示「直播中」，却没声音也没有一句交代。
-      // 出声说明，并逐次拉长间隔 —— 源站真出故障时，固定 4 秒会一直空转。
-      liveRetry = Math.min(liveRetry + 1, 4);
-      const wait = 4000 * 2 ** (liveRetry - 1);          // 4s → 8s → 16s → 32s 封顶
-      hint(`网络不稳，${Math.round(wait / 1000)} 秒后重试 …`);
-      clearTimeout(liveRetryT);
-      liveRetryT = setTimeout(() => { if (mode === 'live' && wantLive) loadLive(true); }, wait);
+      // 出声说明，并逐次拉长间隔 —— 源站真出故障时，固定 4 秒会一直空转
+      liveFail('网络不稳');
     } else if (mode === 'od' && od) {
       playStatus('网络不稳，正在重试 …');
       const pos = audio.currentTime || 0;
@@ -2941,11 +3040,13 @@ function bindEvents() {
       }, 4000);
     }
   });
-  // 缓冲与恢复反馈
+  // 缓冲与恢复反馈。直播另布看门狗：卡着不动而又不报 error 的那种断流，
+  // 光靠 error 处理器永远等不到（Safari 尤其如此）
   audio.addEventListener('waiting', () => playStatus('缓冲中 …'));
   audio.addEventListener('stalled', () => playStatus('缓冲中 …'));
   audio.addEventListener('playing', () => {
     liveRetry = 0;   // 接上了就把退避清零，下次断流仍从 4 秒起
+    clearLiveWatch();
     playStatus('');
   });
   // 暂停即存进度（含睡眠定时暂停），不留 5 秒空窗
@@ -3384,7 +3485,7 @@ function bindEvents() {
         copyText(backupText()).then((ok) =>
           msg(ok ? '已复制备份码 · 可存入备忘录，或发给自己保存' : '复制失败，请改用下载方式'));
       } else if (b.dataset.bk === 'file') {
-        const p = bjParts(Date.now());
+        const p = bjParts(nowMs());
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([backupText()], { type: 'text/plain' }));
         a.download = `佛乐备份-${p.y}${String(p.mo).padStart(2, '0')}${String(p.d).padStart(2, '0')}.txt`;
@@ -3462,7 +3563,7 @@ function bindEvents() {
       if (nav.dataset.hub === 'practice') { renderPracticeSheet(); openCntSheet('practice', '功课管理'); }
       else if (nav.dataset.hub === 'goal') { renderGoalSheet(); openCntSheet('goal', '每日定课'); }
       else if (nav.dataset.hub === 'history') {
-        const p = bjParts(Date.now());
+        const p = bjParts(nowMs());
         calYM = { y: p.y, m: p.mo };
         renderCalendar(); openCntSheet('history', '念佛历史');
       } else if (nav.dataset.hub === 'lian') {
@@ -3763,7 +3864,7 @@ function bindEvents() {
   // 随字数长高。原先 rows=1 死守一行，问句稍长就只看得见最后一行，
   // 写到一半回看不了自己写了什么 —— 打字慢的人尤其难受。
   // 上限只写在 CSS（.chat-input textarea 的 max-height），此处不复述那个数字。
-  $('#wdInput').addEventListener('input', () => growInput());
+  $('#wdInput').addEventListener('input', () => { growInput(); syncAskUI(); });
   $('#chatStarters').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (b) sendQuestion(b.textContent);

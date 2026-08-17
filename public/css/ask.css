@@ -2,20 +2,41 @@
    由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
    <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
 
-/* —— 问道对话 —— */
-.chat { margin-top: 4px; }
-.msg { margin-bottom: 16px; }
+/* —— 问道对话 ——
+   这一页原是一套聊天软件的语汇：实心色块气泡、圆角卡片、横排药丸。
+   而全站其余各处都是宣纸的语汇 —— 素底、界栏、泥金、朱砂只作点睛。
+   问法本就是「读一段开示」，不是「聊天」，故一律退回纸上：
+   问用一道朱砂细线收边（如古书眉批），答直接落纸，靠留白分段。 */
+.chat { margin-top: 8px; }
+
+/* 问：不再用实心朱砂气泡。色块之重压过了正文，而一页之内该被强调的
+   是法师的开示，不是我自己的问题。位置（靠右）已足以说明这是谁说的，
+   墨色则让它与正文同重、不抢。 */
+.msg.user {
+  /* 整块靠右，块内文字仍左对齐 —— 长问句若跟着右对齐，中文读起来很吃力
+     （每行起点都在跳）。靠右已足够说明「这是我问的」。 */
+  width: fit-content;
+  max-width: 82%;
+  margin-left: auto;
+  margin-bottom: 16px;                    /* 与紧随其后的回答成组，靠得近 */
+  padding-right: 14px;
+  border-right: 2px solid var(--accent);  /* 多行时这道线自然变长，更像批注标记 */
+}
 .msg.user p {
-  background: var(--accent); color: var(--on-accent);
-  display: inline-block; padding: 10px 16px; border-radius: 16px 16px 4px 16px;
-  max-width: 86%; margin-left: auto; line-height: 1.7; font-size: 0.95rem;
+  background: none; padding: 0; border-radius: 0;
+  color: var(--ink-2); font-size: 0.93rem; line-height: 1.85;
+  /* 比回答略轻一档：一页之内该被细读的是开示，问句只是引子 */
 }
-.msg.user { text-align: right; }
+
+/* 答：去掉底色、边框、圆角三重装饰，与阅读器同样直接落在纸上。
+   行距沿用阅读器的疏朗度 —— 这里读的也是开示。 */
 .msg.bot {
-  background: var(--card); border: 1px solid var(--line); border-radius: 4px 16px 16px 16px;
-  padding: 14px 18px; max-width: 94%;
+  background: none; border: 0; border-radius: 0; padding: 0;
+  max-width: none;
+  margin-bottom: 38px;                    /* 一问一答之后，留一口气再接下一问 */
 }
-.msg.bot p { line-height: 1.95; font-size: 0.96rem; color: var(--ink); margin-bottom: 0.8em; }
+.msg.bot:last-child { margin-bottom: 0; }
+.msg.bot p { line-height: 1.95; font-size: 0.96rem; color: var(--ink); margin-bottom: 0.85em; }
 .msg.bot p:last-of-type { margin-bottom: 0; }
 /* 「检索中 …」原用全站通用的 pulse（1 → 0.25），幅度太大读作闪烁、像出错。
    改成自家的浅呼吸，只在 0.55–0.9 间起伏，是「在想」不是「坏了」。 */
@@ -43,17 +64,34 @@
 @media (hover: hover) and (pointer: fine) {
   .src:hover { color: var(--accent); }
 }
+/* 出处的序号不必再套方框：这里是一份清单，序号本身已有次第之意，
+   描个框就成了第二种「可点的方章」，与正文里的引用角标语汇撞车。
+   改用泥金数字，与上方那道泥金界栏同源。 */
 .src-n {
-  flex: none; min-width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 5px;
-  font-size: 0.66rem; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3);
+  flex: none; min-width: 12px; border: 0; background: none;
+  color: var(--gold-text); font-size: 0.72rem; font-variant-numeric: tabular-nums;
 }
-.chat-starters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+/* 引导问题：原是四枚横排药丸，长短参差、四道边框各自为界，是空页上最吵的一块。
+   改成竖排一列，与文库篇目（.ep-list）同一套语汇 —— 本就是「可点进去的几条」。
+   行首一枚极小的朱砂点代替边框，说明可点即够。 */
+.chat-starters { display: block; margin: 20px 0 0; }
 .chat-starters button {
-  font-family: var(--serif); background: var(--card); border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 8px 14px; cursor: pointer;
+  display: flex; width: 100%; align-items: baseline; gap: 10px;
+  font-family: var(--serif); background: none; border: 0;
+  border-bottom: 1px solid var(--line); border-radius: 0;
+  color: var(--ink-2); font-size: 0.94rem; line-height: 1.6;
+  padding: 14px 2px; text-align: left; cursor: pointer;
+  transition: color var(--t-2) var(--e-out);
 }
+.chat-starters button:last-child { border-bottom: 0; }
+.chat-starters button::before {
+  content: ''; flex: none; width: 3px; height: 3px; border-radius: 50%;
+  background: var(--accent-soft);
+  transform: translateY(-0.28em);   /* 落在字腰略上，作标点而非上标 */
+}
+.chat-starters button:active { color: var(--accent); }
 @media (hover: hover) and (pointer: fine) {
-  .chat-starters button:hover { color: var(--accent); border-color: var(--accent-soft); }
+  .chat-starters button:hover { color: var(--accent); }
 }
 .chat-input {
   display: flex; gap: 8px; align-items: flex-end;
@@ -75,7 +113,11 @@
   transition: transform var(--t-1) var(--e-press), opacity var(--t-2) var(--e-out);
 }
 .chat-input button:not(:disabled):active { transform: scale(0.93); }
-.chat-input button:disabled { opacity: 0.4; cursor: default; }
+/* 空着的时候不占强调位：此刻该被看见的是那几条引导问题，不是一个待命的按钮。
+   一朱砂满底的方块若恒亮，它就是整页最重的一点，而它什么也没在等。 */
+.chat-input button:disabled {
+  background: none; color: var(--ink-3); opacity: 1; cursor: default;
+}
 .chat-input button svg { width: 20px; height: 20px; }
 .ai-note { color: var(--ink-3); font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.04em; text-align: center; }
 
@@ -87,10 +129,21 @@
    泥金引线（.page-title::after）宽度归零，全站只有这一页秃着 */
 .wd-head { display: flex; align-items: center; gap: 12px; }
 .wd-head .page-title { flex: 1; min-width: 0; }
+/* 「新问」：没有对话可清时它是死键，故由 JS 按 data-chatting 收起（见下）。
+   留下时也不必再框一道 —— 页头已有标题与那道泥金引线，再加个药丸就三层了。 */
 .chat-new {
-  flex: none; font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 6px 16px; cursor: pointer;
+  flex: none; font-family: var(--serif); background: transparent; border: 0;
+  color: var(--ink-3); font-size: 0.84rem; letter-spacing: 0.08em;
+  padding: 6px 2px; cursor: pointer;
+  transition: color var(--t-2) var(--e-out);
 }
+.chat-new:active { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .chat-new:hover { color: var(--accent); }
+}
+/* 空对话：没有可清的东西，也不必再讲一遍用法 */
+body:not([data-chatting]) .chat-new { display: none; }
+body[data-chatting] #view-wenda > .page-note { display: none; }
 #btnAsk .ic-stop { display: none; }
 .chat-input.asking #btnAsk .ic-send { display: none; }
 .chat-input.asking #btnAsk .ic-stop { display: block; }
@@ -114,3 +167,9 @@
   background: var(--card); border: 1px solid var(--line); border-radius: 12px;
   padding: 14px 16px; margin-bottom: 14px;
 }
+
+/* 新问答落纸：淡入 + 抬一指高。只给新插入的那一条 ——
+   恢复历史对话时若逐条播，六条各自淡入反成一阵闪。
+   全局的 prefers-reduced-motion 规则（chrome.css）已把位移与延时一并归零。 */
+.msg-new { animation: msgIn var(--t-3) var(--e-out) backwards; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(8px); } }

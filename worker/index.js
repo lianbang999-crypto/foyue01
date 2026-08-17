@@ -54,6 +54,18 @@ export default {
     if (url.pathname.startsWith('/api/admin/')) {
       return serveAdmin(request, env, url);
     }
+    /* 校时：直播排播全靠客户端自己算「此刻该播哪一集」，本机时钟一偏，
+       听到的就不是大众正在听的那一句，而人不自知。前端启动后问一次这里。
+       回纯数字，十来个字节；务必不缓存，缓存过的时间就不是时间了。 */
+    if (url.pathname === '/api/time') {
+      return new Response(String(Date.now()), {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store, must-revalidate',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
     // 莲号与功课同步（详见 worker/lian.js）
     if (url.pathname === '/api/lian') {
       return serveLian(request, env);

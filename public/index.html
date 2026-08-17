@@ -208,7 +208,8 @@
         <svg aria-hidden="true" class="ic-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
         <svg aria-hidden="true" class="ic-pause" viewBox="0 0 24 24"><path d="M7 5h3.6v14H7zM13.4 5H17v14h-3.6z"/></svg>
       </button>
-      <p class="live-hint" id="liveHint">轻触莲台 · 与大众同闻</p>
+      <!-- aria-live：断流重试那几句原先读屏用户一句也收不到，只知道声音没了 -->
+      <p class="live-hint" id="liveHint" aria-live="polite">轻触莲台 · 与大众同闻</p>
       <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
       <!-- 底部五键：弹幕 · 留言 · 随喜 · 定时 · 分享（图标 + 文字） -->
       <div class="live-tools">
@@ -444,7 +445,7 @@
     </div>
     <div class="chat-input">
       <textarea id="wdInput" rows="1" maxlength="300" placeholder="向文库提问 …"></textarea>
-      <button id="btnAsk" aria-label="提问">
+      <button id="btnAsk" aria-label="提问" disabled>
         <svg aria-hidden="true" class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <svg aria-hidden="true" class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
       </button>
