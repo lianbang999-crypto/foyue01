@@ -1,0 +1,144 @@
+/* 佛乐 · 变量、主题色、四时氛围、全局基础
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* 佛乐 · 样式
+   设计语言：写经格局 —— 纸、墨、一枚朱印、几道金界栏。
+   全站一套配色：宣纸为底，墨字三阶，朱砂是唯一点睛色（只给可点的、
+   正在进行的），泥金只做结构细线（标题引线/分隔/页脚），不做按钮。
+   页面氛围随播出时段流转：晨曦 / 纸墨（昼）/ 暮色 / 夜烛。
+
+   —— 配色源自《印光法师文钞》站（wenchao.foyue.org）的「纸墨」主题 ——
+   两站同宗，色值直接照搬，不另调一色：
+     宣纸 --paper   #f6f1e6      重一度 --paper-2 #efe7d4   再重 --paper-3 #e7dcc4
+     浓墨 --ink     #322a1e      淡墨   --ink-2   #6d5f49
+     朱砂 --cinnabar #b03a26     界栏   --line    #d9cdb2
+     夜档 纸 #171310 / 墨 #d9cfbc / 朱砂 #d4694e
+   四时流转即在文钞自己的纸阶上走（晨曦↔正午用 paper、暮色用 paper-2、
+   夜烛用夜档），未引入任何文钞之外的新色。
+
+   仅三处按无障碍实测微调（原值在本站的用法下达不到 AA，详见各处注释）：
+     ① 昼 --ink-3  #a3937a → #72644f    ② 夜 --ink-3 #6e6450 → #8c7f65
+     ③ --gold-text #7c673c → #79643a
+   注：paper-3 #e7dcc4 只用于 .sky 装饰渐变，不做正文纸底 ——
+   飞白压在它上面只有 4.23:1、泥金 4.00:1，都掉出 AA。 */
+
+:root {
+  --serif: "Noto Serif SC", "Songti SC", "STSongti-SC-Regular", "STSong",
+           "Source Han Serif SC", "SimSun", serif;
+
+  /* —— 动效基准（全站统一缓动与时长，便于一处调节节奏） ——
+     纸墨气质宜「快进慢出」：起手利落，收尾从容，不做弹跳。 */
+  --e-out:   cubic-bezier(0.22, 1, 0.36, 1);      /* 进场/展开：干脆起、缓慢停 */
+  --e-io:    cubic-bezier(0.4, 0, 0.2, 1);        /* 状态互换 */
+  --e-press: cubic-bezier(0.3, 0, 0.2, 1);        /* 按压回弹 */
+  --t-1: 0.14s;   /* 按压、着色 */
+  --t-2: 0.24s;   /* 一般状态变化 */
+  --t-3: 0.38s;   /* 进场、面板 */
+  --t-4: 1.1s;    /* 时段换色 */
+}
+
+/* —— 全站色（昼） ——
+   点睛色即文钞的朱砂，未降饱和：文钞把它压在同一张宣纸上验过 5.36:1，
+   本站三档纸阶（paper / paper-2）上是 5.36 / 4.90，均达 AA。 */
+body {
+  --c-zhusha: #b03a26;   /* 朱砂：唯一点睛色，同文钞 --cinnabar */
+  --c-zhusha-rgb: 176, 58, 38;    /* 同色的通道值，供 rgba() 调透明度用（见下方 --accent-soft） */
+  /* 这枚朱砂比本站上一版的褪色赭红(#8c5647)更正、更亮一档，
+     但它同时是底栏当前页、各处「播放 ›/续读 ›」入口的文字色，故仍逐档验过：
+     paper 5.36:1、paper-2 4.90:1，纸白压在它上面 5.36:1 —— 全部过 AA。 */
+  --gold-line: rgba(149, 125, 77, 0.42);   /* 泥金描线：非文钞三色，属本站结构语言，保留 */
+  --gold-text: #79643a;
+  /* 泥金文字原为 #7c673c，在 paper 上 4.83:1 尚可，落到暮色档的 paper-2
+     只剩 4.41:1。仅压暗 1% 明度（L36%→35%）即回到 5.04 / 4.61，肉眼几乎无差。 */
+}
+
+/* —— 四时氛围 ——
+   墨字三阶与界栏在昼间三档是同一套（文钞原值），四时之别只在纸阶与天空：
+   晨曦、正午同用宣纸 paper，暮色沉到 paper-2，夜烛换文钞夜档。
+   .sky 是铺满视口的装饰层、不承载文字，故渐变里可以用到更深的 paper-3。
+
+   --card 是唯一一个文钞没有的纸色：文钞是通栏读物，没有浮起的卡片。
+   取宣纸提亮一档（#fcf9f2）作「浮起的纸」，压在 paper 上 1.07:1、
+   paper-2 上 1.17:1，配合 --line 的实色界栏足够分出层次。
+   各档的 --bg-deep 全站零引用，留作备用。注意它是不透明色，
+   若日后拿去替 --card 需另行评估：--card 带 alpha，是配合毛玻璃用的。 */
+body[data-theme="day"] {
+  --bg: #f6f1e6; --bg-deep: #efe7d4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  --sky: linear-gradient(180deg, #efe7d4 0%, #f6f1e6 60%, #f6f1e6 100%);
+}
+body[data-theme="dawn"] {
+  --bg: #f6f1e6; --bg-deep: #efe7d4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  /* 晨曦：天边最重，往下透亮，走 paper-3 → paper-2 → paper 三阶 */
+  --sky: linear-gradient(180deg, #e7dcc4 0%, #efe7d4 50%, #f6f1e6 100%);
+}
+body[data-theme="dusk"] {
+  --bg: #efe7d4; --bg-deep: #e7dcc4;
+  --ink: #322a1e; --ink-2: #6d5f49; --ink-3: #72644f;
+  --card: rgba(252, 249, 242, 0.72); --line: #d9cdb2;
+  /* 暮色：纸整体沉一阶（正文底为 paper-2），天空压到 paper-3 */
+  --sky: linear-gradient(180deg, #e7dcc4 0%, #e7dcc4 40%, #efe7d4 100%);
+}
+body[data-theme="night"] {
+  --bg: #171310; --bg-deep: #0f0c0a;
+  --ink: #d9cfbc; --ink-2: #a29478; --ink-3: #8c7f65;
+  --card: rgba(31, 26, 20, 0.66); --line: #383021;
+  --sky: linear-gradient(180deg, #171310 0%, #1f1a14 55%, #171310 100%);
+  /* 夜间朱砂提亮，保证纸暗字明（文钞夜档原值，压在夜纸上 5.22:1） */
+  --c-zhusha: #d4694e;
+  --c-zhusha-rgb: 212, 105, 78;
+  --gold-line: rgba(194, 167, 118, 0.34);
+  --gold-text: #c0a271;
+  /* 夜档飞白：文钞原值 #6e6450 压在夜纸上只有 3.17:1。同色相同彩度
+     提亮到 L47% 得 #8c7f65（4.70:1）。全站 84 处引用，必须过 AA。 */
+}
+
+/* —— 点睛色：全站统一朱砂 —— */
+body {
+  --accent: var(--c-zhusha);
+  --accent-rgb: var(--c-zhusha-rgb);
+  /* 这两个不能用 color-mix ——「先写回退再写新语法」那一套只对普通属性成立：
+     自定义属性的值在声明时不做校验，整段 color-mix(...) 照样胜出并覆盖回退值，
+     直到取用时才失败，那时已无处可退，全站 79 处点睛色会一起变成无色。
+     老内核（微信 X5 一类）上尤其致命。改用 rgba + 通道令牌，各内核通吃；
+     压在不透明纸底上时，rgba 合成的结果与「按 bg 调和」在视觉上等同。 */
+  --accent-soft: rgba(var(--accent-rgb), 0.45);
+  --accent-wash: rgba(var(--accent-rgb), 0.08);
+
+  /* 朱砂底上的前景色。浅色各档用文钞宣纸本色（压在朱砂上 5.36:1）；
+     夜烛档的朱砂被提亮成浅赭，再压纸白只有 2.5:1 左右，远不到 AA，
+     故翻成文钞夜纸的墨色（5.22:1）。 */
+  --on-accent: #f6f1e6;
+}
+body[data-theme="night"] { --on-accent: #171310; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
+/* touch-action: manipulation —— 禁双击放大（保留滚动与双指缩放），并消除移动端 300ms 点击延迟 */
+html { -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }   /* hidden 属性优先于任何 display 声明 */
+
+body {
+  font-family: var(--serif);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100svh;
+  display: flex; flex-direction: column;
+  transition: background var(--t-4) var(--e-io), color var(--t-4) var(--e-io);
+  letter-spacing: 0.02em;
+}
+
+/* 氛围天空层 + 宣纸纤维颗粒 */
+.sky {
+  position: fixed; inset: 0; z-index: -1;
+  background: var(--sky);
+  transition: opacity var(--t-4) var(--e-io);
+}
+.sky::after {
+  content: ''; position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  pointer-events: none;
+}

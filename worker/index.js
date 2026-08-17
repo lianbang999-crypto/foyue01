@@ -1,6 +1,9 @@
 // 佛乐 Worker：/audio/<桶别名>/<key> 从对应 R2 桶流式提供音频（支持 Range 分段），
 // 其余请求交给静态资源（public/，含文库文本 /text/*）。与旧站基础设施完全独立。
 
+import { SSR_PATH, serveSSR, serveSitemap } from './ssr.js';
+import { serveCss } from './css.js';
+
 const BUCKETS = {
   daan: 'AUDIO_DAAN',           // 大安法师讲经
   yinguang: 'AUDIO_YINGUANG',   // 印光大师故事
@@ -49,6 +52,18 @@ export default {
     }
     if (url.pathname.startsWith('/api/admin/')) {
       return serveAdmin(request, env, url);
+    }
+    // 样式：源码按板块分文件，在边缘拼成一份下发（详见 worker/css.js）
+    if (url.pathname === '/css/all.css') {
+      return serveCss(request, env, url.origin);
+    }
+    // 讲记/问答/系列的真实路径：发带正文的可索引页面（详见 worker/ssr.js）
+    if (SSR_PATH.test(url.pathname)) {
+      return serveSSR(request, env, url);
+    }
+    // sitemap 按目录实时生成，收新内容时不必手工维护
+    if (url.pathname === '/sitemap.xml') {
+      return serveSitemap(env, url.origin);
     }
     return env.ASSETS.fetch(request);
   },

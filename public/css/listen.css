@@ -1,0 +1,174 @@
+/* 佛乐 · 直播视图、节目单、分类与系列卡
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 直播视图 —— */
+.now-date { text-align: center; color: var(--ink-2); font-size: 0.85rem; margin: 10px 0 18px; letter-spacing: 0.08em; }
+
+.live-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 34px 26px 30px;
+  text-align: center;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 12px 40px -18px rgba(42, 33, 18, 0.25);
+}
+
+.block-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--accent); font-size: 0.88rem; letter-spacing: 0.18em;
+  background: var(--accent-wash);
+  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 5px 14px 5px 11px;
+  margin-bottom: 20px;
+}
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-zhusha); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+.series-title { font-size: clamp(1.5rem, 5.4vw, 2.1rem); font-weight: 600; letter-spacing: 0.06em; line-height: 1.35; }
+.ep-title { color: var(--ink-2); font-size: 1.02rem; margin-top: 8px; letter-spacing: 0.1em; }
+
+.progress-wrap { margin: 26px auto 6px; max-width: 420px; }
+.progress-bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.progress-fill { height: 100%; width: 0; border-radius: 2px; background: var(--accent); transition: width 1s linear; }
+.progress-times { display: flex; justify-content: space-between; color: var(--ink-3); font-size: 0.76rem; margin-top: 7px; font-variant-numeric: tabular-nums; }
+
+/* 大播放钮：矿彩填色，纸色莲印 */
+.play-big {
+  position: relative;
+  width: 84px; height: 84px; border-radius: 50%;
+  border: 0; background: var(--accent);
+  color: var(--on-accent); cursor: pointer; margin-top: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 12px 28px -14px rgba(50, 32, 20, 0.55);
+  box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--accent) 55%, transparent);
+  transition: transform 0.2s var(--e-io), background 0.3s var(--e-out);
+}
+.play-big:active { transform: scale(0.94); }
+.play-big svg { width: 36px; height: 36px; fill: currentColor; }
+.play-big .ic-pause { display: none; }
+body[data-playing="true"] #btnLive .ic-play { display: none; }
+body[data-playing="true"] #btnLive .ic-pause { display: block; }
+body[data-nf-playing="true"] #btnNf .ic-play { display: none; }
+body[data-nf-playing="true"] #btnNf .ic-pause { display: block; }
+/* 待播时的呼吸涟漪 */
+body[data-playing="false"] #btnLive::after,
+body[data-nf-playing="false"] #btnNf::after {
+  content: ''; position: absolute; inset: -7px; border-radius: 50%;
+  border: 1px solid var(--accent); opacity: 0;
+  animation: ripple 3.2s ease-out infinite;
+}
+@keyframes ripple { 0% { transform: scale(0.92); opacity: 0.55; } 70%,100% { transform: scale(1.14); opacity: 0; } }
+
+.live-hint { color: var(--ink-3); font-size: 0.82rem; margin-top: 16px; letter-spacing: 0.14em; }
+/* 同时在线人数（真实心跳统计，不虚增） */
+.live-online {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 12px;
+  color: var(--ink-2); font-size: 0.8rem; letter-spacing: 0.06em;
+  border: 1px solid var(--line); border-radius: 999px; padding: 4px 13px;
+  background: var(--card); position: relative; z-index: 3;
+}
+.live-online b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lo-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: #58a372; box-shadow: 0 0 0 0 rgba(88, 163, 114, 0.5);
+  animation: loPulse 2.2s ease-out infinite;
+}
+@keyframes loPulse {
+  0% { box-shadow: 0 0 0 0 rgba(88, 163, 114, 0.45); }
+  70%, 100% { box-shadow: 0 0 0 6px rgba(88, 163, 114, 0); }
+}
+
+.next-up { margin-top: 30px; }
+.next-up h3 { font-size: 0.88rem; color: var(--ink-2); letter-spacing: 0.22em; margin-bottom: 12px; font-weight: 600; }
+.next-up ol { list-style: none; }
+.next-up li {
+  display: flex; gap: 14px; align-items: baseline;
+  padding: 10px 2px; border-top: 1px solid var(--line);
+  font-size: 0.94rem; color: var(--ink-2);
+}
+.next-up li time { color: var(--ink-3); font-size: 0.82rem; font-variant-numeric: tabular-nums; flex: none; }
+
+/* —— 节目单 —— */
+.sched-head { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 4px; }
+.day-toggle { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.day-toggle button {
+  font-family: var(--serif); font-size: 0.85rem; color: var(--ink-2);
+  background: transparent; border: 0; padding: 6px 16px; cursor: pointer; letter-spacing: 0.1em;
+}
+.day-toggle button.on { background: var(--accent); color: var(--on-accent); }
+
+.sched-block { margin-bottom: 22px; }
+.sched-block-head {
+  display: flex; align-items: baseline; gap: 12px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--gold-line);
+}
+.sched-block-head h3 { font-size: 1.02rem; letter-spacing: 0.16em; color: var(--ink); }
+.sched-block-head time { color: var(--accent); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.sched-block-head small { color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.06em; }
+
+.sched-item {
+  display: flex; gap: 14px; align-items: baseline;
+  padding: 9px 2px; border-bottom: 1px solid var(--line);
+  font-size: 0.94rem;
+}
+.sched-item time { color: var(--ink-3); font-size: 0.82rem; font-variant-numeric: tabular-nums; flex: none; width: 44px; }
+.sched-item .t { color: var(--ink-2); }
+.sched-item.filler .t { color: var(--ink-3); font-size: 0.88rem; }
+.tag { font-size: 0.7rem; color: var(--ink-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-left: 6px; white-space: nowrap; }
+.sched-item.now { background: var(--accent-wash); border-radius: 10px; padding-left: 8px; padding-right: 8px; border-bottom-color: transparent; }
+.sched-item.now .t { color: var(--accent); font-weight: 600; }
+.sched-item.now time { color: var(--accent); }
+.sched-item .live-dot { align-self: center; margin-left: auto; flex: none; }
+
+/* —— 分类与系列卡 —— */
+.lib-cat { margin-bottom: 26px; }
+.lib-cat h3 {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 0.85rem; color: var(--ink-2); letter-spacing: 0.26em; margin-bottom: 11px; font-weight: 600;
+}
+.lib-cat h3::before {
+  content: ''; width: 7px; height: 7px; flex: none;
+  background: var(--gold-text); opacity: 0.75; transform: rotate(45deg);  /* 藻井菱纹（泥金，作结构不作点睛） */
+  border-radius: 1.5px;
+}
+.lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 560px) { .lib-grid { grid-template-columns: 1fr 1fr 1fr; } }
+
+.series-card {
+  /* 是 <a> 而非 <button>：爬虫要循着真实路径（/series/…、/wkseries/…）深入，
+     单页应用的 # 锚点它一律看不见。点击仍由 JS 拦下走 hash 路由，不整页刷新。 */
+  display: block; text-decoration: none;
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 14px; cursor: pointer; text-align: left;
+  font-family: var(--serif); color: var(--ink);
+  transition: transform var(--t-1) var(--e-press), border-color var(--t-2) var(--e-out),
+              background var(--t-2) var(--e-out), box-shadow var(--t-2) var(--e-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .series-card:hover { border-color: var(--accent-soft); }
+}
+.series-card:active { transform: scale(0.97); }
+.series-card strong { display: block; font-size: 0.98rem; font-weight: 600; line-height: 1.45; letter-spacing: 0.02em; }
+.series-card span { display: block; color: var(--ink-3); font-size: 0.76rem; margin-top: 7px; letter-spacing: 0.04em; }
+.series-card .sc-resume { color: var(--accent); margin-top: 5px; font-variant-numeric: tabular-nums; }
+
+.back-btn {
+  font-family: var(--serif); background: transparent; border: 0; color: var(--accent);
+  font-size: 0.92rem; padding: 12px 0; cursor: pointer; letter-spacing: 0.08em;
+}
+
+.ep-list { list-style: none; margin-top: 12px; }
+.ep-list li {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 4px; border-bottom: 1px solid var(--line);
+  cursor: pointer; font-size: 0.96rem; color: var(--ink-2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ep-list li:hover { color: var(--ink); }
+}
+.ep-list li .n { color: var(--ink-3); font-size: 0.78rem; width: 30px; flex: none; font-variant-numeric: tabular-nums; }
+.ep-list li .t { flex: 1; line-height: 1.5; }
+.ep-list li .d { color: var(--ink-3); font-size: 0.78rem; flex: none; font-variant-numeric: tabular-nums; }
+.ep-list li .resume { font-size: 0.68rem; color: var(--accent); border: 1px solid var(--accent-soft); background: var(--accent-wash); border-radius: 4px; padding: 1px 5px; flex: none; }
+.ep-list li.playing .t { color: var(--accent); font-weight: 600; }

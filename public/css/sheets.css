@@ -1,0 +1,178 @@
+/* 佛乐 · 分享抽屉与海报、我的页 hero 与设置组
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 分享抽屉与海报 —— */
+#shareSheet {
+  position: fixed; inset: 0; z-index: 70; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(26, 21, 14, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: fadein 0.25s var(--e-out);
+}
+#shareSheet[hidden] { display: none; }
+
+/* 播放器「目录」抽屉：在全屏播放器（z60）之上、分享抽屉（z70）之下 */
+#plListSheet {
+  position: fixed; inset: 0; z-index: 62; display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(26, 21, 14, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  animation: fadein 0.25s var(--e-out);
+}
+#plListSheet[hidden] { display: none; }
+.pls-eps { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; margin-top: 4px; }
+.pls-go {
+  display: block; width: 100%; margin-top: 10px; padding: 12px 4px;
+  background: transparent; border: 0; border-top: 1px solid var(--line);
+  color: var(--ink-3); font-family: var(--serif); font-size: 0.82rem; letter-spacing: 0.08em; cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pls-go:hover { color: var(--accent); }
+}
+/* 收藏态：书签实心 */
+#btnFav.on svg { fill: currentColor; }
+.share-prev {
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.share-prev strong { font-size: 0.98rem; font-weight: 600; line-height: 1.5; }
+.share-prev em { font-style: normal; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.04em; }
+/* 分享操作：圆形描边图标 + 小字标签（iOS 分享面板式） */
+.share-acts { display: flex; justify-content: space-evenly; padding: 4px 0 2px; }
+.share-act {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+  color: var(--ink-2); font-family: var(--serif); font-size: 0.7rem; letter-spacing: 0.08em;
+}
+.share-act .sa-ic {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s var(--e-out), background 0.2s var(--e-out), color 0.2s var(--e-out);
+}
+.share-act .sa-ic svg { width: 22px; height: 22px; }
+.share-act:active .sa-ic {
+  border-color: var(--accent-soft); background: var(--accent-wash); color: var(--accent);
+}
+.share-act[hidden] { display: none; }
+
+#posterOverlay {
+  position: fixed; inset: 0; z-index: 75; display: flex; align-items: center; justify-content: center;
+  background: rgba(17, 14, 9, 0.6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  animation: fadein 0.25s var(--e-out);
+}
+#posterOverlay[hidden] { display: none; }
+.poster-box { position: relative; text-align: center; padding: 48px 20px 20px; max-width: 420px; width: 100%; }
+.poster-box img {
+  width: 100%; max-height: 62vh; object-fit: contain;
+  border-radius: 10px; box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.55);
+}
+.poster-x {
+  position: absolute; top: 6px; right: 14px; width: 40px; height: 40px;
+  background: transparent; border: 0; color: rgba(224, 217, 202, 0.8); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.poster-x svg { width: 22px; height: 22px; }
+.poster-acts { display: flex; gap: 34px; justify-content: center; margin-top: 18px; }
+/* 深色底上的圆形图标按钮 */
+.poster-act { color: #e0d9ca; }
+.poster-act .sa-ic { border-color: rgba(224, 217, 202, 0.4); }
+.poster-act:active .sa-ic {
+  border-color: #e0d9ca; background: rgba(224, 217, 202, 0.12); color: #eeeadf;
+}
+.poster-box small { display: block; margin-top: 12px; color: rgba(224, 217, 202, 0.75); font-size: 0.72rem; letter-spacing: 0.08em; }
+
+/* 分享深链定位：目标集闪烁提示 */
+@keyframes ep-flash {
+  0%, 100% { background: transparent; }
+  35% { background: var(--accent-wash); }
+}
+.ep-list li.flash { animation: ep-flash 1.6s ease 2; border-radius: 8px; }
+
+/* —— 我的 · 修行概览 hero —— */
+.wode-hero {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+  padding: 16px 18px; margin-bottom: 20px;
+  text-decoration: none; color: var(--ink);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.25s var(--e-out), transform 0.18s var(--e-io);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wode-hero:hover { border-color: var(--accent-soft); }
+}
+.wode-hero:active { transform: scale(0.985); }
+.wh-ring { position: relative; width: 76px; height: 76px; flex: none; }
+.wh-ring svg { width: 100%; height: 100%; display: block; }
+.whr-bg { stroke: var(--line); }
+.whr-fg { stroke: var(--accent); transition: stroke-dashoffset 0.5s var(--e-io); }
+.wh-num {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; line-height: 1.2;
+}
+.wh-num strong { font-size: 1.02rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.wh-num small { font-size: 0.56rem; color: var(--ink-3); letter-spacing: 0.16em; text-indent: 0.16em; }
+.wh-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wh-main strong { font-size: 1.04rem; font-weight: 600; letter-spacing: 0.05em; }
+.wh-main em { font-style: normal; color: var(--ink-2); font-size: 0.82rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+/* 统计行的折行规矩（三条合起来才管用）：
+   balance   —— 两行长度均匀，不留孤行；
+   keep-all  —— 中文默认可在任意两字间断开，会折出「连／续」；此值禁掉字间断，
+   配合 app.js 里段内的不断行空格，最终只许断在「·」两侧的普通空格上。 */
+.wh-main small {
+  color: var(--ink-3); font-size: 0.74rem; font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em; text-wrap: balance; word-break: keep-all;
+}
+
+/* 这张卡是三栏：进度环与「去计数」胶囊都是定宽，中间文字栏吃剩下的。
+   手机上剩得太少 —— 375px 时只有 118px，320px 时更只剩 63px，
+   于是佛号断成「南无阿／弥陀佛」，统计断成「累计 0／声 · 连／续 0 日」，
+   整卡在 320px 下撑到 157px 高。
+
+   手机一律把「去计数 ›」收成一枚单角标：整卡本就是链接（带 aria-label），
+   同页其余各行（足迹 › / 存储与缓存 ›）也都只是角标，收了反而更齐。
+   桌面宽度不缺这几十像素，仍留文字胶囊。 */
+@media (max-width: 480px) {
+  .wode-hero .hc-go {
+    font-size: 0; border: 0; padding: 0;   /* 字号归零只藏字形，无障碍树里仍在 */
+  }
+  .wode-hero .hc-go::after { content: '›'; font-size: 1.1rem; line-height: 1; }
+}
+/* 再窄一档（SE 320px）：光收胶囊还不够，环与内边距一并收 */
+@media (max-width: 360px) {
+  .wode-hero { gap: 12px; padding: 14px; }
+  .wh-ring { width: 60px; height: 60px; }
+  .wh-num strong { font-size: 0.92rem; }
+  .wh-num small { font-size: 0.52rem; }
+}
+
+/* —— 我的 · 通用设置组（卡内行列表） —— */
+.wode-group {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  overflow: hidden; margin: 14px 0 4px;
+}
+.wode-group .wode-row {
+  background: transparent; border: 0; border-radius: 0; margin: 0;
+}
+.wode-group .wode-row + .wode-row { border-top: 1px solid var(--line); }
+#view-wode .wode-sub { margin-bottom: 10px; }
+
+/* —— 我的 · 别院行（文钞 / 选佛谱，各自独立站点，新窗打开） —— */
+.wode-ext { text-decoration: none; }
+.wode-row .wr-t small {
+  display: block; margin-top: 3px;
+  color: var(--ink-3); font-size: 0.72rem; letter-spacing: 0.04em;
+}
+/* 文钞：一枚朱砂方章，两字竖排 */
+.wr-seal {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  writing-mode: vertical-rl; font-size: 0.62rem; font-weight: 600; line-height: 1.14; letter-spacing: 0;
+}
+/* 选佛谱：星夜圆章里的泥金须弥山，与朱印分量相当 */
+.wr-sumeru {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; color: #d6c294;
+  background: linear-gradient(150deg, #171a26, #0d0f15);
+  border: 1px solid rgba(212, 194, 150, 0.42);
+}
+.wr-sumeru svg { width: 17px; height: 17px; }
+.wr-out { color: var(--ink-3); font-size: 0.92rem; }

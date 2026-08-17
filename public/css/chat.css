@@ -1,0 +1,216 @@
+/* 佛乐 · 莲友共修群、改法名弹层
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 莲友共修群（全屏聊天室，独立模块，微信群式布局） —— */
+#chatRoom {
+  position: fixed; inset: 0; z-index: 66;
+  background: var(--bg); background-image: var(--sky);
+  animation: crUp 0.28s ease;
+}
+#chatRoom[hidden] { display: none; }
+@keyframes crUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.cr-box {
+  position: relative;
+  height: 100%; display: flex; flex-direction: column;
+  width: 100%; max-width: 640px; margin: 0 auto;
+  padding: max(6px, env(safe-area-inset-top)) 14px 0;
+}
+/* 头部：返回 · 居中群名+在线 · 占位（三栏对称，微信式） */
+.cr-head {
+  flex: none; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center;
+  padding: 6px 0 10px; border-bottom: 1px solid var(--gold-line);
+}
+.cr-back {
+  width: 40px; height: 40px; background: transparent; border: 0; cursor: pointer;
+  color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center;
+}
+.cr-back svg { width: 24px; height: 24px; }
+.cr-back:active { transform: scale(0.9); }
+/* 右上角「…」：点击分享共修群 */
+.cr-more {
+  justify-self: end; width: 40px; height: 40px; background: transparent; border: 0; cursor: pointer;
+  color: var(--ink-2); display: inline-flex; align-items: center; justify-content: center;
+}
+.cr-more svg { width: 22px; height: 22px; }
+.cr-more:active { transform: scale(0.9); }
+.cr-title { text-align: center; min-width: 0; }
+.cr-title h3 { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.12em; color: var(--ink); }
+.cr-sub { color: var(--ink-3); font-size: 0.72rem; letter-spacing: 0.04em; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-sub b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 群公告（后台可维护，泥金条，置顶） */
+.cr-notice {
+  flex: none; margin: 10px 0 0;
+  color: var(--gold-text); font-size: 0.8rem; line-height: 1.6; letter-spacing: 0.03em;
+  border: 1px solid var(--gold-line); border-radius: 10px; padding: 8px 12px 8px 34px;
+  background: var(--card); position: relative;
+}
+.cr-notice::before {
+  content: ''; position: absolute; left: 12px; top: 50%; width: 14px; height: 14px;
+  margin-top: -7px;
+  background: var(--gold-text); opacity: 0.6;
+  -webkit-mask: no-repeat center/contain; mask: no-repeat center/contain;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l18-6v14l-18-6z'/%3E%3Cpath d='M8 12v5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l18-6v14l-18-6z'/%3E%3Cpath d='M8 12v5'/%3E%3C/svg%3E");
+}
+.cr-notice[hidden] { display: none; }
+/* 消息区：全高滚动，无边框，气泡呼吸 */
+#chatRoom .cmt-list {
+  flex: 1; min-height: 0; max-height: none;
+  border: 0; background: transparent; padding: 14px 2px 8px; margin-bottom: 0;
+  gap: 14px; scroll-behavior: smooth;
+}
+/* 系统提示行（进群语） */
+.lc-sys {
+  align-self: center; text-align: center; max-width: 88%;
+  color: var(--ink-3); font-size: 0.72rem; line-height: 1.6; letter-spacing: 0.04em;
+}
+/* 时间戳分隔（跨 10 分钟一枚，微信式） */
+.lc-time {
+  align-self: center; color: var(--ink-3); font-size: 0.68rem; letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+/* 自己的发言：靠右朱砂气泡，不重复署名 */
+.lc-row.mine { flex-direction: row-reverse; }
+.lc-row.mine .lc-msg { align-items: flex-end; }
+.lc-row.mine .lc-msg b { display: none; }
+.lc-row.mine .lc-msg span {
+  align-self: flex-end; color: var(--on-accent);
+  background: var(--accent); border-color: var(--accent);
+  border-radius: 14px 5px 14px 14px;
+}
+/* 新消息浮标（翻看历史时新消息到达） */
+.cr-jump {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(118px + env(safe-area-inset-bottom)); z-index: 3;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--serif); font-size: 0.78rem; letter-spacing: 0.04em;
+  color: var(--accent); background: var(--card);
+  border: 1px solid var(--accent-soft); border-radius: 999px; padding: 6px 8px 6px 14px;
+  cursor: pointer; box-shadow: 0 8px 22px -10px rgba(50, 32, 20, 0.4);
+  animation: crUp 0.25s ease;
+}
+.cr-jump[hidden] { display: none; }
+.cr-jump svg { width: 15px; height: 15px; }
+/* 底部输入区 */
+.cr-foot {
+  flex: none; padding: 10px 2px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+}
+.cr-who { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.03em; margin-bottom: 9px; }
+.cmt-count { float: right; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cmt-count.warn { color: var(--accent); }
+.live-notice {
+  color: var(--gold-text); font-size: 0.84rem; line-height: 1.7; letter-spacing: 0.04em;
+  border: 1px solid var(--gold-line); border-radius: 10px; padding: 9px 14px; margin-bottom: 12px;
+  background: var(--card);
+}
+/* 公告在直播页单独成行（莲台卡之下） */
+#view-live .live-notice { max-width: 640px; margin: 14px auto 0; }
+.cmt-list {
+  max-height: 340px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+  padding: 13px 14px; margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+/* 一行留言：法名莲印（按名哈希取色，同一人恒定色）+ 气泡 */
+.lc-row { display: flex; align-items: flex-start; gap: 10px; }
+.lc-av {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--serif); font-size: 0.96rem; color: var(--on-accent); line-height: 1;
+  background: var(--accent);   /* 兜底；实际由内联 style 按名取色 */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+.lc-msg { min-width: 0; max-width: 78%; display: flex; flex-direction: column; gap: 4px; }
+.lc-msg b { color: var(--ink-3); font-weight: 500; font-size: 0.74rem; letter-spacing: 0.03em; }
+.lc-msg span {
+  align-self: flex-start; color: var(--ink); font-size: 0.94rem; line-height: 1.62; overflow-wrap: anywhere;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 5px 14px 14px 14px; padding: 8px 13px;
+}
+/* 按集「闻法留言」抽屉的气泡坐落在 card 面上，改回微染避免与底同色 */
+#cmtSheetList .lc-msg span { background: var(--accent-wash); }
+.cmt-empty { color: var(--ink-3); font-size: 0.82rem; text-align: center; padding: 22px 0; }
+.lc-who { color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.04em; margin-bottom: 9px; }
+.cmt-input { display: flex; gap: 8px; align-items: center; }
+.cmt-input input {
+  flex: 1; min-width: 0; font-family: var(--serif); font-size: 0.92rem; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 11px 18px;
+  transition: border-color 0.2s var(--e-out);
+}
+.cmt-input input:focus { outline: none; border-color: var(--accent-soft); }
+.cmt-input button {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--serif); font-size: 0.88rem; letter-spacing: 0.08em;
+  color: var(--on-accent); background: var(--accent);
+  border: 1px solid var(--accent); border-radius: 999px; padding: 11px 20px; cursor: pointer;
+  transition: opacity 0.2s var(--e-out), transform 0.15s var(--e-io);
+}
+.cmt-input button svg { width: 16px; height: 16px; }
+.cmt-input button:active { transform: scale(0.96); }
+.cmt-input button:disabled { opacity: 0.5; cursor: default; }
+/* 聊天室发送键：圆形图标钮（纸飞机） */
+.cr-foot .cmt-input button { width: 44px; height: 44px; padding: 0; border-radius: 50%; justify-content: center; }
+.cr-foot .cmt-input button svg { width: 18px; height: 18px; }
+.cmt-note { color: var(--accent); font-size: 0.78rem; margin-top: 8px; min-height: 1.2em; letter-spacing: 0.04em; }
+
+/* —— 改法名（极简弹层） —— */
+#nameOverlay {
+  position: fixed; inset: 0; z-index: 72;
+  background: rgba(26, 21, 14, 0.34); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  animation: fadein 0.25s var(--e-out);
+}
+#nameOverlay[hidden] { display: none; }
+.name-box {
+  width: 100%; max-width: 340px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 18px;
+  padding: 22px 20px 18px; text-align: center;
+  box-shadow: 0 24px 60px -20px rgba(17, 12, 7, 0.5);
+  animation: sheet-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.name-box h3 { font-size: 1.02rem; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); margin-bottom: 16px; }
+.name-box input {
+  width: 100%; font-family: var(--serif); font-size: 1.02rem; color: var(--ink); text-align: center;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 14px;
+  transition: border-color 0.2s var(--e-out);
+}
+.name-box input:focus { outline: none; border-color: var(--accent-soft); }
+.name-hint { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.06em; margin: 9px 0 18px; }
+.name-acts { display: flex; gap: 10px; }
+.name-acts button {
+  flex: 1; font-family: var(--serif); font-size: 0.94rem; letter-spacing: 0.1em; cursor: pointer;
+  border-radius: 999px; padding: 11px 0; transition: transform 0.15s var(--e-io), opacity 0.2s var(--e-out);
+  color: var(--ink-2); background: transparent; border: 1px solid var(--line);
+}
+.name-acts button.primary { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.name-acts button:active { transform: scale(0.97); }
+
+/* 存储与缓存弹层 */
+.st-rows { margin-bottom: 16px; }
+.st-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 2px; border-bottom: 1px solid var(--line);
+  color: var(--ink-2); font-size: 0.9rem;
+}
+.st-row b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.st-clear {
+  display: block; width: 100%; font-family: var(--serif); font-size: 0.92rem; letter-spacing: 0.2em; text-indent: 0.2em;
+  color: var(--accent); background: var(--accent-wash);
+  border: 1px solid var(--accent-soft); border-radius: 12px;
+  padding: 12px 0; cursor: pointer; margin-bottom: 12px;
+}
+
+/* 轻提示（沉浸模式引导等） */
+#toast {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 70;
+  transform: translateX(-50%) translateY(8px);
+  font-family: var(--serif); font-size: 0.82rem; letter-spacing: 0.08em;
+  color: var(--ink); background: var(--card);
+  border: 1px solid var(--gold-line); border-radius: 999px;
+  padding: 8px 18px; pointer-events: none; opacity: 0;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  transition: opacity 0.3s var(--e-io), transform 0.3s var(--e-io);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }

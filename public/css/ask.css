@@ -1,0 +1,80 @@
+/* 佛乐 · 问道对话
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 问道对话 —— */
+.chat { margin-top: 4px; }
+.msg { margin-bottom: 16px; }
+.msg.user p {
+  background: var(--accent); color: var(--on-accent);
+  display: inline-block; padding: 10px 16px; border-radius: 16px 16px 4px 16px;
+  max-width: 86%; margin-left: auto; line-height: 1.7; font-size: 0.95rem;
+}
+.msg.user { text-align: right; }
+.msg.bot {
+  background: var(--card); border: 1px solid var(--line); border-radius: 4px 16px 16px 16px;
+  padding: 14px 18px; max-width: 94%;
+}
+.msg.bot p { line-height: 1.95; font-size: 0.96rem; color: var(--ink); margin-bottom: 0.8em; }
+.msg.bot p:last-of-type { margin-bottom: 0; }
+/* 「检索中 …」原用全站通用的 pulse（1 → 0.25），幅度太大读作闪烁、像出错。
+   改成自家的浅呼吸，只在 0.55–0.9 间起伏，是「在想」不是「坏了」。 */
+.msg.bot .thinking { color: var(--ink-3); animation: thinkBreath 2s var(--e-io) infinite; }
+@keyframes thinkBreath { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
+/* 引用角标：行内 17px 的方章，视觉上不能再大，但热区要够 ——
+   用伪元素向外撑到约 33px，不占排版位置 */
+.cite {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 3px; margin: 0 2px;
+  border-radius: 5px; border: 1px solid var(--accent-soft);
+  background: var(--accent-wash); color: var(--accent);
+  font-size: 0.68rem; font-family: var(--serif); cursor: pointer;
+  vertical-align: 0.15em;
+}
+.cite::after { content: ''; position: absolute; inset: -8px -6px; }
+/* 出处栏：实心泥金细线 —— 全站界栏皆实线，虚线只此一处，语汇不齐 */
+.src-list { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gold-line); display: flex; flex-direction: column; gap: 6px; }
+.src {
+  font-family: var(--serif); text-align: left; background: transparent; border: 0;
+  color: var(--ink-2); font-size: 0.8rem; cursor: pointer; padding: 3px 0;
+  display: flex; gap: 8px; align-items: baseline; line-height: 1.5;
+}
+@media (hover: hover) and (pointer: fine) {
+  .src:hover { color: var(--accent); }
+}
+.src-n {
+  flex: none; min-width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 5px;
+  font-size: 0.66rem; display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3);
+}
+.chat-starters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.chat-starters button {
+  font-family: var(--serif); background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 8px 14px; cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine) {
+  .chat-starters button:hover { color: var(--accent); border-color: var(--accent-soft); }
+}
+.chat-input {
+  display: flex; gap: 8px; align-items: flex-end;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 8px 8px 8px 16px; margin-top: 12px;
+  transition: border-color 0.25s var(--e-out);
+}
+.chat-input:focus-within { border-color: var(--accent-soft); }
+.chat-input textarea {
+  flex: 1; font-family: var(--serif); font-size: 0.96rem; line-height: 1.6;
+  background: transparent; border: 0; outline: none; color: var(--ink);
+  resize: none; max-height: 120px;
+}
+.chat-input textarea::placeholder { color: var(--ink-3); }
+.chat-input button {
+  flex: none; width: 44px; height: 44px; border-radius: 13px; border: 0;
+  background: var(--accent); color: var(--on-accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform var(--t-1) var(--e-press), opacity var(--t-2) var(--e-out);
+}
+.chat-input button:not(:disabled):active { transform: scale(0.93); }
+.chat-input button:disabled { opacity: 0.4; cursor: default; }
+.chat-input button svg { width: 20px; height: 20px; }
+.ai-note { color: var(--ink-3); font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.04em; text-align: center; }

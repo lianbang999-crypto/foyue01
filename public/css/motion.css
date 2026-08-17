@@ -1,0 +1,172 @@
+/* 佛乐 · 交互与动效、无障碍
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* ==================== 交互与动效 ====================
+   原则同写经：手起要快，手落要慢；一次只动一处；不做弹跳与位移大戏。
+   时长/缓动统一取 :root 的 --t-* / --e-*，需整体调节节奏时改那一处即可。 */
+
+/* —— 触控基本盘 ——
+   1) 去掉 iOS/安卓点按时的系统灰蓝方块，改由各自的 :active 给反馈；
+   2) 可点元素统一 cursor 与不可选中，免得长按选出文字挡住操作。 */
+a, button, [role="button"], summary, label, .door, .home-card, .home-qun,
+.series-card, .fh-chip, .ep-list li, .wode-row {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
+  -webkit-user-select: none; user-select: none;
+}
+
+/* —— 视图/面板进场：淡入 + 一指高度的抬起 ——
+   位移 6px，配 --e-out 收得住，观感是「浮上来」而非「弹一下」 */
+@keyframes viewIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+/* 子面板（听经台/有声书/佛号）只淡入，不再叠一次位移 ——
+   它嵌在 .view 里，两层都位移会累加成一次过大的滑动。 */
+@keyframes panelIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* —— 逐条入场：只给「短、静、不会重渲染」的两处 ——
+   起初铺给了集列表、文库网格、节目单、我的设置组，事后逐个查下来都不合适：
+   · 集列表：分享深链定位靠 .flash 闪烁提示，与逐条入场选择器权重相同(0,2,1)，
+     谁写在后面谁赢 —— 前 10 集的提示会被顶掉，而深链点进来的往往正是前几集；
+   · 文库网格与搜索结果共用 .lib-grid，边打字边搜时每 160ms 重渲染一次，
+     前 10 条就反复从透明重新滑入，读作闪烁；
+   · 节目单 .sched-block 的头一个孩子是块头 .sched-block-head，
+     序号整体错一位，第一条反而带 0.04s 延时；
+   · 我的设置组是静态卡片，动它只是噪声。
+   动效要用在「有意义的出场」上，不是所有列表都需要。留下首页四门与佛号格：
+   都是一屏内可见、数量个位数、渲染一次就不动的。 */
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.home-doors > .door,
+.fh-grid > *:nth-child(-n + 8) {
+  animation: riseIn 0.36s var(--e-out) backwards;
+}
+.home-doors > *:nth-child(2), .fh-grid > *:nth-child(2) { animation-delay: 0.04s; }
+.home-doors > *:nth-child(3), .fh-grid > *:nth-child(3) { animation-delay: 0.08s; }
+.home-doors > *:nth-child(4), .fh-grid > *:nth-child(4) { animation-delay: 0.12s; }
+.fh-grid > *:nth-child(5) { animation-delay: 0.15s; }
+.fh-grid > *:nth-child(6) { animation-delay: 0.17s; }
+.fh-grid > *:nth-child(n + 7) { animation-delay: 0.19s; }
+
+/* —— 板块标题的泥金引线：随视图进场自左向右描出 —— */
+@keyframes ruleDraw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.page-title::after { transform-origin: left center; animation: ruleDraw 0.7s var(--e-out) 0.1s backwards; }
+
+/* —— 按压反馈 ——
+   触屏没有悬停，按压是唯一的「我收到了」。凡可点皆有回应，幅度按面积给：
+   长条与卡片轻按(0.985)、药丸控件中按(0.96)、小图标钮重按(0.9)，手感才一致。
+   注意：节目单的 .sched-item 是纯展示的 div —— 无 href、无 role、无点击处理，
+   给它按压/悬停反馈等于伪造可点性，用户按下去没反应反而更困惑，故不在此列。 */
+.ep-list li, .more-btn, .more-link, .wode-row,
+.chat-starters button, .reader-tools button, .back-btn, .block-chip,
+.seg-row a, .tabs a, .bottom-nav a, .ask-btn, .fh-all, .pls-go, .site-network a {
+  transition: transform var(--t-1) var(--e-press),
+              color var(--t-2) var(--e-out),
+              border-color var(--t-2) var(--e-out),
+              background var(--t-2) var(--e-out);
+}
+.ep-list li:active { transform: scale(0.985); }
+.more-btn:active, .chat-starters button:active, .reader-tools button:active,
+.block-chip:active, .seg-row a:active, .ask-btn:active { transform: scale(0.96); }
+.back-btn:active { transform: scale(0.9); }
+/* 列表条目按下时补一层极淡的朱砂水，位移之外再给个着色确认。
+   不加圆角 —— 这些行靠 border-bottom 分隔，一圆角分隔线两端就翘起来。 */
+.ep-list li:active, .wode-row:active { background: var(--accent-wash); }
+
+/* —— 底部导航 ——
+   当前页除了变色，再点一枚朱砂小点：小屏上颜色差异容易被环境光吃掉，
+   加一个形状信号更稳。图标按下轻压，回弹交给 --e-press。 */
+.bottom-nav a { position: relative; }
+.bottom-nav a svg { transition: transform var(--t-2) var(--e-out); }
+.bottom-nav a.on svg { transform: translateY(-1px); }
+/* 按压压过选中态：正在这一栏时再点，也要有回应 */
+.bottom-nav a:active svg { transform: scale(0.88); }
+.bottom-nav a::after {
+  content: ''; position: absolute; left: 50%; bottom: -1px;
+  width: 4px; height: 4px; margin-left: -2px; border-radius: 50%;
+  background: var(--accent); opacity: 0; transform: scale(0.4);
+  transition: opacity var(--t-2) var(--e-out), transform var(--t-2) var(--e-out);
+}
+.bottom-nav a.on::after { opacity: 0.85; transform: none; }
+
+/* —— 骨架屏：由「整块忽明忽暗」改为一道柔光扫过 ——
+   闪烁容易读作故障，扫光读作「正在来」，且不改变整体明度，眼睛不累。 */
+.sk-door {
+  position: relative; overflow: hidden;
+  animation: none; opacity: 0.75;
+}
+.sk-door::after {
+  content: ''; position: absolute; inset: 0;
+  /* 浓度取两成朱砂：原先用 --accent-wash（8%）压在同样浅的卡片上几乎看不见，
+     等于把「加载中」的信号一起关掉了。
+     这里用 rgba + 通道令牌而不用 color-mix —— 上面刚因为 color-mix 在老内核
+     （微信 X5 一类）不受支持才把 --accent-soft 改掉，这儿再用一次就等于
+     在那些机器上又把骨架屏扫光变没。--accent-rgb 各主题都有定义，通吃。 */
+  background: linear-gradient(100deg, transparent 20%,
+    rgba(var(--accent-rgb), 0.18) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: skSweep 1.5s var(--e-io) infinite;
+}
+@keyframes skSweep { to { transform: translateX(100%); } }
+
+/* —— 输入态 ——
+   聚焦时描边转朱砂并托一圈极淡的水，比只换边框色更明确「光标在这」 */
+#tingSearch:focus, .chat-input:focus-within, .cmt-input input:focus {
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+#tingSearch, .chat-input, .cmt-input input {
+  transition: border-color var(--t-2) var(--e-out), box-shadow var(--t-2) var(--e-out);
+}
+
+/* —— 滚动 ——
+   1) 顶栏吸顶，定位类跳转（分享深链、续读某集）留出让位，免得目标被压住；
+   2) 面板内滚到底不再带动整页，弹窗与评论区里尤其明显。
+   注：不设全局 scroll-behavior: smooth —— 阅读器恢复进度是 window.scrollTo
+   的长距离跳转，一旦变成平滑滚动就要眼看整卷划过去，反而慢。需要平滑的地方
+   （回顶、跳段）脚本里已单独指定 behavior: 'smooth'。 */
+:target, .ep-list li, .sched-item { scroll-margin-top: 72px; }
+.sheet, .cnt-sheet, .cmt-list, .pls-eps, .chat { overscroll-behavior: contain; }
+
+/* —— 悬停：只在真有指针的设备上抬一抬 ——
+   触屏点完不会退出 hover 态，故位移类的悬停一律只给鼠标。 */
+@media (hover: hover) and (pointer: fine) {
+  /* 这里不再碰 transition —— 单写 transition-property 是个陷阱：duration/timing 不会跟着重置，
+     而是按新属性列表的下标循环取旧值，改一下顺序就把 transform 的时长换成了 border-color 的。
+     三张卡的过渡已在各自基础规则里写全（含 box-shadow），此处只管状态。 */
+  /* 抬起只给独立卡片。.wode-row 是 .wode-group（overflow:hidden）内部的一行，
+     抬它会被父级裁掉上沿、下沿又空出一道缝，改用着色回应。 */
+  .home-card:hover, .series-card:hover { transform: translateY(-2px); }
+  .wode-row:hover { background: var(--accent-wash); }
+  .ask-btn:hover { border-color: var(--accent-soft); background: var(--accent-wash); }
+  .ans-acts button:hover { color: var(--accent); background: var(--accent-wash); }
+  .share-act:hover .sa-ic { border-color: var(--accent-soft); background: var(--accent-wash); color: var(--accent); }
+  .poster-act:hover .sa-ic { border-color: #e0d9ca; background: rgba(224, 217, 202, 0.12); color: #eeeadf; }
+  .ep-list li:hover { background: var(--accent-wash); }
+  .bottom-nav a:hover { color: var(--accent); }
+  /* 鼠标下按压仍要压过悬停的抬起，否则台式机上点了没反应 */
+  .home-card:active, .series-card:active { transform: scale(0.985); }
+  .xf-card:active { transform: scale(0.99); }
+}
+
+/* —— 无障碍 ——
+   sr-only：视觉上取走、读屏仍可读。用于动态播报区与跳转链接。
+   不用 display:none / visibility:hidden —— 那两者读屏也一并跳过。 */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+/* 跳转到主内容：键盘 Tab 第一下即可越过顶栏与标签，聚焦时才现身 */
+.skip-link {
+  position: absolute; left: 50%; top: 0; transform: translate(-50%, -120%);
+  z-index: 999; padding: 10px 20px; border-radius: 0 0 12px 12px;
+  background: var(--accent); color: #fff; font-family: var(--serif);
+  font-size: 0.9rem; letter-spacing: 0.08em; text-decoration: none;
+  transition: transform 0.18s var(--e-out);
+}
+.skip-link:focus { transform: translate(-50%, 0); }

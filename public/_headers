@@ -1,0 +1,31 @@
+# 静态资源缓存分档。
+#
+# Workers Assets 默认一律发 `max-age=0, must-revalidate`：讲记正文、图标这类
+# 几年不动的东西，每次访问也要回源问一遍，白搭一个往返。按「多久会变」分档，
+# 只放宽真正不常变的。
+#
+# 壳代码（html / css / js）刻意不放宽，维持每次校验 —— sw.js 里 css/js 同为
+# 网络优先，为的是避免「新页面配旧样式」，那条注释里记着微信 WebView 的坑，
+# 不能因为缓存把它破了。
+
+# 讲记与问答正文：只在重建文库时变，且都是定稿的开示原文
+/text/*
+  Cache-Control: public, max-age=86400, s-maxage=604800
+
+# 品牌图与图标：改动即换文件名
+/img/*
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+/favicon.png
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+/icon-192.png
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+/icon-512.png
+  Cache-Control: public, max-age=604800, s-maxage=2592000
+
+# 目录数据：收新内容时才变，一小时内的陈旧无妨（SW 另有后台更新兜底）
+/catalog.json
+  Cache-Control: public, max-age=3600, s-maxage=86400
+/library.json
+  Cache-Control: public, max-age=3600, s-maxage=86400
+/qa.json
+  Cache-Control: public, max-age=3600, s-maxage=86400

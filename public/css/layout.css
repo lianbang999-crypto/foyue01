@@ -1,0 +1,111 @@
+/* 佛乐 · 顶栏、品牌标志、栅格布局、板块标题
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 顶栏 —— */
+.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 20px 12px;
+  max-width: 720px; width: 100%; margin: 0 auto;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+/* —— 品牌标志 ——
+   云纹圆章构图（宽高 1074×1089，近正方）。用底图承载，好按昼夜换两张
+   不同的图，且浏览器只会下用得上的那张。夜烛模式换「夜墨版」：矿彩
+   整体抬明度、保色相，宣纸上沉稳的颜色落到夜色里仍浮得起来。 */
+.lotus {
+  flex: none; display: block; height: 34px; aspect-ratio: 1074 / 1089;
+  background: url("/img/logo-mark.png") center / contain no-repeat;
+}
+body[data-theme="night"] .lotus { background-image: url("/img/logo-mark-night.png"); }
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+.brand-text strong { font-size: 1.18rem; font-weight: 600; letter-spacing: 0.12em; }
+.brand-text small { font-size: 0.7rem; color: var(--ink-2); letter-spacing: 0.06em; white-space: nowrap; }
+
+.tabs { display: flex; gap: 4px; }
+.tabs a {
+  text-decoration: none; color: var(--ink-2); white-space: nowrap;
+  font-size: 0.92rem; padding: 7px 12px; border-radius: 999px;
+  transition: color 0.25s var(--e-out), background 0.25s var(--e-out);
+}
+.tabs a.on { color: var(--accent); background: var(--accent-wash); }
+
+/* 顶栏右上角 · 问道入口 */
+.ask-btn {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  text-decoration: none; color: var(--accent);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; font-size: 0.88rem; letter-spacing: 0.06em;
+  transition: border-color 0.25s var(--e-out), background 0.25s var(--e-out);
+}
+.ask-btn svg { width: 17px; height: 17px; }
+.ask-btn.on { border-color: var(--accent-soft); background: var(--accent-wash); }
+
+@media (max-width: 460px) {
+  .top { padding-left: 14px; padding-right: 14px; }
+  .brand-text small { display: none; }
+  .tabs a { padding: 7px 9px; }
+  .ask-btn { padding: 7px 12px; }
+}
+
+/* —— 布局 —— */
+main { flex: 1; width: 100%; max-width: 720px; margin: 0 auto; padding: 8px 20px 40px; }
+.view { display: none; animation: viewIn var(--t-3) var(--e-out) backwards; }
+body[data-view="home"] #view-home,
+body[data-view="ting"] #view-ting,
+body[data-view="series"] #view-series,
+body[data-view="live"] #view-live,
+body[data-view="schedule"] #view-schedule,
+body[data-view="wenku"] #view-wenku,
+body[data-view="reader"] #view-reader,
+body[data-view="wode"] #view-wode,
+body[data-view="count"] #view-count,
+body[data-view="wenda"] #view-wenda { display: block; }
+
+/* 听经三子栏：听经台 / 有声书 / 佛号 */
+.panel { display: none; animation: panelIn 0.26s var(--e-out) backwards; }
+body[data-seg="ting"] #panel-ting,
+body[data-seg="shu"] #panel-shu,
+body[data-seg="fohao"] #panel-fohao { display: block; }
+
+.seg-row { display: flex; gap: 8px; margin: 12px 0 18px; }
+.seg-row a {
+  text-decoration: none; font-family: var(--serif); font-size: 0.9rem;
+  color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 18px; letter-spacing: 0.08em;
+  transition: color 0.2s var(--e-out), border-color 0.2s var(--e-out), background 0.2s var(--e-out);
+}
+body[data-seg="ting"] .seg-row a[data-seg="ting"],
+body[data-seg="shu"] .seg-row a[data-seg="shu"],
+body[data-seg="fohao"] .seg-row a[data-seg="fohao"] {
+  color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash);
+}
+@keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* —— 板块标题：矿彩标布 + 泥金引线（呼应壁画颜料标布图式） —— */
+.page-title {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 1.28rem; letter-spacing: 0.12em; font-weight: 600;
+  margin: 16px 0 6px;
+}
+.page-title::before {
+  content: ''; flex: none; width: 9px; height: 26px;
+  background: var(--accent);
+  /* 微不对称圆角，仿颜料干刷标布 */
+  border-radius: 3px 5px 4px 6px / 6px 3px 5px 4px;
+}
+.page-title::after {
+  content: ''; flex: 1; height: 1px; margin-left: 2px;
+  background: linear-gradient(90deg, var(--gold-line), transparent 85%);
+}
+.page-note { color: var(--ink-3); font-size: 0.78rem; margin: 6px 0 18px; letter-spacing: 0.05em; }
+
+/* 子页标题（系列 / 节目单） */
+#seriesName, #wkSeriesName, .sched-head h2 { font-size: 1.22rem; letter-spacing: 0.08em; margin: 2px 0 4px; }
+
+/* 专辑介绍（系列页，泥金界栏引文式） */
+.series-intro {
+  color: var(--ink-2); font-size: 0.88rem; line-height: 1.85; letter-spacing: 0.04em;
+  border-left: 2px solid var(--gold-line); padding-left: 12px;
+  margin: 2px 0 16px; max-width: 560px;
+}

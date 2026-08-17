@@ -72,7 +72,10 @@
 <link rel="icon" href="/favicon.png" type="image/png" sizes="96x96">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-<link rel="stylesheet" href="/css/style.css">
+<!-- 样式源码按板块分在 css/ 下的 12 个文件里，由 Worker 拼成这一份下发。
+     分开下发要多传 9.4 KB（各自压缩丢了跨文件的重复模式），
+     而 CSS 阻塞渲染，慢网下这些字节就是白屏时间。拼装顺序见 worker/css.js。 -->
+<link rel="stylesheet" href="/css/all.css">
 <script src="/js/qrcode.js" defer></script><!-- 二维码生成（MIT，分享海报用） -->
 </head>
 <body data-theme="day" data-view="home" data-tab="home" data-seg="ting" data-mode="live">

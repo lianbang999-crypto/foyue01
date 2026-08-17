@@ -1,0 +1,172 @@
+/* 佛乐 · 通用链接按钮、阅读器
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 通用链接/按钮 —— */
+.more-link {
+  display: block; text-align: center; margin-top: 14px;
+  color: var(--accent); font-size: 0.86rem; text-decoration: none; letter-spacing: 0.1em; padding: 8px;
+}
+.more-btn {
+  display: block; margin: 16px auto; font-family: var(--serif);
+  background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--ink-2); font-size: 0.86rem; padding: 8px 26px; cursor: pointer; letter-spacing: 0.1em;
+}
+
+/* —— 阅读器 —— */
+.reader-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 0 -20px; padding: 4px 20px;
+  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.35s var(--e-io), opacity 0.35s var(--e-io);
+}
+/* 沉浸阅读：轻触正文收起顶栏与底部导航，只留纸墨 */
+body.rd-zen[data-view="reader"] .reader-bar { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+body.rd-zen[data-view="reader"] .bottom-nav { transform: translateY(120%); }
+body[data-view="reader"] .bottom-nav { transition: transform 0.35s var(--e-io); }
+.reader-pos { color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+/* 阅读进度线：泥金，随滚动前进 */
+.read-line { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none; }
+.read-line i { display: block; height: 100%; width: 0; background: var(--gold-text); opacity: 0.55; }
+.reader-tools { display: flex; gap: 8px; }
+.reader-tools button {
+  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
+  border-radius: 8px; color: var(--ink-2); font-size: 0.82rem; padding: 5px 10px; cursor: pointer;
+}
+.reader {
+  max-width: 640px; margin: 6px auto 0;
+  line-height: 2.05; letter-spacing: 0.03em; color: var(--ink);
+}
+.reader .reader-sub { color: var(--accent); font-size: 0.78rem; letter-spacing: 0.2em; margin-bottom: 6px; }
+.reader h2 { font-size: 1.35em; letter-spacing: 0.05em; margin-bottom: 0.6em; line-height: 1.5; }
+.reader h2::after {
+  content: ''; display: block; width: 56px; height: 1px; margin-top: 0.55em;
+  background: linear-gradient(90deg, var(--gold-line), transparent);
+}
+/* 书卷排版：首行缩进两字、两端对齐（篇眉出处不缩进） */
+.reader p { margin-bottom: 1.15em; text-indent: 2em; text-align: justify; }
+.reader .reader-sub { text-indent: 0; }
+.reader-loading { color: var(--ink-3); text-align: center; padding: 40px 0; text-indent: 0; }
+.reader-nav { max-width: 640px; margin: 30px auto 0; }
+.reader-nav-row { display: flex; justify-content: space-between; margin-top: 12px; }
+.reader-nav-row button {
+  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
+  border-radius: 999px; color: var(--accent); font-size: 0.88rem; padding: 8px 20px; cursor: pointer;
+}
+.reader-nav-row button:disabled { color: var(--ink-3); border-color: var(--line); opacity: 0.5; cursor: default; }
+
+/* 篇目列表：已读 / 读至进度 */
+.ep-list li .d.rd-done { color: var(--gold-text); }
+.ep-list li .d.rd-part { color: var(--accent); opacity: 0.8; }
+
+/* 阅读设置弹层（字号 / 行距 / 字体） */
+.rd-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
+.rd-lbl { flex: none; width: 3em; color: var(--ink-3); font-size: 0.82rem; letter-spacing: 0.12em; }
+.rd-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rd-chips button {
+  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
+  border-radius: 999px; color: var(--ink-2); font-size: 0.85rem; padding: 6px 16px; cursor: pointer;
+}
+.rd-chips button.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+
+/* 选中文字浮标：划线 + 分享法布施 */
+#quoteChip {
+  position: fixed; z-index: 60; display: flex;
+  background: var(--card); border: 1px solid var(--accent-soft); border-radius: 999px;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px rgba(35, 29, 19, 0.18); overflow: hidden;
+}
+#quoteChip[hidden] { display: none; }
+#quoteChip button {
+  font-family: var(--serif); font-size: 0.85rem; letter-spacing: 0.06em;
+  color: var(--accent); background: transparent; border: 0;
+  padding: 8px 15px; cursor: pointer; white-space: nowrap;
+}
+#quoteChip button + button { border-left: 1px solid var(--line); }
+
+/* 划线记号与回看定位 */
+mark.hl {
+  background: color-mix(in srgb, var(--gold-text) 22%, transparent);
+  color: inherit; border-radius: 2px; padding: 1px 0; cursor: pointer;
+  box-shadow: 0 1px 0 var(--gold-line);
+}
+.hl-flash { animation: hl-flash 2.2s ease; }
+@keyframes hl-flash {
+  0%, 55% { background: var(--accent-wash); }
+  100% { background: transparent; }
+}
+.hl-group { color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.08em; margin: 14px 0 2px; }
+.hl-row .hl-quote {
+  display: block; text-align: left; font-size: 0.9rem; line-height: 1.8; color: var(--ink);
+}
+
+/* 阅读器顶栏：书签/朗读激活态 */
+.reader-tools button.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+
+/* 朗读控制条 */
+#ttsBar {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 25;
+  display: flex; align-items: center; gap: 4px;
+  background: var(--card); border: 1px solid var(--gold-line); border-radius: 999px;
+  padding: 5px 8px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px -14px rgba(34, 26, 14, 0.5);
+}
+#ttsBar[hidden] { display: none; }
+#ttsBar button {
+  width: 34px; height: 34px; border-radius: 50%; border: 0; background: transparent;
+  color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+#ttsBar button svg { width: 19px; height: 19px; }
+#ttsBar #ttsStopBtn { color: var(--ink-3); }
+#ttsBar .ic-play { display: none; }
+#ttsBar.paused .ic-play { display: block; }
+#ttsBar.paused .ic-pause { display: none; }
+#ttsInfo { color: var(--ink-2); font-size: 0.78rem; letter-spacing: 0.05em; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.tts-cur { background: var(--accent-wash); border-radius: 4px; }
+body.rd-zen[data-view="reader"] #ttsBar { bottom: calc(18px + env(safe-area-inset-bottom)); }
+
+/* 文库标题搜索 */
+.wk-search { margin: 2px 0 14px; }
+.wk-search input {
+  width: 100%; font-family: var(--serif); font-size: 0.94rem; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 10px 20px;
+}
+.wk-search input:focus { outline: none; border-color: var(--accent-soft); }
+.wk-none { color: var(--ink-3); font-size: 0.86rem; padding: 16px 4px; }
+
+/* 问法：页头新问键 / 停止态 / 回答操作行 / 重试 / 出处预览 */
+/* 标题让 flex:1 —— 否则「问法」被「新问」挤成收缩宽度，标题里那道
+   泥金引线（.page-title::after）宽度归零，全站只有这一页秃着 */
+.wd-head { display: flex; align-items: center; gap: 12px; }
+.wd-head .page-title { flex: 1; min-width: 0; }
+.chat-new {
+  flex: none; font-family: var(--serif); background: transparent; border: 1px solid var(--line);
+  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 6px 16px; cursor: pointer;
+}
+#btnAsk .ic-stop { display: none; }
+.chat-input.asking #btnAsk .ic-send { display: none; }
+.chat-input.asking #btnAsk .ic-stop { display: block; }
+/* 回答操作行：纯图标按钮（复制 / 分享） */
+/* 复制/分享：原 29px 见方，指腹按不准；提到 38px（图标不变，只放大热区） */
+.ans-acts { display: flex; gap: 4px; margin-top: 8px; margin-left: -10px; }
+.ans-acts button {
+  background: transparent; border: 0; width: 38px; height: 38px; padding: 0; cursor: pointer;
+  color: var(--ink-3); display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; transition: color 0.2s var(--e-out), background 0.2s var(--e-out);
+}
+.ans-acts button svg { width: 17px; height: 17px; }
+.ans-acts button:active { color: var(--accent); background: var(--accent-wash); }
+.chat-retry {
+  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
+  color: var(--accent); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 6px;
+}
+.cite-src { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; margin-bottom: 10px; }
+.cite-x {
+  color: var(--ink); font-size: 0.92rem; line-height: 2; text-align: justify;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}

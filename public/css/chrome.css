@@ -1,0 +1,216 @@
+/* 佛乐 · 底部导航、页脚、搜索、直播五键、弹幕、收藏、容错等零件
+   由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
+   <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
+
+/* —— 底部导航（移动端） —— */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: space-around;
+  background: var(--card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--gold-line);
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+}
+.bottom-nav a {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  text-decoration: none; color: var(--ink-3); font-size: 0.68rem; letter-spacing: 0.06em;
+  min-width: 52px; padding: 2px 6px;
+}
+.bottom-nav a svg { width: 23px; height: 23px; }
+.bottom-nav a.on { color: var(--accent); }
+
+@media (min-width: 720px) {
+  .bottom-nav { display: none; }
+}
+@media (max-width: 719px) {
+  .tabs { display: none; }
+  main { padding-bottom: 90px; }
+  #mini.collapsed { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body[data-mode="od"] main { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+}
+
+/* —— 页脚：泥金佛号 —— */
+footer { text-align: center; padding: 26px 20px calc(30px + env(safe-area-inset-bottom)); color: var(--ink-3); }
+footer p:first-child {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  letter-spacing: 0.5em; text-indent: 0.5em; font-size: 0.95rem; color: var(--gold-text);
+}
+footer p:first-child::before { content: ''; width: 38px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-line)); }
+footer p:first-child::after { content: ''; width: 38px; height: 1px; background: linear-gradient(270deg, transparent, var(--gold-line)); }
+.site-network {
+  margin: 10px 0 0; font-size: 13px;
+  display: flex; flex-wrap: wrap; align-items: center;
+  justify-content: center; gap: 8px 16px;
+}
+.site-network a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid var(--gold-line); transition: color 0.2s var(--e-out); }
+@media (hover: hover) and (pointer: fine) {
+  .site-network a:hover { color: var(--gold-text); }
+}
+.foot-small { font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.08em; }
+/* 移动端：页脚需让开固定底部导航（置于 footer 简写 padding 之后方能生效） */
+@media (max-width: 719px) {
+  footer { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+}
+
+/* 无障碍与动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  /* 位移与循环一律静止；只留极短的着色渐变，免得状态切换生硬跳变。
+     延时必须一并归零 —— 逐条进场用的是 animation-delay + backwards 填充，
+     只把时长压到 0.001ms 而留着 0.29s 的延时，元素会照旧先空白近三分之一秒
+     再「啪」地出现，对本就畏惧动效的用户反而更糟。 */
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* 键盘可达：只在键盘操作时描朱砂焦点圈，鼠标/触摸点击不显 */
+/* 不设 border-radius —— 现代浏览器的 outline 自会跟随元素自身圆角，
+   一旦在此写死，圆钮就会被套上方框 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* —— 听经搜索 —— */
+.search-wrap { position: relative; margin: 0 0 16px; }
+.search-wrap svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--ink-3); pointer-events: none;
+}
+#tingSearch {
+  width: 100%; font-family: var(--serif); font-size: 0.94rem; color: var(--ink);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 10px 16px 10px 38px; letter-spacing: 0.04em; outline: none;
+  transition: border-color 0.2s var(--e-out);
+  -webkit-appearance: none; appearance: none;
+}
+#tingSearch:focus { border-color: var(--accent-soft); }
+#tingSearch::placeholder { color: var(--ink-3); }
+/* 搜索进行时隐藏三个栏目面板，只展示结果 */
+body[data-searching] .panel { display: none !important; }
+#searchResults { animation: fadein 0.25s var(--e-out); }
+#searchResults .lib-grid { margin-bottom: 14px; }
+.search-eps li .t small, .fav-list li .t small {
+  display: block; color: var(--ink-3); font-size: 0.72rem; margin-top: 2px; letter-spacing: 0.04em;
+}
+
+/* —— 直播 · 底部五键（弹幕 · 留言 · 随喜 · 定时 · 分享，图标 + 文字） —— */
+.live-tools { display: flex; justify-content: space-between; gap: 6px; margin-top: 20px; position: relative; z-index: 3; }
+.live-tool {
+  flex: 1; min-width: 0;
+  display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--ink-2); font-family: var(--serif); font-size: 0.72rem; letter-spacing: 0.06em;
+  transition: color 0.2s var(--e-out), transform 0.15s var(--e-io);
+}
+.live-tool:active { transform: scale(0.94); }
+.lt-ic {
+  position: relative;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--line);
+  transition: color 0.2s var(--e-out), border-color 0.2s var(--e-out), background 0.2s var(--e-out);
+}
+.lt-ic svg { width: 21px; height: 21px; }
+.live-tool.on { color: var(--accent); }
+.live-tool.on .lt-ic { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+/* 随喜按下即朱砂实心莲叶 */
+#btnLiveLike.on svg path:first-child { fill: var(--accent); }
+#btnLiveLike.on svg path:last-child { fill: color-mix(in srgb, var(--accent) 22%, transparent); }
+/* 角标：随喜计数 / 定时剩余分钟（叠在图标圆钮右上角） */
+.lt-badge {
+  position: absolute; top: -5px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 9px; background: var(--accent); color: var(--on-accent);
+  font-family: var(--serif); font-size: 0.58rem; font-weight: 600; line-height: 16px;
+  text-align: center; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 1.5px var(--card);
+}
+.lt-badge[hidden] { display: none; }
+
+/* —— 直播 · 弹幕层（覆盖莲台卡上部，不挡按钮） —— */
+.live-card { position: relative; overflow: hidden; }
+.dm-layer { position: absolute; inset: 0 0 42% 0; pointer-events: none; z-index: 2; }
+.dm-item {
+  position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
+  max-width: none; font-size: 0.88rem; color: var(--ink-2); letter-spacing: 0.04em;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 13px;
+}
+
+/* —— 我的 · 收藏清单 —— */
+.wode-sub {
+  display: flex; align-items: center; gap: 9px; margin: 22px 0 2px;
+  font-size: 0.85rem; color: var(--ink-2); letter-spacing: 0.26em; font-weight: 600;
+}
+.wode-sub::before {
+  content: ''; width: 7px; height: 7px; flex: none;
+  background: var(--gold-text); opacity: 0.75; transform: rotate(45deg); border-radius: 1.5px;
+}
+.fav-del {
+  flex: none; border: 0; background: transparent; color: var(--ink-3);
+  font-size: 0.82rem; padding: 6px 8px; cursor: pointer; font-family: var(--serif);
+}
+@media (hover: hover) and (pointer: fine) {
+  .fav-del:hover { color: var(--accent); }
+}
+
+/* —— 加载容错 —— */
+#loadErr {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); font-family: var(--serif);
+}
+.load-err-card { text-align: center; padding: 30px; }
+.load-err-card p { color: var(--ink-2); font-size: 0.95rem; letter-spacing: 0.06em; margin-bottom: 20px; }
+.load-err-card button, #libErr button {
+  font-family: var(--serif); font-size: 0.9rem; letter-spacing: 0.2em; text-indent: 0.2em;
+  color: var(--accent); background: var(--accent-wash);
+  border: 1px solid var(--accent-soft); border-radius: 999px;
+  padding: 9px 26px; cursor: pointer;
+}
+#libErr {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 35;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 10px 12px 10px 20px; font-family: var(--serif);
+  color: var(--ink-2); font-size: 0.86rem; letter-spacing: 0.04em; white-space: nowrap;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 10px 30px -14px rgba(42, 33, 18, 0.4);
+}
+#libErr button { padding: 6px 16px; }
+
+/* —— 计数器 · 满串脉冲与定课圆满 —— */
+@keyframes bead-pulse {
+  0% { transform: scale(1); }
+  38% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.nj-bead.full { animation: bead-pulse 0.7s ease; }
+.nj-bead.full .nj-ring { filter: drop-shadow(0 0 7px var(--accent-soft)); }
+
+/* —— 日历 · 90 天外无明细 —— */
+.cal-cell.gone i { opacity: 0.35; }
+.cal-note { text-align: center; color: var(--ink-3); font-size: 0.72rem; margin-top: 8px; letter-spacing: 0.04em; }
+
+/* —— 备份与迁移 —— */
+.bk-note { color: var(--ink-2); font-size: 0.82rem; line-height: 1.8; letter-spacing: 0.03em; margin-bottom: 8px; }
+.bk-msg { color: var(--accent); min-height: 1.6em; margin-top: 10px; text-align: center; }
+
+/* —— 阅读器 · 回顶按钮 / 分享图标 —— */
+.top-fab {
+  position: fixed; right: 18px; bottom: calc(104px + env(safe-area-inset-bottom)); z-index: 18;
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink-2); cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px -12px rgba(42, 33, 18, 0.4);
+  animation: fadein 0.25s var(--e-out);
+}
+.top-fab svg { width: 20px; height: 20px; }
+body:not([data-view="reader"]) .top-fab { display: none !important; }
+.reader-pos { cursor: pointer; }
+.reader-tools button svg { width: 16px; height: 16px; display: block; }

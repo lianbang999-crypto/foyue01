@@ -2,10 +2,10 @@
 // 音频（/audio/*，Range 分段）与问道接口（/api/*）不经缓存，永远直连网络。
 // 改动壳资源清单或需要强制刷新客户端缓存时，把 VER 加一。
 
-const VER = 'fy-v41';
+const VER = 'fy-v46';
 const SHELL = [
   '/',
-  '/css/style.css',
+  '/css/all.css',
   '/js/app.js',
   '/js/station.js',
   '/js/intros.js',
@@ -13,6 +13,10 @@ const SHELL = [
   '/js/zh-t.js',
   '/js/i18n.js',
   '/js/a11y.js',
+  '/js/util.js',
+  '/js/const.js',
+  '/js/poster.js',
+  '/js/ask.js',
   '/favicon.png',
   '/icon-192.png',
   '/icon-512.png',
