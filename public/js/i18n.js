@@ -80,9 +80,9 @@ const SEED = {
   },
 };
 
-// 内容区（不翻译）：正文、篇目/系列名、留言、问答、字幕、弹幕等
+// 内容区（不翻译）：正文、篇目/系列名、留言、问答、字幕等
 const SKIP_SEL = [
-  '#readerBody', '#chatLog', '#cmtList', '#dmLayer', '#liveCc', '#plCc',
+  '#readerBody', '#chatLog', '#cmtList', '#liveCc', '#plCc',
   '.ep-list', '.chat-starters', '.share-prev', '.cite-x',
   '.ls-info', '.hl-series', '.hl-ep', '.hc-main', '.wh-main', '.series-title', '.ep-title',
   '.wr-seal',   // 朱印只两字，翻了就不成章

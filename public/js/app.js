@@ -398,7 +398,7 @@ async function route() {
     // 进入直播即自动播放：用户手势下可直接起播，被浏览器自动播放策略拦截时 loadLive 回落到「轻触莲台」
     if (mode !== 'live') backToLive();
     else if (audio.paused) { wantLive = true; loadLive(); }
-  } else { dmClear(); }               // 离开直播：清弹幕
+  }
   syncCmtPolling();                   // 按「聊天室开 / 在直播页」决定留言轮询节奏
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
@@ -2519,61 +2519,6 @@ function openShare(p) {
   $('#shareSheet').hidden = false;
 }
 
-/* ================= 直播弹幕 =================
-   与「同修在此」同一数据源：轮询到的新留言排队错峰飘过莲台卡，
-   自己发送的经轮询立即上屏；开关记在 fy.dm，默认开。 */
-
-let dmOn = localStorage.getItem('fy.dm') !== '0';
-let dmQueue = [];
-let dmTimer = 0;
-let dmLane = 0;
-
-function dmSet(on) {
-  dmOn = on;
-  setLS('fy.dm', on ? '1' : '0');
-  $('#btnDm').classList.toggle('on', on);
-  if (!on) dmClear();
-}
-
-function dmClear() {
-  dmQueue = [];
-  if (dmTimer) { clearTimeout(dmTimer); dmTimer = 0; }
-  $('#dmLayer').innerHTML = '';
-}
-
-function dmPush(texts) {
-  if (!dmOn || document.body.dataset.view !== 'live' || !texts.length) return;
-  dmQueue.push(...texts);
-  if (dmQueue.length > 40) dmQueue = dmQueue.slice(-40);   // 积压只留最近
-  if (!dmTimer) dmDrain();
-}
-
-function dmDrain() {
-  if (!dmOn || !dmQueue.length || document.body.dataset.view !== 'live') { dmTimer = 0; return; }
-  const text = dmQueue.shift();
-  if (!document.hidden && !chatOpen) dmSpawn(text);   // 后台标签/聊天室全屏时不飘也不积压
-  // 错峰：批量到达的留言摊开飘，不挤成一团
-  dmTimer = setTimeout(dmDrain, 1300 + Math.random() * 1700);
-}
-
-function dmSpawn(text) {
-  const layer = $('#dmLayer');
-  const el = document.createElement('span');
-  el.className = 'dm-item';
-  el.textContent = text;
-  layer.appendChild(el);
-  const W = layer.clientWidth;
-  const w = el.offsetWidth;
-  el.style.top = `${6 + (dmLane % 4) * 24}%`;
-  el.style.transform = `translateX(${W}px)`;
-  dmLane += 1;
-  const anim = el.animate(
-    [{ transform: `translateX(${W}px)` }, { transform: `translateX(${-w - 24}px)` }],
-    { duration: (W + w) * 16, easing: 'linear' });   // 约 62px/秒，匀速横过
-  anim.onfinish = () => el.remove();
-  anim.oncancel = () => el.remove();
-}
-
 /* ================= 莲友共修群（聊天室）与直播留言 ================= */
 
 let cmtLastId = 0;
@@ -2630,8 +2575,6 @@ async function pollCmt() {
       appendCmts(d.items);
       if (first || nearBottom) { scrollChatBottom(); hideChatJump(); }
       else { chatUnseen += d.items.length; showChatJump(); }   // 翻看历史时新消息进浮标
-      // 弹幕：新留言全部上屏；首次进页只取最近两条作氛围，不回放历史
-      dmPush((first ? d.items.slice(-2) : d.items).map((c) => c.text));
     }
   } catch { /* 网络波动静默，下轮再试 */ }
 }
@@ -3975,9 +3918,7 @@ function bindEvents() {
   $('#btnSleep').addEventListener('click', cycleSleep);
   $('#btnLiveSleep').addEventListener('click', cycleSleep);
 
-  // 弹幕开关 + 随喜此刻节目（直播工具行）
-  $('#btnDm').classList.toggle('on', dmOn);
-  $('#btnDm').addEventListener('click', () => dmSet(!dmOn));
+  // 随喜此刻节目（直播工具行）
   $('#btnLiveLike').addEventListener('click', toggleLiveLike);
   $('#miniSeek').addEventListener('input', () => {
     seekDragging = true;

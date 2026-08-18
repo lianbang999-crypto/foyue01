@@ -1,4 +1,4 @@
-/* 佛乐 · 底部导航、页脚、搜索、直播五键、弹幕、收藏、容错等零件
+/* 佛乐 · 底部导航、页脚、搜索、直播四键、收藏、容错等零件
    由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
    <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
 
@@ -97,7 +97,7 @@ body[data-searching] .panel { display: none !important; }
   display: block; color: var(--ink-3); font-size: 0.72rem; margin-top: 2px; letter-spacing: 0.04em;
 }
 
-/* —— 直播 · 底部五键（弹幕 · 留言 · 随喜 · 定时 · 分享，图标 + 文字） —— */
+/* —— 直播 · 底部四键（留言 · 随喜 · 定时 · 分享，图标 + 文字） —— */
 .live-tools { display: flex; justify-content: space-between; gap: 6px; margin-top: 20px; position: relative; z-index: 3; }
 .live-tool {
   flex: 1; min-width: 0;
@@ -129,16 +129,6 @@ body[data-searching] .panel { display: none !important; }
   box-shadow: 0 0 0 1.5px var(--card);
 }
 .lt-badge[hidden] { display: none; }
-
-/* —— 直播 · 弹幕层（覆盖莲台卡上部，不挡按钮） —— */
-.live-card { position: relative; overflow: hidden; }
-.dm-layer { position: absolute; inset: 0 0 42% 0; pointer-events: none; z-index: 2; }
-.dm-item {
-  position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
-  max-width: none; font-size: 0.88rem; color: var(--ink-2); letter-spacing: 0.04em;
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: 999px; padding: 3px 13px;
-}
 
 /* —— 我的 · 收藏清单 —— */
 .wode-sub {

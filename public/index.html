@@ -196,7 +196,6 @@
     <button class="back-btn" data-back="#ting"><span aria-hidden="true">‹</span> 返回听经</button>
     <p class="now-date" id="nowDate"></p>
     <div class="live-card">
-      <div class="dm-layer" id="dmLayer" aria-hidden="true"></div>
       <p class="block-chip"><span class="live-dot" aria-hidden="true"></span><span id="blockName"></span></p>
       <h2 class="series-title" id="liveSeries"></h2>
       <p class="ep-title" id="liveEp"></p>
@@ -211,12 +210,8 @@
       <!-- aria-live：断流重试那几句原先读屏用户一句也收不到，只知道声音没了 -->
       <p class="live-hint" id="liveHint" aria-live="polite">轻触莲台 · 与大众同闻</p>
       <p class="live-online" id="liveOnline" hidden><i class="lo-dot" aria-hidden="true"></i><b id="liveOnlineN">0</b> 位同修在此同闻</p>
-      <!-- 底部五键：弹幕 · 留言 · 随喜 · 定时 · 分享（图标 + 文字） -->
+      <!-- 底部四键：留言 · 随喜 · 定时 · 分享（图标 + 文字） -->
       <div class="live-tools">
-        <button class="live-tool" id="btnDm" aria-label="弹幕开关">
-          <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.6H9.8L6 19.4v-3.3H4z"/><path d="M8 9.2h8M8 12.4h5"/></svg></span>
-          <span class="lt-t">弹幕</span>
-        </button>
         <button class="live-tool" id="btnLiveChat" aria-label="进入共修群聊天室">
           <span class="lt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h3.5v3.2L12 17h8a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg></span>
           <span class="lt-t">留言</span>
