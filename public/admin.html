@@ -54,7 +54,7 @@
 <body>
 <main>
   <h1>佛乐 · 管理后台</h1>
-  <p class="sub">留言 · 公告 · 屏蔽词 · 封禁 —— 统一管理</p>
+  <p class="sub">留言 · 公告 · 屏蔽词 · 封禁 · 自知录举报 —— 统一管理</p>
 
   <!-- 口令登录：令牌只存本机 -->
   <section id="login">
@@ -92,6 +92,42 @@
         <button class="plain" id="btnApp">刷 新</button><span class="msg" id="appMsg"></span>
       </div>
       <div id="apVerBox" style="margin-top:10px;font-size:13px;line-height:1.9;color:#555"></div>
+    </section>
+
+    <!-- 自知录 · 功过格（2026-08-18）：数据在 zhi.foyue.org 的 D1 里，此处跨站取用。
+         该站已把本域列入白名单并认 ADMIN_TOKEN（与本站同一枚），故沿用同一口令即可。 -->
+    <section>
+      <h2>自知录 · 功过格（zhi.foyue.org）</h2>
+      <div class="stats">
+        <div><b id="zzUsers">–</b><span>用户</span></div>
+        <div><b id="zzNotes">–</b><span>累计记录</span></div>
+        <div><b id="zzShared">–</b><span>广场在展</span></div>
+        <div><b id="zzActive">–</b><span>今日记录人数</span></div>
+        <div><b id="zzAi">–</b><span>今日 AI 次数</span></div>
+        <div><b id="zzRpt">–</b><span>待处理举报</span></div>
+      </div>
+      <div class="row" style="margin:10px 0 0">
+        <button class="plain" id="btnZzl">刷 新</button>
+        <button class="plain" id="btnZzlPlaza">看广场</button>
+        <button class="plain" id="btnZzlUsers">看用户</button>
+        <a href="https://zhi.foyue.org" target="_blank" rel="noopener"
+           style="color:#8c5647;font-size:.82rem;text-decoration:none">打开站点 ↗</a>
+        <span class="msg" id="zzlMsg"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>自知录 · 举报（未处理在前）</h2>
+      <div class="table-wrap">
+        <table><thead><tr><th>时间</th><th>内容</th><th>作者</th><th>举报人</th><th>状态</th><th></th></tr></thead>
+          <tbody id="zzlRptRows"><tr><td colspan="6" class="t">点上方「刷 新」载入</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="zzlListSec" style="display:none">
+      <h2 id="zzlListTitle">自知录 · 明细</h2>
+      <div class="table-wrap"><table id="zzlListTbl"></table></div>
     </section>
 
     <section>
@@ -183,6 +219,7 @@
     await loadReports();
     // 装机数跨站取，慢些也罢——不叫它拖住本域这几块，失手只在本区出一行字
     loadApp().catch((e) => { $('#appMsg').textContent = e.message; });
+    loadZzl().catch((e) => { $('#zzlMsg').textContent = e.message; });
   }
 
   // 报错/纠错列表（可单独局部刷新，不动其它区块）
@@ -235,6 +272,91 @@
     $('#appMsg').textContent = '';
   }
   $('#btnApp').addEventListener('click', () => loadApp().catch((e) => { $('#appMsg').textContent = e.message; }));
+
+  // ===== 自知录（zhi.foyue.org）：跨站取用，同一枚 ADMIN_TOKEN =====
+  const ZZL = 'https://zhi.foyue.org';
+  async function zzl(path, body) {
+    const r = await fetch(ZZL + '/api/admin/' + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { Authorization: 'Bearer ' + TOKEN, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (r.status === 401) throw new Error('口令错误（自知录未认）');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }
+  async function loadZzl() {
+    const d = await zzl('stat');
+    $('#zzUsers').textContent = d.users;
+    $('#zzNotes').textContent = d.notes;
+    $('#zzShared').textContent = d.shared;
+    $('#zzActive').textContent = d.activeToday;
+    $('#zzAi').textContent = d.aiToday;
+    $('#zzRpt').textContent = d.pendingReports;
+    $('#zzlMsg').textContent = '';
+    const { reports } = await zzl('reports');
+    $('#zzlRptRows').innerHTML = reports.map((r) => `<tr>
+      <td class="t">${esc((r.created_at || '').slice(0, 16).replace('T', ' '))}</td>
+      <td>${esc((r.content || '（记录已删）').slice(0, 60))}${r.reason ? `<span class="ep">理由：${esc(r.reason)}</span>` : ''}</td>
+      <td class="t">${esc(r.author_nick || '匿名')}<span class="ep">${esc(r.author_account || '')}</span></td>
+      <td class="t">${esc(r.reporter || '')}</td>
+      <td class="t">${r.handled ? '已办' : (r.shared ? '在展' : '已撤')}</td>
+      <td class="ops">${r.handled ? '' :
+        `<button data-zzl-down="${r.note_id}">下架</button>
+         <button class="plain" data-zzl-keep="${r.note_id}">保留</button>`}</td></tr>`).join('')
+      || '<tr><td colspan="6" class="t">暂无举报</td></tr>';
+  }
+  async function zzlList(kind) {
+    const sec = $('#zzlListSec'), tbl = $('#zzlListTbl');
+    sec.style.display = 'block';
+    if (kind === 'plaza') {
+      $('#zzlListTitle').textContent = '自知录 · 广场在展（最近 100 条）';
+      const { items } = await zzl('plaza');
+      tbl.innerHTML = '<thead><tr><th>分享于</th><th>内容</th><th>作者</th><th></th></tr></thead><tbody>' +
+        (items.map((n) => `<tr>
+          <td class="t">${esc((n.shared_at || '').slice(0, 16).replace('T', ' '))}</td>
+          <td>${esc((n.content || '').slice(0, 70))}${(() => { try { const a = JSON.parse(n.attachments); return a.length ? `<span class="ep">含 ${a.length} 个附件</span>` : ''; } catch { return ''; } })()}</td>
+          <td class="t">${esc(n.nickname || '匿名')}<span class="ep">${esc(n.account)}</span></td>
+          <td class="ops"><button data-zzl-down="${n.id}">下架</button></td></tr>`).join('')
+          || '<tr><td colspan="4" class="t">广场暂无内容</td></tr>') + '</tbody>';
+    } else {
+      $('#zzlListTitle').textContent = '自知录 · 用户';
+      const { users } = await zzl('users');
+      tbl.innerHTML = '<thead><tr><th>账号</th><th>法名</th><th>记录</th><th>AI</th><th>邀请码</th><th>已邀/名额</th><th>邀请人</th><th></th></tr></thead><tbody>' +
+        users.map((u) => `<tr>
+          <td class="t">${esc(u.account)}<span class="ep">${esc((u.created_at || '').slice(0, 10))}</span></td>
+          <td class="t">${esc(u.nickname || '—')}</td>
+          <td class="t">${u.notes}</td>
+          <td class="t">${u.ai_total}</td>
+          <td class="t">${esc(u.code || '—')}</td>
+          <td class="t">${u.code ? `${u.invited}/${u.quota}` : '—'}</td>
+          <td class="t">${esc(u.inviter || '—')}</td>
+          <td class="ops">${u.code ? `<button class="plain" data-zzl-quota="${u.id}">改名额</button>` : ''}</td></tr>`).join('') + '</tbody>';
+    }
+  }
+  $('#btnZzl').addEventListener('click', () => loadZzl().catch((e) => { $('#zzlMsg').textContent = e.message; }));
+  $('#btnZzlPlaza').addEventListener('click', () => zzlList('plaza').catch((e) => { $('#zzlMsg').textContent = e.message; }));
+  $('#btnZzlUsers').addEventListener('click', () => zzlList('users').catch((e) => { $('#zzlMsg').textContent = e.message; }));
+  document.body.addEventListener('click', async (e) => {
+    const down = e.target.closest('[data-zzl-down]');
+    const keep = e.target.closest('[data-zzl-keep]');
+    const quota = e.target.closest('[data-zzl-quota]');
+    if (!down && !keep && !quota) return;
+    try {
+      if (down) {
+        if (!confirm('从广场下架这条？原记录仍保留在作者自己的录中。')) return;
+        await zzl('takedown', { noteId: Number(down.dataset.zzlDown), takedown: true });
+      } else if (keep) {
+        await zzl('takedown', { noteId: Number(keep.dataset.zzlKeep), takedown: false });
+      } else {
+        const v = prompt('该用户可邀请的人数上限：');
+        if (v === null) return;
+        await zzl('quota', { userId: Number(quota.dataset.zzlQuota), quota: Number(v) });
+        return zzlList('users');
+      }
+      await loadZzl();
+    } catch (err) { $('#zzlMsg').textContent = err.message; }
+  });
 
   $('#btnReload').addEventListener('click', () => loadAll().catch((e) => { $('#cmtMsg').textContent = e.message; }));
   $('#btnRptReload').addEventListener('click', () => loadReports().catch((e) => { $('#rptMsg').textContent = e.message; }));
