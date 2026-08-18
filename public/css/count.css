@@ -89,7 +89,18 @@
 
 /* —— 念佛计数器 · 极简布局 —— */
 .cnt-top { display: flex; align-items: center; justify-content: space-between; padding-top: 2px; }
-.cnt-back { font-size: 1.5rem; line-height: 1; padding: 2px 8px; }
+/* 返回：原先 padding 2px 8px，量出来才 23×28 —— 全站其他返回键是 padding:12px 0，
+   约 38px 高，这一处小了一半，而它还只是个「‹」、没有「返回」二字。
+   用内边距把可按范围撑到 44，再用等量负外边距抵消位移：看着还在原处，手指好按得多。 */
+.cnt-back {
+  font-size: 1.5rem; line-height: 1;
+  /* 「‹」字形本身才 7px 宽，光靠内边距撑不到 44，故另给 min-width。
+     负外边距抵消撑开量：字形仍落在原处，只是可按的范围大了一圈。 */
+  min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 14px;
+  margin: -8px -14px;   /* 纵横都抵消：撑到 44 见方，而顶栏高度与原先一致 */
+}
 .cnt-tools { display: flex; gap: 8px; }
 .cnt-tool {
   width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
@@ -170,7 +181,10 @@
 /* 计数页顶栏「功课」入口 */
 .cnt-hub {
   font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 6px 16px; cursor: pointer;
+  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; cursor: pointer;
+  /* 原 6px 量出来才 33px 高，指腹按着费劲。撑到 41 后用负外边距吃掉多出的 8px，
+     免得把顶栏连同下面的念珠环整体顶下去。 */
+  padding: 10px 16px; margin: -4px 0;
 }
 .sheet-del { color: var(--ink-3); font-size: 0.78rem; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
 .sheet-add {
