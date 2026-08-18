@@ -417,8 +417,10 @@
              不是「一次加十声」；此键实为补计，故改名，免与法门混淆。 -->
         <button id="btnTen" aria-label="补计十声">补 十 声</button>
         <button id="btnUndo" aria-label="撤销最近一笔计数">撤 销</button>
-        <button id="btnZen">静 念</button>
       </div>
+      <!-- 整页皆是念珠：轻触屏上任意空处即计一声，闭目、行走皆可念。
+           原先这是「静念」全屏模式里的做法，如今就是本页本身。 -->
+      <p class="cnt-tip">轻触屏上任意处 · 计一声</p>
       <!-- 全站共念：只报总数与此刻在念的人数，不设排名 —— 念佛贵在恳切，不在与人比多 -->
       <p class="cnt-gx" id="cntGx" hidden></p>
     </div>
@@ -689,27 +691,6 @@
   </div>
 </div>
 
-<!-- 静念全屏计数：整屏皆是念珠，抬手即计，闭目行走皆可念 -->
-<div id="zenOverlay" hidden>
-  <!-- 计数区是一颗铺满整屏的按钮，且排在 DOM 首位：
-       浮层打开时焦点自然落在它上面，键盘用户按空格即计一声。
-       原先监听挂在外层 div 上，div 进不了 Tab 序列，键盘与读屏用户在静念里
-       一声也计不了 —— 而这个模式恰恰是为闭目、为看不见屏幕的人预备的。 -->
-  <button class="zen-tap" id="btnZenTap" aria-label="计一声">
-    <span class="zen-center" aria-hidden="true">
-      <small class="zen-name" id="zenName"></small>
-      <strong id="zenNum">0</strong>
-      <small class="zen-sub" id="zenSub"></small>
-    </span>
-  </button>
-  <button class="zen-exit" id="btnZenExit">收 起</button>
-  <!-- 定课圆满：静念中不弹全屏层 —— 它压在静念层上，闭目念的下一声会被它当成
-       「关层」吃掉，一声不计而人不自知。改在此浮一条，且不拦点击。 -->
-  <p class="zen-goal" id="zenGoal" hidden aria-hidden="true">今日定课圆满</p>
-  <!-- 退出：底部整条都是收起区，闭目摸得到；双指轻触任意处同样收起。
-       右上角那颗小钮留着，但不再是唯一出口。 -->
-  <button class="zen-hint" id="btnZenHint">轻触计一声 · 双指或触底收起</button>
-</div>
 
 <!-- 选中文字浮标：划线 + 分享法布施 -->
 <div id="quoteChip" hidden>

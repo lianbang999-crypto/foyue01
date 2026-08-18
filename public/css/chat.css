@@ -118,7 +118,11 @@
 .lc-av {
   flex: none; width: 34px; height: 34px; border-radius: 50%;
   display: grid; place-items: center;
-  font-family: var(--serif); font-size: 0.96rem; color: var(--on-accent); line-height: 1;
+  font-family: var(--serif); font-size: 0.96rem; line-height: 1;
+  /* 字色写死浅色，不跟 --on-accent 走主题：底色是 AV_COLORS 那批固定的中深色，
+     本就是照着白字调的（见 app.js 色板注释）。跟着主题走时，夜间字色翻成近黑，
+     八色的对比度全落到 2.9–3.7:1，名字那一个字就糊在圆印里看不出来了。 */
+  color: #f6f1e6;
   background: var(--accent);   /* 兜底；实际由内联 style 按名取色 */
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
 }

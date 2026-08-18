@@ -347,7 +347,6 @@ let routeSeq = 0;
 async function route() {
   const seq = ++routeSeq;
   const h = location.hash || '#home';
-  $('#zenOverlay').hidden = true;   // 静念全屏随换页收起（如安卓返回键退出计数页）
   // 莲友共修群：全屏覆盖的独立模块，底层视图保持不变（可深链/子域名直达）
   if (h.startsWith('#qun')) { openChatRoom(); return; }
   chatBackHash = h;                                   // 记住底层页，供聊天室返回
@@ -1915,9 +1914,9 @@ function addNj(delta, opts = {}) {
     // 满串时不补，免得与满串的双响挤成一团。
     if (tenth && !full && !opts.silent) {
       setTimeout(() => playMuyu(true), 90);
-      // 静念全屏最适合闭目与视障莲友，可整屏的数字对读屏是关着的（aria-hidden）。
+      // 计数页整页皆可点，最宜闭目与视障莲友，而屏上的数字对读屏是关着的。
       // 每满十声报一次数，读屏用户才有十念记数的听觉支点；明眼人听不见，无扰。
-      if (!$('#zenOverlay').hidden) announce(`${t + d} 声`);
+      if (document.body.dataset.view === 'count') announce(`${t + d} 声`);
     }
     if (full) beadFull();
     // 定课圆满：当日总声数首次达标（跨功课合计）
@@ -1949,7 +1948,7 @@ function beadFull() {
   // 满串靠震动与木鱼提示，读屏用户两者都收不到，补一句播报
   announce(`满一串，一百零八声。今日共 ${njDayTotal(bjDateKey())} 声`);
   lianTip();   // 攒到分量了才劝开莲号，每满一串顺路看一眼
-  for (const el of [$('#btnBead'), $('#zenNum')]) {
+  for (const el of [$('#btnBead')]) {
     el.classList.remove('full');
     void el.offsetWidth;   // 重启动画
     el.classList.add('full');
@@ -1989,20 +1988,12 @@ function lianTip() {
   toast('功课已积起来了 · 到「功课 → 莲号」开一枚，换手机也不丢');
 }
 
-let zenGoalTimer = null;
 
 function goalDone() {
   vibrate([40, 80, 60, 80, 90]);
   announce('今日定课圆满');
   // 静念中不弹全屏层：它压在静念层之上（z40 对 z38），闭目念的下一声
   // 会先去关它，那一声就丢了，而人还当是计上了。改浮一条不拦点击的提示。
-  if (!$('#zenOverlay').hidden) {
-    const el = $('#zenGoal');
-    el.hidden = false;
-    clearTimeout(zenGoalTimer);
-    zenGoalTimer = setTimeout(() => { el.hidden = true; }, 4500);
-    return;
-  }
   $('#gdOverlay').hidden = false;
 }
 
@@ -2040,11 +2031,6 @@ function renderCount() {
   $('#njRing').style.strokeDashoffset = String(RING_LEN * (1 - frac));
   $('#countSub').textContent =
     `本串 ${mine % 108} / 108　·　${nj.goal ? `定课 ${dayTotal} / ${nj.goal}` : '未设定课'}`;
-  // 静念全屏同步（层未开时更新也无妨，开启瞬间即是现值）
-  $('#zenName').textContent = it.name;
-  $('#zenNum').textContent = mine;
-  $('#zenSub').textContent =
-    `今日 · 声　·　本串 ${mine % 108} / 108${nj.goal ? `　·　定课 ${dayTotal} / ${nj.goal}` : ''}`;
 }
 
 /* ── 木鱼音效（Web Audio 合成，无需音频文件） ──
@@ -2228,7 +2214,7 @@ function renderLianSheet() {
   }
   $('#cntSheetBody').innerHTML = `
     <div class="lian-on">
-      <p class="lc-row"><span>莲号</span><b>${fmtLian(a.lian)}</b></p>
+      <p class="lian-row"><span>莲号</span><b>${fmtLian(a.lian)}</b></p>
       <p class="lian-lead lian-quiet">功课已在云端。换手机时，用这枚莲号与护念码即可认回
         念佛计数、阅读进度、收藏划线与听经足迹。</p>
       <p class="lian-msg" id="lianMsg">${esc(syncLastError() || '')}</p>
@@ -2246,8 +2232,8 @@ function showLianCard(lian, pass, title) {
   $('#cntSheetBody').innerHTML = `
     <div class="lian-card">
       <p class="lc-note">请把这两行抄下来，或截一张图存好</p>
-      <p class="lc-row"><span>莲 号</span><b>${fmtLian(lian)}</b></p>
-      <p class="lc-row"><span>护念码</span><b>${esc(pass)}</b></p>
+      <p class="lian-row"><span>莲 号</span><b>${fmtLian(lian)}</b></p>
+      <p class="lian-row"><span>护念码</span><b>${esc(pass)}</b></p>
       <p class="lc-warn">护念码只此一次显示。站方只存散列、不留明文，丢了便找不回来。</p>
     </div>
     <button class="lian-main" data-lian="copy" data-l="${esc(lian)}" data-p="${esc(pass)}">复 制 这 两 行</button>
@@ -3258,18 +3244,10 @@ function bindEvents() {
     if (s) playEpisode(s, Number(li.dataset.idx));
   });
 
-  /* 念佛计数器：大念珠（涟漪 + 木鱼 + 计一声）· 补十声 · 撤销 · 重置
-
-     计数走 pointerdown 而非 click —— 真念珠是按下即响，click 要等到抬指（touchend）
-     才发，一秒三五声时那点滞后就是「跟不上手」的由来。
-     键盘用户按不出 pointerdown，故 click 兜底：键盘激活按钮时 e.detail 为 0，
-     以此与指针引发的 click 分开，两条路都通且不会重复计。 */
-  const beadTap = (e) => { spawnBeadRipple($('#btnBead'), e); addNj(1); };
-  $('#btnBead').addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;   // 右键/中键不计
-    beadTap(e);
-  });
-  $('#btnBead').addEventListener('click', (e) => { if (e.detail === 0) beadTap(e); });
+  /* 念佛计数器：补十声 · 撤销 · 重置
+     （计一声的那一路已并到下面「整页皆是念珠」处统一收口，
+       念珠自己不再单独绑 pointerdown —— 否则点珠会先由它计一声、
+       再冒泡到页面上又计一声，一点两响。） */
   $('#btnTen').addEventListener('click', () => addNj(10));
   $('#btnUndo').addEventListener('click', () => undoNj());   // 不直接挂：事件对象会被当成 opts
 
@@ -3293,7 +3271,6 @@ function bindEvents() {
     { el: '#nameOverlay', x: '#nameCancel', name: '改法名' },
     { el: '#shareSheet', x: '#shareX', name: '分享 · 法布施' },
     { el: '#posterOverlay', x: '#posterClose', name: '分享海报' },
-    { el: '#zenOverlay', x: '#btnZenExit', name: '静念计数' },
     { el: '#gdOverlay', name: '今日定课圆满' },
     { el: '#hxOverlay', name: '回向偈' },
   ];
@@ -3339,37 +3316,36 @@ function bindEvents() {
     e.preventDefault();
   });
 
-  $('#btnZen').addEventListener('click', () => { renderCount(); $('#zenOverlay').hidden = false; });
-
-  const zenExit = () => {
-    $('#zenOverlay').hidden = true;
-    $('#zenGoal').hidden = true;
-    clearTimeout(zenGoalTimer);
-    toast(`已收起静念 · 今日 ${njDayTotal(bjDateKey())} 声`);
-  };
-  $('#btnZenExit').addEventListener('click', (e) => { e.stopPropagation(); zenExit(); });
-  $('#btnZenHint').addEventListener('click', (e) => { e.stopPropagation(); zenExit(); });
-
-  /* 静念计数：pointerdown 即计（同大念珠），另挡两类误计 ——
-       · 第二根手指落下＝收起手势，不是一声。手势自己带出的那一声顺手撤掉，
-         否则每次退出都平白多一声。
+  /* 计数页整页皆是念珠：轻触任意空处即计一声，闭目、行走皆可念。
+     这原是「静念」全屏模式的做法，如今就是本页本身，省掉一次进出。
+     沿用静念那几处斟酌过的细节：
+       · pointerdown 即计，不等 click —— 念得快时那点延迟很显
        · 50ms 内的重复触点多半是衣料摩擦或手抖。念得再快一秒七八声，
-         间隔也在 130ms 上下，这道闸挡不着正经念佛。 */
-  let zenLastTap = 0;
-  const zenTap = (e) => {
+         间隔也在 130ms 上下，这道闸挡不着正经念佛
+       · 键盘（空格/回车）走 click 且 e.detail 为 0，不与指针重复计 */
+  let tapLast = 0;
+  const hallTap = (e) => {
     const now = Date.now();
-    if (now - zenLastTap < 50) return;
-    zenLastTap = now;
-    spawnBeadRipple($('#zenOverlay'), e);
+    if (now - tapLast < 50) return;
+    tapLast = now;
+    // 点在念珠上就以念珠为宿主（它是 overflow:hidden 的圆，涟漪被裁成圆更好看），
+    // 点在空处才落到整页
+    const bead = $('#btnBead');
+    spawnBeadRipple(e.target && bead.contains(e.target) ? bead : $('#view-count'), e);
     addNj(1);
   };
-  $('#btnZenTap').addEventListener('pointerdown', (e) => {
-    if (!e.isPrimary) { undoNj({ quiet: true }); zenExit(); return; }
+  // 页面上原有的控件（返回 / 功课 / 换功课 / 定课 / 补计 / 撤销）各司其职，不当作计数
+  const tapExempt = (t) => !!(t.closest('.cnt-top, .cnt-practice, .cnt-goal, .nj-actions'));
+  // 挂在 <main> 而不是本页节点上：本页撑满后，外面还剩 <main> 那一圈内边距，
+  // 落在那儿的触点本页收不到，而闭目念佛时手正是会落在边上。
+  $('main').addEventListener('pointerdown', (e) => {
+    if (document.body.dataset.view !== 'count') return;
+    if (!e.isPrimary || tapExempt(e.target)) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    zenTap(e);
+    hallTap(e);
   });
-  // 键盘（空格/回车激活按钮）走这条：e.detail 为 0 即非指针引发，不会与上面重复计
-  $('#btnZenTap').addEventListener('click', (e) => { if (e.detail === 0) zenTap(e); });
+  // 大念珠仍是键盘与读屏的入口（它带 aria-label），指针那一路已被上面接走
+  $('#btnBead').addEventListener('click', (e) => { if (e.detail === 0) hallTap(e); });
 
   // 功课中心（管理 / 定课 / 历史 / 回向 / 器物开关）+ 主屏快捷入口
   $('#btnHub').addEventListener('click', () => { renderHubSheet(); openCntSheet('hub', '功课'); });

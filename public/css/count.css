@@ -234,62 +234,7 @@
 .yr-m i { font-style: normal; color: var(--ink-3); font-size: 0.7rem; letter-spacing: 0.04em; }
 .yr-m b { color: var(--ink); font-size: 0.86rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* —— 静念全屏计数：整屏皆是念珠 ——
-   z-index 38 压在计数页之上、圆满/回向层（40）之下：
-   静念中定课圆满，圆满层照常浮现在最上。 */
-#zenOverlay {
-  position: fixed; inset: 0; z-index: 38; overflow: hidden;
-  background: var(--sky); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-}
-#zenOverlay[hidden] { display: none; }
-/* 计数区：铺满整屏的一颗按钮。指针按下即计，键盘按空格即计。
-   压在收起钮与底部收起条之下，那两处才点得着。 */
-.zen-tap {
-  position: absolute; inset: 0; z-index: 1; padding: 0;
-  width: 100%; height: 100%; background: transparent; border: 0; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--serif); -webkit-tap-highlight-color: transparent;
-}
-.zen-tap:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: -8px; }
-.zen-exit, .zen-hint { z-index: 2; }
-.zen-exit {
-  position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px;
-  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-3); font-size: 0.8rem; padding: 6px 15px;
-  letter-spacing: 0.14em; text-indent: 0.14em; cursor: pointer;
-}
-.zen-center { text-align: center; pointer-events: none; }
-.zen-name { display: block; color: var(--ink-2); font-size: 0.95rem; letter-spacing: 0.3em; text-indent: 0.3em; margin-bottom: 22px; }
-#zenNum {
-  display: block; color: var(--ink); font-weight: 600; line-height: 1;
-  font-size: clamp(4.2rem, 24vw, 6.4rem); font-variant-numeric: tabular-nums;
-}
-#zenNum.full { animation: bead-pulse 0.7s ease; }
-.zen-sub { display: block; margin-top: 18px; color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; }
-/* 底部整条即收起区：右上角那颗「收 起」闭目摸不到，盲操得有个大靶面。
-   文字仍居中，但可点范围是触底的一整条。 */
-.zen-hint {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  padding: 26px 0 max(30px, env(safe-area-inset-bottom));
-  background: transparent; border: 0; cursor: pointer; font-family: var(--serif);
-  text-align: center; color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.2em; text-indent: 0.2em;
-  -webkit-tap-highlight-color: transparent;
-}
-.zen-hint:active { color: var(--ink-2); }
-
-/* 定课圆满（静念中）：只报喜，不拦手。pointer-events 必须是 none ——
-   一旦它吃得住点击，就成了下一声的挡箭牌，那一声便丢了。 */
-.zen-goal {
-  position: absolute; left: 0; right: 0; top: max(78px, calc(env(safe-area-inset-top) + 64px));
-  text-align: center; pointer-events: none;
-  color: var(--c-zhusha); font-size: 0.86rem; letter-spacing: 0.26em; text-indent: 0.26em;
-  animation: fadein 0.5s var(--e-out);
-}
-.zen-goal[hidden] { display: none; }
-
-/* 回向偈 / 定课圆满 全屏静念层 */
+/* 回向偈 / 定课圆满：两个全屏浮层 */
 #hxOverlay, #gdOverlay {
   position: fixed; inset: 0; z-index: 40; cursor: pointer;
   background: var(--bg);
@@ -414,13 +359,29 @@
 /* 凭据卡：护念码只此一次露面，站方不留明文，故要显眼、要好抄 */
 .lian-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; }
 .lc-note { color: var(--ink-3); font-size: 0.78rem; text-align: center; letter-spacing: 0.1em; margin-bottom: 16px; }
-.lc-row { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; }
-.lc-row + .lc-row { border-top: 1px solid var(--line); }
-.lc-row span { color: var(--ink-3); font-size: 0.8rem; letter-spacing: 0.14em; }
-.lc-row b {
+/* 凭据卡的行叫 .lian-row 而非 .lc-row —— 后者是共修群留言行（chat.css）的类名。
+   两边撞名时，这里的 `.lc-row span`（特异性 0,1,1）会盖过那边的 `.lc-av`（0,1,0），
+   把留言头像里的法名染成灰褐，落在中深色的圆印上只剩 1.1:1，昼夜都看不清。 */
+.lian-row { display: flex; align-items: baseline; justify-content: space-between; padding: 9px 0; }
+.lian-row + .lian-row { border-top: 1px solid var(--line); }
+.lian-row span { color: var(--ink-3); font-size: 0.8rem; letter-spacing: 0.14em; }
+.lian-row b {
   color: var(--ink); font-size: 1.3rem; font-weight: 600;
   letter-spacing: 0.16em; font-variant-numeric: tabular-nums;
 }
 .lc-warn { color: var(--c-zhusha); font-size: 0.76rem; line-height: 1.8; margin-top: 14px; letter-spacing: 0.02em; }
 .lian-on { margin-bottom: 14px; }
-.lian-on .lc-row { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.lian-on .lian-row { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+
+/* 整页皆是念珠：轻触任意空处即计一声（原「静念」全屏模式的做法，如今就是本页）。
+   涟漪落在本页上，故此处须是定位祖先。
+
+   还须把本页撑满可用高度：内容只有半屏高，余下的空白原本落在 <main> 上，
+   点下去本页收不到，而「随处一点」恰恰是冲着那片空白去的（闭目时手落在哪儿都算）。 */
+#view-count { position: relative; }
+body[data-view="count"] main { display: flex; flex-direction: column; }
+body[data-view="count"] #view-count { flex: 1; }
+.cnt-tip {
+  margin-top: 26px; text-align: center;
+  color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.16em;
+}
