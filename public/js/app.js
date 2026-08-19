@@ -385,6 +385,7 @@ async function route() {
   } else {
     stopGongxiu();
     if (_wakeLock) releaseWake();
+    leaveNianfo();   // 离页即收：别把淡去的顶栏底栏带到别的页上
   }
   if (view !== 'reader') {
     document.body.classList.remove('rd-zen');   // 离开阅读器退出沉浸
@@ -1905,6 +1906,7 @@ function addNj(delta, opts = {}) {
       njUndo.push({ k, id: cur, n: d });
       if (njUndo.length > 60) njUndo.shift();
     }
+    if (!opts.silent) enterNianfo();   // 念起来了：杂物渐隐（见 enterNianfo）
     const tenth = Math.floor((t + d) / 10) > Math.floor(t / 10);
     const full = Math.floor((t + d) / 108) > Math.floor(t / 108);
     if (!opts.silent) playMuyu();
@@ -1914,6 +1916,11 @@ function addNj(delta, opts = {}) {
     // 满串时不补，免得与满串的双响挤成一团。
     if (tenth && !full && !opts.silent) {
       setTimeout(() => playMuyu(true), 90);
+      // 十念记数的节拍原先只走耳朵（轻响）与读屏（报数），眼睛这一路空着。
+      // 补上一记极轻的顿挫，视、听、读屏三条线落在同一个「十」上。
+      // 只在满十动：每声都动，念快时读作抖动。
+      const n = $('#njToday');
+      n.classList.remove('tick'); void n.offsetWidth; n.classList.add('tick');
       // 计数页整页皆可点，最宜闭目与视障莲友，而屏上的数字对读屏是关着的。
       // 每满十声报一次数，读屏用户才有十念记数的听觉支点；明眼人听不见，无扰。
       if (document.body.dataset.view === 'count') announce(`${t + d} 声`);
@@ -1941,6 +1948,32 @@ function undoNj(opts = {}) {
   if (!opts.quiet) { vibrate(10); toast(`已撤销 ${back} 声`); }
 }
 
+
+/* ── 入念即隐 ──
+   极简不是少放东西，是「该在的时候才在」。
+   这一页的用途是留下来念，而屏上常驻的两层顶栏与底部导航（共占屏高三成）
+   全是「离开这一页」的东西 —— 底部那条尤其要紧：整页皆可点，唯独最底下
+   四个入口点了就跳走，而闭目单手握机时，手掌正落在那一带。
+
+   故连念三声之后把它们连同辅助件一并淡去，只剩佛号、数字、一道环；
+   停手五秒再淡回。左上返回键不淡 —— 想走随时能走，不必等。
+   隐去要慢（0.6s，不打断），淡回要快（0.25s，要用了）。 */
+const NIANFO_ENTER = 3;      // 前两声还在试，第三声才算念起来了
+const NIANFO_REST = 5000;    // 停手多久算歇了
+let njRun = 0;
+let njRestT = 0;
+
+function enterNianfo() {
+  if (document.body.dataset.view !== 'count') return;
+  clearTimeout(njRestT);
+  njRestT = setTimeout(leaveNianfo, NIANFO_REST);
+  if (++njRun >= NIANFO_ENTER) document.body.setAttribute('data-nianfo', '');
+}
+
+function leaveNianfo() {
+  clearTimeout(njRestT); njRestT = 0; njRun = 0;
+  document.body.removeAttribute('data-nianfo');
+}
 
 function beadFull() {
   vibrate([24, 60, 36]);
@@ -2011,8 +2044,22 @@ function njStreak() {
 
 let njLastDay = null;
 
+/* 满一串之后把环无声归零 —— 归零本身不能走过渡。
+   原先 frac 在第 108 声直接回 0，而环上挂着 0.35s 过渡，
+   于是整圈朱砂逆时针退回起点（实测 350ms 内 99.1% → 0%）：
+   声音与震动在报「圆满」，画面却在演「退回」，恰是最该讲究的一刻。 */
+let ringDoneT = 0;
+const noMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+function ringZero() {
+  const ring = $('#njRing');
+  ring.style.transition = 'none';
+  ring.style.strokeDashoffset = String(RING_LEN);
+  void ring.getBoundingClientRect();   // 强制重排，免得归零也被过渡吃掉
+  ring.style.transition = '';
+}
+
 function renderCount() {
-  // 念佛计数器（极简）：当前功课 + 大念珠今日声数 + 本串/定课 + 累计/连续摘要
+  // 念佛计数器（极简）：当前功课 + 大念珠今日声数 + 本串进度（环）+ 定课一行
   const it = njItem();
   const k = bjDateKey();
   // 跨零点归零是对的，但不打一声招呼就清空，晚课念到深夜的人会以为白念了。
@@ -2026,11 +2073,39 @@ function renderCount() {
   const dayTotal = njDayTotal(k);
   $('#countName').textContent = it.name;
   $('#njToday').textContent = mine;
-  const frac = (mine % 108) / 108;
-  $('#njRing').style.strokeDasharray = String(RING_LEN);
-  $('#njRing').style.strokeDashoffset = String(RING_LEN * (1 - frac));
-  $('#countSub').textContent =
-    `本串 ${mine % 108} / 108　·　${nj.goal ? `定课 ${dayTotal} / ${nj.goal}` : '未设定课'}`;
+
+  const beads = mine % 108;
+  const ring = $('#njRing');
+  ring.style.strokeDasharray = String(RING_LEN);
+  if (mine > 0 && beads === 0) {
+    // 满串：先走满一整圈，停一拍，再整圈化开（CSS 的 ring-done），
+    // 化开之后才在看不见的时候归零 —— 全程没有一帧是倒着走的
+    clearTimeout(ringDoneT);
+    ring.style.strokeDashoffset = '0';
+    if (noMotion()) {
+      // 减弱动效下全局把 animation-duration 压到了 0.001ms，化开会瞬间完成，
+      // 那道环就要空白地晾满这 0.9 秒。此时不演这一出，走满即归零。
+      ringZero();
+    } else {
+      ring.classList.add('ring-done');
+      ringDoneT = setTimeout(() => { ringZero(); ring.classList.remove('ring-done'); ringDoneT = 0; }, 900);
+    }
+  } else {
+    // 化开还没走完就又念了一声（或撤销了）：立刻收尾，别让新的一声从整圈往回退
+    if (ringDoneT) { clearTimeout(ringDoneT); ringDoneT = 0; ring.classList.remove('ring-done'); ringZero(); }
+    ring.style.strokeDashoffset = String(RING_LEN * (1 - beads / 108));
+  }
+
+  // 本串进度原也写作「本串 6 / 108」，与念珠环是同一份数据，删去；
+  // 这一行自此只管定课一件事 —— 它本就是点开定课设置的那个键。
+  // 定课圆满之后再报分数，分母已经失效（曾出现「定课 4326 / 1080」）。
+  $('#countSub').textContent = !nj.goal ? '设每日定课'
+    : dayTotal >= nj.goal ? `定课已圆满 · ${dayTotal.toLocaleString()} 声`
+      : `定课 ${dayTotal.toLocaleString()} / ${nj.goal.toLocaleString()}`;
+
+  // 「轻触屏上任意处 · 计一声」是教一次的话，念到五百声还常驻着就只是噪声了。
+  // 不另存标记：累计声数本身就说明这人早已知道怎么念。
+  $('.cnt-tip').hidden = njGrandTotal() >= 500;
 }
 
 /* ── 木鱼音效（Web Audio 合成，无需音频文件） ──
@@ -2136,6 +2211,7 @@ let cntSheetMode = null;
 let calYM = null;
 
 function openCntSheet(mode, title) {
+  leaveNianfo();   // 开弹层就是不念了：先把淡去的顶栏底栏放回来
   cntSheetMode = mode;
   $('#cntSheetTitle').textContent = title;
   $('#cntSheet').hidden = false;
@@ -2155,30 +2231,41 @@ function renderPracticeSheet() {
   }).join('') + '<button class="sheet-add" data-add>＋ 添加功课</button>';
 }
 
+/* 器物开关的缺省：三项都默认开。
+   此表原先散在三处各写一遍，且写法互不相同 —— renderHubSheet 传 def=true、
+   playMuyu 读 !== '0'（即开），而点击处理器写的是 key !== 'fy.muyu'（即木鱼默认关）。
+   于是新用户想关木鱼时，第一下把「开」又写了一遍「开」，看着毫无反应，须点两下。
+   缺省只此一处，三边同读。 */
+const HUB_SWITCHES = [
+  ['fy.muyu', '木鱼音效'],
+  ['fy.wake', '屏幕常亮'],
+  ['fy.vib', '计数震动'],
+];
+function hubSwitchOn(key) {
+  const v = localStorage.getItem(key);
+  return v === null ? true : v === '1';
+}
+
 function renderHubSheet() {
-  // 功课中心：主屏只留计数，管理/定课/历史/回向与器物开关都收在这里
-  const tg = (key, def, label) => {
-    const v = localStorage.getItem(key);
-    const on = v === null ? def : v === '1';
-    return `<button data-hubtg="${key}"${on ? ' class="on"' : ''}>${label}</button>`;
+  /* 功课中心原有九项，逐条看下来有两项是重复的入口：
+     「功课管理」＝主屏点佛号，「每日定课」＝主屏点定课那一行 —— 同一个弹层，
+     而且主屏那条路更短。一件事一个入口，两行删去。
+     「重置今日」是唯一的破坏性操作，却与「回向偈」长得一模一样，
+     移进「念佛历史」—— 看数字与改数字本就该在一处。
+     余下六项分作两组：点得进去的留 ›，就地切换的不留，箭头自此开始有意思。 */
+  const sw = ([key, label]) => {
+    const on = hubSwitchOn(key);
+    return `<button class="sheet-row hub-sw" role="switch" aria-checked="${on}" data-hubtg="${key}">
+      <span class="pr-main"><span>${label}</span></span>
+      <span class="sw-state">${on ? '开' : '关'}</span></button>`;
   };
   $('#cntSheetBody').innerHTML = `
-    <button class="sheet-row" data-hub="practice"><span class="pr-main"><span>功课管理</span>
-      <small class="pr-stat">当前：${esc(njItem().name)} · 各功课单独计数</small></span><span class="hub-go">›</span></button>
-    <button class="sheet-row" data-hub="goal"><span class="pr-main"><span>每日定课</span>
-      <small class="pr-stat">${nj.goal ? nj.goal.toLocaleString() + ' 声' : '未设定课'}</small></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="history"><span class="pr-main"><span>念佛历史</span>
       <small class="pr-stat">累计 ${njGrandTotal().toLocaleString()} 声 · 连续 ${njStreak()} 日</small></span><span class="hub-go">›</span></button>
-    <button class="sheet-row" data-hub="lian"><span class="pr-main"><span>莲号 · 功课同步</span>
+    <button class="sheet-row" data-hub="lian"><span class="pr-main"><span>莲号</span>
       <small class="pr-stat">${lianStatLine()}</small></span><span class="hub-go">›</span></button>
     <button class="sheet-row" data-hub="huixiang"><span class="pr-main"><span>回向偈</span></span><span class="hub-go">›</span></button>
-    <button class="sheet-row" data-hub="reset"><span class="pr-main"><span>重置今日</span>
-      <small class="pr-stat">当前功课今日归零 · 累计同步扣除</small></span><span class="hub-go">›</span></button>
-    <div class="hub-toggles">
-      ${tg('fy.muyu', true, '木鱼音效')}
-      ${tg('fy.wake', true, '屏幕常亮')}
-      ${tg('fy.vib', true, '计数震动')}
-    </div>`;
+    <div class="hub-group">${HUB_SWITCHES.map(sw).join('')}</div>`;
 }
 /* ── 莲号：跨设备认回功课 ──
    计数原先只在本机 localStorage，清一次缓存、换一台手机就没了。
@@ -2240,6 +2327,18 @@ function showLianCard(lian, pass, title) {
     <button class="sheet-add" data-lian="done">已经存好了</button>`;
 }
 
+/* 重置今日＝当前功课今日归零（累计同步扣除），须确认。
+   主屏不留破坏性按键；它现在住在「念佛历史」的末尾 —— 看数字与改数字在一处。 */
+function njResetToday() {
+  const it = njItem();
+  const mine = (nj.days[bjDateKey()] || {})[it.id] || 0;
+  if (!mine) { toast('「' + it.name + '」今日尚未计数'); return; }
+  if (!window.confirm(`将「${it.name}」今日 ${mine} 声清零？\n累计将同步扣除这 ${mine} 声。`)) return;
+  addNj(-mine);
+  closeCntSheet();
+  toast('今日计数已清零');
+}
+
 function renderGoalSheet() {
   $('#cntSheetBody').innerHTML = '<div class="goal-grid">' + GOAL_PRESETS.map((g) =>
     `<button class="goal-cell${(nj.goal || 0) === g ? ' on' : ''}" data-goal="${g}">${g === 0 ? '不设' : g.toLocaleString()}</button>`).join('')
@@ -2277,7 +2376,10 @@ function renderCalendar() {
     <div class="cal-grid">${dows}${cells}</div>
     <p class="cal-total">本月共 ${monthTotal.toLocaleString()} 声</p>` +
     `<p class="cal-note">日界以北京时间零点为准${hasGone ? '<br>灰色日期的逐日明细只留 90 天 · 当月与累计总数都照旧算数' : ''}</p>`
-    + njYearsHtml();
+    + njYearsHtml()
+    // 重置今日从功课中心移来：看数字与改数字在一处。
+    // 它是这一带唯一的破坏性操作，故不与别项等重 —— 无边框、字小、退到最末。
+    + `<button class="cal-reset" data-hub="reset">重置今日计数</button>`;
 }
 
 /* 历年月账：逐日明细满 90 天即归档为月总数，永久留着。
@@ -3347,6 +3449,15 @@ function bindEvents() {
   // 大念珠仍是键盘与读屏的入口（它带 aria-label），指针那一路已被上面接走
   $('#btnBead').addEventListener('click', (e) => { if (e.detail === 0) hallTap(e); });
 
+  /* 入念之后顶栏底栏淡去且不可点，那两条带子便成了死区。
+     落在上面的触点在这里接住：唤回杂物，但不跳转 ——
+     想走的人再按一下就是了，而闭目念佛时手掌扫过底边不会把人带走。 */
+  document.addEventListener('pointerdown', (e) => {
+    if (!document.body.hasAttribute('data-nianfo')) return;
+    if (e.target?.closest?.('main')) return;   // 页内的触点归上面那路计数
+    leaveNianfo();
+  }, true);
+
   // 功课中心（管理 / 定课 / 历史 / 回向 / 器物开关）+ 主屏快捷入口
   $('#btnHub').addEventListener('click', () => { renderHubSheet(); openCntSheet('hub', '功课'); });
   $('#btnPractice').addEventListener('click', () => { renderPracticeSheet(); openCntSheet('practice', '功课管理'); });
@@ -3396,6 +3507,7 @@ function bindEvents() {
         if (calYM.m > 12) { calYM.m = 1; calYM.y++; }
         renderCalendar();
       }
+      if (e.target.closest('[data-hub="reset"]')) njResetToday();
     } else if (cntSheetMode === 'backup') {
       const b = e.target.closest('[data-bk]');
       if (!b) return;
@@ -3467,21 +3579,18 @@ function bindEvents() {
     } else if (cntSheetMode === 'hub') {
       const tg = e.target.closest('[data-hubtg]');
       if (tg) {
-        // 器物开关：木鱼默认关；常亮/震动默认开
+        // 器物开关：缺省一律走 hubSwitchOn（三项都默认开），不在这里另写一套
         const key = tg.dataset.hubtg;
-        const v = localStorage.getItem(key);
-        const on = v === null ? key !== 'fy.muyu' : v === '1';
+        const on = hubSwitchOn(key);
         setLS(key, on ? '0' : '1');
-        if (key === 'fy.muyu' && !on) playMuyu();
+        if (key === 'fy.muyu' && !on) playMuyu();          // 刚开：先响一记，让人听见开的是什么
         if (key === 'fy.wake') { if (on) releaseWake(); else requestWake(); }
         renderHubSheet();
         return;
       }
       const nav = e.target.closest('[data-hub]');
       if (!nav) return;
-      if (nav.dataset.hub === 'practice') { renderPracticeSheet(); openCntSheet('practice', '功课管理'); }
-      else if (nav.dataset.hub === 'goal') { renderGoalSheet(); openCntSheet('goal', '每日定课'); }
-      else if (nav.dataset.hub === 'history') {
+      if (nav.dataset.hub === 'history') {
         const p = bjParts(nowMs());
         calYM = { y: p.y, m: p.mo };
         renderCalendar(); openCntSheet('history', '念佛历史');
@@ -3490,16 +3599,6 @@ function bindEvents() {
       } else if (nav.dataset.hub === 'huixiang') {
         closeCntSheet();
         $('#hxOverlay').hidden = false;
-      } else if (nav.dataset.hub === 'reset') {
-        // 重置＝当前功课今日归零（累计同步扣除今日声数），须确认；
-        // 从主屏移进功课中心，主屏不留破坏性按键
-        const it = njItem();
-        const mine = (nj.days[bjDateKey()] || {})[it.id] || 0;
-        if (!mine) { toast('「' + it.name + '」今日尚未计数'); return; }
-        if (!window.confirm(`将「${it.name}」今日 ${mine} 声清零？\n累计将同步扣除这 ${mine} 声。`)) return;
-        addNj(-mine);
-        closeCntSheet();
-        toast('今日计数已清零');
       }
     } else if (cntSheetMode === 'lian') {
       const b = e.target.closest('[data-lian]');

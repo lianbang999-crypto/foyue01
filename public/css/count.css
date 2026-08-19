@@ -24,21 +24,44 @@
   position: relative; width: 168px; height: 168px; border: 0; background: transparent;
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.nj-bead:active { transform: scale(0.965); }
+/* 念珠原有 :active { scale(0.965) } —— 整页皆可点之后它已不是「那个键」而是显示器，
+   而点珠会缩、点空处不缩，同一个动作两种反馈。反馈统一交给涟漪：
+   它跟着手指落点走，比缩放更准，也处处等价。 */
 .nj-bead svg { width: 100%; height: 100%; display: block; }
-.nj-ring-bg { stroke: var(--line); }
-.nj-ring { stroke: var(--accent); transition: stroke-dashoffset 0.35s var(--e-io); }
+/* 空环表示的是「还没念的部分」，原先 4.5 实色（在 230px 珠上渲成 8.6px、
+   周长 650px），是整页着色面积最大的一笔 —— 页面上最重的记号是个占位符。
+   压成细线：没念时近乎空白，念一声长一分。 */
+.nj-ring-bg { stroke: var(--line); stroke-width: 2; opacity: 0.55; }
+/* 0.35s ease-io 在快念时（一秒四声、每 250ms 一个新目标）永远走在缓动中段，
+   跟手发黏。收到 0.18s linear：连续打断也不黏。 */
+.nj-ring { stroke: var(--accent); transition: stroke-dashoffset 0.18s linear; }
+/* 满一串：走满整圈，停一拍，再整圈化开（归零在化开之后无声进行，见 app.js ringZero） */
+.nj-ring.ring-done { animation: ring-done 0.9s var(--e-out) forwards; }
+@keyframes ring-done { 0%, 45% { opacity: 1; } 100% { opacity: 0; } }
 .nj-center {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 2px; pointer-events: none;
 }
 .nj-center strong { font-size: 2.2rem; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+/* 满十声轻顿一下 —— 与已有的轻响、读屏报数同一个节拍（印光大师十念记数法的支点）。
+   幅度只到 1.055：这是「记住第几位」的提示，不是庆祝。 */
+.nj-center strong.tick { animation: njTick 0.36s var(--e-out); }
+@keyframes njTick { 0%, 100% { transform: none; } 30% { transform: scale(1.055); } }
 .nj-center small { color: var(--ink-3); font-size: 0.72rem; letter-spacing: 0.18em; }
 .nj-stats { color: var(--ink-3); font-size: 0.8rem; margin-top: 10px; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
-.nj-actions { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+/* 补计与撤销：原是两枚描边药丸 —— 比它上面那行定课更重，重要性却更低。
+   全站的药丸语汇已在退场（问法的引导问题去了框，出处序号改了泥金数字），
+   这里一并退回文字键。内边距撑到 40 见方好按，再用负外边距吃掉多出的高度。 */
+.nj-actions { display: flex; gap: 6px; justify-content: center; margin-top: 4px; }
 .nj-actions button {
-  font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.82rem; padding: 6px 16px; cursor: pointer;
+  font-family: var(--serif); background: transparent; border: 0;
+  color: var(--ink-3); font-size: 0.8rem; letter-spacing: 0.1em;
+  padding: 12px 16px; margin: -2px 0; cursor: pointer;
+  transition: color var(--t-2) var(--e-out);
+}
+.nj-actions button:active { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .nj-actions button:hover { color: var(--accent); }
 }
 
 /* —— 念佛计数器 · 概览三格 —— */
@@ -119,7 +142,11 @@
   letter-spacing: 0.16em; text-indent: 0.16em;
 }
 .cnt-practice .caret { width: 20px; height: 20px; opacity: 0.65; }
-.cnt-hall .nj-bead-big { margin: 16px auto 0; overflow: hidden; border-radius: 50%; }
+/* 必须 display:block —— 念珠原是行内块，靠父级 text-align 居中，
+   全靠「230px 的珠 ＋ 那行长文案放不下一行」才各自成行。
+   定课行的文案一短（「设每日定课」才 90px），两者就并排挤成一行，
+   珠偏左、定课偏右。占一整行是它本来的意思，说清楚，不靠宽度巧合。 */
+.cnt-hall .nj-bead-big { display: block; margin: 16px auto 0; overflow: hidden; border-radius: 50%; }
 .bead-ripple {
   position: absolute; width: 12px; height: 12px; border-radius: 50%;
   background: var(--c-zhusha); opacity: 0.26;
@@ -127,12 +154,21 @@
   animation: bead-rip 0.6s ease-out forwards;
 }
 @keyframes bead-rip { to { transform: translate(-50%, -50%) scale(26); opacity: 0; } }
+/* 定课：这一行原先还兼报「本串 6 / 108」，与念珠环是同一份数据，已删。
+   自此它只管定课一件事，也就是它本来的职能 —— 点开即设。
+   可点的凭据是一道泥金细线（同 .page-title::after、.src-list 的界栏），
+   不另加箭头：全页只有三处不计数，都是控件，不必各自再挂一个符号。 */
 .cnt-goal {
-  display: inline-block; margin: 16px auto 0; background: transparent; border: 0; cursor: pointer;
+  display: inline-block; margin: 14px auto 0; background: transparent; border: 0; cursor: pointer;
   font-family: var(--serif); color: var(--ink-2); font-size: 0.86rem; letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums; padding: 5px 10px; border-radius: 8px;
+  font-variant-numeric: tabular-nums; padding: 8px 10px;
+  border-bottom: 1px solid var(--gold-line);
+  transition: color var(--t-2) var(--e-out);
 }
-.cnt-goal:active { background: var(--card); }
+.cnt-goal:active { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .cnt-goal:hover { color: var(--accent); }
+}
 .cnt-summary {
   display: block; margin: 24px auto 0; background: transparent; border: 0; cursor: pointer;
   font-family: var(--serif); color: var(--ink-3); font-size: 0.8rem; letter-spacing: 0.05em;
@@ -171,12 +207,27 @@
 .pr-stat { color: var(--ink-3); font-size: 0.74rem; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
 .sheet-row.on .pr-stat { color: var(--accent); }
 .hub-go { color: var(--ink-3); font-size: 1.05rem; }
-.hub-toggles { display: flex; gap: 8px; padding: 16px 0 6px; }
-.hub-toggles button {
-  flex: 1; font-family: var(--serif); background: transparent; border: 1px solid var(--line);
-  border-radius: 999px; color: var(--ink-2); font-size: 0.84rem; padding: 8px 0; cursor: pointer;
+/* 器物开关原是三枚横排药丸 —— 药丸最大的毛病是看着像三个可点的标签，
+   不像三个状态；而全站的药丸语汇本已在退场。改回行式，与上面三行同一套：
+   一行一事，右侧一个值。留白代替分隔线分组，不另加组标（那又是一行字）。
+   点得进去的留 ›，就地切换的不留 —— 箭头自此才开始有意思。 */
+.hub-group { margin-top: 22px; }
+.hub-sw:last-child { border-bottom: 0; }
+.sw-state {
+  flex: none; font-size: 0.88rem; letter-spacing: 0.14em; color: var(--ink-3);
+  transition: color var(--t-2) var(--e-out);
 }
-.hub-toggles button.on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-wash); }
+.hub-sw[aria-checked="true"] .sw-state { color: var(--c-zhusha); }
+/* 重置今日：这一带唯一的破坏性操作，不与别项等重 —— 无框、字小、退到最末 */
+.cal-reset {
+  display: block; margin: 26px auto 0; background: transparent; border: 0; cursor: pointer;
+  font-family: var(--serif); color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.08em;
+  padding: 10px 12px;
+}
+.cal-reset:active { color: var(--c-zhusha); }
+@media (hover: hover) and (pointer: fine) {
+  .cal-reset:hover { color: var(--c-zhusha); }
+}
 
 /* 计数页顶栏「功课」入口 */
 .cnt-hub {
@@ -385,3 +436,36 @@ body[data-view="count"] #view-count { flex: 1; }
   margin-top: 26px; text-align: center;
   color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.16em;
 }
+
+/* —— 入念即隐 ——
+   极简不是少放东西，是「该在的时候才在」。这一页的用途是留下来念，
+   而常驻的站顶栏与底部导航（合计占屏高三成）全是「离开这一页」的东西。
+   连念三声即淡去，停手五秒淡回（计时在 app.js 的 enterNianfo）。
+
+   底部导航还要连同不可点一并收掉：整页皆可计数，唯独最底下那四个入口
+   点了就跳走 —— 而闭目单手握机时，手掌正落在那一带。
+
+   左上返回键不淡：想走随时能走，不必先等五秒。
+   隐去慢（0.6s，不打断），淡回快（0.25s，要用了）。 */
+body[data-nianfo] .top,
+body[data-nianfo] .bottom-nav,
+body[data-nianfo] .cnt-hub,
+body[data-nianfo] .nj-actions,
+body[data-nianfo] .cnt-tip,
+body[data-nianfo] .cnt-gx {
+  /* 留一线可见而非归零：告诉人「东西还在，会回来」，不是页面坏了 */
+  opacity: 0.1;
+  transition: opacity 0.6s var(--e-out);
+  /* 淡到看不清就不该还能点 —— 隐形的可点物比看得见的干扰更坏。
+     落在这两条带上的触点由 app.js 接住，唤回而不跳转。 */
+  pointer-events: none;
+}
+.top, .bottom-nav, .cnt-hub, .nj-actions, .cnt-tip, .cnt-gx {
+  transition: opacity 0.25s var(--e-out);
+}
+/* 返回键（.cnt-back）在 .cnt-top 里，不在站顶栏 .top 里，故不受上面那组影响：
+   念到入定也随时按得着，不必先等五秒。
+
+   此处不另写 prefers-reduced-motion：chrome.css 的全局规则已把
+   transition-duration 压到 0.001ms !important，且它排在 count.css 之后，
+   再写一遍只是让人以为这里另有讲究。淡入淡出归零之后，隐与显照旧成立。 */
