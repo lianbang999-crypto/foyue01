@@ -1,0 +1,903 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+
+package com.looka.app.ui.todo
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import com.looka.app.data.LIST_PALETTE
+import com.looka.app.data.Task
+import com.looka.app.data.TaskList
+import com.looka.app.ui.common.ColorDot
+import com.looka.app.ui.common.ConfirmDialog
+import com.looka.app.ui.common.EmptyDeer
+import com.looka.app.ui.common.Hairline
+import com.looka.app.ui.common.LookaDatePicker
+import com.looka.app.ui.common.LookaTopBar
+import com.looka.app.ui.common.clearFieldColors
+import com.looka.app.ui.common.onColor
+import com.looka.app.ui.common.parseHex
+import com.looka.app.ui.common.plainClick
+import com.looka.app.ui.common.toast
+import com.looka.app.ui.theme.GrayText
+import com.looka.app.ui.theme.HolidayRed
+import com.looka.app.ui.theme.Ink
+import com.looka.app.ui.theme.LinkBlue
+import com.looka.app.ui.theme.PanelBg
+import com.looka.app.util.Fmt
+import com.looka.app.vm.LookaViewModel
+import kotlinx.coroutines.launch
+import com.looka.app.util.tr
+
+private val StarAmber = Color(0xFFF2B23D)
+
+// ==================== 清单详情页 ====================
+
+@Composable
+fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
+    val ctx = LocalContext.current
+    val lists by vm.taskLists.collectAsState()
+    val tasks by vm.tasks.collectAsState()
+    val list = lists.find { it.uid == uid }
+    if (list == null) {
+        LaunchedEffect(uid) { nav.popBackStack() }
+        return
+    }
+    // 手动顺序（sortOrder），支持长按拖拽重排
+    val open = remember(tasks, uid) {
+        tasks.filter { !it.done && it.listUid == uid }
+            .sortedWith(compareBy({ it.sortOrder }, { it.id }))
+    }
+    var input by remember { mutableStateOf("") }
+    var editTask by remember { mutableStateOf<Task?>(null) }
+    var editList by remember { mutableStateOf(false) }
+    var delList by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(list.name, onBack = { nav.popBackStack() }) {
+            ColorDot(parseHex(list.colorHex), 12.dp)
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Default.MoreVert, tr("更多"), tint = Ink)
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
+                    DropdownMenuItem(text = { Text(tr("编辑清单")) }, onClick = { menu = false; editList = true })
+                    DropdownMenuItem(
+                        text = { Text(if (list.archived) tr("取消归档") else tr("归档清单")) },
+                        onClick = {
+                            menu = false
+                            vm.updateTaskList(list.copy(archived = !list.archived))
+                            if (!list.archived) {
+                                toast(ctx, tr("已归档，可在「已完成清单」中找到"))
+                                nav.popBackStack()
+                            }
+                        }
+                    )
+                    if (list.deletable) {
+                        DropdownMenuItem(
+                            text = { Text(tr("删除清单"), color = HolidayRed) },
+                            onClick = { menu = false; delList = true }
+                        )
+                    }
+                }
+            }
+        }
+
+        // 快速添加
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = input, onValueChange = { input = it },
+                placeholder = { Text(tr("添加任务到「{0}」…", list.name), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
+                colors = clearFieldColors(),
+                singleLine = true,
+                // F1：回车即提交，且不收键盘 —— 连续加多条是这个输入框的核心场景
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                    if (input.isNotBlank()) { vm.addTask(input, listUid = uid); input = "" }
+                }),
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(PanelBg)
+            )
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = {
+                    if (input.isNotBlank()) {
+                        vm.addTask(input, listUid = uid); input = ""
+                    }
+                },
+                modifier = Modifier.size(40.dp).clip(CircleShape)
+                    .background(if (input.isNotBlank()) MaterialTheme.colorScheme.primary else PanelBg)
+            ) {
+                Icon(Icons.Default.Add, tr("添加"), tint = if (input.isNotBlank()) Color.White else GrayText)
+            }
+        }
+
+        // 拖拽重排状态：draggingUid + 视觉位移；松手写回 sortOrder
+        var draggingUid by remember { mutableStateOf<String?>(null) }
+        var dragOffset by remember { mutableStateOf(0f) }
+        val localOrder = remember { mutableStateListOf<String>() }
+        LaunchedEffect(open) {
+            if (draggingUid == null) {
+                localOrder.clear(); localOrder.addAll(open.map { it.uid })
+            }
+        }
+        val byUid = remember(open) { open.associateBy { it.uid } }
+        val rowHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 56.dp.toPx() }
+
+        LazyColumn(Modifier.weight(1f)) {
+            items(localOrder.toList(), key = { it }) { tuid ->
+                val t = byUid[tuid] ?: return@items
+                val isDragging = draggingUid == tuid
+                TaskRowV2(
+                    t,
+                    modifier = Modifier
+                        .animateItem()
+                        .graphicsLayer {
+                            translationY = if (isDragging) dragOffset else 0f
+                            shadowElevation = if (isDragging) 12f else 0f
+                        }
+                        .zIndexFix(if (isDragging) 1f else 0f)
+                        .reorderDrag(tuid,
+                            onStart = { draggingUid = tuid; dragOffset = 0f },
+                            onDelta = { dy ->
+                                dragOffset += dy
+                                val from = localOrder.indexOf(tuid)
+                                val shift = (dragOffset / rowHeightPx).toInt()
+                                val to = (from + shift).coerceIn(0, localOrder.size - 1)
+                                if (to != from) {
+                                    localOrder.removeAt(from)
+                                    localOrder.add(to, tuid)
+                                    dragOffset -= (to - from) * rowHeightPx
+                                }
+                            },
+                            onEnd = {
+                                draggingUid = null; dragOffset = 0f
+                                vm.reorderTasks(localOrder.toList())
+                            }),
+                    listName = null, listColor = parseHex(list.colorHex),
+                    onToggle = { vm.toggleTask(t) },
+                    onStar = { vm.setTaskStar(t, !t.starred) },
+                    onClick = { editTask = t }
+                ,
+                        onDelete = { vm.deleteTask(t) })
+            }
+            if (open.isEmpty()) {
+                item { EmptyDeer(tr("清单空空的"), hint = tr("在上方输入框写下第一条 ↑")) }
+            }
+            item {
+                if (open.size > 1) Text(
+                    tr("长按任务可拖动排序"),
+                    fontSize = 11.sp, color = GrayText,
+                    modifier = Modifier.padding(start = 16.dp, top = 6.dp)
+                )
+            }
+            item { Spacer(Modifier.height(60.dp)) }
+        }
+    }
+
+    editTask?.let { t ->
+        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
+    }
+    if (editList) ListEditDialog(
+        existing = list,
+        onSave = { n, c -> vm.updateTaskList(list.copy(name = n, colorHex = c)); editList = false },
+        onDismiss = { editList = false }
+    )
+    if (delList) ConfirmDialog(
+        title = tr("删除清单「{0}」？", list.name),
+        text = tr("清单内的任务将移入默认清单"),
+        onConfirm = {
+            delList = false
+            vm.deleteTaskList(list)
+            nav.popBackStack()
+        },
+        onDismiss = { delList = false }
+    )
+    UndoBar(vm)
+    }
+}
+
+// ==================== 星标 ====================
+
+@Composable
+fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
+    val lists by vm.taskLists.collectAsState()
+    val tasks by vm.tasks.collectAsState()
+    var editTask by remember { mutableStateOf<Task?>(null) }
+    val listMap = remember(lists) { lists.associateBy { it.uid } }
+    val groups = remember(tasks, lists) {
+        val order = lists.mapIndexed { i, l -> l.uid to i }.toMap()
+        tasks.filter { !it.done && it.starred }
+            .groupBy { it.listUid }
+            .toList()
+            .sortedBy { order[it.first] ?: 99 }
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("星标"), onBack = { nav.popBackStack() })
+        LazyColumn {
+            groups.forEach { (listUid, ts) ->
+                val l = listMap[listUid]
+                item {
+                    Row(
+                        Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ColorDot(parseHex(l?.colorHex ?: "#5C6670"), 9.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(l?.name ?: tr("清单"), fontSize = 12.sp, color = GrayText)
+                    }
+                }
+                items(ts, key = { it.uid }) { t ->
+                    TaskRowV2(
+                        t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
+                        onToggle = { vm.toggleTask(t) },
+                        onStar = { vm.setTaskStar(t, !t.starred) },
+                        onClick = { editTask = t }
+                    ,
+                        onDelete = { vm.deleteTask(t) })
+                }
+            }
+            if (groups.isEmpty()) {
+                item { EmptyDeer(tr("还没有星标任务，点任务右侧的 ☆ 收藏")) }
+            }
+            item { Spacer(Modifier.height(40.dp)) }
+        }
+    }
+    editTask?.let { t ->
+        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
+    }
+}
+
+// ==================== 未来 7 天 ====================
+
+@Composable
+fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
+    val lists by vm.taskLists.collectAsState()
+    val tasks by vm.tasks.collectAsState()
+    var editTask by remember { mutableStateOf<Task?>(null) }
+    val listMap = remember(lists) { lists.associateBy { it.uid } }
+    val today = Fmt.today()
+
+    val overdue = remember(tasks) {
+        tasks.filter { !it.done && it.dueDay in 0 until today }.sortedBy { it.dueDay }
+    }
+    val byDay = remember(tasks) {
+        (0..7).map { off ->
+            val d = today + off
+            d to tasks.filter { !it.done && it.dueDay == d }
+        }
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("未来 7 天"), onBack = { nav.popBackStack() })
+        LazyColumn {
+            if (overdue.isNotEmpty()) {
+                item {
+                    Text(
+                        tr("已逾期"), fontSize = 12.sp, color = HolidayRed,
+                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                items(overdue, key = { it.uid }) { t ->
+                    TaskRowV2(
+                        t, listName = listMap[t.listUid]?.name,
+                        listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                        onToggle = { vm.toggleTask(t) },
+                        onStar = { vm.setTaskStar(t, !t.starred) },
+                        onClick = { editTask = t }
+                    ,
+                        onDelete = { vm.deleteTask(t) })
+                }
+            }
+            byDay.forEach { (d, ts) ->
+                if (ts.isNotEmpty()) {
+                    item {
+                        Text(
+                            when (d) {
+                                today -> tr("今天 · {0}", Fmt.dateCn(d))
+                                today + 1 -> tr("明天 · {0}", Fmt.dateCn(d))
+                                else -> Fmt.dateCn(d)
+                            },
+                            fontSize = 12.sp, color = GrayText,
+                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                        )
+                    }
+                    items(ts, key = { it.uid }) { t ->
+                        TaskRowV2(
+                            t, listName = listMap[t.listUid]?.name,
+                            listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { editTask = t }
+                        ,
+                        onDelete = { vm.deleteTask(t) })
+                    }
+                }
+            }
+            if (overdue.isEmpty() && byDay.all { it.second.isEmpty() }) {
+                item { EmptyDeer(tr("未来 7 天没有带日期的任务")) }
+            }
+            item { Spacer(Modifier.height(40.dp)) }
+        }
+    }
+    editTask?.let { t ->
+        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
+    }
+}
+
+// ==================== 已完成任务 ====================
+
+@Composable
+fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
+    val lists by vm.taskLists.collectAsState()
+    val tasks by vm.tasks.collectAsState()
+    val listMap = remember(lists) { lists.associateBy { it.uid } }
+    var range by remember { mutableIntStateOf(1) }   // 0近1月 1近3月 2近1年 3全部
+
+    val nowMs = System.currentTimeMillis()
+    val cutoff = when (range) {
+        0 -> nowMs - 31L * 86400000L
+        1 -> nowMs - 93L * 86400000L
+        2 -> nowMs - 366L * 86400000L
+        else -> 0L
+    }
+    val groups = remember(tasks, range) {
+        tasks.filter { it.done }
+            .filter { range == 3 || (if (it.doneAt > 0) it.doneAt else it.updatedAt) >= cutoff }
+            .groupBy {
+                val ms = if (it.doneAt > 0) it.doneAt else it.updatedAt
+                java.time.Instant.ofEpochMilli(ms)
+                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()
+            }
+            .toList()
+            .sortedByDescending { it.first }
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("已完成任务"), onBack = { nav.popBackStack() })
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            listOf(tr("近1月"), tr("近3月"), tr("近1年"), tr("全部")).forEachIndexed { i, label ->
+                Box(
+                    Modifier
+                        .padding(horizontal = 4.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(if (range == i) Ink else PanelBg)
+                        .plainClick { range = i }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(label, fontSize = 12.sp, color = if (range == i) Color.White else Ink)
+                }
+            }
+        }
+        Hairline()
+        LazyColumn {
+            groups.forEach { (day, ts) ->
+                item {
+                    Text(
+                        Fmt.dateCn(day), fontSize = 12.sp, color = GrayText,
+                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                items(ts, key = { it.uid }) { t ->
+                    TaskRowV2(
+                        t, listName = listMap[t.listUid]?.name,
+                        listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                        onToggle = { vm.toggleTask(t) },
+                        onStar = { vm.setTaskStar(t, !t.starred) },
+                        onClick = { }
+                    ,
+                        onDelete = { vm.deleteTask(t) })
+                }
+            }
+            if (groups.isEmpty()) {
+                item { EmptyDeer(tr("这个时间段还没有完成的任务")) }
+            }
+            item { Spacer(Modifier.height(40.dp)) }
+        }
+    }
+}
+
+// ==================== 已完成（归档）清单 ====================
+
+@Composable
+fun DoneListsScreen(vm: LookaViewModel, nav: NavHostController) {
+    val lists by vm.taskLists.collectAsState()
+    val archived = remember(lists) { lists.filter { it.archived } }
+    var delList by remember { mutableStateOf<TaskList?>(null) }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("已完成清单"), onBack = { nav.popBackStack() })
+        LazyColumn {
+            items(archived, key = { it.uid }) { l ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .plainClick { nav.navigate("list/${l.uid}") }
+                        .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ColorDot(parseHex(l.colorHex), 13.dp)
+                    Spacer(Modifier.width(14.dp))
+                    Text(l.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { vm.updateTaskList(l.copy(archived = false)) }) {
+                        Text(tr("恢复"), fontSize = 13.sp, color = LinkBlue)
+                    }
+                    if (l.deletable) {
+                        TextButton(onClick = { delList = l }) {
+                            Text(tr("删除"), fontSize = 13.sp, color = HolidayRed)
+                        }
+                    }
+                }
+                Hairline(Modifier.padding(start = 16.dp))
+            }
+            if (archived.isEmpty()) {
+                item { EmptyDeer(tr("完成一个清单后，把它归档收在这里")) }
+            }
+        }
+    }
+
+    delList?.let { l ->
+        ConfirmDialog(
+            title = tr("删除清单「{0}」？", l.name),
+            text = tr("清单内的任务将移入默认清单"),
+            onConfirm = { vm.deleteTaskList(l); delList = null },
+            onDismiss = { delList = null }
+        )
+    }
+}
+
+// ==================== 共用：任务行 / 编辑弹窗 / 清单弹窗 ====================
+
+@Composable
+fun TaskRowV2(
+    t: Task,
+    modifier: Modifier = Modifier,
+    listName: String?,
+    listColor: Color,
+    onToggle: () -> Unit,
+    onStar: () -> Unit,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null   // F5：长按删除（配合 5 秒撤销条，误触也不怕）
+) {
+    val scale = remember { Animatable(1f) }
+    var firstDraw by remember { mutableStateOf(true) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    LaunchedEffect(t.done) {
+        if (firstDraw) {
+            firstDraw = false
+        } else if (t.done) {
+            // F7：完成任务给一次轻震 —— "高级感"最便宜的来源
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            scale.snapTo(1.35f)
+            scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+        }
+    }
+    Row(
+        modifier
+            .fillMaxWidth()
+            .plainClick(onClick)
+            .padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (t.done) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            if (t.done) tr("取消完成") else tr("完成"),
+            tint = if (t.done) MaterialTheme.colorScheme.primary else Color(0xFFC0C3C0),
+            modifier = Modifier.size(22.dp)
+                .graphicsLayer { scaleX = scale.value; scaleY = scale.value }
+                .plainClick(onToggle)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                t.title, fontSize = 15.sp,
+                color = if (t.done) GrayText else Ink,
+                textDecoration = if (t.done) TextDecoration.LineThrough else null,
+                maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (listName != null) {
+                    ColorDot(listColor, 7.dp)
+                    Spacer(Modifier.width(4.dp))
+                    Text(listName, fontSize = 10.sp, color = GrayText)
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (t.dueDay >= 0) {
+                    Text(
+                        Fmt.dateCn(t.dueDay), fontSize = 10.sp,
+                        color = if (!t.done && t.dueDay < Fmt.today()) HolidayRed else GrayText
+                    )
+                }
+            }
+        }
+        IconButton(onClick = onStar, modifier = Modifier.size(38.dp)) {
+            Icon(
+                if (t.starred) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                tr("星标"),
+                tint = if (t.starred) StarAmber else Color(0xFFC9CCC9),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+/** 任务编辑弹窗：标题 / 清单 / 截止 / 备注 + AI 拆解 */
+@Composable
+fun TaskEditDialog(
+    vm: LookaViewModel,
+    t: Task,
+    lists: List<TaskList>,
+    onDismiss: () -> Unit
+) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var title by remember(t) { mutableStateOf(t.title) }
+    var due by remember(t) { mutableStateOf(t.dueDay) }
+    var memo by remember(t) { mutableStateOf(t.memo) }
+    var listUid by remember(t) { mutableStateOf(t.listUid) }
+    var dueDlg by remember { mutableStateOf(false) }
+    var listMenu by remember { mutableStateOf(false) }
+    var aiBusy by remember { mutableStateOf(false) }
+    var aiErr by remember { mutableStateOf<String?>(null) }
+    val subtasks = remember { mutableStateListOf<String>() }
+    val subChecked = remember { mutableStateListOf<Int>() }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("编辑任务"), fontSize = 17.sp) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                OutlinedTextField(
+                    value = title, onValueChange = { title = it },
+                    label = { Text(tr("任务名")) }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // 清单
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(tr("清单"), fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    val cur = lists.find { it.uid == listUid }
+                    Box {
+                        Row(
+                            Modifier.plainClick { listMenu = true },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            ColorDot(parseHex(cur?.colorHex ?: "#5C6670"), 9.dp)
+                            Spacer(Modifier.width(6.dp))
+                            Text(cur?.name ?: tr("我的清单"), fontSize = 14.sp)
+                        }
+                        DropdownMenu(
+                            expanded = listMenu, onDismissRequest = { listMenu = false },
+                            containerColor = Color.White
+                        ) {
+                            lists.forEach { l ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            ColorDot(parseHex(l.colorHex), 9.dp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(l.name)
+                                        }
+                                    },
+                                    onClick = { listUid = l.uid; listMenu = false }
+                                )
+                            }
+                        }
+                    }
+                }
+                // 截止
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(tr("截止日期"), fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        if (due >= 0) Fmt.dateCn(due) else tr("无"),
+                        fontSize = 14.sp, color = if (due >= 0) Ink else GrayText,
+                        modifier = Modifier.plainClick { dueDlg = true }
+                    )
+                    if (due >= 0) {
+                        Text(
+                            tr("  清除"), fontSize = 13.sp, color = LinkBlue,
+                            modifier = Modifier.plainClick { due = -1L }
+                        )
+                    }
+                }
+                // 推迟快捷（拖延一下也没关系 🦌）
+                Row(Modifier.padding(top = 6.dp)) {
+                    val today = Fmt.today()
+                    listOf(
+                        tr("今天") to today,
+                        tr("明天") to today + 1,
+                        tr("+1天") to (if (due >= 0) due + 1 else today + 1),
+                        tr("下周一") to (today + (8 - Fmt.d(today).dayOfWeek.value))
+                    ).forEach { (label, d0) ->
+                        Box(
+                            Modifier.padding(end = 6.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (due == d0) Ink else PanelBg)
+                                .plainClick { due = d0 }
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(label, fontSize = 11.sp, color = if (due == d0) Color.White else Ink)
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = memo, onValueChange = { memo = it },
+                    label = { Text(tr("备注")) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                )
+                // AI 拆解
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        tr("✨ AI 拆解为子任务"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.plainClick {
+                            if (!aiBusy && title.isNotBlank()) {
+                                scope.launch {
+                                    aiBusy = true; aiErr = null
+                                    subtasks.clear(); subChecked.clear()
+                                    try {
+                                        val list = vm.aiSubtasks(title + if (memo.isNotBlank()) "（$memo）" else "")
+                                        if (list.isEmpty()) aiErr = tr("拆解失败，再试一次")
+                                        else {
+                                            subtasks.addAll(list)
+                                            subChecked.addAll(list.indices)
+                                        }
+                                    } catch (e: Exception) {
+                                        aiErr = e.message ?: tr("网络异常")
+                                    } finally {
+                                        aiBusy = false
+                                    }
+                                }
+                            }
+                        }
+                    )
+                    if (aiBusy) {
+                        Spacer(Modifier.width(8.dp))
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp, modifier = Modifier.size(14.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+                aiErr?.let { Text(it, fontSize = 12.sp, color = HolidayRed) }
+                if (subtasks.isNotEmpty()) {
+                    subtasks.forEachIndexed { i, s ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(
+                                checked = subChecked.contains(i),
+                                onCheckedChange = { if (it) subChecked.add(i) else subChecked.remove(i) }
+                            )
+                            Text(s, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                    TextButton(onClick = {
+                        val sel = subtasks.filterIndexed { i, _ -> subChecked.contains(i) }
+                        sel.forEach { vm.addTask(it, due, listUid = listUid) }
+                        toast(ctx, tr("已添加 {0} 个子任务", sel.size))
+                        onDismiss()
+                    }, enabled = subChecked.isNotEmpty()) {
+                        Text(tr("添加 {0} 个子任务", subChecked.size), color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { vm.deleteTask(t); onDismiss() }) {
+                    Text(tr("删除"), color = HolidayRed)
+                }
+                TextButton(
+                    onClick = {
+                        vm.updateTask(
+                            t.copy(title = title.trim(), dueDay = due, memo = memo.trim(), listUid = listUid)
+                        )
+                        onDismiss()
+                    },
+                    enabled = title.isNotBlank()
+                ) { Text(tr("保存")) }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) } },
+        containerColor = Color.White
+    )
+
+    if (dueDlg) LookaDatePicker(
+        initialDay = if (due >= 0) due else Fmt.today(),
+        onPick = { due = it },
+        onDismiss = { dueDlg = false }
+    )
+}
+
+/** 新建/编辑清单：名称 + 48 色大色板（Lifebear 式） */
+@Composable
+fun ListEditDialog(
+    existing: TaskList?,
+    onSave: (String, String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember(existing) { mutableStateOf(existing?.name ?: "") }
+    var color by remember(existing) { mutableStateOf(existing?.colorHex ?: LIST_PALETTE[30]) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (existing == null) tr("新建清单") else tr("编辑清单"), fontSize = 17.sp) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name, onValueChange = { name = it },
+                    placeholder = { Text(tr("清单名，如：购物 / 学习")) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    LIST_PALETTE.chunked(6).forEach { row ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            row.forEach { hex ->
+                                Box(
+                                    Modifier.size(30.dp).clip(CircleShape)
+                                        .background(parseHex(hex))
+                                        .border(
+                                            width = if (color == hex) 2.5.dp else 0.8.dp,
+                                            color = if (color == hex) Ink
+                                                    else if (parseHex(hex).luminance() > 0.82f) Color(0xFFD8D8D8)
+                                                    else Color.Transparent,
+                                            shape = CircleShape
+                                        )
+                                        .plainClick { color = hex },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (color == hex) {
+                                        Icon(
+                                            Icons.Default.CheckCircle, null,
+                                            // 亮色块上白勾会隐形，按亮度选色
+                                            tint = onColor(parseHex(hex)), modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            repeat(6 - row.size) { Spacer(Modifier.size(30.dp)) }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { if (name.isNotBlank()) onSave(name.trim(), color) },
+                enabled = name.isNotBlank()
+            ) { Text(tr("保存")) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) } },
+        containerColor = Color.White
+    )
+}
+
+
+/** zIndex 简封装（拖拽行浮在最上层） */
+private fun Modifier.zIndexFix(z: Float): Modifier = this.then(androidx.compose.ui.Modifier.zIndex(z))
+
+/** 长按拖拽重排手势 */
+private fun Modifier.reorderDrag(
+    key: Any?,
+    onStart: () -> Unit,
+    onDelta: (Float) -> Unit,
+    onEnd: () -> Unit
+): Modifier = this.pointerInput(key) {
+    detectDragGesturesAfterLongPress(
+        onDragStart = { onStart() },
+        onDrag = { change, amount ->
+            change.consume()
+            onDelta(amount.y)
+        },
+        onDragEnd = { onEnd() },
+        onDragCancel = { onEnd() }
+    )
+}
+
+/** E1：删除后 5 秒可撤销的浮条 —— 解决"手滑删错"这个最恐慌的场景 */
+@Composable
+fun UndoBar(vm: LookaViewModel) {
+    val t = vm.undoTask ?: return
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+        Row(
+            Modifier.padding(bottom = 18.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Ink)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                tr("已删除「{0}」", t.title.take(10)),
+                fontSize = 13.sp, color = Color.White
+            )
+            Spacer(Modifier.width(14.dp))
+            Text(
+                tr("撤销"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF9FD39A),
+                modifier = Modifier.plainClick { vm.undoDeleteTask() }
+            )
+        }
+    }
+}

@@ -1,0 +1,49 @@
+{
+  // Looka · 可爱版九色鹿 —— Cloudflare Workers 配置
+  // 账号体系与 zhi.foyue.org（自知录）共用同一个用户库 rixing-db；
+  // Looka 自己的数据（同步条目 / 会话 / AI 用量 / 订阅 / 限流 / 邀请码）放在 looka-db。
+  "name": "looka",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-04-01",
+  "assets": { "directory": "./public" },
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "looka.foyue.org", "custom_domain": true }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "looka-db",
+      "database_id": "086f0ba9-853a-493a-9012-90d87f47933f"
+    },
+    {
+      "binding": "AUTH_DB",
+      "database_name": "rixing-db",
+      "database_id": "790c4e52-07d0-40ad-a21f-402a4cbf85ff"
+    }
+  ],
+  // APK 自更新分发（/dl/looka-latest.apk）
+  "r2_buckets": [
+    { "binding": "APK", "bucket_name": "looka-apk" }
+  ],
+  // 每天北京时间 03:17 清理：过期会话 / 限流窗口 / 重置令牌 / 90 天墓碑 / 崩溃日志截尾
+  "triggers": { "crons": ["17 19 * * *"] },
+  "vars": {
+    // 国内站 .cn（国际站 .com 对 CF 出口有风控，切勿改回）
+    "SILICONFLOW_BASE": "https://api.siliconflow.cn/v1",
+    "CHAT_MODEL": "Qwen/Qwen3.5-35B-A3B",
+    "PREMIUM_MODEL": "openai/gpt-5.6-luna",
+    "FLAGSHIP_MODEL": "openai/gpt-5.5",
+    "TRIAL_DAYS": "365",
+    "CHAT_MODEL_FALLBACK": "Qwen/Qwen3.5-9B",
+    // 注册闸门：open（开放）| invite（邀请码内测）| closed（关闭）
+    "REGISTER_MODE": "open",
+    // AI 对话不限次；公平使用限速（防滥用，正常用户碰不到）
+    "AI_RPM": "10",
+    "AI_RPD": "100",
+    // 发件人（Resend 侧需先完成 foyue.org 域名 DNS 验证）
+    "MAIL_FROM": "Looka <noreply@foyue.org>"
+  },
+  // 密钥（wrangler secret put）：SILICONFLOW_KEY / RESEND_API_KEY / ADMIN_KEY
+  "observability": { "enabled": true }
+}

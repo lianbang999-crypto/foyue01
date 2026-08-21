@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 自更新 APK 落在应用私有下载目录 -->
+    <external-files-path name="downloads" path="Download/"/>
+</paths>

@@ -1,0 +1,385 @@
+{
+  "collection": "base",
+  "count": 42,
+  "recommended_app_use": "256 WebP for Flutter/modern apps; 256 PNG for widest compatibility; 128 PNG for compact previews.",
+  "items": [
+    {
+      "id": "01_mood_happy",
+      "file": "01_mood_happy.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 53778
+    },
+    {
+      "id": "02_mood_love",
+      "file": "02_mood_love.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 50169
+    },
+    {
+      "id": "03_mood_calm",
+      "file": "03_mood_calm.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 48024
+    },
+    {
+      "id": "04_mood_sad_cloud",
+      "file": "04_mood_sad_cloud.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 43929
+    },
+    {
+      "id": "05_mood_angry",
+      "file": "05_mood_angry.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 56421
+    },
+    {
+      "id": "06_mood_excited",
+      "file": "06_mood_excited.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 54048
+    },
+    {
+      "id": "07_life_coffee",
+      "file": "07_life_coffee.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 55554
+    },
+    {
+      "id": "08_life_gift",
+      "file": "08_life_gift.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 61404
+    },
+    {
+      "id": "09_life_birthday",
+      "file": "09_life_birthday.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 61985
+    },
+    {
+      "id": "10_life_meal",
+      "file": "10_life_meal.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 58661
+    },
+    {
+      "id": "11_life_movie",
+      "file": "11_life_movie.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 58051
+    },
+    {
+      "id": "12_life_plant",
+      "file": "12_life_plant.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 70678
+    },
+    {
+      "id": "13_work_meeting",
+      "file": "13_work_meeting.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 59283
+    },
+    {
+      "id": "14_work_briefcase",
+      "file": "14_work_briefcase.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 49613
+    },
+    {
+      "id": "15_work_notes",
+      "file": "15_work_notes.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 58641
+    },
+    {
+      "id": "16_work_morning",
+      "file": "16_work_morning.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 63655
+    },
+    {
+      "id": "17_work_night",
+      "file": "17_work_night.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 69351
+    },
+    {
+      "id": "18_work_deadline",
+      "file": "18_work_deadline.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 50318
+    },
+    {
+      "id": "19_health_run",
+      "file": "19_health_run.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 52377
+    },
+    {
+      "id": "20_health_meditation",
+      "file": "20_health_meditation.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 55306
+    },
+    {
+      "id": "21_health_strength",
+      "file": "21_health_strength.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 37809
+    },
+    {
+      "id": "22_health_heart",
+      "file": "22_health_heart.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 52498
+    },
+    {
+      "id": "23_health_badminton",
+      "file": "23_health_badminton.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 62250
+    },
+    {
+      "id": "24_health_bicycle",
+      "file": "24_health_bicycle.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 57279
+    },
+    {
+      "id": "25_travel_luggage",
+      "file": "25_travel_luggage.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 59218
+    },
+    {
+      "id": "26_travel_ticket",
+      "file": "26_travel_ticket.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 49984
+    },
+    {
+      "id": "27_travel_car",
+      "file": "27_travel_car.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 49488
+    },
+    {
+      "id": "28_travel_camera",
+      "file": "28_travel_camera.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 55054
+    },
+    {
+      "id": "29_entertainment_music",
+      "file": "29_entertainment_music.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 46307
+    },
+    {
+      "id": "30_entertainment_game",
+      "file": "30_entertainment_game.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 51901
+    },
+    {
+      "id": "31_festival_lantern",
+      "file": "31_festival_lantern.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 56830
+    },
+    {
+      "id": "32_festival_mooncake",
+      "file": "32_festival_mooncake.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 67371
+    },
+    {
+      "id": "33_festival_zongzi",
+      "file": "33_festival_zongzi.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 61454
+    },
+    {
+      "id": "34_festival_fireworks",
+      "file": "34_festival_fireworks.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 66908
+    },
+    {
+      "id": "35_schedule_rest",
+      "file": "35_schedule_rest.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 58893
+    },
+    {
+      "id": "36_schedule_work",
+      "file": "36_schedule_work.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 60325
+    },
+    {
+      "id": "37_deer_nine_color",
+      "file": "37_deer_nine_color.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 67391
+    },
+    {
+      "id": "38_theme_lotus",
+      "file": "38_theme_lotus.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 56525
+    },
+    {
+      "id": "39_theme_cloud",
+      "file": "39_theme_cloud.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 42037
+    },
+    {
+      "id": "40_theme_mountain",
+      "file": "40_theme_mountain.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 48377
+    },
+    {
+      "id": "41_theme_moon",
+      "file": "41_theme_moon.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 56920
+    },
+    {
+      "id": "42_theme_wave",
+      "file": "42_theme_wave.png",
+      "width": 256,
+      "height": 256,
+      "format": "png",
+      "alpha": true,
+      "bytes": 57478
+    }
+  ]
+}

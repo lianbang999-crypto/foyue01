@@ -1,0 +1,50 @@
+{
+  "theme_id": "looka_theme_niuniu_v1",
+  "name": "LOOKA NiuNiu Theme Stamps",
+  "display_name_zh": "LOOKA 牛来主题印章",
+  "description": "LOOKA 官方 Demo 主题包：牛牛角色的 24 枚生活/情绪/效率贴纸。",
+  "style": "LOOKA Cute Lifestyle Sticker",
+  "count": 24,
+  "size": {
+    "width": 128,
+    "height": 128
+  },
+  "format": "webp",
+  "background": "transparent",
+  "default_locale": "zh-CN",
+  "categories": [
+    "emotion",
+    "life",
+    "productivity",
+    "event",
+    "seasonal"
+  ],
+  "cover_asset_id": "looka_niuniu_happy_v1",
+  "assets": [
+    "looka_niuniu_happy_v1",
+    "looka_niuniu_love_v1",
+    "looka_niuniu_sleepy_v1",
+    "looka_niuniu_sad_v1",
+    "looka_niuniu_angry_v1",
+    "looka_niuniu_excited_v1",
+    "looka_niuniu_coffee_v1",
+    "looka_niuniu_gift_v1",
+    "looka_niuniu_birthday_cake_v1",
+    "looka_niuniu_reading_v1",
+    "looka_niuniu_notes_v1",
+    "looka_niuniu_work_laptop_v1",
+    "looka_niuniu_checklist_done_v1",
+    "looka_niuniu_meeting_v1",
+    "looka_niuniu_shopping_v1",
+    "looka_niuniu_travel_v1",
+    "looka_niuniu_camera_v1",
+    "looka_niuniu_music_v1",
+    "looka_niuniu_exercise_v1",
+    "looka_niuniu_yoga_meditation_v1",
+    "looka_niuniu_eating_v1",
+    "looka_niuniu_rest_day_v1",
+    "looka_niuniu_moon_night_v1",
+    "looka_niuniu_celebration_v1"
+  ],
+  "version": 1
+}

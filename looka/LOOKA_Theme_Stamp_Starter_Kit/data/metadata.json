@@ -1,0 +1,626 @@
+[
+  {
+    "asset_id": "looka_niuniu_happy_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Happy",
+    "display_name_zh": "开心",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "01_Happy.webp",
+    "path": "assets/stamps/01_Happy.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "happy",
+      "cheerful",
+      "cute",
+      "greeting",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_love_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Love",
+    "display_name_zh": "爱心",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "02_Love.webp",
+    "path": "assets/stamps/02_Love.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "love",
+      "heart",
+      "affection",
+      "cute",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_sleepy_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Sleepy",
+    "display_name_zh": "困困",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "03_Sleepy.webp",
+    "path": "assets/stamps/03_Sleepy.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "sleepy",
+      "night",
+      "rest",
+      "cute",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_sad_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Sad",
+    "display_name_zh": "难过",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "04_Sad.webp",
+    "path": "assets/stamps/04_Sad.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "sad",
+      "tear",
+      "mood",
+      "cute",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_angry_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Angry",
+    "display_name_zh": "生气",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "05_Angry.webp",
+    "path": "assets/stamps/05_Angry.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "angry",
+      "mood",
+      "emotion",
+      "cute",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_excited_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Excited",
+    "display_name_zh": "兴奋",
+    "category": "emotion",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "06_Excited.webp",
+    "path": "assets/stamps/06_Excited.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "excited",
+      "celebration",
+      "energy",
+      "cute",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_coffee_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Coffee",
+    "display_name_zh": "咖啡",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "07_Coffee.webp",
+    "path": "assets/stamps/07_Coffee.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "coffee",
+      "morning",
+      "drink",
+      "lifestyle",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_gift_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Gift",
+    "display_name_zh": "礼物",
+    "category": "event",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "08_Gift.webp",
+    "path": "assets/stamps/08_Gift.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "gift",
+      "present",
+      "surprise",
+      "celebration",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_birthday_cake_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Birthday Cake",
+    "display_name_zh": "生日蛋糕",
+    "category": "event",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "09_Birthday_Cake.webp",
+    "path": "assets/stamps/09_Birthday_Cake.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "birthday",
+      "cake",
+      "party",
+      "celebration",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_reading_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Reading",
+    "display_name_zh": "阅读",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "10_Reading.webp",
+    "path": "assets/stamps/10_Reading.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "reading",
+      "book",
+      "study",
+      "quiet",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_notes_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Notes",
+    "display_name_zh": "记事",
+    "category": "productivity",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "11_Notes.webp",
+    "path": "assets/stamps/11_Notes.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "notes",
+      "writing",
+      "study",
+      "productivity",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_work_laptop_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Work Laptop",
+    "display_name_zh": "工作电脑",
+    "category": "productivity",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "12_Work_Laptop.webp",
+    "path": "assets/stamps/12_Work_Laptop.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "work",
+      "laptop",
+      "office",
+      "productivity",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_checklist_done_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Checklist Done",
+    "display_name_zh": "任务完成",
+    "category": "productivity",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "13_Checklist_Done.webp",
+    "path": "assets/stamps/13_Checklist_Done.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "checklist",
+      "done",
+      "task",
+      "productivity",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_meeting_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Meeting",
+    "display_name_zh": "会议",
+    "category": "productivity",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "14_Meeting.webp",
+    "path": "assets/stamps/14_Meeting.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "meeting",
+      "call",
+      "online",
+      "work",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_shopping_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Shopping",
+    "display_name_zh": "购物",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "15_Shopping.webp",
+    "path": "assets/stamps/15_Shopping.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "shopping",
+      "bags",
+      "outing",
+      "lifestyle",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_travel_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Travel",
+    "display_name_zh": "旅行",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "16_Travel.webp",
+    "path": "assets/stamps/16_Travel.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "travel",
+      "trip",
+      "vacation",
+      "luggage",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_camera_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Camera",
+    "display_name_zh": "拍照",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "17_Camera.webp",
+    "path": "assets/stamps/17_Camera.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "camera",
+      "photo",
+      "memory",
+      "lifestyle",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_music_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Music",
+    "display_name_zh": "音乐",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "18_Music.webp",
+    "path": "assets/stamps/18_Music.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "music",
+      "headphones",
+      "relax",
+      "audio",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_exercise_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Exercise",
+    "display_name_zh": "运动",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "19_Exercise.webp",
+    "path": "assets/stamps/19_Exercise.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "exercise",
+      "fitness",
+      "health",
+      "lifestyle",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_yoga_meditation_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Yoga Meditation",
+    "display_name_zh": "瑜伽冥想",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "20_Yoga_Meditation.webp",
+    "path": "assets/stamps/20_Yoga_Meditation.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "yoga",
+      "meditation",
+      "mindfulness",
+      "wellness",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_eating_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Eating",
+    "display_name_zh": "吃饭",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "21_Eating.webp",
+    "path": "assets/stamps/21_Eating.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "eating",
+      "meal",
+      "food",
+      "lifestyle",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_rest_day_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Rest Day",
+    "display_name_zh": "休息日",
+    "category": "life",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "22_Rest_Day.webp",
+    "path": "assets/stamps/22_Rest_Day.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "rest",
+      "dayoff",
+      "blanket",
+      "relax",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_moon_night_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Moon Night",
+    "display_name_zh": "月夜",
+    "category": "seasonal",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "23_Moon_Night.webp",
+    "path": "assets/stamps/23_Moon_Night.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "night",
+      "moon",
+      "sleep",
+      "dream",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  },
+  {
+    "asset_id": "looka_niuniu_celebration_v1",
+    "theme_id": "looka_theme_niuniu_v1",
+    "name": "Celebration",
+    "display_name_zh": "庆祝",
+    "category": "event",
+    "theme": "NiuNiu",
+    "style": "LOOKA Cute Lifestyle Sticker",
+    "file_name": "24_Celebration.webp",
+    "path": "assets/stamps/24_Celebration.webp",
+    "size": {
+      "width": 128,
+      "height": 128
+    },
+    "format": "webp",
+    "background": "transparent",
+    "tags": [
+      "celebration",
+      "party",
+      "confetti",
+      "festival",
+      "calendar"
+    ],
+    "status": "ready",
+    "version": 1
+  }
+]

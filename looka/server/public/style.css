@@ -1,0 +1,447 @@
+/* Looka 网页端 —— 白底工具感 + 九色主题（与 App 同视觉语言） */
+:root {
+  --primary: #55B04B;
+  --container: #EAF6E7;
+  --on-container: #1E4D19;
+  --ink: #1B1B1F;
+  --gray: #8A8F8E;
+  --hair: #ECECEC;
+  --panel: #F7F8F7;
+  --dim: #F2F3F2;
+  --red: #E0504A;
+  --sat: #4A7DDC;
+  --dark: #3F3F46;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  color: var(--ink); background: var(--paper, #fff); font-size: 14px;
+}
+.hidden { display: none !important; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select {
+  font-family: inherit; font-size: 14px; color: var(--ink);
+  border: 1px solid #D8DAD8; border-radius: 8px; padding: 9px 12px; outline: none; background: #fff;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+
+/* ---------- 登录 ---------- */
+#authView { min-height: 100vh; display: flex; flex-direction: column; align-items: center; background: #fff; padding: 28px 18px 40px; box-sizing: border-box; }
+.auth-card { width: min(360px, 90vw); text-align: center; padding: 8px 0 28px; }
+.auth-deer { width: 84px; height: 84px; }
+.auth-card h1 { font-size: 26px; margin: 8px 0 4px; }
+.auth-sub { color: var(--gray); font-size: 12px; line-height: 1.7; margin-bottom: 22px; }
+.auth-card input { width: 100%; margin-bottom: 10px; }
+.auth-err { color: var(--red); font-size: 13px; margin: 4px 0; }
+.auth-btns { display: flex; gap: 10px; margin-top: 8px; }
+.auth-btns button { flex: 1; }
+.auth-note { color: var(--gray); font-size: 12px; margin-top: 18px; }
+
+/* ---------- 按钮 ---------- */
+.btn-primary { background: var(--primary); color: #fff; border-radius: 9px; padding: 9px 16px; font-size: 14px; }
+.btn-ghost { border: 1px solid #D8DAD8; border-radius: 9px; padding: 9px 16px; font-size: 14px; }
+.btn-dark { background: var(--dark); color: #fff; border-radius: 8px; padding: 6px 13px; font-size: 13px; }
+.btn-mini { font-size: 12px; color: var(--primary); font-weight: 600; padding: 4px 8px; }
+.btn-danger { background: var(--red); color: #fff; border-radius: 8px; padding: 6px 13px; font-size: 13px; }
+.icon-btn { font-size: 17px; color: var(--gray); padding: 4px 9px; border-radius: 8px; }
+.icon-btn:hover { background: var(--panel); }
+.round { border-radius: 50%; width: 38px; height: 38px; padding: 0; font-size: 17px; }
+
+/* ---------- 顶栏 ---------- */
+.topbar {
+  display: flex; align-items: center; gap: 6px;
+  height: 52px; padding: 0 12px; border-bottom: 0.8px solid var(--hair);
+  position: sticky; top: 0; background: #fff; z-index: 20;
+}
+.logo { width: 28px; height: 28px; }
+.brand { font-weight: 700; font-size: 16px; margin-right: 8px; }
+.cal-nav { display: flex; align-items: center; gap: 2px; }
+.month-title { font-weight: 700; font-size: 15px; min-width: 92px; text-align: center; }
+.spacer { flex: 1; }
+.ai-quota { font-size: 11px; color: var(--gray); }
+.account-wrap { position: relative; }
+.menu {
+  position: absolute; right: 0; top: 36px; background: #fff; border: 0.8px solid var(--hair);
+  border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,.08); min-width: 170px; z-index: 30; overflow: hidden;
+}
+.menu-line { padding: 10px 14px; font-size: 12px; color: var(--gray); border-bottom: 0.8px solid var(--hair); }
+.menu-item { display: block; width: 100%; text-align: left; padding: 11px 14px; font-size: 14px; }
+.menu-item:hover { background: var(--panel); }
+.menu-item.danger { color: var(--red); }
+
+/* 主题选择 */
+.theme-picker {
+  display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 16px;
+  border-bottom: 0.8px solid var(--hair); background: #fff;
+}
+.theme-dot {
+  width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent;
+  display: flex; align-items: center; justify-content: center; font-size: 0;
+}
+.theme-dot span { width: 18px; height: 18px; border-radius: 50%; display: block; }
+.theme-dot.active { border-color: var(--ink); }
+.theme-dot small { display: none; }
+
+/* ---------- Tab ---------- */
+/* 顶部 tabs 已于 2026-08-21 移到底部，见 .bottombar */
+.tab.active { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+
+main { max-width: 860px; margin: 0 auto; }
+.pane-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-weight: 700; }
+
+/* ---------- 月历 ---------- */
+.week-header { display: grid; grid-template-columns: repeat(7, 1fr); padding: 6px 0 4px; }
+.week-header span { text-align: center; font-size: 11px; color: var(--gray); }
+.week-header span.hol { color: var(--red); }
+.week-header span.sat { color: var(--sat); }
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 0.8px solid var(--hair); }
+.day-cell {
+  min-height: 76px; border-bottom: 0.8px solid var(--hair); border-right: 0.8px solid var(--hair);
+  padding: 2px; cursor: pointer; overflow: hidden; background: #fff;
+}
+.day-cell:nth-child(7n) { border-right: none; }
+.day-cell.dim { background: var(--dim); }
+.day-cell.sel { background: var(--container); }
+.day-num {
+  display: inline-flex; width: 19px; height: 19px; border-radius: 50%;
+  align-items: center; justify-content: center; font-size: 11px; margin: 1px auto 1px;
+}
+.day-num-wrap { text-align: center; }
+.day-cell.today .day-num { background: var(--primary); color: #fff; font-weight: 700; }
+.day-cell.sel .day-num { background: var(--ink); color: #fff; font-weight: 700; }
+.day-num.hol { color: var(--red); }
+.day-num.sat { color: var(--sat); }
+.cell-stamps { text-align: center; font-size: 9px; line-height: 1; height: 11px; overflow: hidden; }
+.ev-line {
+  font-size: 9px; line-height: 13px; height: 13px; overflow: hidden; white-space: nowrap;
+  text-overflow: ellipsis; border-radius: 2px; padding: 0 2px; margin-bottom: 1px; font-weight: 500;
+}
+.ev-line.allday { color: #fff; }
+.ev-line.task { color: var(--gray); font-weight: 400; }
+.ev-more { font-size: 9px; color: var(--gray); text-align: center; }
+
+/* 选中日面板 */
+.day-panel { border-top: 0.8px solid var(--hair); }
+.day-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 4px; font-weight: 600; font-size: 14px; }
+.day-items { padding-bottom: 30px; }
+.day-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; }
+.day-item:hover { background: var(--panel); }
+.day-item .bar { width: 3px; height: 30px; border-radius: 2px; flex: none; }
+.day-item .t { flex: 1; min-width: 0; }
+.day-item .t .name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-item .t .sub { font-size: 11px; color: var(--gray); }
+.day-item .time { font-size: 12px; color: var(--gray); text-align: right; }
+.empty-deer { text-align: center; color: var(--gray); font-size: 13px; padding: 26px 0; }
+.empty-deer img { width: 56px; opacity: .92; display: block; margin: 0 auto 8px; animation: float 1.8s ease-in-out infinite alternate; }
+@keyframes float { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+/* ---------- 待办 ---------- */
+.todo-add { display: flex; gap: 8px; padding: 12px 16px; }
+.todo-add input { flex: 1; border-radius: 20px; background: var(--panel); border-color: transparent; }
+.todo-item { display: flex; align-items: center; gap: 11px; padding: 10px 16px; border-bottom: 0.8px solid var(--hair); }
+.todo-item .ck {
+  width: 21px; height: 21px; border-radius: 50%; border: 1.6px solid #C0C3C0; flex: none;
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px;
+  transition: transform .15s ease, background .15s ease;
+}
+.todo-item.done .ck { background: var(--primary); border-color: var(--primary); transform: scale(1.05); }
+.todo-item .tt { flex: 1; font-size: 14px; }
+.todo-item.done .tt { color: var(--gray); text-decoration: line-through; }
+.todo-item .due { font-size: 11px; color: var(--gray); background: var(--panel); border-radius: 8px; padding: 2px 7px; }
+.todo-item .due.late { color: var(--red); }
+.todo-item .del { color: #C0C3C0; font-size: 15px; padding: 2px 6px; }
+.todo-sec { padding: 8px 16px; color: var(--gray); font-size: 13px; }
+
+/* ---------- 笔记 / 日记 ---------- */
+.note-item { padding: 10px 16px; border-bottom: 0.8px solid var(--hair); cursor: pointer; }
+.note-item:hover { background: var(--panel); }
+.note-item .nt { font-weight: 600; font-size: 15px; }
+.note-item .np { color: var(--gray); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-item .nd { color: #B9BBB9; font-size: 11px; }
+.diary-item { display: flex; gap: 12px; align-items: center; padding: 11px 16px; border-bottom: 0.8px solid var(--hair); cursor: pointer; }
+.diary-item:hover { background: var(--panel); }
+.diary-item .mood { font-size: 22px; }
+
+/* ---------- AI ---------- */
+.chat-list { min-height: calc(100vh - 260px); padding: 12px; }
+.chat-hello { text-align: center; color: var(--gray); font-size: 13px; line-height: 1.8; padding: 40px 0; }
+.chat-deer { width: 72px; }
+.msg { display: flex; margin: 6px 0; }
+.msg.user { justify-content: flex-end; }
+.msg .bubble {
+  max-width: 76%; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+}
+.msg.user .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
+.msg.ai .bubble { border: 0.8px solid #E7EAE7; border-top-left-radius: 4px; }
+.msg.ai .bubble.err { color: var(--red); }
+.msg.action { justify-content: center; }
+.msg.action .bubble { background: var(--container); color: var(--on-container); font-size: 11px; padding: 4px 11px; border-radius: 10px; }
+.msg .avatar { width: 26px; height: 26px; margin-right: 6px; flex: none; }
+.chat-chips { display: flex; gap: 8px; padding: 6px 12px; overflow-x: auto; }
+.chip { border: 0.8px solid #DDE0DD; border-radius: 15px; padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+.chip:hover { background: var(--panel); }
+.chat-input { display: flex; gap: 8px; padding: 8px 12px 16px; position: sticky; bottom: 0; background: #fff; }
+.chat-input input { flex: 1; border-radius: 20px; background: var(--panel); border-color: transparent; }
+
+/* ---------- 弹窗 ---------- */
+.mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.32); z-index: 50;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.dialog {
+  background: #fff; border-radius: 14px; width: min(430px, 94vw);
+  max-height: 88vh; overflow: auto; padding: 18px;
+}
+.dialog h3 { font-size: 16px; margin-bottom: 12px; }
+.dialog .frow { margin-bottom: 10px; }
+.dialog .frow label { display: block; font-size: 12px; color: var(--gray); margin-bottom: 4px; }
+.dialog .frow input, .dialog .frow textarea, .dialog .frow select { width: 100%; }
+.dialog .frow-inline { display: flex; gap: 8px; }
+.dialog .frow-inline > div { flex: 1; }
+.dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; }
+.dialog .left { margin-right: auto; }
+.check-line { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 8px 0; }
+.wk-row { display: flex; gap: 6px; margin-top: 6px; }
+.wk {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--panel); font-size: 12px;
+}
+.wk.on { background: var(--ink); color: #fff; }
+.mood-row { display: flex; gap: 10px; margin: 8px 0; }
+.mood { font-size: 24px; padding: 5px; border-radius: 50%; border: 1.5px solid transparent; }
+.mood.on { background: var(--container); border-color: var(--primary); }
+
+/* toast */
+.toast {
+  position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%);
+  background: rgba(27,27,31,.92); color: #fff; font-size: 13px;
+  padding: 9px 17px; border-radius: 20px; z-index: 99;
+}
+
+@media (max-width: 560px) {
+  .brand { display: none; }
+  .day-cell { min-height: 64px; }
+}
+
+/* ===== v1.2：极简登录 ===== */
+.auth-card .btn-primary-full{width:100%;border:0;background:#1b1b1f;color:#fff;border-radius:10px;
+  padding:13px;font-size:15px;cursor:pointer;margin-top:4px}
+.auth-switch{font-size:13px;color:var(--gray,#8a8f8e);margin:14px 0 2px}
+.auth-switch a,.auth-forgot a{color:var(--primary,#55b04b);cursor:pointer;text-decoration:none}
+.auth-forgot{font-size:12px;margin:4px 0 0}
+.auth-legal{font-size:11px;color:#b9bbb9;margin-top:18px}
+.auth-legal a{color:#8a8f8e}
+
+/* ===== 语言选择浮层复用 theme-picker ===== */
+
+/* ===== 待办清单 chips ===== */
+.list-chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px 0}
+.lchip{border:0;background:#f4f5f4;border-radius:15px;padding:6px 12px;font-size:12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;color:#1b1b1f}
+.lchip.on{background:#1b1b1f;color:#fff}
+.lchip .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lchip.add{color:#8a8f8e}
+.todo-item .ldot{width:8px;height:8px;border-radius:50%;flex:none;margin-right:2px}
+.todo-item .star{border:0;background:none;font-size:16px;color:#c9ccc9;cursor:pointer}
+.todo-item .star.on{color:#f2b23d}
+
+/* ===== 月格农历 + 印章图 ===== */
+.day-num-wrap{display:flex;align-items:baseline;justify-content:space-between}
+.day-num-wrap .lunar{font-size:9px;color:#a8ada8}
+.cell-stamps .stamp-img{width:14px;height:14px;vertical-align:middle}
+.stamp-img-lg{width:30px;height:30px;vertical-align:middle;margin-right:6px;cursor:pointer}
+.panel-lunar{font-size:11px;color:#8a8f8e;padding:0 14px 4px}
+
+/* ===== 新版本提示条 ===== */
+.sw-banner{background:#1b1b1f;color:#fff;font-size:13px;text-align:center;padding:8px}
+.sw-banner button{margin-left:10px;border:0;border-radius:6px;padding:3px 10px;cursor:pointer;
+  background:var(--primary,#55b04b);color:#fff}
+
+/* ===== 手机端：日面板变底部抽屉 ===== */
+.only-mobile{display:none}
+@media (max-width:560px){
+  .only-mobile{display:inline-flex}
+  .day-panel{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:62vh;z-index:40;
+    background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18);
+    transform:translateY(105%);transition:transform .25s ease;overflow:auto}
+  .day-panel.open{transform:translateY(0)}
+}
+
+/* ===== v1.3：网格线加深（原来太浅几乎看不见） ===== */
+:root{ --line:#d8dbd8; }
+.month-grid .day-cell{ border-right:1px solid var(--line); border-bottom:1px solid var(--line) }
+.week-header span{ border-right:1px solid transparent }
+
+/* ===== 表情选择器（对齐 Lifebear：5×2 + 页点 + 包 Tab） ===== */
+.stk-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:6px 0}
+.stk{border:0;background:none;cursor:pointer;padding:4px 2px;border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;gap:2px}
+.stk img{width:42px;height:42px;transition:transform .18s}
+.stk span{font-size:9px;color:#8a8f8e;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stk.on{background:var(--container,#eaf6e7)}
+.stk.on img{transform:scale(1.12)}
+.stk.on span{color:#1b1b1f}
+.stk-dots{display:flex;justify-content:center;gap:8px;padding:4px 0 8px}
+.stk-dots i{width:5px;height:5px;border-radius:50%;background:#cfd2cf;cursor:pointer;transition:all .18s}
+.stk-dots i.on{width:8px;height:8px;background:#1b1b1f}
+.stk-tabs{display:flex;gap:6px;border-top:1px solid var(--line);padding-top:8px;overflow-x:auto}
+.stk-tab{border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  gap:2px;padding:4px 10px;border-bottom:2px solid transparent}
+.stk-tab img{width:26px;height:26px;opacity:.65}
+.stk-tab span{font-size:10px;color:#8a8f8e}
+.stk-tab.on{border-bottom-color:#1b1b1f}
+.stk-tab.on img{opacity:1}
+.stk-tab.on span{color:#1b1b1f}
+
+/* ===== 底部菜单栏（2026-08-21，与安卓 App 同构）=====
+   iPhone 全面屏底部有 Home 指示条，必须留 safe-area，否则「更多」会被盖住点不到。 */
+.bottombar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  display:flex; align-items:center; justify-content:space-around;
+  background:#fff; border-top:.8px solid var(--line,#d8dbd8);
+  padding:4px 4px calc(4px + env(safe-area-inset-bottom));
+}
+.bottombar .tab{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+  padding:5px 0 3px; font-size:10.5px; color:#aeb1ae; background:none; border:0;
+  transition:color .18s, transform .18s;
+}
+.bottombar .tab svg{ width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.bottombar .tab.active{ color:var(--ink,#1b1b1f); font-weight:600; transform:scale(1.06); }
+.bb-plus{
+  width:46px; height:46px; margin:0 2px; border:0; border-radius:50%;
+  background:var(--ink,#1b1b1f); color:#fff; font-size:26px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.18); transition:transform .12s;
+}
+.bb-plus:active{ transform:scale(.9); }
+/* 主内容让出底栏高度，否则最后一条内容被压住 */
+main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
+/* 日抽屉上浮到底栏之上 */
+@media (max-width:560px){ .day-panel{ bottom:calc(58px + env(safe-area-inset-bottom)) !important; } }
+
+/* ===== 更多页 ===== */
+.more-list{ padding:6px 0; }
+.more-row{
+  width:100%; display:flex; align-items:center; gap:12px;
+  padding:14px 18px; background:none; border:0; border-bottom:.8px solid var(--hair,#eee);
+  font-size:15px; color:var(--ink,#1b1b1f); text-align:left; text-decoration:none;
+}
+.more-row .mi{ width:22px; text-align:center; font-size:16px; }
+.more-row span:nth-child(2){ flex:1; }
+.more-row .mc{ color:#c5c8c5; font-size:18px; }
+.more-row.danger{ color:#e0504a; }
+.more-foot{ text-align:center; color:var(--gray,#8a8f8e); font-size:11.5px; line-height:1.9; padding:20px 0 8px; }
+
+/* ===== iOS「添加到主屏幕」引导 ===== */
+.ios-tip{
+  position:fixed; left:12px; right:12px; bottom:calc(70px + env(safe-area-inset-bottom));
+  background:#1b1b1f; color:#fff; border-radius:12px; padding:12px 14px;
+  font-size:12.5px; line-height:1.7; z-index:60; box-shadow:0 6px 20px rgba(0,0,0,.22);
+}
+.ios-tip b{ font-weight:600; }
+.ios-tip button{ background:none; border:0; color:#9fd39a; font-size:12.5px; padding:0; margin-left:6px; }
+
+/* ===== 2026-08-21 底栏回归修复 =====
+   加底栏后暴露的三处遮挡/溢出，逐条对症。 */
+
+/* ① 小鹿 AI 的输入框原本 sticky bottom:0，正好被 62px 底栏盖住，打不了字 */
+.chat-input{ bottom:calc(62px + env(safe-area-inset-bottom)) !important; }
+.chat-list{ min-height:calc(100dvh - 330px) !important; }
+
+/* ② 弹窗溢出：日程弹窗有 12 个字段 + textarea，手机上必然超屏。
+      88vh 在移动浏览器里不含地址栏收起的动态高度，用 dvh 才准；
+      再给 mask 自身可滚动，避免 flex 居中把超出部分顶到视口外够不着。 */
+.mask{ overflow:auto; -webkit-overflow-scrolling:touch;
+       padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+.dialog{
+  max-height:min(88dvh, calc(100dvh - 32px)) !important;
+  margin:auto;                 /* flex 居中溢出时仍能滚到顶部 */
+  overscroll-behavior:contain;
+}
+/* 弹窗层级必须高于底栏，否则底部按钮点不到 */
+.mask{ z-index:60; }
+
+/* ③ 待办输入行贴底时同样让位 */
+.todo-add{ position:relative; z-index:1; }
+
+/* 桌面宽屏不需要底栏让位那么多 */
+@media (min-width:861px){ main{ padding-bottom:calc(70px + env(safe-area-inset-bottom)); } }
+
+/* ===== 2026-08-21 A3：顶栏去重 =====
+   语言/主题/账号菜单已迁入「更多」页；顶栏隐藏但保留 DOM（更多页 relay 靠点它们触发）。
+   顶栏只留：logo + 月份导航 + 今天。与 App 顶栏对齐。 */
+#btnLang, #btnTheme, .account-wrap { display: none !important; }
+
+/* ===== AI 档位条（与 App TierBar 同构）===== */
+.tier-bar{ display:flex; gap:8px; padding:8px 12px 0; }
+.tier-bar button{
+  display:flex; flex-direction:column; align-items:flex-start; gap:1px;
+  padding:5px 12px; border:0; border-radius:9px; background:var(--panel,#f7f8f7);
+}
+.tier-bar button b{ font-size:12px; font-weight:400; color:var(--ink,#1b1b1f); }
+.tier-bar button i{ font-style:normal; font-size:9px; color:var(--gray,#8a8f8e); }
+.tier-bar button.on{ background:var(--primary-soft,#eaf6e7); }
+.tier-bar button.on b{ font-weight:600; color:var(--primary,#55b04b); }
+/* 自创色板选中态 */
+.custom-dot.active{ border-color:var(--ink,#1b1b1f) !important; }
+
+/* ===== 2026-08-21 主题「纸」：页面底色随主题走 =====
+   原来换主题只改强调色，界面 90% 是白底墨字，几乎看不出变化。
+   现在把页面底色也纳入主题（掺 96% 白，有色温但不刺眼），与 App 同算法。 */
+:root{ --paper:#fff; --panel:#f7f8f7; }
+body, main, .pane{ background: var(--paper); }
+.topbar, .bottombar{ background: var(--paper); }
+.day-panel, .dialog{ background: var(--paper); }
+.todo-add input, .chat-input input, .tier-bar button{ background: var(--panel); }
+/* 卡片保持纯白 —— 纸上的白卡片才有层次，全染会糊成一片 */
+.note-item, .day-item{ background:#fff; }
+
+
+/* ==================== 未登录首页（产品介绍，2026-08-21） ==================== */
+.landing-hero { text-align: center; margin-bottom: 6px; }
+.landing-deer { width: 72px; height: 72px; }
+.landing-hero h1 { font-size: 24px; margin: 6px 0 2px; }
+.landing-sub { color: var(--gray); font-size: 13px; margin: 0 0 10px; }
+.landing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(560px, 92vw); margin: 18px 0 4px; }
+.landing-item { border: 0.8px solid var(--hair); border-radius: 12px; padding: 12px 14px; }
+.landing-item .li-ico { font-size: 20px; }
+.landing-item b { display: block; font-size: 14px; margin: 4px 0 2px; }
+.landing-item p { font-size: 12px; color: var(--gray); margin: 0; line-height: 1.6; }
+.landing-points { width: min(560px, 92vw); margin: 10px 0; padding: 0 0 0 18px; }
+.landing-points li { font-size: 13px; color: #333; line-height: 2; }
+.landing-dl { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0 18px; }
+.landing-dl .btn-dark { padding: 10px 26px; font-size: 14px; border-radius: 12px; text-decoration: none; }
+.dl-note { font-size: 11px; color: var(--gray); }
+.landing-price { width: min(560px, 92vw); border-collapse: collapse; font-size: 12.5px; }
+.landing-price th, .landing-price td { border: 0.8px solid var(--hair); padding: 7px 9px; text-align: center; }
+.landing-price td:first-child { text-align: left; }
+.landing-price th { background: var(--dim); font-weight: 600; }
+.landing-price-note { font-size: 12px; color: var(--gray); margin: 8px 0 16px; }
+.landing-foot { font-size: 12px; color: var(--gray); margin-top: 6px; }
+.landing-foot a { color: var(--gray); }
+.landing-support { width: min(640px, 94vw); margin-top: 14px; }
+
+/* ==================== 连续滚动月历（2026-08-21 对齐 App） ==================== */
+.cal-wrap { display: flex; flex-direction: column; }
+.month-grid {
+  display: block;                       /* 由 7 列网格改为按周行堆叠 */
+  overflow-y: auto; overscroll-behavior: contain;
+  height: calc(100vh - 210px);          /* 顶栏 + 星期头 + 底栏之外全给月历 */
+  border-top: 0.8px solid var(--hair);
+}
+.week-row { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+.week-row .month-wm {                   /* 跨行月份大水印（Lifebear 式） */
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 200px; font-weight: 800; color: rgba(0,0,0,0.055); line-height: 1;
+}
+.week-row .day-cell { position: relative; z-index: 1; min-height: 92px; background: transparent; }
+.day-cell.m1 { border-top: 1.6px solid #C9CCC9; }   /* 月首行的上边界略加重 */
+.day-cell.m1 .day-num { width: auto; border-radius: 9px; padding: 0 5px; font-weight: 700; }
+.search-out { max-height: 50vh; overflow-y: auto; margin-top: 10px; }
+.search-hit { padding: 8px 6px; border-bottom: 0.6px solid var(--hair); font-size: 13px; cursor: pointer; }
+.search-hit .tagk { font-size: 10px; color: var(--gray); border: 0.8px solid var(--hair); border-radius: 4px; padding: 1px 4px; margin-right: 6px; }
+.search-hit .hitday { float: right; color: var(--gray); font-size: 11px; }
+.dim-note { font-size: 12px; color: var(--gray); line-height: 1.7; }
+.modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }

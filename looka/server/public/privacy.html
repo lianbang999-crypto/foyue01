@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>隐私政策 · Looka</title>
+<link rel="icon" href="deer.svg" type="image/svg+xml">
+<style>
+  body{margin:0;font-family:-apple-system,'PingFang SC',sans-serif;color:#1b1b1f;background:#fff}
+  main{max-width:640px;margin:0 auto;padding:32px 20px 60px;font-size:14px;line-height:1.9}
+  h1{font-size:20px}h2{font-size:15px;margin-top:26px}
+  p,li{color:#3a3f3e}
+  .muted{color:#8a8f8e;font-size:12px}
+  a{color:#55b04b}
+</style>
+</head>
+<body>
+<main>
+  <h1>🦌 Looka 隐私政策</h1>
+  <p class="muted">生效日期：2026-08-20 · 适用于 Looka 安卓应用与 looka.foyue.org 网页端</p>
+
+  <h2>一、我们的原则：本机优先</h2>
+  <p>Looka 是一款本机优先的手帐应用。<b>不注册也可以使用全部基础功能</b>，此时你的日程、任务、笔记、日记、印章全部只保存在你自己的设备上，我们无法访问。</p>
+
+  <h2>二、注册后我们收集什么</h2>
+  <ul>
+    <li><b>账号信息</b>：邮箱或手机号、加盐哈希后的密码（我们无法还原明文）。登录凭证由本运营者统一的账号服务管理，可能用于本运营者的其他产品；修改密码会对使用同一账号的服务同时生效。</li>
+    <li><b>云同步数据</b>：你选择同步的日程、任务、清单、笔记、日记、印章内容，存储于 Cloudflare D1 数据库，仅用于在你的多个设备间同步。</li>
+    <li><b>找回密码邮箱</b>：你主动绑定并验证的邮箱，仅用于密码重置邮件（经 Resend 发送）。</li>
+    <li><b>AI 对话内容（委托处理）</b>：使用小鹿 AI 时，你的提问与（经你授权的）日程摘要会发送给我们委托的大模型服务商用于生成回复，我们仅传输完成该功能所必需的内容，且不存储对话内容。当前服务商：硅基流动（标准模型）、OpenRouter（高级模型）。<b>日记正文默认不上传</b>，仅在你开启相应开关并主动使用时发送。你可以在「订阅与小鹿 AI」中随时关闭 AI 读取日程与日记。</li>
+    <li><b>崩溃信息</b>：应用异常退出后，仅在你点击「上报」时发送错误堆栈与设备型号，用于修复问题。</li>
+  </ul>
+
+  <h2>三、我们不做什么</h2>
+  <ul>
+    <li>不出售、不共享你的个人数据用于广告。</li>
+    <li>无第三方统计/广告 SDK。例外说明：网页版<b>未登录首页底部</b>嵌入了爱发电（afdian.com）的赞助组件，浏览该页时爱发电可获取你的 IP 与浏览器信息；登录后的应用界面、安卓 App 及安装到主屏幕的 PWA 均不加载任何第三方内容。</li>
+    <li>不读取通讯录、位置、相册（日历读取权限仅用于你主动开启的「显示系统日历」，且为只读）。</li>
+  </ul>
+
+  <h2>四、你的权利</h2>
+  <ul>
+    <li><b>导出</b>：App「更多 → 备份与恢复」可随时导出全部数据（JSON / ICS / Markdown）。</li>
+    <li><b>删除</b>：App「账号与同步 → 注销账号」将删除 Looka 云端全部数据；登录凭证由统一账号服务管理而保留，如需彻底删除可通过下方邮箱联系我们处理。</li>
+    <li><b>更正</b>：所有数据都可在应用内直接修改。</li>
+  </ul>
+
+  <h2>五、数据存储与安全</h2>
+  <p>云端数据存储于 Cloudflare（D1 / Workers）。传输全程 HTTPS；密码使用 PBKDF2-SHA256（10 万次迭代）加盐哈希；会话令牌 90 天过期；删除的数据以墓碑形式保留至多 90 天后物理清除。</p>
+
+  <h2>六、联系我们</h2>
+  <p>邮箱：<a href="mailto:looka01@qq.com">looka01@qq.com</a></p>
+  <p class="muted">本政策如有更新，将在本页面公布。</p>
+  <p><a href="/">← 回到 Looka</a> · <a href="/terms.html">用户协议</a></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Looka 可爱版九色鹿（原创图形）：白色小鹿 + 九色光环，用于自适应图标前景 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 鹿角 -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:pathData="M45,47 C44.5,42 43.5,38 41.5,33.5 M42.8,39.5 C39.5,37.5 37.5,37 35,36.5 M63,47 C63.5,42 64.5,38 66.5,33.5 M65.2,39.5 C68.5,37.5 70.5,37 73,36.5" />
+
+    <!-- 耳朵 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M27.5,52 a5.5,9 0 1,0 11,0 a5.5,9 0 1,0 -11,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M69.5,52 a5.5,9 0 1,0 11,0 a5.5,9 0 1,0 -11,0" />
+
+    <!-- 头部 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,60 a18,18 0 1,0 36,0 a18,18 0 1,0 -36,0" />
+
+    <!-- 眼睛 -->
+    <path
+        android:fillColor="#55B04B"
+        android:pathData="M44.5,58 a2.4,2.4 0 1,0 4.8,0 a2.4,2.4 0 1,0 -4.8,0" />
+    <path
+        android:fillColor="#55B04B"
+        android:pathData="M58.7,58 a2.4,2.4 0 1,0 4.8,0 a2.4,2.4 0 1,0 -4.8,0" />
+
+    <!-- 鼻子 -->
+    <path
+        android:fillColor="#55B04B"
+        android:pathData="M50.8,67 a3.2,2.4 0 1,0 6.4,0 a3.2,2.4 0 1,0 -6.4,0" />
+
+    <!-- 九色光环（敦煌九色鹿意象，自左至右） -->
+    <path android:fillColor="#E0504A" android:pathData="M22.8,41.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#F2913D" android:pathData="M28.1,34.7 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#E8C33A" android:pathData="M34.9,29.4 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#7CB342" android:pathData="M42.9,26.1 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#3AA9A0" android:pathData="M51.4,25 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#4A9EDB" android:pathData="M59.9,26.1 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#4A7DDC" android:pathData="M67.9,29.4 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#7E6BD8" android:pathData="M74.7,34.7 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+    <path android:fillColor="#E077A8" android:pathData="M80,41.5 a2.6,2.6 0 1,0 5.2,0 a2.6,2.6 0 1,0 -5.2,0" />
+</vector>

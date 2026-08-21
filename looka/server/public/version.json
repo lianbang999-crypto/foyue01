@@ -1,0 +1,10 @@
+{
+  "platform": "android",
+  "versionCode": 12,
+  "versionName": "1.6.0",
+  "url": "https://looka.foyue.org/dl/looka-latest.apk",
+  "size": 3634222,
+  "sha256": "fdf5ed982858432bb41bca082db07a940141477eb246e1124bd7a5770c369525",
+  "changelog": "· 月历改为跨月连续滚动，滚到哪个月标题跟着变，巨大的月份水印告诉你在哪\n· 调色盘换成 48 色贴纸盘（对齐 Lifebear），亮色块自动配深色文字\n· 顶栏收敛：一个日历图标（31/7/1 随视图变）收纳搜索/跳转/设置\n· 空白页面会指给你从哪开始；自创颜色升级为 Pro 权益（先看效果再决定）\n· 爱发电付款后自动开通 Pro；也可以用订单号手动认领",
+  "minSupported": 1
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>重置密码 · Looka</title>
+<link rel="icon" href="deer.svg" type="image/svg+xml">
+<style>
+  body{margin:0;font-family:-apple-system,'PingFang SC',sans-serif;color:#1b1b1f;background:#fff;
+       display:flex;min-height:100vh;align-items:center;justify-content:center}
+  .card{width:min(320px,86vw);text-align:center}
+  .deer{font-size:40px}
+  h1{font-size:20px;margin:8px 0 2px}
+  p.sub{font-size:13px;color:#8a8f8e;margin:0 0 22px}
+  input{width:100%;box-sizing:border-box;border:0;background:#f4f5f4;border-radius:10px;
+        padding:13px 14px;font-size:15px;margin-bottom:10px;outline:none}
+  input:focus{background:#eef1ee}
+  button{width:100%;border:0;background:#1b1b1f;color:#fff;border-radius:10px;
+         padding:13px;font-size:15px;cursor:pointer}
+  button:disabled{opacity:.5}
+  .msg{font-size:13px;margin-top:14px;min-height:18px}
+  .err{color:#e0504a}.ok{color:#55b04b}
+  a{color:#55b04b;text-decoration:none;font-size:13px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="deer">🦌</div>
+  <h1>重置密码</h1>
+  <p class="sub">设置一个新密码（自知录同步生效）</p>
+  <input id="p1" type="password" placeholder="新密码（至少 6 位）" autocomplete="new-password">
+  <input id="p2" type="password" placeholder="再输入一次" autocomplete="new-password">
+  <button id="btn">确认重置</button>
+  <div class="msg" id="msg"></div>
+  <a href="/" id="back" style="display:none">去登录</a>
+</div>
+<script>
+const token = new URLSearchParams(location.search).get('token') || '';
+const msg = document.getElementById('msg');
+const btn = document.getElementById('btn');
+if (!token) { msg.textContent = '链接不完整，请从邮件重新点入'; msg.className = 'msg err'; btn.disabled = true; }
+btn.onclick = async () => {
+  const p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value;
+  if (p1.length < 6) { msg.textContent = '密码至少 6 位'; msg.className = 'msg err'; return; }
+  if (p1 !== p2) { msg.textContent = '两次输入不一致'; msg.className = 'msg err'; return; }
+  btn.disabled = true; msg.textContent = '正在重置…'; msg.className = 'msg';
+  try {
+    const r = await fetch('/api/auth/reset', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password: p1 })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      msg.textContent = d.message || '密码已重置'; msg.className = 'msg ok';
+      document.getElementById('back').style.display = 'inline';
+    } else { msg.textContent = d.error || '重置失败'; msg.className = 'msg err'; btn.disabled = false; }
+  } catch { msg.textContent = '网络异常，请重试'; msg.className = 'msg err'; btn.disabled = false; }
+};
+</script>
+</body>
+</html>

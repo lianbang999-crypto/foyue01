@@ -1,0 +1,64 @@
+{
+  "skill_name": "looka_theme_stamp_generator",
+  "version": "1.0.0",
+  "purpose": "Generate a LOOKA-compatible theme stamp pack from a natural-language request.",
+  "input_schema": {
+    "theme": "string",
+    "style": "string default=\"LOOKA Cute Lifestyle Sticker\"",
+    "count": "integer default=24 max=40",
+    "language": "string default=\"zh-CN\"",
+    "constraints": {
+      "transparent_background": "boolean default=true",
+      "size": "object default={width:256,height:256}",
+      "format": "string default=\"webp\""
+    }
+  },
+  "pipeline": [
+    "analyze_request",
+    "build_stamp_blueprint",
+    "generate_assets",
+    "run_qc",
+    "emit_theme_package"
+  ],
+  "outputs": {
+    "theme_json": "Theme manifest for LOOKA app import",
+    "metadata_json": "Asset-level metadata list",
+    "assets": "Array of generated WebP files",
+    "preview_sheet": "Optional contact sheet for review"
+  },
+  "api_endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/stamps/themes/generate",
+      "description": "Create a new generation job.",
+      "request_body": {
+        "theme": "Summer Travel",
+        "style": "LOOKA Cute Lifestyle Sticker",
+        "count": 24,
+        "language": "zh-CN"
+      },
+      "response": {
+        "job_id": "job_001",
+        "status": "queued"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/stamps/themes/jobs/{job_id}",
+      "description": "Fetch job status and result references.",
+      "response": {
+        "job_id": "job_001",
+        "status": "done",
+        "result_theme_id": "looka_theme_niuniu_v1"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/stamps/themes/{theme_id}/publish",
+      "description": "Move reviewed assets into app library.",
+      "response": {
+        "ok": true
+      }
+    }
+  ]
+}

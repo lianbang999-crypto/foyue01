@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
+  <!-- Looka 可爱版九色鹿（原创图形） -->
+  <circle cx="54" cy="54" r="50" fill="#55B04B"/>
+  <path d="M45,47 C44.5,42 43.5,38 41.5,33.5 M42.8,39.5 C39.5,37.5 37.5,37 35,36.5 M63,47 C63.5,42 64.5,38 66.5,33.5 M65.2,39.5 C68.5,37.5 70.5,37 73,36.5"
+        stroke="#fff" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+  <ellipse cx="33" cy="52" rx="5.5" ry="9" fill="#fff"/>
+  <ellipse cx="75" cy="52" rx="5.5" ry="9" fill="#fff"/>
+  <circle cx="54" cy="60" r="18" fill="#fff"/>
+  <circle cx="46.9" cy="58" r="2.4" fill="#55B04B"/>
+  <circle cx="61.1" cy="58" r="2.4" fill="#55B04B"/>
+  <ellipse cx="54" cy="67" rx="3.2" ry="2.4" fill="#55B04B"/>
+  <circle cx="25.4" cy="41.5" r="2.6" fill="#E0504A"/>
+  <circle cx="30.7" cy="34.7" r="2.6" fill="#F2913D"/>
+  <circle cx="37.5" cy="29.4" r="2.6" fill="#E8C33A"/>
+  <circle cx="45.5" cy="26.1" r="2.6" fill="#7CB342"/>
+  <circle cx="54"   cy="25"   r="2.6" fill="#3AA9A0"/>
+  <circle cx="62.5" cy="26.1" r="2.6" fill="#4A9EDB"/>
+  <circle cx="70.5" cy="29.4" r="2.6" fill="#4A7DDC"/>
+  <circle cx="77.3" cy="34.7" r="2.6" fill="#7E6BD8"/>
+  <circle cx="82.6" cy="41.5" r="2.6" fill="#E077A8"/>
+</svg>

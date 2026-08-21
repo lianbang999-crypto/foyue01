@@ -1,0 +1,55 @@
+{
+  "tables": {
+    "stamp_themes": {
+      "theme_id": "string primary key",
+      "name": "string",
+      "display_name_zh": "string",
+      "description": "string",
+      "style": "string",
+      "count": "integer",
+      "format": "string",
+      "width": "integer",
+      "height": "integer",
+      "background": "string",
+      "version": "integer",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "stamp_assets": {
+      "asset_id": "string primary key",
+      "theme_id": "string foreign key -> stamp_themes.theme_id",
+      "name": "string",
+      "display_name_zh": "string",
+      "category": "string",
+      "theme": "string",
+      "style": "string",
+      "file_name": "string",
+      "path": "string",
+      "format": "string",
+      "width": "integer",
+      "height": "integer",
+      "background": "string",
+      "status": "enum[draft,ready,archived]",
+      "version": "integer",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    },
+    "stamp_tags": {
+      "asset_id": "string foreign key -> stamp_assets.asset_id",
+      "tag": "string",
+      "primary_key": "(asset_id, tag)"
+    },
+    "generated_theme_jobs": {
+      "job_id": "string primary key",
+      "user_id": "string",
+      "theme_prompt": "string",
+      "style": "string",
+      "count": "integer",
+      "status": "enum[queued,running,reviewing,done,failed]",
+      "result_theme_id": "string nullable",
+      "error_message": "string nullable",
+      "created_at": "datetime",
+      "updated_at": "datetime"
+    }
+  }
+}

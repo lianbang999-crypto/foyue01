@@ -1,0 +1,18 @@
+[
+  {
+    "model": "google/gemini-3.1-flash-image",
+    "file": "docs/art-test/google_gemini-3.1-flash-image.png",
+    "bytes": 1338199,
+    "sec": 16.5,
+    "gid": "gen-1787229048-gSRakrdYbKIkMEEhLVvb",
+    "usd": 0.0672225
+  },
+  {
+    "model": "openai/gpt-5-image-mini",
+    "file": "docs/art-test/openai_gpt-5-image-mini.png",
+    "bytes": 1551295,
+    "sec": 58.7,
+    "gid": "gen-1787229064-qihXeZRmYRLmoAStbELp",
+    "usd": 0.042058
+  }
+]

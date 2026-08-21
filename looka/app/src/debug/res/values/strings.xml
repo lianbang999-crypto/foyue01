@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 调试包与正式包并存，桌面图标需要能一眼区分 -->
+    <string name="app_name">Looka Dev</string>
+</resources>
