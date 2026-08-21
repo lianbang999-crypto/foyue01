@@ -3078,3 +3078,254 @@ Android：Kotlin/Compose  —— 17 个页面、Prefs 十几项设置、四模�
 **用户说"太复杂"，但真正的问题不是步数 —— 是那六步全是"系统本该替我做却没做"的补救动作。**
 把 Webhook 接通、把状态刷新修好、把认领藏起来，
 流程自然就变成三步。**不需要重新设计，需要把已经建好的东西接通。**
+
+---
+
+## 四十二、佛悦全站数据管理后台（foyue.org/admin）设计（2026-08-22）
+
+> 用户：「要知道注册和使用我们 App 的数据管理后台，包括下载 App 的数据等，应该怎么完整地设计。
+> 独立管理后台然后接入 foyue.org/admin，我们所有子站的数据管理都是这个后台。」
+
+---
+
+### 一、先摸清家底（已实测，不是推测）
+
+#### 现有子站与数据库
+
+| 子站 | 域名 | Worker | D1 |
+|---|---|---|---|
+| 选佛谱主站 | `foyue.org` | — | `foyue-db` |
+| 自知录 | `zhi.foyue.org` | zizhilu | `rixing-db`（**账号总库**） |
+| **Looka** | `looka.foyue.org` | looka | `looka-db` + `rixing-db` |
+| 流通处 | `shop.foyue.org` | foyue-shop | `foyue-shop` |
+| 播经台 | — | bojingtai | `bojingtai-cmt` |
+| 文钞 | — | wenchao | `wenchao-kb-fts` |
+| 玄佛谱 | — | — | `xuanfopu-agent` |
+
+**账号是共享的**：`rixing-db.users` 同时服务自知录与 Looka。这是后台能统一的基础。
+
+#### 现有表
+
+```
+rixing-db : users sessions notes day_ai login_fails push_subs invites invite_uses ai_usage reports
+looka-db  : sessions items ai_usage plans codes login_fails reset_tokens user_emails
+            rate_limits invite_codes crashes antler_balance antler_ledger pay_orders pay_intents
+```
+
+---
+
+### 二、🔴 最重要的一句话：**现在什么都没埋点，数据是补不回来的**
+
+| 想知道 | 现在能不能查 |
+|---|---|
+| **APK 下载了多少次** | ❌ **完全没有**。`/dl/looka-latest.apk` 只是从 R2 流式返回，一行日志都不写 |
+| 有多少人真的在用（DAU） | ❌ `users` 表只有 `created_at`，**没有 `last_seen`** |
+| 下载了但没注册的有多少 | ❌ 没有任何落地页/下载埋点 |
+| 注册后第 2 天还回来吗 | ❌ 无法计算留存 |
+| 用户从哪来的 | ❌ 无 referer 记录 |
+| 注册数 / 付费数 / AI 调用量 | ✅ 能查（users / plans / ai_usage） |
+| 崩溃 | ✅ `crashes` 表有 |
+
+> **结论：仪表盘可以晚点做，埋点必须现在就加。**
+> 今天不记，明天想看历史就永远看不到了 —— 这是唯一有时效性的部分。
+
+---
+
+### 三、架构：一个后台 Worker，只读绑定全部子库
+
+```
+                    ┌──────────────────────────────┐
+   Cloudflare       │   foyue.org/admin            │
+   Access (Zero     │   独立 Worker「foyue-admin」  │
+   Trust) 拦在最前   │   UI + 聚合查询               │
+                    └──────┬───────────────────────┘
+                           │ D1 只读绑定（多库）
+        ┌──────────┬───────┼────────┬──────────┬─────────┐
+     rixing-db  looka-db  foyue-db  foyue-shop  bojingtai  wenchao
+     （账号）    （Looka） （主站）   （流通处）   （播经台）  （文钞）
+```
+
+**为什么用直连 D1 而不是让各子站开 `/api/admin/stats`：**
+
+| | 直连多库绑定 ✅ | 各站开 API 再聚合 |
+|---|---|---|
+| 延迟 | 一次请求内并发查完 | N 次跨站 HTTP |
+| 鉴权 | 只有一处 | 每个子站都要一套，且要互信 |
+| 新增子站 | 加一条 binding | 要给那个站写一套 admin 代码 |
+| 风险 | 后台能读所有库 → **鉴权必须够硬** | 分散 |
+
+CF Workers 允许一个 Worker 绑定多个 D1，**这是最简单也最省事的做法**。
+> 例外：**写操作**（补开 Pro、退款、封号）仍调用**归属子站**的 admin API ——
+> 业务规则留在它的主人那里，后台只管读与展示。避免两处逻辑不一致。
+
+---
+
+### 四、🔒 鉴权：这是整个方案里最不能省的部分
+
+一个公网 URL 后面是全站用户数据。**只用一个密码是不够的。**
+
+```
+第 1 层：Cloudflare Access（Zero Trust）
+        · 对 foyue.org/admin* 开策略，只放行你的邮箱
+        · 邮箱一次性验证码登录，全在边缘完成，请求根本到不了 Worker
+        · 50 人以下免费，零代码
+第 2 层：Worker 内再校验 ADMIN_KEY（防 Access 配置失误裸奔）
+第 3 层：所有写操作记 admin_audit 表（谁、何时、改了谁、改成什么）
+```
+
+> ⚠️ 现在的 `/api/admin/*` 只有一个 `ADMIN_KEY`，且**必须先登录一个普通账号**
+> 才够得着（它在鉴权段之后）。新后台不要沿用这个设计。
+
+---
+
+### 五、要补的埋点（**建议立刻做，不等后台**）
+
+#### 新表（放 `foyue-db`，全站共用）
+
+```sql
+-- 通用事件表：不要每加一个指标就建一张表
+CREATE TABLE IF NOT EXISTS events (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  site     TEXT NOT NULL,        -- looka | zhi | shop | foyue …
+  kind     TEXT NOT NULL,        -- apk_download | landing_view | app_open | register | pay …
+  user_id  INTEGER,              -- 可空（未登录事件）
+  ip_hash  TEXT,                 -- ⚠️ 只存 SHA256(ip + 每日盐) 前 16 位，不存原始 IP
+  ua_class TEXT,                 -- android / ios / desktop（不存完整 UA）
+  ref      TEXT,                 -- 来源域名（不带 query，避免带出隐私）
+  meta     TEXT,                 -- 少量 JSON，如 {"ver":"1.6.1"}
+  ts       INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ev_site_kind_ts ON events(site, kind, ts);
+
+-- 每日汇总：明细留 90 天，汇总永久（省钱且查得快）
+CREATE TABLE IF NOT EXISTS daily_stats (
+  site TEXT NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL,
+  cnt INTEGER NOT NULL, uniq INTEGER NOT NULL,
+  PRIMARY KEY (site, day, kind)
+);
+```
+
+#### 各子站要加的两行代码
+
+| | 加在哪 | 记什么 |
+|---|---|---|
+| 1 | `/dl/looka-latest.apk` | **APK 下载**（版本、来源、ua 类别）——🔴 当前完全空白 |
+| 2 | 落地页 `index.html` | 未登录首页访问（配合下载算转化率） |
+| 3 | `getUser()` 成功后 | `users.last_seen_at`（**每天最多写一次**，避免每请求都写库） |
+| 4 | 注册成功 | `register` 事件 + 来源 |
+| 5 | `afdianSettle` 开通成功 | `pay` 事件 + 金额 |
+| 6 | 已有的 `crashes` | 接进事件流即可，不用改 |
+
+#### `users` 表要加两列
+
+```sql
+ALTER TABLE users ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0;  -- 算 DAU/留存的地基
+ALTER TABLE users ADD COLUMN reg_site     TEXT NOT NULL DEFAULT '';    -- 从哪个子站注册的
+```
+
+> ⚠️ `users.created_at` 现在是 **TEXT**（`nowISO()`），而其他时间戳都是 **INTEGER 毫秒**。
+> 按日期分组统计时要 `date(created_at)` 特殊处理。新列一律用 INTEGER，别再混。
+
+---
+
+### 六、看板要展示什么：**只放能改变决策的数字**
+
+不做企业 BI，做**一个人能看懂、看完知道下一步干什么**的面板。
+
+#### 首页（一屏看完）
+
+```
+今天                昨天      7日
+├ 新注册      12      9       74
+├ 活跃(DAU)   58     61      —
+├ APK 下载    31     40      210     ← 新增能力
+├ 新付费       1      0        3
+├ AI 调用    420    380     2,610
+└ 崩溃         0      2        5
+
+转化漏斗（近 30 天）
+  落地页 1,240 ──18%──▶ 下载 224 ──41%──▶ 注册 92 ──7%──▶ 付费 6
+
+钱（本月）
+  收入 ¥72   订阅中 6   7 日内到期 2   鹿角消耗 ¥3.1（成本敞口）
+```
+
+#### 其余标签页
+
+| 页 | 内容 |
+|---|---|
+| **用户** | 列表（注册时间/来源站/最后活跃/订阅态），可搜账号；**只显示元数据，不显示笔记日记正文** |
+| **订阅** | pay_orders 流水、未认领订单（🔴 需要人工处理的红点）、即将到期 |
+| **健康** | AI 上游失败率、高级模型回落次数、同步冲突、崩溃 Top、限流触发 |
+| **各子站** | 自知录 / 流通处 / 播经台 分别的注册与活跃 |
+| **审计** | 后台自己的操作日志 |
+
+#### 少数写操作（每个都要二次确认 + 记审计）
+
+```
+· 给某账号补开 Pro（客服兜底）
+· 生成兑换码 / 邀请码
+· 处理未认领订单（手动绑定到账号）
+· 封禁异常账号
+```
+
+---
+
+### 七、🔴 隐私：这一节不能跳过
+
+我们的隐私政策写着「不出售、不共享」「无第三方统计/广告 SDK」。
+自建后台**不违反**这两条（我们本来就是数据控制者），但必须守住三条红线：
+
+| | 红线 |
+|---|---|
+| 1 | **后台不显示用户内容** —— 笔记/日记/日程正文一律不展示，只看计数。做技术支持时也不例外 |
+| 2 | **不存原始 IP** —— 只存 `SHA256(ip + 每日轮换盐)` 前 16 位，用于去重算 UV，**无法反查个人** |
+| 3 | **不存完整 UA** —— 只归类 android / ios / desktop |
+
+同时**隐私政策要补一句**（和爱发电 iframe 那次一样，说清楚才算数）：
+
+> 我们会记录必要的运行数据（下载次数、访问量、崩溃、匿名化的访问来源）用于改进产品，
+> 保留 90 天后自动删除；这些数据不包含你的笔记、日记与日程内容，也不与第三方共享。
+
+---
+
+### 八、分三期，别一次建完
+
+#### 第 0 期：埋点（🔴 **建议立刻做，1 天**）
+
+```
+1. foyue-db 建 events / daily_stats 两张表
+2. users 加 last_seen_at / reg_site
+3. Looka 先接：APK 下载、落地页访问、注册、活跃、付费
+4. 每日 Cron 汇总进 daily_stats，明细清 90 天前
+```
+
+> **只有这一期有时效性。** 后台晚一个月做没关系，埋点晚一个月 = 永久丢一个月数据。
+
+#### 第 1 期：能看（2~3 天）
+
+```
+5. 新建 foyue-admin Worker，绑 foyue-db + rixing-db + looka-db
+6. Cloudflare Access 配 foyue.org/admin
+7. 首页一屏 + 用户列表 + 订阅列表
+8. 单页 HTML + 原生 JS，不引框架（与现有子站风格一致，一个文件好维护）
+```
+
+#### 第 2 期：能做事（按需）
+
+```
+9. 写操作四件套 + admin_audit
+10. 接入其余子站（每站加一条 binding + 一段查询）
+11. 异常告警：未认领订单 / 崩溃激增 / AI 失败率超阈值 → 邮件到 looka01@qq.com
+    （Resend 已验证可用，dailyAlert 已有骨架，扩一下即可）
+```
+
+---
+
+### 九、需要你确认的三件事
+
+| | 问题 | 我的建议 |
+|---|---|---|
+| 1 | `foyue.org` 主站现在是 Worker 还是 Pages？ | 决定 `/admin` 是加路由还是独立 Worker + 路由规则。**独立 Worker 更干净**，主站不受影响 |
+| 2 | 后台用 Cloudflare Access 吗？ | **强烈建议用**。免费、零代码、比自己写登录安全一个数量级 |
+| 3 | 埋点要不要现在就做？ | **建议立刻做**。这是全篇唯一"晚一天就少一天数据"的事 |
