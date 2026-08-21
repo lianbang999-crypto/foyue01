@@ -33,6 +33,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -291,6 +293,16 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
     var remSheet by remember { mutableStateOf(false) }
     var tplSheet by remember { mutableStateOf(false) }
 
+    // 节奏（2026-08-21 对齐 Lifebear 实机录屏）：进来光标就在标题上、键盘已经起来。
+    // 少这一步，用户每次新建都要多点一下、多停半秒去找"从哪开始写"。
+    val titleFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        if (d.title.isBlank()) {
+            kotlinx.coroutines.delay(120)   // 等转场动画落定再要焦点，否则键盘会被切走
+            runCatching { titleFocus.requestFocus() }
+        }
+    }
+
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // 标题（输入后即可保存 —— 最低输入成本）+ 模板入口（规格 CAL-010）
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -301,7 +313,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 textStyle = TextStyle(fontSize = 18.sp),
                 colors = clearFieldColors(),
                 singleLine = true,
-                modifier = Modifier.weight(1f).padding(start = 4.dp)
+                modifier = Modifier.weight(1f).padding(start = 4.dp).focusRequester(titleFocus)
             )
             IconButton(onClick = { tplSheet = true }) {
                 Icon(Icons.Outlined.Bookmarks, tr("日程模板"), tint = GrayText, modifier = Modifier.size(20.dp))

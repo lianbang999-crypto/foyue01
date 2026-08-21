@@ -510,11 +510,14 @@ function renderDayPanel(evs, tks, sts) {
       <div class="t"><div class="name" style="${k.done ? 'color:var(--gray);text-decoration:line-through' : ''}">${k.done ? '☑' : '☐'} ${esc(k.title)}</div></div>
       <div class="time">任务</div></div>`;
   });
-  if (diary) {
-    html += `<div class="day-item" data-diary="1">
+  // 日记：有没有都常驻一行（对齐 Lifebear 实机，空日子给一句邀请而不是什么都不显示）
+  html += diary
+    ? `<div class="day-item" data-diary="1">
       <div class="t"><div class="name">${MOODS[diary.p.mood ?? 2]} ${esc((diary.p.content || '').slice(0, 26))}</div></div>
-      <div class="time">日记</div></div>`;
-  }
+      <div class="time">${t('日记')}</div></div>`
+    : `<div class="day-item" data-diary="1">
+      <div class="t"><div class="name dim-invite">${t('随便写点什么吧 ✎')}</div></div>
+      <div class="time">${t('日记')}</div></div>`;
   if (sts.length) {
     html += `<div class="day-item"><div class="t">${sts.map(st => {
       const face = st.assetId
@@ -523,7 +526,10 @@ function renderDayPanel(evs, tks, sts) {
       return face + `<button class="del" data-stamp-del="${st.uid}">×</button>`;
     }).join('')}</div><div class="time">${t('印章')}</div></div>`;
   }
-  if (!html) html = `<div class="empty-deer"><img src="deer.svg" alt="">这一天还没有安排</div>`;
+  if (!evs.length && !tks.length && !diary && !sts.length) {
+    html = `<div class="empty-deer"><img src="deer.svg" alt="">${t('这一天还没有安排')}
+      <span class="empty-hint">${t('点右上角 ＋ 安排一条 ↗')}</span></div>` + html;
+  }
   $('#dayItems').innerHTML = html;
 
   $$('#dayItems [data-ev]').forEach(el => el.onclick = () => openEventModal(evs[+el.dataset.ev]));
@@ -593,6 +599,8 @@ function openEventModal(occ) {
   };
   syncVis();
   d.querySelector('#evAllDay').onchange = syncVis;
+  // 节奏：弹窗一开光标就在标题上（对齐 Lifebear —— 少一次"从哪开始写"的停顿）
+  setTimeout(() => { const el = d.querySelector('#evTitle'); if (el && !el.value) el.focus(); }, 60);
   freqSel.onchange = syncVis;
   d.querySelectorAll('.wk').forEach(b => b.onclick = () => b.classList.toggle('on'));
   d.querySelector('#evX').onclick = closeModal;

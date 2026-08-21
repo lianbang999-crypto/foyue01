@@ -681,3 +681,9 @@
 1. 爱发电后台 Webhook URL 改为 `https://looka.foyue.org/api/pay/afdian/<见 .secrets.txt AFDIAN_HOOK_SECRET>` 并点「发送测试」
 2. Ko-fi `/tiers` 确认 Membership 已建好
 3. DMARC 记录；keystore 备份 #2
+
+## v1.6.1 (13) — 2026-08-21 · 交互节奏（第二段录屏）
+- 新建日程/任务：进入即聚焦标题、键盘就位（App 用 FocusRequester 延迟 120ms；网页弹窗同理）
+- 日详情面板常驻「日记」行，空白日子显示「随便写点什么吧 ✎」邀请（对齐 Lifebear 的 メモなど…）
+- 🔴 **更正 v1.6.0 的一处误判**：今天=浅灰底、选中日=黑描边（两者分工，上一版误合成灰底导致撞色）
+- 详见 FEATURE-PLAN §三十七；待拍板：印章模式是否跟随 Lifebear 退回月历

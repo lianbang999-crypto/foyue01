@@ -561,10 +561,13 @@ private fun DayCellV2(
 
     Box(
         modifier
+            // 2026-08-21 二次录屏更正：Lifebear 的两种态是分工的，不能混为一谈 ——
+            //   今天   = 整格浅灰底 + 日号黑方块（"你在这里"，常驻）
+            //   选中日 = 黑色描边框（"你正在看这一天"，跟着抽屉走）
+            // 上一版把选中日改成灰底，反而和"今天"撞色了，这里改回来。
             .background(
                 when {
-                    // 选中日 = 浅灰填充（Lifebear 式）。原来的 1.4dp 黑描边在小格子里显脏，已去掉
-                    isSelected -> Color(0xFFE9EBE9)
+                    isToday -> Color(0xFFE9EBE9)
                     !inMonth -> DimBg
                     else -> Color.White
                 }
@@ -573,6 +576,7 @@ private fun DayCellV2(
                 drawLine(hairColor, Offset(0f, size.height), Offset(size.width, size.height), 1f)
                 drawLine(hairColor, Offset(size.width, 0f), Offset(size.width, size.height), 1f)
             }
+            .then(if (isSelected) Modifier.border(1.4.dp, Ink) else Modifier)
             .combinedClickable(
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = androidx.compose.material3.ripple(bounded = true, color = Ink),
@@ -754,11 +758,15 @@ private fun DaySheet(
         }
         Hairline()
 
-        if (occList.isEmpty() && sysList.isEmpty() && taskList.isEmpty() && diary == null && stampList.isEmpty()) {
-            EmptyDeer(tr("这一天还没有安排"), hint = tr("点右上角 ＋ 安排一条 ↗"))
-            Spacer(Modifier.weight(1f))
-        } else {
+        // 注意：不再因为"这天什么都没有"就整段换成空状态插画 ——
+        // 日记邀请那一行必须一直够得着（见下方 item），否则空日子反而无从下手。
+        val nothing = occList.isEmpty() && sysList.isEmpty() && taskList.isEmpty() &&
+                diary == null && stampList.isEmpty()
+        run {
             LazyColumn(Modifier.weight(1f)) {
+                if (nothing) item {
+                    EmptyDeer(tr("这一天还没有安排"), hint = tr("点右上角 ＋ 安排一条 ↗"))
+                }
                 items(occList) { o ->
                     Row(
                         Modifier
@@ -848,16 +856,19 @@ private fun DaySheet(
                     }
                     Hairline(Modifier.padding(start = 18.dp))
                 }
-                if (diary != null) {
-                    item {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .plainClick { nav.navigate("diary/$day") }
-                                .padding(horizontal = 18.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(tr("日记"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))
+                // 日记：无论有没有都常驻一行（对齐 Lifebear 实机 ——
+                // 它的日详情面板永远挂着「メモなど自由に書いてみましょう ✏️」）。
+                // 空日子给一句邀请，比什么都不显示更容易让人写下第一笔。
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .plainClick { nav.navigate("diary/$day") }
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(tr("日记"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))
+                        if (diary != null) {
                             Text(
                                 com.looka.app.data.MOOD_EMOJIS[diary.mood.coerceIn(0, 4)],
                                 fontSize = 16.sp
@@ -868,9 +879,15 @@ private fun DaySheet(
                                 fontSize = 13.sp, color = GrayText,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
+                        } else {
+                            Text(
+                                tr("随便写点什么吧 ✎"),
+                                fontSize = 13.sp, color = Color(0xFFB9BBB9),
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Hairline(Modifier.padding(start = 18.dp))
                     }
+                    Hairline(Modifier.padding(start = 18.dp))
                 }
                 if (stampList.isNotEmpty()) {
                     item {
