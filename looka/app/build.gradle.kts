@@ -22,8 +22,8 @@ android {
         applicationId = "com.looka.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "1.8.0"
+        versionCode = 18
+        versionName = "1.8.1"
     }
 
     signingConfigs {
@@ -75,6 +75,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     implementation("androidx.activity:activity-compose:1.9.3")
+    // B6-lite（§48）：端上取色 —— 图片不出设备
+    implementation("androidx.palette:palette-ktx:1.0.0")
     implementation("androidx.navigation:navigation-compose:2.8.5")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")

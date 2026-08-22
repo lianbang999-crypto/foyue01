@@ -1279,6 +1279,70 @@ async function boot() {
       `<button class="custom-dot" data-c="${c}" style="width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:${c}"></button>`).join('');
     tp.appendChild(wrap);
     wrap.querySelectorAll('.custom-dot').forEach(b => b.onclick = () => applyCustomTheme(b.dataset.c));
+    // B6-lite（§48）：从照片取色生成主题（Pro）。取色在浏览器本地 canvas 完成，照片不上传。
+    const photoBtn = document.createElement('button');
+    photoBtn.className = 'custom-dot';
+    photoBtn.title = t('从照片生成主题');
+    photoBtn.style.cssText = 'width:26px;height:26px;border-radius:50%;border:1px dashed var(--hair);background:#fff;font-size:14px;line-height:1';
+    photoBtn.textContent = '📷';
+    tp.appendChild(photoBtn);
+    const photoInput = document.createElement('input');
+    photoInput.type = 'file'; photoInput.accept = 'image/*'; photoInput.style.display = 'none';
+    tp.appendChild(photoInput);
+    photoBtn.onclick = () => {
+      if (S.plan !== 'pro') { const m = $('#mPro'); if (m && m.onclick) m.onclick(); return; }
+      photoInput.click();
+    };
+    photoInput.onchange = () => {
+      const f = photoInput.files && photoInput.files[0]; photoInput.value = '';
+      if (!f) return;
+      const img = new Image();
+      img.onload = () => {
+        // 64×64 降采样 → 32 级量化桶计数 → 按「数量×饱和度×中亮度」打分取前 3 个不同色相
+        const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
+        const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, 64, 64);
+        const d = cx.getImageData(0, 0, 64, 64).data;
+        const bucket = {};
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          const k = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
+          const e = bucket[k] || (bucket[k] = { n: 0, r: 0, g: 0, b: 0 });
+          e.n++; e.r += r; e.g += g; e.b += b;
+        }
+        const cands = Object.values(bucket).map(e => {
+          const r = e.r / e.n, g = e.g / e.n, b = e.b / e.n;
+          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          const sat = mx === 0 ? 0 : (mx - mn) / mx;
+          let h = 0;
+          if (mx !== mn) {
+            if (mx === r) h = ((g - b) / (mx - mn)) % 6; else if (mx === g) h = (b - r) / (mx - mn) + 2; else h = (r - g) / (mx - mn) + 4;
+            h = (h * 60 + 360) % 360;
+          }
+          return { r, g, b, h, score: e.n * sat * (lum > 0.05 && lum < 0.75 ? 1 : 0) };
+        }).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+        const picked = [];
+        for (const c of cands) {
+          if (picked.some(x => Math.min(Math.abs(x.h - c.h), 360 - Math.abs(x.h - c.h)) < 24)) continue;
+          picked.push(c); if (picked.length >= 3) break;
+        }
+        if (!picked.length) { toast(t('没取到合适的颜色，换一张色彩多一点的照片试试？')); return; }
+        const hex = c => '#' + [c.r, c.g, c.b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+        modal(`<h3>${t('照片里的颜色 🦌')}</h3>
+          <p class="dim-note">${t('挑一套喜欢的，点一下就换上')}</p>
+          <div style="display:flex;justify-content:space-evenly;padding:12px 0">
+          ${picked.map(c => `<button class="photo-theme" data-c="${hex(c)}"
+            style="width:56px;height:56px;border-radius:50%;border:1px solid #0003;background:${mixHex(hex(c), '#ffffff', 0.9)};display:flex;align-items:center;justify-content:center">
+            <span style="width:30px;height:30px;border-radius:50%;background:${hex(c)}"></span></button>`).join('')}
+          </div>
+          <div class="modal-btns"><button class="btn-mini" id="photoThemeCancel">${t('取消')}</button></div>`);
+        $('#photoThemeCancel').onclick = closeModal;
+        document.querySelectorAll('.photo-theme').forEach(b => b.onclick = () => {
+          applyCustomTheme(b.dataset.c); closeModal();
+        });
+      };
+      img.src = URL.createObjectURL(f);
+    };
   }
   applyingRemoteSettings = true;
   try { applyTheme(localStorage.getItem('lk_theme') || 0); } finally { applyingRemoteSettings = false; }
@@ -1388,7 +1452,7 @@ async function boot() {
   const mPro = $('#mPro');
   const openPay = async () => {
     const zh = (localStorage.getItem('lk_lang') || navigator.language || 'zh').startsWith('zh');
-    let url = 'https://ko-fi.com/c/4c6210054c';
+    let url = 'https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a';
     if (zh) {
       // LK 短码：备注预填、付款后服务端自动归属开通；接口不可达退回裸链接（还有订单号认领兜底）
       url = 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0';
@@ -1404,7 +1468,7 @@ async function boot() {
       <p class="dim-note">${t('AI 不限次 · 更聪明的小鹿 · 生成主题与表情包（规划中）· 标签与年度回顾（规划中）')}</p>
       <p style="font-size:12px;margin:8px 0 2px"><b>${t('到期后你保留')}</b>：${t('全部内容和数据 · 做过的主题 · 云同步与导出 · 提醒闹钟')}</p>
       <p style="font-size:12px;margin:2px 0 8px"><b>${t('到期后暂停')}</b>：${t('AI 不限次（改回每天 10 次）· 生成新主题 / 表情包')}</p>
-      <p class="dim-note">${t('不偷偷扣钱：可随时取消；到期不收回你做的东西。')}</p>
+      <p class="dim-note">${t('不偷偷扣钱：可随时取消，取消后立即不再扣款。')}</p>
       <div class="modal-btns"><button class="btn-mini" id="proCancel">${t('再想想')}</button>
       <button class="btn-dark" id="proGo">${t('去开通 · 12元/月')}</button></div>`);
     $('#proCancel').onclick = closeModal;

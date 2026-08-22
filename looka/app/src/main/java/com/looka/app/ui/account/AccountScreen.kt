@@ -456,9 +456,6 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         }
         Hairline()
 
-        InfoRow(tr("网页端"), tr("looka.foyue.org · 同账号登录"))
-        Hairline()
-
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             TextButton(onClick = { pwDlg = true }) { Text(tr("修改密码"), fontSize = 14.sp) }
         }
@@ -653,8 +650,7 @@ private fun KeepLoseDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(10.dp))
                 Text(tr("暂时用不了了"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 loses.forEach { Text("· $it", fontSize = 12.sp, color = GrayText) }
-                Spacer(Modifier.height(10.dp))
-                Text(tr("到期不收回：你做的东西照样能用，我们只是不再为你生成新的。"), fontSize = 11.sp, color = GrayText)
+
             }
         }
     )

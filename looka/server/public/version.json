@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 17,
-  "versionName": "1.8.0",
+  "versionCode": 18,
+  "versionName": "1.8.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3655822,
-  "sha256": "81e3ca893ff78fcc3e3e800c2b8e259dde658bdbf8aa10b424e41a18c560fe2e",
-  "changelog": "真闹钟（持续响直到手动停）· 小鹿会改会删会查 · 批量确认与撤销 · 主题上云 · FREE/PRO 分档",
+  "size": 3674461,
+  "sha256": "75c022bd8f04904394d293e8c1411c6a916a8277f3b653a69e4ef1e1848c045b",
+  "changelog": "从照片生成主题（照片不离开手机）· 支付页更新 · 文案优化",
   "minSupported": 1
 }

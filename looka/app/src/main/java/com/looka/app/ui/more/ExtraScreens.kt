@@ -191,7 +191,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                                     .getOrNull()?.takeIf { it.isNotBlank() }
                                     // 服务端不可达时退回无备注的裸链接（还有订单号认领兜底）
                                     ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/c/4c6210054c"
+                            } else "https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a"
                             Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
                             payTick++
                             runCatching {

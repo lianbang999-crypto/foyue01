@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,18 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     var updateMsg by remember { mutableStateOf<String?>(null) }
     // 自创主题 Pro 门禁：记录用户点的那个颜色，弹窗里就用它演示（看得见才想要）
     var customGate by remember { mutableStateOf<Long?>(null) }
+    // B6-lite（§48）：从照片取色生成主题。取色在端上完成（androidx.palette），图片不出设备。
+    val themeScope = androidx.compose.runtime.rememberCoroutineScope()
+    var photoThemes by remember { mutableStateOf<List<Long>>(emptyList()) }
+    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) themeScope.launch {
+            val colors = extractThemeColors(ctx, uri)
+            if (colors.isEmpty()) com.looka.app.ui.common.toast(ctx, tr("没取到合适的颜色，换一张色彩多一点的照片试试？"))
+            else photoThemes = colors
+        }
+    }
     androidx.compose.runtime.LaunchedEffect(checkingUpdate) {
         if (checkingUpdate) {
             val info = com.looka.app.util.UpdateManager.check(ctx)
@@ -159,7 +172,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                                 kotlin.runCatching { com.looka.app.net.Api.payIntent(ctx).optString("url") }
                                     .getOrNull()?.takeIf { it.isNotBlank() }
                                     ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/c/4c6210054c"
+                            } else "https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a"
                             Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
                             kotlin.runCatching {
                                 ctx.startActivity(android.content.Intent(
@@ -329,7 +342,68 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 fontSize = 11.5.sp, color = GrayText,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
             )
+
+            // ── B6-lite：从照片取色（Pro）。取色在手机上完成，照片不会上传 ──
+            Hairline()
+            Row(
+                Modifier.fillMaxWidth()
+                    .plainClick {
+                        if (com.looka.app.data.Prefs.isPro(ctx)) photoPicker.launch("image/*")
+                        else customGate = 0xFF8C4A3CL
+                    }
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("📷", fontSize = 20.sp)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(tr("从照片生成主题"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        tr("挑一张喜欢的照片，小鹿从里面取色配一套 · 照片不会离开手机"),
+                        fontSize = 11.sp, color = GrayText
+                    )
+                }
+            }
         }
+    }
+
+    // B6-lite：照片取色候选（最多 3 套，点一套即应用）
+    if (photoThemes.isNotEmpty()) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { photoThemes = emptyList() },
+            title = { Text(tr("照片里的颜色 🦌"), fontSize = 16.sp) },
+            text = {
+                Column {
+                    Text(tr("挑一套喜欢的，点一下就换上"), fontSize = 12.sp, color = GrayText)
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        photoThemes.take(3).forEach { argb ->
+                            val t = com.looka.app.ui.theme.customTheme(argb)
+                            Column(
+                                Modifier.plainClick {
+                                    ThemeCtl.setCustom(ctx, argb)
+                                    photoThemes = emptyList()
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    Modifier.size(56.dp).clip(CircleShape).background(t.container)
+                                        .border(0.8.dp, Color(0x33000000), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(Modifier.size(30.dp).clip(CircleShape).background(t.primary))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { photoThemes = emptyList() }) { Text(tr("取消"), color = GrayText) }
+            }
+        )
     }
 
     updateMsg?.let { m ->
@@ -400,7 +474,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                     tr("小鹿 Looka，可爱版九色鹿，你的极简生活手帐。\n\n") +
                             tr("· 灵感来自敦煌壁画「九色鹿」：一鹿九色，故有九套主题\n") +
                             tr("· 日历为中心：日程、任务、日记、印章围绕日期组织\n") +
-                            tr("· 数据本机优先，登录后云同步（looka.foyue.org 网页端可用）\n") +
+                            tr("· 数据本机优先，登录后云同步\n") +
                             tr("· 小鹿 AI 助手（免费每天 10 次，Pro 不限次）\n") +
                             tr("· 独立原创品牌与设计"),
                     fontSize = 13.sp, lineHeight = 21.sp
@@ -427,4 +501,57 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         },
         containerColor = Color.White
     )
+}
+
+/**
+ * B6-lite（§48）：端上取色 —— 照片不出设备。
+ * Palette 各 swatch 按「适合做主题主色」过滤（太亮太暗都撑不起浅底深字的推导），
+ * 再按色相去重，最多给 3 个候选。
+ */
+private suspend fun extractThemeColors(
+    c: android.content.Context,
+    uri: android.net.Uri
+): List<Long> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    runCatching {
+        // 采样解码：取色不需要原图，128px 足够且省内存
+        val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        c.contentResolver.openInputStream(uri)?.use {
+            android.graphics.BitmapFactory.decodeStream(it, null, opts)
+        }
+        var sample = 1
+        while (maxOf(opts.outWidth, opts.outHeight) / (sample * 2) >= 128) sample *= 2
+        val bmp = c.contentResolver.openInputStream(uri)?.use {
+            android.graphics.BitmapFactory.decodeStream(
+                it, null,
+                android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return@runCatching emptyList()
+
+        val p = androidx.palette.graphics.Palette.from(bmp).maximumColorCount(24).generate()
+        val raw = listOfNotNull(
+            p.vibrantSwatch, p.darkVibrantSwatch, p.mutedSwatch,
+            p.darkMutedSwatch, p.lightVibrantSwatch, p.dominantSwatch
+        ).map { it.rgb }
+
+        val out = ArrayList<Long>()
+        for (rgb in raw) {
+            val col = androidx.compose.ui.graphics.Color(rgb or 0xFF000000.toInt())
+            val lum = col.luminance()
+            if (lum < 0.05f || lum > 0.75f) continue          // 太暗/太亮做不了主色
+            val argb = 0xFF000000L or (rgb.toLong() and 0xFFFFFFL)
+            // 色相去重：与已选颜色太接近的跳过
+            val h1 = hueOf(col)
+            if (out.any { kotlin.math.abs(hueOf(androidx.compose.ui.graphics.Color(it)) - h1)
+                    .let { d -> minOf(d, 360f - d) } < 24f }) continue
+            out += argb
+            if (out.size >= 3) break
+        }
+        out
+    }.getOrDefault(emptyList())
+}
+
+private fun hueOf(c: androidx.compose.ui.graphics.Color): Float {
+    val hsv = FloatArray(3)
+    android.graphics.Color.RGBToHSV(
+        (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt(), hsv)
+    return hsv[0]
 }

@@ -67,13 +67,11 @@ Looka 是一个安静的手帐 App —— 日历、待办、笔记、日记，�
 
 🚧 标记的功能正在开发中，上线后自动解锁，不会另外收费。
 
-【关于付费，我们的两个承诺】
+【关于付费，我们的承诺】
 
 不偷偷扣你钱。订阅可随时取消，取消后立即不再扣款；
 不想被自动续费，也可以只买一次性的月卡或年卡。
-
-到期不收回。你做的主题、生成的表情、写下的内容、导出的文件，
-到期之后照样能用、照样能看 —— 我们只是不再为你生成新的。
+无论免费还是 Pro，你的内容永远属于你，我们都会提供最好的服务。
 ```
 
 ---
@@ -115,6 +113,11 @@ Looka · 可爱版九色鹿
 ---
 
 # 🌍 Ko-fi
+
+> **支付页直链（2026-08-22 用户提供）**
+> 月费：https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a
+> 年费：https://ko-fi.com/summary/eab7a9fe-62b6-4aa8-9f5e-4819fa6fe6f7
+> App 与网页的默认海外支付链接已切到月费页；年费页用于文案/宣传位。
 
 ## Membership tier
 
@@ -174,15 +177,12 @@ Search · passcode lock · widgets · system calendar · EN / 简体 / 繁體
 
 🚧 = in development. It unlocks automatically when it ships, at no extra cost.
 
-【Two promises about payment】
+【Our promise about payment】
 
 We won't quietly charge you. Cancel any time and billing stops immediately.
 If you'd rather not have a recurring subscription, one-off monthly and yearly
 passes are available too.
-
-We won't take it back when it expires. The themes you made, the stickers you
-generated, everything you wrote and exported — all of it keeps working.
-We simply stop generating new ones for you.
+Free or Pro, your content is always yours, and you get our best service either way.
 ```
 
 ---
