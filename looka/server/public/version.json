@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 21,
-  "versionName": "1.9.1",
+  "versionCode": 22,
+  "versionName": "1.9.2",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3693729,
-  "sha256": "470a1d6db0c2251561f881f47f5bf0976c1946d4ee615c6467c077cd779b0d48",
-  "changelog": "移除语音输入",
+  "size": 3693933,
+  "sha256": "6051814aed473e144a6538ef9d116689dbe8164314e621b8986dc02ef202a78b",
+  "changelog": "修复批：周视图长条可读+统一未分类颜色 · 更多页极简 · 流式空气泡",
   "minSupported": 1
 }

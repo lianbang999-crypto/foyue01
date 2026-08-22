@@ -49,7 +49,9 @@ class LookaApp : Application() {
                     val lines = txt.lines()
                     com.looka.app.net.Api.crash(
                         this@LookaApp,
-                        ver = BuildConfig.VERSION_NAME,
+                        // E1（§57）：ver 必须是**崩溃发生时**的版本（文件第一行），不是上传时的
+                        ver = lines.getOrElse(0) { "" }.removePrefix("Looka ").substringBefore(" (")
+                            .ifBlank { BuildConfig.VERSION_NAME },
                         model = lines.getOrElse(1) { "" }.take(64),
                         stack = lines.drop(3).joinToString("\n").take(8000)
                     )

@@ -342,6 +342,9 @@ private fun DayTimelineColumn(
             }
     ) {
         val colW = maxWidth
+        // E4：未分类的统一呈现色 —— 主题主色掺 35% 白
+        val softUncat = androidx.compose.ui.graphics.lerp(
+            MaterialTheme.colorScheme.primary, Color.White, 0.35f)
         val lanes = remember(blocks) { layoutLanes(blocks) }
         lanes.forEach { (b, lane, count, span) ->
             val top = HOUR_DP * (b.startMin / 60f)
@@ -356,17 +359,20 @@ private fun DayTimelineColumn(
                         .height(heightDp)
                         .padding(horizontal = 1.dp, vertical = 1.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(blockColor(catColorMap[o.categoryId], o.title).copy(alpha = 0.94f))
+                        .background(blockColor(catColorMap[o.categoryId], softUncat).copy(alpha = 0.94f))
                         .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                         .plainClick { onOpen(o) }
                         .padding(horizontal = 4.dp, vertical = 3.dp)
                 ) {
                     Column {
-                        val fg = onColor(blockColor(catColorMap[o.categoryId], o.title))
+                        val fg = onColor(blockColor(catColorMap[o.categoryId], softUncat))
                         Text(
                             o.title, fontSize = 10.sp, color = fg, lineHeight = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis
+                            // E3（§57）：窄条横排放不下 —— 放开行数，中文自动逐字竖排，
+                            // 长日程再窄也能读出标题（用户截图里那根"看不清的长条"）
+                            maxLines = if (w < 44.dp) 10 else 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         if (w >= 60.dp) Text(
                             "${Fmt.hm(o.startMin)}-${Fmt.hm(o.endMin)}",
@@ -472,16 +478,9 @@ private fun layoutLanes(items: List<TBlock>): List<LaneBox> {
 
 
 /**
- * K2③（§54 二 问题1）：块配色。
- * 「未分类」的颜色与回落色都是 #9AA0A6 —— AI 建的日程全落在未分类里，整屏死灰。
- * 灰色/缺失时按标题散列取一个柔和色：信息量回来了，又不动用户的分类数据。
+ * E4（§57，用户拍板方案 A）：未分类/缺失分类 = **当前主题色的柔和变体**。
+ * 此前的散列色是假分类信号 —— 不同颜色让用户以为属于不同分类，其实全是未分类。
+ * 一种颜色一个含义；随主题走，整体感也回来了。
  */
-private val SOFT_COLORS = listOf(
-    Color(0xFF4A7DDC), Color(0xFF55B04B), Color(0xFF2FA69A), Color(0xFFE077A8),
-    Color(0xFFF2913D), Color(0xFF7E6BD8), Color(0xFF4A9EDB), Color(0xFFC9A227)
-)
-
-private fun blockColor(catColor: Color?, title: String): Color =
-    if (catColor == null || catColor == Color(0xFF9AA0A6))
-        SOFT_COLORS[kotlin.math.abs(title.hashCode()) % SOFT_COLORS.size]
-    else catColor
+private fun blockColor(catColor: Color?, softUncat: Color): Color =
+    if (catColor == null || catColor == Color(0xFF9AA0A6)) softUncat else catColor

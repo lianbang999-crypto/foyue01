@@ -96,8 +96,11 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     val weekNames = listOf(tr("周一"), tr("周二"), tr("周三"), tr("周四"), tr("周五"), tr("周六"), tr("周日"))
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("日历与默认设置"), onBack = { nav.popBackStack() })
+        LookaTopBar(tr("日历设置"), onBack = { nav.popBackStack() })
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            // E5（§57）：分类管理并入日历设置（更多页 16→8）
+            NavRow(tr("分类管理")) { nav.navigate("categories") }
+            Hairline()
             SectionLabel(tr("显示"))
             NavRow(tr("一周开始日"), value = if (weekStartMon) tr("周一") else tr("周日")) { weekStartDlg = true }
             Hairline()

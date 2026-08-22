@@ -1545,8 +1545,8 @@ async function boot() {
       milestone: t('里程碑奖励'), referral_new: t('邀请奖励'), referral_inviter: t('邀请奖励')
     }[x] || x);
     modal(`<h3>🦌 ${bal >= 0 ? bal : '…'}</h3>
-      <p class="dim-note">${t('每天自动到账（免费 10 枚 / Pro 50 枚），不用签到、断了也不罚')}<br>
-      ${t('参考价：100 枚 ≈ ¥6（暂不出售 —— 每天送的就够用）')}</p>
+      <p class="dim-note">${t('每天自动到账：免费 10 · Pro 50')}<br>
+      ${t('参考价：100 枚 ≈ ¥6')}</p>
       ${invite ? `<p style="font-size:13px"><b>${t('我的邀请码')}：${invite}</b><br>
         <span class="dim-note">${t('朋友注册时填上它，你们各得 100 枚 🦌')}</span></p>` : ''}
       <div style="max-height:200px;overflow:auto">

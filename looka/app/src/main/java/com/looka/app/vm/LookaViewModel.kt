@@ -682,19 +682,25 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 if (history.isNotEmpty() && payload != display) {
                     history[history.size - 1] = "user" to payload
                 }
-                // T1（§53）：真流式 —— 先挂一条空 AI 消息，随增量刷新；
+                // T1（§53）真流式 + E2（§57）：**首个可见增量到达才插消息** ——
+                // 提前挂空占位会渲染出一个空白小气泡（用户截图实锤）。
                 // T2：渲染在 ``` 处截断，动作 JSON 逐字冒出也绝不给用户看（线上踩过的坑）
-                val idx = chat.size
-                chat += ChatMsg(ROLE_AI, "")
+                var idx = -1
                 val sb = StringBuilder()
                 val raw = AiClient.chat(getApplication(), sys, history) { delta ->
                     sb.append(delta)
                     val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
-                    chat[idx] = chat[idx].copy(text = visible)
+                    if (visible.isNotBlank()) {
+                        if (idx < 0) { idx = chat.size; chat += ChatMsg(ROLE_AI, visible) }
+                        else chat[idx] = chat[idx].copy(text = visible)
+                    }
                 }
                 val (text, actions) = AiActions.split(raw)
-                if (text.isNotBlank()) chat[idx] = chat[idx].copy(text = text)
-                else chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
+                when {
+                    text.isNotBlank() && idx >= 0 -> chat[idx] = chat[idx].copy(text = text)
+                    text.isNotBlank() -> chat += ChatMsg(ROLE_AI, text)   // 非流式路径（自带 Key）
+                    idx >= 0 -> chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
+                }
                 if (actions.isNotEmpty()) {
                     // A3/A1-4（§48）：删除一律先确认；一次 ≥3 条也先确认（批量误建就是这么来的）
                     if (actions.any { it.isDelete } || actions.size >= 3) {

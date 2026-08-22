@@ -104,7 +104,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     color = if (plan == "pro") MaterialTheme.colorScheme.primary else Ink
                 )
                 Text(
-                    if (plan == "pro") tr("每天自动到账 50 枚鹿角（和小鹿聊天 1 枚/次，根本用不完）")
+                    if (plan == "pro") tr("每天自动到账 50 枚鹿角")
                     else tr("每天自动到账 10 枚鹿角；Pro 每天 50 枚，攒着还能生成表情包"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
                 )
@@ -112,6 +112,16 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     tr("登录后即可使用小鹿 AI 与云同步"),
                     fontSize = 12.sp, color = HolidayRed, modifier = Modifier.padding(top = 4.dp)
                 )
+            }
+            Hairline()
+            // E5：鹿角并入订阅页（更多页只留一个入口）
+            Row(
+                Modifier.fillMaxWidth().plainClick { nav.navigate("antler") }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(tr("我的鹿角"), fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text("🦌 ›", fontSize = 14.sp, color = GrayText)
             }
             Hairline()
 
@@ -368,6 +378,7 @@ fun BackupScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     val app = ctx.applicationContext as LookaApp
     val scope = rememberCoroutineScope()
+    var dedupDlg by remember { mutableStateOf(false) }
     val stamp = remember { SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) }
 
     val jsonLauncher = rememberLauncherForActivityResult(
@@ -442,8 +453,55 @@ fun BackupScreen(vm: LookaViewModel, nav: NavHostController) {
                 restoreLauncher.launch(arrayOf("application/json"))
             }
             Hairline()
+            // E5（§57）：维护入口并入本页（更多页 16→8）
+            SectionLabel(tr("维护"))
+            BackupRow(tr("清理重复日程"), "") { dedupDlg = true }
+            Hairline()
+            BackupRow(tr("同步冲突记录"), "") { nav.navigate("conflicts") }
+            Hairline()
             Spacer(Modifier.height(40.dp))
         }
+    }
+
+    // A1-6：重复日程清理确认框（自 MoreScreen 移入，E5）
+    if (dedupDlg) {
+        val groups = remember(dedupDlg) { vm.duplicateEventGroups() }
+        AlertDialog(
+            onDismissRequest = { dedupDlg = false },
+            title = { Text(tr("清理重复日程"), fontSize = 16.sp) },
+            text = {
+                if (groups.isEmpty()) Text(tr("没有发现重复的日程 🦌"), fontSize = 13.sp)
+                else Column {
+                    Text(
+                        tr("发现 {0} 组重复（每组保留最早一条，删除其余 {1} 条）：",
+                            groups.size, groups.sumOf { it.size - 1 }),
+                        fontSize = 13.sp
+                    )
+                    groups.take(8).forEach { g ->
+                        Text(
+                            "· ${com.looka.app.util.Fmt.dateCn(g[0].startDay)} ${g[0].title} ×${g.size}",
+                            fontSize = 12.sp, color = GrayText,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    if (groups.size > 8) Text(tr("……等 {0} 组", groups.size), fontSize = 12.sp, color = GrayText)
+                }
+            },
+            confirmButton = {
+                if (groups.isNotEmpty()) TextButton(onClick = {
+                    vm.cleanDuplicateEvents { n ->
+                        android.widget.Toast.makeText(ctx, tr("已清理 {0} 条重复日程", n),
+                            android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    dedupDlg = false
+                }) { Text(tr("清理"), color = HolidayRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { dedupDlg = false }) {
+                    Text(if (groups.isEmpty()) tr("好的") else tr("取消"), color = GrayText)
+                }
+            }
+        )
     }
 }
 
@@ -748,19 +806,18 @@ fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
                     fontSize = 30.sp, fontWeight = FontWeight.Bold
                 )
                 Text(
-                    tr("每天自动到账（免费 10 枚 / Pro 50 枚），不用签到、断了也不罚"),
+                    tr("每天自动到账：免费 10 · Pro 50"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
                 )
                 Text(
-                    tr("参考价：100 枚 ≈ ¥6（暂不出售 —— 每天送的就够用）"),
+                    tr("参考价：100 枚 ≈ ¥6"),
                     fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
                 )
             }
             Hairline()
             SectionLabel(tr("会用到鹿角的"))
             Text(
-                tr("和小鹿聊天 1 枚 · AI 生成主题 2 枚 · 截图识别 3 枚（规划中）· 生成表情包 20 枚（规划中）") + "\n" +
-                    tr("写日记、建日程、贴表情、同步、导出、闹钟 —— 永远不用鹿角"),
+                tr("和小鹿聊天 1 枚 · AI 生成主题 2 枚 · 截图识别 3 枚（规划中）· 生成表情包 20 枚（规划中）"),
                 fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )

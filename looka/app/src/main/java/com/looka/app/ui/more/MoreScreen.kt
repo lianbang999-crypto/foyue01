@@ -80,7 +80,6 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     var aboutDlg by remember { mutableStateOf(false) }
     var themeSheet by remember { mutableStateOf(false) }
     var checkingUpdate by remember { mutableStateOf(false) }
-    var dedupDlg by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.looka.app.util.UpdateManager.Info?>(null) }
     var updateMsg by remember { mutableStateOf<String?>(null) }
     // 自创主题 Pro 门禁：记录用户点的那个颜色，弹窗里就用它演示（看得见才想要）
@@ -147,66 +146,15 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 value = DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
             ) { themeSheet = true }
             Hairline()
-            NavRow(tr("小鹿 AI 助手"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
-            Hairline()
             NavRow(tr("搜索"), icon = Icons.Outlined.Search) { nav.navigate("search") }
             Hairline()
-            NavRow(tr("分类管理"), icon = Icons.Outlined.Palette) { nav.navigate("categories") }
+            NavRow(tr("日历设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
             Hairline()
-            NavRow(tr("日历与默认设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
+            NavRow(tr("订阅 · 鹿角"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
             Hairline()
-            NavRow(tr("订阅与小鹿 AI"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
-            Hairline()
-            // G1（§54）：鹿角入口 —— 安静的一行，不做顶栏角标
-            NavRow(tr("我的鹿角"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("antler") }
-            Hairline()
-            // P2-A11：入口 3 层 → 1 层。免费用户点一下直达付款页（等待卡在订阅页看）
-            if (!com.looka.app.data.PlanState.isPro) {
-                val scope = androidx.compose.runtime.rememberCoroutineScope()
-                NavRow(
-                    tr("升级 Pro · 12元/月"),
-                    icon = Icons.Outlined.WorkspacePremium,
-                    value = tr("更聪明的小鹿 + 自创主题")
-                ) {
-                    if (!com.looka.app.net.Api.authed(ctx)) {
-                        nav.navigate("account")
-                    } else {
-                        scope.launch {
-                            val zh = com.looka.app.util.I18n.lang.startsWith("zh")
-                            val url = if (zh) {
-                                kotlin.runCatching { com.looka.app.net.Api.payIntent(ctx).optString("url") }
-                                    .getOrNull()?.takeIf { it.isNotBlank() }
-                                    ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a"
-                            Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
-                            kotlin.runCatching {
-                                ctx.startActivity(android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                            }
-                            nav.navigate("subscription")   // 回来能看到等待卡
-                        }
-                    }
-                }
-                Hairline()
-            }
-            NavRow(
-                tr("语言 / Language"), icon = Icons.Outlined.Translate,
-                value = com.looka.app.util.I18n.choiceLabel(Prefs.language(ctx))
-            ) { nav.navigate("language") }
-            Hairline()
-            NavRow(tr("备份与恢复"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
-            Hairline()
-            // A1-6：清掉 AI 早期只会「建」时造成的重复日程（同标题同日同时间）
-            NavRow(tr("清理重复日程"), icon = Icons.Outlined.CleaningServices) { dedupDlg = true }
+            NavRow(tr("数据与维护"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
             Hairline()
             NavRow(tr("提醒自检"), icon = Icons.Outlined.NotificationsActive) { nav.navigate("selfcheck") }
-            Hairline()
-            NavRow(tr("同步冲突记录"), icon = Icons.Outlined.SyncProblem) { nav.navigate("conflicts") }
-            Hairline()
-            NavRow(tr("检查更新"), icon = Icons.Outlined.CloudDownload,
-                value = "v" + com.looka.app.BuildConfig.VERSION_NAME) {
-                checkingUpdate = true
-            }
             Hairline()
             NavRow(tr("关于 Looka"), icon = Icons.Outlined.Info) { aboutDlg = true }
             Hairline()
@@ -214,44 +162,6 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
 
-    // A1-6：重复日程清理确认框（列出重复组，保最早、删其余；走同步网页端一并生效）
-    if (dedupDlg) {
-        val groups = remember(dedupDlg) { vm.duplicateEventGroups() }
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { dedupDlg = false },
-            title = { Text(tr("清理重复日程"), fontSize = 16.sp) },
-            text = {
-                if (groups.isEmpty()) Text(tr("没有发现重复的日程 🦌"), fontSize = 13.sp)
-                else Column {
-                    Text(
-                        tr("发现 {0} 组重复（每组保留最早一条，删除其余 {1} 条）：",
-                            groups.size, groups.sumOf { it.size - 1 }),
-                        fontSize = 13.sp
-                    )
-                    groups.take(8).forEach { g ->
-                        Text(
-                            "· ${com.looka.app.util.Fmt.dateCn(g[0].startDay)} ${g[0].title} ×${g.size}",
-                            fontSize = 12.sp, color = GrayText,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                    if (groups.size > 8) Text(tr("……等 {0} 组", groups.size), fontSize = 12.sp, color = GrayText)
-                }
-            },
-            confirmButton = {
-                if (groups.isNotEmpty()) TextButton(onClick = {
-                    vm.cleanDuplicateEvents { n ->
-                        android.widget.Toast.makeText(ctx, tr("已清理 {0} 条重复日程", n),
-                            android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                    dedupDlg = false
-                }) { Text(tr("清理"), color = MaterialTheme.colorScheme.primary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { dedupDlg = false }) { Text(tr("取消"), color = GrayText) }
-            }
-        )
-    }
 
     // 九色主题选择
     if (themeSheet) ModalBottomSheet(
@@ -364,7 +274,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 Column {
                     Text(tr("从照片生成主题"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        tr("挑一张喜欢的照片，小鹿从里面取色配一套 · 照片不会离开手机"),
+                        tr("挑一张照片，小鹿取色配一套"),
                         fontSize = 11.sp, color = GrayText
                     )
                 }
@@ -496,7 +406,8 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                                 runCatching {
                                     val lines = crashF.readText().lines()
                                     com.looka.app.net.Api.crash(ctx,
-                                        com.looka.app.BuildConfig.VERSION_NAME,
+                                        lines.getOrElse(0) { "" }.removePrefix("Looka ").substringBefore(" (")
+                                            .ifBlank { com.looka.app.BuildConfig.VERSION_NAME },
                                         lines.getOrElse(1) { "" }.take(64),
                                         lines.drop(3).joinToString("\n").take(8000))
                                     crashF.delete()
@@ -508,6 +419,20 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                                 }
                             }
                         }
+                    )
+                }
+                // E5：更新与语言收进关于页（更多页减行）
+                Row(Modifier.padding(top = 10.dp)) {
+                    Text(
+                        tr("检查更新") + " · v" + com.looka.app.BuildConfig.VERSION_NAME,
+                        fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.plainClick { aboutDlg = false; checkingUpdate = true }
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(
+                        tr("语言 / Language"),
+                        fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.plainClick { aboutDlg = false; nav.navigate("language") }
                     )
                 }
                 Row(Modifier.padding(top = 10.dp)) {
