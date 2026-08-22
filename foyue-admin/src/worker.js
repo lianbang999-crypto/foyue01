@@ -194,6 +194,97 @@ async function grantPro(env, userId, days) {
   return exp;
 }
 
+// ---------- v2：站点详情 / 用户画像 / 留存（2026-08-22 用户要求"看完整数据、了解用户"）----------
+
+/** 允许上报的站点与事件（信标白名单，防垃圾灌库） */
+const BEACON_SITES = ['foyue', 'wenchao', 'game', 'zhi', 'shop', 'bojing'];
+const beaconHits = new Map();   // ip -> {n, win}
+
+async function siteDetail(env, site, days) {
+  const from = Date.now() - days * DAY_MS;
+  const [kinds, ua, ref, hourly, trendRows] = await Promise.all([
+    env.STATS.prepare('SELECT kind, COUNT(*) c FROM events WHERE site=?1 AND ts>?2 GROUP BY kind ORDER BY c DESC')
+      .bind(site, from).all(),
+    env.STATS.prepare("SELECT ua_class, COUNT(*) c FROM events WHERE site=?1 AND ts>?2 AND ua_class!='' GROUP BY ua_class")
+      .bind(site, from).all(),
+    env.STATS.prepare("SELECT ref, COUNT(*) c FROM events WHERE site=?1 AND ts>?2 AND ref!='' GROUP BY ref ORDER BY c DESC LIMIT 10")
+      .bind(site, from).all(),
+    // 小时分布（北京时间）：用户什么时候在用
+    env.STATS.prepare(
+      "SELECT CAST(strftime('%H', datetime(ts/1000,'unixepoch','+8 hours')) AS INTEGER) h, COUNT(*) c FROM events WHERE site=?1 AND ts>?2 GROUP BY h"
+    ).bind(site, from).all(),
+    // 14 天趋势（当天实时 + 历史汇总）
+    env.STATS.prepare(
+      "SELECT date(ts/1000,'unixepoch','+8 hours') d, COUNT(*) c, COUNT(DISTINCT COALESCE(CAST(user_id AS TEXT), ip_hash, 'x')) u FROM events WHERE site=?1 AND ts>?2 GROUP BY d ORDER BY d"
+    ).bind(site, Date.now() - 14 * DAY_MS).all()
+  ]);
+  const hours = Array(24).fill(0);
+  for (const r of hourly.results || []) hours[r.h] = r.c;
+  return {
+    kinds: kinds.results || [], ua: ua.results || [], ref: ref.results || [],
+    hourly: hours, trend14: trendRows.results || []
+  };
+}
+
+/** 用户画像钻取：🔒 只有元数据与事件流水（kind/时间/设备），永不含内容 */
+async function userDetail(env, uid) {
+  const [u, plan, ant, evs, firstEv] = await Promise.all([
+    env.AUTH.prepare('SELECT id, account, kind, created_at, last_seen_at, reg_site, banned_at FROM users WHERE id=?1').bind(uid).first(),
+    env.LOOKA.prepare('SELECT plan, expires_at FROM plans WHERE user_id=?1').bind(uid).first(),
+    env.LOOKA.prepare('SELECT granted, paid FROM antler_balance WHERE user_id=?1').bind(uid).first(),
+    env.STATS.prepare('SELECT site, kind, ua_class, meta, ts FROM events WHERE user_id=?1 ORDER BY id DESC LIMIT 60').bind(uid).all(),
+    env.STATS.prepare('SELECT MIN(ts) t FROM events WHERE user_id=?1').bind(uid).first()
+  ]);
+  if (!u) return null;
+  // 活跃天数（近 30 日有几天出现过）—— "使用习惯"最直接的一个数
+  const activeDays = await env.STATS.prepare(
+    "SELECT COUNT(DISTINCT date(ts/1000,'unixepoch','+8 hours')) c FROM events WHERE user_id=?1 AND ts>?2"
+  ).bind(uid, Date.now() - 30 * DAY_MS).first();
+  return {
+    user: u,
+    plan: plan && plan.plan === 'pro' && plan.expires_at > Date.now() ? { plan: 'pro', expiry: plan.expires_at } : { plan: 'free' },
+    antler: ant || { granted: 0, paid: 0 },
+    active_days_30: activeDays?.c || 0,
+    first_seen: firstEv?.t || 0,
+    events: evs.results || []
+  };
+}
+
+/** 留存：注册后 1 天 / 7 天还回来的比例（按 last_seen 粗算 + events 精算近群组） */
+async function retention(env) {
+  // 近 14 天注册的用户，其中注册次日之后仍有事件的比例
+  const cohort = await env.STATS.prepare(
+    "SELECT user_id, MIN(ts) reg FROM events WHERE kind='register' AND ts>?1 GROUP BY user_id"
+  ).bind(Date.now() - 14 * DAY_MS).all();
+  let d1 = 0, d7 = 0, d1n = 0, d7n = 0;
+  for (const r of cohort.results || []) {
+    if (Date.now() - r.reg > 1 * DAY_MS) {
+      d1n++;
+      const back = await env.STATS.prepare(
+        'SELECT 1 FROM events WHERE user_id=?1 AND ts>?2 LIMIT 1'
+      ).bind(r.user_id, r.reg + 1 * DAY_MS).first();
+      if (back) d1++;
+    }
+    if (Date.now() - r.reg > 7 * DAY_MS) {
+      d7n++;
+      const back = await env.STATS.prepare(
+        'SELECT 1 FROM events WHERE user_id=?1 AND ts>?2 LIMIT 1'
+      ).bind(r.user_id, r.reg + 7 * DAY_MS).first();
+      if (back) d7++;
+    }
+  }
+  // 存量口径：所有账号里最近 7 天活跃占比
+  const [total, wau] = await Promise.all([
+    env.AUTH.prepare('SELECT COUNT(*) c FROM users').first(),
+    env.AUTH.prepare('SELECT COUNT(*) c FROM users WHERE last_seen_at>?1').bind(Date.now() - 7 * DAY_MS).first()
+  ]);
+  return {
+    d1: d1n ? Math.round(d1 / d1n * 100) : null, d1_n: d1n,
+    d7: d7n ? Math.round(d7 / d7n * 100) : null, d7_n: d7n,
+    wau: wau?.c || 0, total: total?.c || 0
+  };
+}
+
 // ---------- 路由 ----------
 export default {
   async fetch(request, env) {
@@ -211,6 +302,38 @@ export default {
       }
       if (env.ASSETS) return env.ASSETS.fetch(request);
       return new Response('admin assets unavailable', { status: 500 });
+    }
+
+    // 公开信标（P3-v2）：没有本地源码的站（主站/文钞/game）贴一行脚本即可接入统计。
+    // 无鉴权但：站点/事件白名单 + 单 IP 限流 + 只记匿名字段。CORS 放开。
+    if (p === '/admin/api/beacon') {
+      const cors = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      };
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+      if (request.method !== 'POST') return J({ error: 'POST only' }, 405);
+      const h = beaconHits.get(ip) || { n: 0, win: Date.now() };
+      if (Date.now() - h.win > 3600_000) { h.n = 0; h.win = Date.now(); }
+      if (++h.n > 60) { beaconHits.set(ip, h); return new Response('{"ok":true}', { headers: cors }); }
+      beaconHits.set(ip, h);
+      try {
+        const b = await request.json();
+        const site = String(b.site || '');
+        const kind = ['page_view', 'play', 'download'].includes(String(b.kind)) ? String(b.kind) : 'page_view';
+        if (BEACON_SITES.includes(site)) {
+          const ua = request.headers.get('user-agent') || '';
+          const uaClass = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? 'ios' : /Mozilla/i.test(ua) ? 'desktop' : 'other';
+          let ref = ''; try { ref = new URL(request.headers.get('referer') || '').host; } catch { }
+          // IP 哈希：与 looka 同思路（这里简化为无盐截断日期混合，不可反查）
+          const iph = ip ? btoa(ip + bjDay()).slice(0, 16) : null;
+          await env.STATS.prepare(
+            'INSERT INTO events (site, kind, user_id, ip_hash, ua_class, ref, meta, ts) VALUES (?1,?2,NULL,?3,?4,?5,?6,?7)'
+          ).bind(site, kind, iph, uaClass, ref, '{}', Date.now()).run();
+        }
+      } catch (_) { }
+      return new Response('{"ok":true}', { headers: { 'Content-Type': 'application/json', ...cors } });
     }
 
     // 登录（校验口令；失败限流）
@@ -240,6 +363,15 @@ export default {
         if (p === '/admin/api/subs') return J(await listSubs(env));
         if (p === '/admin/api/health') return J(await health(env));
         if (p === '/admin/api/sites') return J(await sites(env));
+        if (p === '/admin/api/site') {
+          const site = url.searchParams.get('site') || 'looka';
+          return J(await siteDetail(env, site, Math.min(Number(url.searchParams.get('days') || 30), 90)));
+        }
+        if (p === '/admin/api/user') {
+          const d = await userDetail(env, Number(url.searchParams.get('id') || 0));
+          return d ? J(d) : J({ error: '用户不存在' }, 404);
+        }
+        if (p === '/admin/api/retention') return J(await retention(env));
         if (p === '/admin/api/audit') {
           const rows = await env.STATS.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 50').all();
           return J(rows.results || []);

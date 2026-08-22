@@ -54,6 +54,7 @@ input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
     <button data-t="subs">订阅</button>
     <button data-t="health">健康</button>
     <button data-t="sites">子站</button>
+    <button data-t="retention">留存</button>
     <button data-t="audit">审计</button>
   </div>
   <div id="content"><div class="card">加载中…</div></div>
@@ -90,7 +91,7 @@ const day = ms => ms ? new Date(ms).toLocaleDateString('zh-CN') : '—';
 // 账号脱敏：后台自己人看也不必满屏明文
 const maskAcc = a => a.length > 7 ? a.slice(0, 3) + '***' + a.slice(-4) : a;
 
-const KIND_CN = { register:'新注册', app_open:'活跃', apk_download:'APK下载', pay:'新付费', ai_chat:'AI调用', crash:'崩溃', landing_view:'落地页' };
+const KIND_CN = { register:'新注册', login:'登录', app_open:'活跃', apk_download:'APK下载', pay:'新付费', ai_chat:'AI调用', crash:'崩溃', landing_view:'落地页', page_view:'页面访问', order_create:'下单', premium_fail:'高级模型失败', afdian_hook:'爱发电推送', kofi_hook:'Ko-fi推送', play:'播放', download:'下载' };
 
 const views = {
   async overview() {
@@ -118,6 +119,7 @@ const views = {
       <td><span class="badge ${u.plan === 'pro' ? 'pro' : ''}">${u.plan}</span>${u.banned_at ? ' <span class="badge ban">封禁</span>' : ''}</td>
       <td>${(u.created_at || '').slice(0, 10)}</td><td>${u.reg_site || '—'}</td><td>${fmt(u.last_seen_at)}</td>
       <td>
+        <button class="act sm ghost" onclick="render('userdetail', ${u.id})">详情</button>
         <button class="act sm ghost" onclick="grantPro(${u.id})">补开Pro</button>
         <button class="act sm ghost" onclick="banUser(${u.id}, ${u.banned_at ? 'true' : 'false'})">${u.banned_at ? '解封' : '封禁'}</button>
       </td></tr>`).join('');
@@ -156,13 +158,63 @@ const views = {
       ${cv ? `<h2>崩溃按版本</h2><table><tr><th>版本</th><th>次数</th></tr>${cv}</table>` : ''}</div>`;
   },
 
-  async sites() {
-    const d = await api('sites');
+  async sites(sel) {
+    const site = sel || 'looka';
+    const SITES = [['looka','Looka'],['zhi','自知录'],['shop','流通处'],['foyue','主站'],['wenchao','文钞'],['game','游戏'],['bojing','播经台']];
+    const chips = SITES.map(([k,n]) =>
+      `<button class="act sm ${k===site?'':'ghost'}" onclick="render('sites','${k}')">${n}</button>`).join(' ');
+    const d = await api('site?site=' + site + '&days=30');
+    const kindRows = d.kinds.map(k => `<tr><td>${KIND_CN[k.kind] || k.kind}</td><td class="num">${k.c}</td></tr>`).join('');
+    const uaRows = d.ua.map(u => `<tr><td>${u.ua_class}</td><td class="num">${u.c}</td></tr>`).join('');
+    const refRows = d.ref.map(r => `<tr><td>${r.ref}</td><td class="num">${r.c}</td></tr>`).join('');
+    // 14 天趋势条形图（纯 CSS）
+    const mx = Math.max(1, ...d.trend14.map(t => t.c));
+    const bars = d.trend14.map(t =>
+      `<div title="${t.d}: ${t.c} 次 / ${t.u} 人" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="background:#55B04B;border-radius:3px 3px 0 0;height:${Math.round(t.c / mx * 70)}px"></div>
+        <span style="font-size:9px;color:var(--gray);text-align:center">${t.d.slice(8)}</span></div>`).join('');
+    const hmx = Math.max(1, ...d.hourly);
+    const hbars = d.hourly.map((c, h) =>
+      `<div title="${h}点: ${c}" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end">
+        <div style="background:#4A7DDC;border-radius:2px 2px 0 0;height:${Math.round(c / hmx * 44)}px"></div>
+        ${h % 6 === 0 ? `<span style="font-size:9px;color:var(--gray);text-align:center">${h}</span>` : '<span style="height:14px"></span>'}</div>`).join('');
+    const empty = !d.kinds.length;
+    return `<div class="card">${chips}</div>
+    ${empty ? `<div class="card"><p style="color:var(--gray)">该站还没有数据。主站/文钞/游戏需要在页面里贴一行统计脚本（见 EXECUTION.md P3-v2），贴上后这里自动出数。</p></div>` : `
+    <div class="card"><h2>14 天活动（悬停看数值）</h2>
+      <div style="display:flex;gap:2px;align-items:flex-end;height:92px">${bars}</div></div>
+    <div class="card"><h2>时段分布（北京时间 —— 用户什么时候在用）</h2>
+      <div style="display:flex;gap:1px;align-items:flex-end;height:66px">${hbars}</div></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:180px"><h2>30 日事件</h2><table>${kindRows}</table></div>
+      <div class="card" style="flex:1;min-width:140px"><h2>设备</h2><table>${uaRows || '<tr><td>—</td></tr>'}</table></div>
+      <div class="card" style="flex:1;min-width:160px"><h2>来源 Top</h2><table>${refRows || '<tr><td>（直接访问）</td></tr>'}</table></div>
+    </div>`}`;
+  },
+
+  async retention() {
+    const d = await api('retention');
+    return `<div class="card"><h2>留存（了解用户是否回来）</h2>
+      <p>次日留存 <b>${d.d1 == null ? '样本不足' : d.d1 + '%'}</b>（近 14 天注册 ${d.d1_n} 人）</p>
+      <p>7 日留存 <b>${d.d7 == null ? '样本不足' : d.d7 + '%'}</b>（样本 ${d.d7_n} 人）</p>
+      <p>周活 / 总账号 <b>${d.wau} / ${d.total}</b></p>
+      <p style="font-size:12px;color:var(--gray)">口径：注册后第 N 天之后仍产生过任何事件。样本随埋点积累变准。</p></div>`;
+  },
+
+  async userdetail(uid) {
+    const d = await api('user?id=' + uid);
+    const evs = d.events.map(e =>
+      `<tr><td>${fmt(e.ts)}</td><td>${e.site}</td><td>${KIND_CN[e.kind] || e.kind}</td><td>${e.ua_class || ''}</td><td style="font-size:11px;color:var(--gray)">${e.meta !== '{}' ? e.meta : ''}</td></tr>`).join('');
     return `<div class="card">
-      <p>账号总数（全站共享）<b>${d.accounts_total}</b></p>
-      <p>Looka 30 日注册 <b>${d.looka.register_30d}</b></p>
-      <p>流通处 订单 <b>${d.shop.orders_total}</b> · 客服消息 <b>${d.shop.cs_msgs}</b></p>
-      <p style="font-size:12px;color:var(--gray)">${d.note}</p></div>`;
+      <button class="act sm ghost" onclick="render('users')">← 返回列表</button>
+      <h2 style="margin-top:10px">用户 #${d.user.id} · ${maskAcc(d.user.account)}</h2>
+      <p>注册 ${(d.user.created_at || '').slice(0, 10)}（${d.user.reg_site || '早期'}）
+        · <span class="badge ${d.plan.plan === 'pro' ? 'pro' : ''}">${d.plan.plan}</span>${d.plan.expiry ? ' 至 ' + day(d.plan.expiry) : ''}
+        ${d.user.banned_at ? ' · <span class="badge ban">封禁</span>' : ''}</p>
+      <p>近 30 天活跃 <b>${d.active_days_30}</b> 天 · 最后活跃 ${fmt(d.user.last_seen_at)}
+        · 鹿角 ${d.antler.granted}+${d.antler.paid}</p>
+      <h2>最近行为（只有事件元数据，永不含内容）</h2>
+      <table><tr><th>时间</th><th>站</th><th>事件</th><th>设备</th><th></th></tr>${evs || '<tr><td colspan=5>暂无</td></tr>'}</table></div>`;
   },
 
   async audit() {
@@ -199,7 +251,8 @@ async function genCode(days) {
 let cur = 'overview';
 async function render(t, arg) {
   cur = t || cur;
-  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === cur));
+  const tabKey = cur === 'userdetail' ? 'users' : cur;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tabKey));
   $('#content').innerHTML = '<div class="card">加载中…</div>';
   try { $('#content').innerHTML = await views[cur](arg); }
   catch (e) { $('#content').innerHTML = `<div class="card warn">加载失败：${e.message || e}</div>`; }
