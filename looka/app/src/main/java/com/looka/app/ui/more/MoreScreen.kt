@@ -134,30 +134,37 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
             Hairline()
-            NavRow(
-                tr("账号与同步"),
-                icon = Icons.Outlined.PersonOutline,
-                value = if (loggedIn) "$email · ${if (plan == "pro") "Pro" else "免费版"}" else tr("未登录")
-            ) { nav.navigate("account") }
-            Hairline()
-            NavRow(
-                tr("主题 · 九色"),
-                icon = Icons.Outlined.Brush,
-                value = DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
-            ) { themeSheet = true }
-            Hairline()
-            NavRow(tr("搜索"), icon = Icons.Outlined.Search) { nav.navigate("search") }
-            Hairline()
-            NavRow(tr("日历设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
-            Hairline()
-            NavRow(tr("订阅 · 鹿角"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
-            Hairline()
-            NavRow(tr("数据与维护"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
-            Hairline()
-            NavRow(tr("提醒自检"), icon = Icons.Outlined.NotificationsActive) { nav.navigate("selfcheck") }
-            Hairline()
-            NavRow(tr("关于 Looka"), icon = Icons.Outlined.Info) { aboutDlg = true }
-            Hairline()
+            // T7（§65，Lifebear「その他」结构）：一屏放下全部入口，不用滚。
+            // 顶排 3 个最重的（深色卡），下面宫格 5 个。
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                GridTile(Icons.Outlined.PersonOutline,
+                    if (loggedIn) email else tr("账号"),
+                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("account") }
+                GridTile(Icons.Outlined.WorkspacePremium,
+                    if (plan == "pro") "Pro 🦌" else tr("订阅 · 鹿角"),
+                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("subscription") }
+                GridTile(Icons.Outlined.Tune, tr("日历设置"),
+                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("calSettings") }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                GridTile(Icons.Outlined.Brush, tr("主题"), modifier = Modifier.weight(1f)) { themeSheet = true }
+                GridTile(Icons.Outlined.Search, tr("搜索"), modifier = Modifier.weight(1f)) { nav.navigate("search") }
+                GridTile(Icons.Outlined.SaveAlt, tr("数据与维护"), modifier = Modifier.weight(1f)) { nav.navigate("backup") }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                GridTile(Icons.Outlined.NotificationsActive, tr("提醒自检"), modifier = Modifier.weight(1f)) { nav.navigate("selfcheck") }
+                GridTile(Icons.Outlined.Info, tr("关于"), modifier = Modifier.weight(1f)) { aboutDlg = true }
+                Spacer(Modifier.weight(1f))
+            }
             Spacer(Modifier.height(60.dp))
         }
     }
@@ -165,6 +172,8 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
 
     // 九色主题选择
     if (themeSheet) ModalBottomSheet(
+        // §62 圆角档：底部面板 16dp 顶角
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         onDismissRequest = { themeSheet = false },
         containerColor = Color.White
     ) {
@@ -216,14 +225,15 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
             )
+            // T10（§65）：与 Lifebear 同规格 48 色盘（复用分类色盘，滤掉当不了主色的极亮/极暗）
             val palette = remember {
-                listOf(
-                    0xFF8C4A3CL, 0xFFB56A48L, 0xFFC98A4BL, 0xFF8F7B3EL, 0xFF5F7A3DL, 0xFF3E7A55L,
-                    0xFF3E7A78L, 0xFF3E6C8FL, 0xFF4A5C9EL, 0xFF6D55A8L, 0xFF95538FL, 0xFFAD5271L,
-                    0xFF87695AL, 0xFF6E7B6EL, 0xFF5C6B7AL, 0xFF444B52L, 0xFFB08E4EL, 0xFF7A5C9EL
-                )
+                com.looka.app.data.LIST_PALETTE.mapNotNull { hex ->
+                    val argb = 0xFF000000L or hex.removePrefix("#").toLong(16)
+                    val c0 = Color(argb)
+                    if (c0.luminance() in 0.04f..0.72f) argb else null
+                }
             }
-            palette.chunked(6).forEach { rowColors ->
+            palette.chunked(8).forEach { rowColors ->
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -232,7 +242,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                         val selC = ThemeCtl.index == com.looka.app.ui.theme.CUSTOM_THEME &&
                                    ThemeCtl.customColor == argb
                         Box(
-                            Modifier.size(38.dp).clip(CircleShape)
+                            Modifier.size(30.dp).clip(CircleShape)
                                 .background(Color(argb))
                                 .border(
                                     width = if (selC) 2.5.dp else 0.8.dp,
@@ -247,7 +257,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            if (selC) Text("✓", color = Color.White, fontSize = 15.sp)
+                            if (selC) Text("✓", color = Color.White, fontSize = 12.sp)
                         }
                     }
                 }
@@ -510,4 +520,36 @@ private fun hueOf(c: androidx.compose.ui.graphics.Color): Float {
     android.graphics.Color.RGBToHSV(
         (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt(), hsv)
     return hsv[0]
+}
+
+
+/** T7（§65）：更多页宫格块。深色卡给最重的三个入口，浅色给其余。 */
+@Composable
+private fun GridTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    dark: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (dark) Ink else com.looka.app.ui.theme.PanelBg)
+            .plainClick(onClick)
+            .padding(vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        androidx.compose.material3.Icon(
+            icon, label,
+            tint = if (dark) Color.White else Ink,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label, fontSize = 11.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            color = if (dark) Color.White else Ink
+        )
+    }
 }

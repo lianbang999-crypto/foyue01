@@ -47,8 +47,9 @@ const val ROLE_AI = 1
 const val ROLE_ACTION = 2
 
 data class ChatMsg(val role: Int, val text: String, val error: Boolean = false,
-                   /** 这一轮实际生效的模型档：standard / premium。用于在气泡上标注 */
-                   val tier: String = "standard")
+                   val tier: String = "standard",
+                   /** L1（§62）：动作卡片可点开的目标（event/task/note + 本地 id），"" = 不可点 */
+                   val targetKind: String = "", val targetId: Long = -1L)
 
 /** 日程编辑草稿：编辑器与重复编辑器之间共享（规格 CAL-010/011/013） */
 class EventDraft {
@@ -708,7 +709,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         pendingChecked.clear(); repeat(actions.size) { pendingChecked.add(true) }
                         chat += ChatMsg(ROLE_AI, tr("共 {0} 件事，你勾选确认后我再动手 👇", actions.size))
                     } else {
-                        execActions(actions).forEach { chat += ChatMsg(ROLE_ACTION, it) }
+                        execActions(actions).forEachIndexed { i2, msg ->
+                            val tg = lastActionTargets.getOrNull(i2)
+                            chat += ChatMsg(ROLE_ACTION, msg,
+                                targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L)
+                        }
                     }
                 }
                 if (text.isBlank() && actions.isEmpty()) chat += ChatMsg(ROLE_AI, tr("小鹿没想好怎么回答，换个说法试试？"))
@@ -769,7 +774,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         pendingAiActions.clear(); pendingChecked.clear()
         if (picked.isEmpty()) { chat += ChatMsg(ROLE_AI, tr("好，都不动 🦌")); return }
         viewModelScope.launch {
-            execActions(picked).forEach { chat += ChatMsg(ROLE_ACTION, it) }
+            execActions(picked).forEachIndexed { i2, msg ->
+                val tg = lastActionTargets.getOrNull(i2)
+                chat += ChatMsg(ROLE_ACTION, msg,
+                    targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L)
+            }
         }
     }
 
@@ -800,9 +809,18 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         chat += ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt))
     }
 
+    /** L1（§62）：每条动作反馈对应的可打开目标（kind,id），与 execActions 返回值按索引对齐 */
+    val lastActionTargets = ArrayList<Pair<String, Long>>()
+
     suspend fun execActions(actions: List<AiAction>): List<String> {
         val c = getApplication<Application>()
         val out = ArrayList<String>()
+        lastActionTargets.clear()
+        fun target(kind: String, id: Long) {
+            // 补齐到与 out 对齐（一个动作可能输出多行时兜底）
+            while (lastActionTargets.size < out.size - 1) lastActionTargets.add("" to -1L)
+            lastActionTargets.add(kind to id)
+        }
         // 新一批动作开启新账本（撤销以"批"为单位）
         lastUndo.clear(); canUndo = false
         for (a in actions) {
@@ -861,6 +879,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         )
                     }
                     out += tr("✅ 已添加日程：{0}", "${Fmt.dateCn(day)} ${if (allDay) tr("全天") else Fmt.hm(sm)} ${a.title}") + remNote
+                    target("event", id)
                 }
                 "create_task" -> {
                     val t = Task(title = a.title.ifBlank { tr("未命名任务") }, dueDay = a.day,
@@ -868,12 +887,14 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     val id = taskDao.insert(t)
                     lastUndo += UndoRec.Tk(t.copy(id = id), created = true)
                     out += tr("✅ 已添加任务：{0}", a.title + if (a.day >= 0) "（${Fmt.dateCn(a.day)}）" else "")
+                    target("task", id)
                 }
                 "create_note" -> {
                     val nte = Note(title = a.title, content = a.content)
                     val id = noteDao.insert(nte)
                     lastUndo += UndoRec.Nt(nte.copy(id = id), created = true)
                     out += tr("✅ 已添加笔记：{0}", a.title.ifBlank { a.content.take(10) })
+                    target("note", id)
                 }
 
                 // ── A1（§48）：改与删。只按上下文里的 id 定位，找不到就明说，绝不猜 ──
@@ -904,6 +925,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         val rec = if (s.freq != FREQ_NONE) tr("（重复日程，整个系列一起调整）") else ""
                         out += tr("✏️ 已修改：{0}",
                             "${Fmt.dateCn(ns.startDay)} ${if (ns.allDay) tr("全天") else Fmt.hm(ns.startMin)} ${ns.title}") + rec
+                        target("event", ns.id)
                     }
                 }
                 "delete_event" -> {
@@ -933,6 +955,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         taskDao.update(nt)
                         out += if (a.done == 1) tr("✅ 已完成任务：{0}", nt.title)
                                else tr("✏️ 已修改任务：{0}", nt.title + if (nt.dueDay >= 0) "（${Fmt.dateCn(nt.dueDay)}）" else "")
+                    target("task", nt.id)
                     }
                 }
                 "delete_task" -> {
@@ -957,6 +980,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                             dirty = true, updatedAt = now()
                         ))
                         out += tr("✏️ 已修改笔记：{0}", a.title.ifBlank { nte.title })
+                    target("note", a.targetId)
                     }
                 }
                 "remember" -> {

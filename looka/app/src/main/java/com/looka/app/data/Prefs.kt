@@ -38,6 +38,10 @@ object Prefs {
     fun language(c: Context) = sp(c).getString("language", "system")!!
     fun setLanguage(c: Context, v: String) = sp(c).edit().putString("language", v).apply()
 
+    /** S2（§64，照抄 Lifebear）：日程文字大小档。0=大(默认,一格约5条) 1=中 2=小 */
+    fun eventTextSize(c: Context) = sp(c).getInt("event_text_size", 0)
+    fun setEventTextSize(c: Context, v: Int) { sp(c).edit().putInt("event_text_size", v).apply(); markSettingsDirty(c) }
+
     /** 12 小时制：null = 跟随语言默认（en 开 / 中文关） */
     fun time12h(c: Context): Boolean? = when (sp(c).getInt("time_12h", -1)) {
         1 -> true; 0 -> false; else -> null

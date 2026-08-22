@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 23,
-  "versionName": "1.9.3",
+  "versionCode": 24,
+  "versionName": "1.10.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3660097,
-  "sha256": "9ad809552ea5d2cb98f754cf3b3cf339c50383b61f083e35b1fded8cfcb5b30d",
-  "changelog": "修复 AI 连接超时",
+  "size": 3661049,
+  "sha256": "f242a7844537506b895e99284691b92f79f2a4b5af6e3895564f0ed765f9b232",
+  "changelog": "更懂手感的一版：弹窗与动画统一 · 日程文字大小可调 · 点卡片直接改 · 更多页新布局",
   "minSupported": 1
 }

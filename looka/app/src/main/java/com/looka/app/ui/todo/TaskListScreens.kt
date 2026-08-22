@@ -494,7 +494,7 @@ fun DoneListsScreen(vm: LookaViewModel, nav: NavHostController) {
                     Spacer(Modifier.width(14.dp))
                     Text(l.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
                     TextButton(onClick = { vm.updateTaskList(l.copy(archived = false)) }) {
-                        Text(tr("恢复"), fontSize = 13.sp, color = LinkBlue)
+                        Text(tr("恢复"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary)
                     }
                     if (l.deletable) {
                         TextButton(onClick = { delList = l }) {
@@ -674,7 +674,7 @@ fun TaskEditDialog(
                     )
                     if (due >= 0) {
                         Text(
-                            tr("  清除"), fontSize = 13.sp, color = LinkBlue,
+                            tr("  清除"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.plainClick { due = -1L }
                         )
                     }

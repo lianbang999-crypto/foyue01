@@ -968,8 +968,9 @@ ${(() => { const f = JSON.parse(localStorage.getItem('lk_deer_facts') || '[]'); 
  {"type":"remember","fact":"用户告诉你的一条长期偏好"}
 ]}
 remember 规则：只记长期有效的偏好或事实；一次性安排、情绪、秘密不要记；用户说「别记」时不要输出。
-修改/删除规则（最重要）：id 只能用上面数据里方括号标注的数字（[e3] → id 是 3）；数据里找不到用户说的那条时，绝不要猜 id —— 直接问用户是哪一条，不输出 json；update 只写要改的字段；「完成了」某任务 = update_task {"done":true}。
-其他规则：相对日期必须换算成具体日期；全天日程 all_day=true 并省略 start/end；用户只是提问时不要输出 json。`;
+两条规则：改/删的 id 只能用数据里方括号标注的数字，找不到就问用户不要猜；用户只是提问时不要输出 json。
+（remind_at=在那个时刻提醒；remind_before=提前N分钟。）
+`;
 }
 function chatBubble(role, text, err) {
   const list = $('#chatList');
@@ -1534,27 +1535,14 @@ async function boot() {
   // G1/G2（§54）+ P4/P5（§55）：我的鹿角 —— 余额/明细/参考价/邀请码
   const mAntler = $('#mAntler');
   if (mAntler) mAntler.onclick = async () => {
-    let bal = -1, rows = [], invite = '';
-    try {
-      const r = await api('/api/antler');
-      bal = r.antler?.total ?? r.total ?? -1;
-      rows = r.ledger || [];
-    } catch (e) { }
+    // R1（§60 减法）：只说余额 + 一句话 + 邀请码。明细/参考价已移除。
+    let bal = -1, invite = '';
+    try { const r = await api('/api/antler'); bal = r.antler?.total ?? r.total ?? -1; } catch (e) { }
     try { invite = (await api('/api/me')).invite_code || ''; } catch (e) { }
-    const reasonName = x => ({
-      daily_grant: t('每日到账'), monthly_grant: t('月度发放（旧）'), chat: t('和小鹿聊天'),
-      milestone: t('里程碑奖励'), referral_new: t('邀请奖励'), referral_inviter: t('邀请奖励')
-    }[x] || x);
     modal(`<h3>🦌 ${bal >= 0 ? bal : '…'}</h3>
-      <p class="dim-note">${t('每天自动到账：免费 10 · Pro 50')}<br>
-      ${t('参考价：100 枚 ≈ ¥6')}</p>
+      <p class="dim-note">${t('每天自动到账，和小鹿聊天用 1 枚')}</p>
       ${invite ? `<p style="font-size:13px"><b>${t('我的邀请码')}：${invite}</b><br>
         <span class="dim-note">${t('朋友注册时填上它，你们各得 100 枚 🦌')}</span></p>` : ''}
-      <div style="max-height:200px;overflow:auto">
-      ${rows.slice(0, 30).map(r => `<p style="font-size:12px;margin:3px 0;display:flex;justify-content:space-between">
-        <span>${reasonName(r.reason)}</span><span>${r.delta > 0 ? '+' : ''}${r.delta}</span></p>`).join('') ||
-        `<p class="dim-note">${t('还没有记录')}</p>`}
-      </div>
       <div class="modal-btns"><button class="btn-mini" id="antlerClose">${t('知道了')}</button></div>`);
     $('#antlerClose').onclick = closeModal;
   };

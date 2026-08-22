@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -125,21 +126,19 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             Hairline()
 
+            // R2（§60）：权益两句话。🚧 规划中的不写 —— 做出来了自然会看见。
             SectionLabel(tr("免费就有"))
-            BenefitRow(tr("日历 / 待办 / 笔记 / 日记 / 表情"), free = true, pro = true)
-            BenefitRow(tr("多端云同步"), free = true, pro = true)
-            BenefitRow(tr("数据导出（JSON / 日历 / Markdown）"), free = true, pro = true)
-            BenefitRow(tr("小鹿 AI（每天 10 枚鹿角）"), free = true, pro = true)
-            BenefitRow(tr("提醒与闹钟 · 密码锁 · 小组件"), free = true, pro = true)
-            BenefitRow(tr("官方表情包（104 枚内置）· 九色主题"), free = true, pro = true)
-
-            SectionLabel(tr("Pro 解锁"))
-            BenefitRow(tr("每天 50 枚鹿角（5 倍额度）"), free = false, pro = true)
-            BenefitRow(tr("从照片生成主题"), free = false, pro = true)
-            BenefitRow(tr("纹理纸 · 装饰插画 · 自定义图标（规划中）"), free = false, pro = true)
-            BenefitRow(tr("全部表情包 · 每月新增（规划中）"), free = false, pro = true)
-            BenefitRow(tr("标签体系 · 智能清单（规划中）"), free = false, pro = true)
-            BenefitRow(tr("年度回顾长图 · 精美 PDF 导出（规划中）"), free = false, pro = true)
+            Text(
+                tr("手帐全部功能 · 云同步 · 数据导出 · 每天 10 枚鹿角"),
+                fontSize = 13.sp, lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+            SectionLabel(tr("Pro"))
+            Text(
+                tr("更多鹿角（每天 50 枚） · 做自己的主题"),
+                fontSize = 13.sp, lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
             Hairline()
             // D4（§52）：小鹿记事本 —— 可看可删
             DeerMemorySection(vm)
@@ -769,30 +768,19 @@ fun LanguageScreen(vm: LookaViewModel, nav: NavHostController) {
 // ==================== 鹿角页（§54 G1/G2 + §55 P4，2026-08-22） ====================
 
 /**
- * 我的鹿角：余额 + 今日到账 + 折算参考价 + 收支明细 + 邀请码。
- * 呈现原则（§49 十一）：鹿角是「够用的额度」不是「要攒的资产」——
- * 无金币特效、无签到日历、无连击；价格只做参考锚定，不开购买入口（§55 定价≠开卖）。
+ * 我的鹿角（R1 §60 减法版）：只说一句话 + 余额 + 邀请码。
+ * 明细流水 / 参考价 / 里程碑说明全部移除 —— 用户不需要看账本。
+ * 服务端账本（双桶/幂等/流水）原样保留，砍的只是呈现。
  */
 @Composable
 fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     var bal by remember { mutableStateOf(-1) }
-    var granted by remember { mutableStateOf(0) }
-    var paid by remember { mutableStateOf(0) }
-    var ledger by remember { mutableStateOf<List<Triple<Long, String, Long>>>(emptyList()) }
     var invite by remember { mutableStateOf("") }
     LaunchedEffect(Unit) {
         runCatching {
             val r = Api.antler(ctx)
-            bal = r.optJSONObject("antler")?.optInt("total", -1)
-                ?: r.optInt("total", -1)
-            granted = r.optJSONObject("antler")?.optInt("granted", 0) ?: r.optInt("granted", 0)
-            paid = r.optJSONObject("antler")?.optInt("paid", 0) ?: r.optInt("paid", 0)
-            val rows = r.optJSONArray("ledger") ?: org.json.JSONArray()
-            ledger = (0 until rows.length()).mapNotNull { i ->
-                val o = rows.optJSONObject(i) ?: return@mapNotNull null
-                Triple(o.optLong("delta"), o.optString("reason"), o.optLong("created_at"))
-            }
+            bal = r.optJSONObject("antler")?.optInt("total", -1) ?: r.optInt("total", -1)
         }
         runCatching { invite = Api.me(ctx).optString("invite_code") }
     }
@@ -801,78 +789,29 @@ fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
         LookaTopBar(tr("我的鹿角"), onBack = { nav.popBackStack() })
         Column(Modifier.verticalScroll(rememberScrollState())) {
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text(if (bal >= 0) "🦌 $bal" else "🦌 …", fontSize = 30.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    if (bal >= 0) "🦌 $bal" else "🦌 …",
-                    fontSize = 30.sp, fontWeight = FontWeight.Bold
-                )
-                Text(
-                    tr("每天自动到账：免费 10 · Pro 50"),
+                    tr("每天自动到账，和小鹿聊天用 1 枚"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
-                )
-                Text(
-                    tr("参考价：100 枚 ≈ ¥6"),
-                    fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
                 )
             }
             Hairline()
-            SectionLabel(tr("会用到鹿角的"))
-            Text(
-                tr("和小鹿聊天 1 枚 · AI 生成主题 2 枚 · 截图识别 3 枚（规划中）· 生成表情包 20 枚（规划中）"),
-                fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-            Hairline()
-            // §55 P5：邀请 —— 成本近零的获客筹码
             if (invite.isNotBlank()) {
-                SectionLabel(tr("邀请朋友"))
                 val clip = LocalClipboardManager.current
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(tr("我的邀请码：{0}", invite), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            tr("朋友注册时填上它，你们各得 100 枚 🦌"),
-                            fontSize = 11.sp, color = GrayText
-                        )
+                        Text(tr("朋友注册时填上它，你们各得 100 枚 🦌"), fontSize = 11.sp, color = GrayText)
                     }
                     OutlinedButton(onClick = {
-                        clip.setText(AnnotatedString(invite))
-                        toast(ctx, tr("已复制"))
+                        clip.setText(AnnotatedString(invite)); toast(ctx, tr("已复制"))
                     }) { Text(tr("复制"), fontSize = 13.sp) }
                 }
                 Hairline()
             }
-            SectionLabel(tr("明细"))
-            if (ledger.isEmpty()) Text(
-                tr("还没有记录"), fontSize = 12.sp, color = GrayText,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            ledger.take(50).forEach { (delta, reason, at) ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        when (reason) {
-                            "daily_grant" -> tr("每日到账")
-                            "monthly_grant" -> tr("月度发放（旧）")
-                            "chat" -> tr("和小鹿聊天")
-                            "milestone" -> tr("里程碑奖励")
-                            "referral_new", "referral_inviter" -> tr("邀请奖励")
-                            else -> reason
-                        },
-                        fontSize = 13.sp, modifier = Modifier.weight(1f)
-                    )
-                    Text(
-                        (if (delta > 0) "+" else "") + delta,
-                        fontSize = 13.sp,
-                        color = if (delta > 0) MaterialTheme.colorScheme.primary else GrayText
-                    )
-                }
-            }
-            Spacer(Modifier.height(40.dp))
         }
     }
 }

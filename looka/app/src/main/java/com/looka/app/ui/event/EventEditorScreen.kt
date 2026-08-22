@@ -270,14 +270,16 @@ private fun RowScope.ModeIcon(icon: ImageVector, label: String, selected: Boolea
         Modifier.weight(1f).plainClick(onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // M5（§63）：选中态从黑底方块改为浅灰正圆 —— Lifebear 的轻，不压内容
         Box(
-            Modifier.size(38.dp).clip(RoundedCornerShape(10.dp))
-                .background(if (selected) Ink else Color.Transparent),
+            Modifier.size(38.dp).clip(CircleShape)
+                .background(if (selected) PanelBg else Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, label, tint = if (selected) Color.White else GrayText, modifier = Modifier.size(22.dp))
+            Icon(icon, label, tint = if (selected) Ink else GrayText, modifier = Modifier.size(22.dp))
         }
-        Text(label, fontSize = 10.sp, color = if (selected) Ink else GrayText)
+        Text(label, fontSize = 10.sp, color = if (selected) Ink else GrayText,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
 
@@ -376,7 +378,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    tr("显示详细设置"), fontSize = 14.sp, color = LinkBlue,
+                    tr("显示详细设置"), fontSize = 14.sp, color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.plainClick { d.detailExpanded = true }
                 )
             }
@@ -477,7 +479,8 @@ fun TemplateSheet(vm: LookaViewModel, d: EventDraft, onDismiss: () -> Unit) {
     val tpls by vm.templates.collectAsState()
     var delTpl by remember { mutableStateOf<Template?>(null) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Text(
                 tr("日程模板"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
@@ -567,7 +570,8 @@ fun ReminderSheet(d: EventDraft, onDismiss: () -> Unit) {
     var addStep by remember { mutableStateOf(0) }         // 0 关闭 / 1 选规则 / 2 选时刻（全天）
     var pendingDays by remember { mutableIntStateOf(0) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Text(
                 tr("提醒"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
@@ -677,7 +681,8 @@ fun CategoryPickerSheet(
     onDismiss: () -> Unit
 ) {
     val cats by vm.categories.collectAsState()
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) {
             Text(
                 tr("选择分类"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
@@ -760,7 +765,7 @@ private fun TaskForm(
             )
             if (due >= 0) {
                 Spacer(Modifier.width(10.dp))
-                Text(tr("清除"), fontSize = 13.sp, color = LinkBlue, modifier = Modifier.plainClick(onClearDue))
+                Text(tr("清除"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.plainClick(onClearDue))
             }
         }
         Hairline()

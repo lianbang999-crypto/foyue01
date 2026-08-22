@@ -322,29 +322,28 @@ fun <T> RadioDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit
 ) {
+    // S4（§64，Lifebear 规格）：19sp 标题 / 56dp 选项行 / 点即生效即关 / 无取消按钮
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 17.sp) },
+        title = { Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 options.forEach { (v, label) ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                onSelect(v); onDismiss()
-                            }
-                            .padding(vertical = 6.dp),
+                            .height(56.dp)
+                            .clickable { onSelect(v); onDismiss() },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(selected = v == selected, onClick = { onSelect(v); onDismiss() })
-                        Text(label, fontSize = 15.sp)
+                        Text(label, fontSize = 17.sp)
                     }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) } },
+        shape = RoundedCornerShape(8.dp),
         containerColor = Color.White
     )
 }

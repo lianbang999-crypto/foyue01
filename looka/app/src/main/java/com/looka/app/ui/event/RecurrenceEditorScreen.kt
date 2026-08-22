@@ -189,7 +189,7 @@ fun RecurrenceEditorScreen(vm: LookaViewModel, nav: NavHostController) {
                 TextButton(
                     onClick = { d.untilDay = -1L },
                     modifier = Modifier.padding(start = 8.dp)
-                ) { Text(tr("清除结束日"), color = LinkBlue, fontSize = 13.sp) }
+                ) { Text(tr("清除结束日"), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp) }
             }
             Hairline()
         }

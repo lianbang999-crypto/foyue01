@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Add
@@ -88,8 +89,8 @@ fun LookaRoot() {
         nav,
         startDestination = "home",
         // 轻量转场：右滑进入 / 淡出返回（规格 §12 低装饰原则）
-        enterTransition = { slideInHorizontally(tween(220)) { it / 5 } + fadeIn(tween(200)) },
-        exitTransition = { fadeOut(tween(140)) },
+        enterTransition = { slideInHorizontally(tween(com.looka.app.ui.theme.Motion.ENTER)) { it / 5 } + fadeIn(tween(com.looka.app.ui.theme.Motion.ENTER)) },
+        exitTransition = { fadeOut(tween(com.looka.app.ui.theme.Motion.EXIT)) },
         popEnterTransition = { fadeIn(tween(160)) },
         popExitTransition = { slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(180)) }
     ) {

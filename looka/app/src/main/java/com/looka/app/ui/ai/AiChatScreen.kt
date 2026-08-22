@@ -41,6 +41,8 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.animation.core.animateFloat
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -158,7 +160,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     }
                 }
             }
-            items(vm.chat) { m -> ChatBubble(m, vm) }
+            items(vm.chat) { m -> ChatBubble(m, vm, nav) }
             if (vm.aiBusy) {
                 item {
                     Row(
@@ -226,15 +228,6 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
         }
-        // A3：一键撤销上一批（撤销以"批"为单位，直到下一批开始前都有效）
-        if (vm.canUndo && vm.pendingAiActions.isEmpty()) {
-            Text(
-                tr("↩️ 撤销刚才的修改"), fontSize = 12.sp, color = GrayText,
-                modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
-                    .plainClick { vm.undoLastBatch() }
-            )
-        }
-
         // 快捷指令
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
@@ -314,21 +307,29 @@ private fun QuickChip(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
+private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null, bubbleNav: NavHostController? = null) {
     when (m.role) {
-        // U5（§52）：动作反馈用全站卡片语法（浅底 + 10dp 圆角），不再是居中小字
+        // U5（§52）动作卡片 + L1（§62）：点卡片直接打开该条目（查看/修改/删除一个入口）
         ROLE_ACTION -> MsgAppear {
+            val canOpen = m.targetId > 0 && m.targetKind.isNotBlank() && bubbleNav != null
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                    .let { base ->
+                        if (canOpen) base.plainClick { openActionTarget(bubbleVm, bubbleNav, m) }
+                        else base
+                    }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     m.text, fontSize = 12.sp, lineHeight = 17.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f)
                 )
+                if (canOpen) Text("›", fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
             }
         }
         ROLE_USER -> MsgAppear(fromRight = true) { Row(
@@ -433,5 +434,22 @@ fun ThinkingDots() {
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = a))
             )
         }
+    }
+}
+
+
+/** L1（§62）：从动作卡片打开对应条目 —— 查看/修改/删除一个入口 */
+private fun openActionTarget(vm: LookaViewModel?, nav: NavHostController?, m: ChatMsg) {
+    if (vm == null || nav == null) return
+    when (m.targetKind) {
+        "event" -> vm.viewModelScope.launch {
+            if (vm.prepareEditDraft(m.targetId, -1L)) nav.navigate("editor")
+        }
+        // 任务没有独立编辑页（清单页内编辑），跳到它所在的清单；笔记有 note/{id}
+        "task" -> vm.viewModelScope.launch {
+            val t = vm.tasks.value.find { it.id == m.targetId }
+            nav.navigate(if (t != null && t.listUid.isNotBlank()) "list/${t.listUid}" else "home")
+        }
+        "note" -> nav.navigate("note/${m.targetId}")
     }
 }

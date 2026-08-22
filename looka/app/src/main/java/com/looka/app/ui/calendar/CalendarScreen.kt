@@ -184,10 +184,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
             IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
                 CalendarGlyph(when (vm.calView) { 0 -> "31"; 1 -> "7"; else -> "1" })
             }
-            IconButton(onClick = { nav.navigate("aiChat") }, modifier = Modifier.size(40.dp)) {
-                com.looka.app.ui.common.DeerBadge(28.dp)   // B3：随主题变色
-            }
-        }
+            // R3（§60 定案）：AI 是工具，不占顶栏 —— 入口在 ＋ 面板与更多页
+                    }
 
         val occRangeStart: Long
         val occRangeEnd: Long
@@ -451,7 +449,12 @@ private fun MonthFull(
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 // 固定行高：一屏约 6 周（Lifebear 密度）。不能再由"月行数"反推 —— 那是翻页模式的产物
                 val rowH = maxHeight / 6
-                val maxLines = ((rowH - 17.dp) / 11.dp).toInt().coerceIn(3, 8)
+                // S2/S3（§64）：字号三档 —— 大(默认)≈5条/格、中≈6、小≈8。
+                // Lifebear 的做法：不替用户决定字号，给三档自己选。
+                val ctxSz = androidx.compose.ui.platform.LocalContext.current
+                val sizeTier = remember(vm.settingsVersion) { Prefs.eventTextSize(ctxSz) }
+                val lineH = when (sizeTier) { 0 -> 15.dp; 1 -> 13.dp; else -> 11.dp }
+                val maxLines = ((rowH - 17.dp) / lineH).toInt().coerceIn(3, 8)
                 val today = Fmt.today()
 
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
@@ -608,17 +611,22 @@ private fun DayCellV2(
                 }
                 budget--
             }
+            // S2/S3（§64）：字号三档（大11.5/中10/小8，行高随动）
+            val ctxFs = androidx.compose.ui.platform.LocalContext.current
+            val fsTier = com.looka.app.data.Prefs.eventTextSize(ctxFs)
+            val evFs = when (fsTier) { 0 -> 11.5.sp; 1 -> 10.sp; else -> 8.sp }
+            val evLh = when (fsTier) { 0 -> 14.sp; 1 -> 12.sp; else -> 10.sp }
             var shown = 0
             for (o in occList) {
                 if (shown >= budget) break
-                EventLine(o, catColorMap[o.categoryId] ?: Color(0xFF9AA0A6))
+                EventLine(o, catColorMap[o.categoryId] ?: Color(0xFF9AA0A6), evFs, evLh)
                 shown++
             }
             for (e in sysList) {
                 if (shown >= budget) break
                 Text(
-                    "◦${e.title}", fontSize = 8.sp, color = Color(e.color),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 10.sp,
+                    "◦${e.title}", fontSize = evFs, color = Color(e.color),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = evLh,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
                 )
                 shown++
@@ -626,9 +634,9 @@ private fun DayCellV2(
             for (t in taskList) {
                 if (shown >= budget) break
                 Text(
-                    "✓${t.title}", fontSize = 8.sp,
+                    "✓${t.title}", fontSize = evFs,
                     color = listColorMap[t.listUid] ?: GrayText,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 10.sp,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = evLh,
                     textDecoration = if (t.done) TextDecoration.LineThrough else null,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
                 )
@@ -718,74 +726,21 @@ private fun DaySheet(
                 }
             }
         }
-        // 四模式快捷排（学 Lifebear 的弹出面板）：日程 / 任务 / 表情 / 日记 —— 一排等宽
-        var quickTask by remember { mutableStateOf(false) }
-        var quickStamp by remember { mutableStateOf(false) }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            QuickAction("🗓", tr("日程")) {
-                vm.prepareCreateDraft(day)
-                nav.navigate("editor")
-            }
-            QuickAction("☑", tr("任务")) { quickTask = true }
-            QuickAction("🦌", tr("表情")) { quickStamp = true }
-            QuickAction("📖", tr("日记")) { nav.navigate("diary/$day") }
-        }
-        Hairline()
-
-        // 快速建任务：一个输入框就够（Lifebear 的节奏 —— 弹出即输入，不进全页编辑器）
-        if (quickTask) {
-            var title by remember { mutableStateOf("") }
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { quickTask = false },
-                title = { Text(tr("添加任务"), fontSize = 16.sp) },
-                text = {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = title, onValueChange = { title = it },
-                        placeholder = { Text(Fmt.dateCn(day) + " · " + tr("要做什么？"), fontSize = 13.sp) },
-                        singleLine = true
-                    )
-                },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(
-                        enabled = title.isNotBlank(),
-                        onClick = { vm.addTask(title.trim(), due = day); quickTask = false }
-                    ) { Text(tr("添加"), color = MaterialTheme.colorScheme.primary) }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { quickTask = false }) {
-                        Text(tr("取消"), color = GrayText)
-                    }
-                }
-            )
-        }
-        // 快速贴表情：直接弹贴纸选择器，选中即贴到这一天
-        if (quickStamp) {
-            androidx.compose.material3.ModalBottomSheet(
-                onDismissRequest = { quickStamp = false },
-                containerColor = Color.White
-            ) {
-                com.looka.app.ui.common.StickerPicker(
-                    selected = "",
-                    onSelect = { asset ->
-                        vm.addStamp("", day, assetId = asset)
-                        quickStamp = false
-                    },
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-            }
-        }
-
+        // M1（§63）：打开即内容 —— 四入口排已删（Lifebear：点日期直接看当天，新增走底部 ＋）
         // 注意：不再因为"这天什么都没有"就整段换成空状态插画 ——
         // 日记邀请那一行必须一直够得着（见下方 item），否则空日子反而无从下手。
         val nothing = occList.isEmpty() && sysList.isEmpty() && taskList.isEmpty() &&
                 diary == null && stampList.isEmpty()
         run {
-            LazyColumn(Modifier.weight(1f)) {
+            LazyColumn(Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 84.dp)) {
+                // M2（§63）：一行灰字（Lifebear 式），且指向真实的底部 ＋（原文案指右上角是错的）
                 if (nothing) item {
-                    EmptyDeer(tr("这一天还没有安排"), hint = tr("点右上角 ＋ 安排一条 ↗"))
+                    Text(
+                        tr("这一天还没有安排 · 点下方 ＋ 添加"),
+                        fontSize = 13.sp, color = GrayText,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 22.dp)
+                    )
                 }
                 items(occList) { o ->
                     Row(
@@ -956,7 +911,8 @@ private fun DaySheet(
 
 /** 月格内的日程行：全天=色块、时间=彩字（Lifebear 式信息密度） */
 @Composable
-private fun EventLine(o: Occ, color: Color) {
+private fun EventLine(o: Occ, color: Color, fs: androidx.compose.ui.unit.TextUnit = 8.sp,
+                      lh: androidx.compose.ui.unit.TextUnit = 10.sp) {
     if (o.allDay) {
         Box(
             Modifier
@@ -968,14 +924,14 @@ private fun EventLine(o: Occ, color: Color) {
         ) {
             Text(
                 // Lifebear 盘含大量亮色（黄/黄绿/浅青），白字会隐形 —— 按底色亮度自动选
-                o.title, fontSize = 8.sp, color = onColor(color), lineHeight = 10.sp,
+                o.title, fontSize = fs, color = onColor(color), lineHeight = lh,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
         }
     } else {
         Text(
-            o.title, fontSize = 8.sp, color = color, fontWeight = FontWeight.Medium,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 10.sp,
+            o.title, fontSize = fs, color = color, fontWeight = FontWeight.Medium,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = lh,
             modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
         )
     }
@@ -1016,7 +972,8 @@ fun ViewMenuSheet(
     onJump: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) {
             // 顶部搜索框（Lifebear 式）：点击进搜索页
             Row(

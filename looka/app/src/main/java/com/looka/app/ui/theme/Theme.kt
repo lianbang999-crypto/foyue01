@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.looka.app.data.Prefs
 import com.looka.app.util.tr
 
@@ -119,6 +120,11 @@ object ThemeCtl {
 fun LookaTheme(content: @Composable () -> Unit) {
     val t = ThemeCtl.current()
     MaterialTheme(
+        // S4（§64）：弹窗统一 8dp —— AlertDialog 默认取 shapes.extraLarge(28dp)，
+        // 一行改掉全站 33 个弹窗；底部面板要 16dp 顶角的单独在调用处指定。
+        shapes = androidx.compose.material3.Shapes(
+            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+        ),
         colorScheme = lightColorScheme(
             primary = t.primary,
             onPrimary = Color.White,

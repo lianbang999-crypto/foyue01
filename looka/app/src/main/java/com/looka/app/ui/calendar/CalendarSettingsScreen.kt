@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -69,6 +70,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
 
     var showLunar by remember { mutableStateOf(Prefs.showLunarRaw(ctx) ?: com.looka.app.util.I18n.isZh()) }
     var use12h by remember { mutableStateOf(com.looka.app.util.I18n.use12h) }
+    var fontDlg by remember { mutableStateOf(false) }
     var taskRemOn by remember { mutableStateOf(Prefs.taskRemOn(ctx)) }
     var taskRemMin by remember { mutableIntStateOf(Prefs.taskRemMin(ctx)) }
     var taskRemTimeDlg by remember { mutableStateOf(false) }
@@ -102,6 +104,13 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             NavRow(tr("分类管理")) { nav.navigate("categories") }
             Hairline()
             SectionLabel(tr("显示"))
+            NavRow(
+                tr("日程文字大小"),
+                value = when (com.looka.app.data.Prefs.eventTextSize(ctx)) {
+                    0 -> tr("大"); 1 -> tr("中"); else -> tr("小")
+                }
+            ) { fontDlg = true }
+            Hairline()
             NavRow(tr("一周开始日"), value = if (weekStartMon) tr("周一") else tr("周日")) { weekStartDlg = true }
             Hairline()
             NavRow(
@@ -222,6 +231,13 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
 
+        if (fontDlg) RadioDialog(
+        title = tr("日程文字大小"),
+        options = listOf(0 to tr("大"), 1 to tr("中"), 2 to tr("小")),
+        selected = com.looka.app.data.Prefs.eventTextSize(ctx),
+        onSelect = { com.looka.app.data.Prefs.setEventTextSize(ctx, it); vm.bumpSettings() },
+        onDismiss = { fontDlg = false }
+    )
     if (weekStartDlg) RadioDialog(
         tr("一周开始日"),
         options = listOf(true to tr("周一"), false to tr("周日")),
