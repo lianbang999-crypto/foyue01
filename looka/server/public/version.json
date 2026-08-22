@@ -4,7 +4,7 @@
   "versionName": "1.9.3",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
   "size": 3660097,
-  "sha256": "585cb4c03eecd46e5be7005c8b37609d34d6921278c1b866ab92659bd148e38e",
-  "changelog": "四模式快捷排（日程/任务/表情/日记）· 小鹿全面随主题变色 · 界面统一",
+  "sha256": "9ad809552ea5d2cb98f754cf3b3cf339c50383b61f083e35b1fded8cfcb5b30d",
+  "changelog": "修复 AI 连接超时",
   "minSupported": 1
 }

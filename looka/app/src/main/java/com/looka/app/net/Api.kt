@@ -20,7 +20,8 @@ object Api {
     private val client by lazy {
         OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(120, TimeUnit.SECONDS)
+            // X5（§58）：流式首字应在几秒内到达；等两分钟只是把故障拖成"卡死"体验
+            .readTimeout(45, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }

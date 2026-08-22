@@ -134,7 +134,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             BenefitRow(tr("官方表情包（104 枚内置）· 九色主题"), free = true, pro = true)
 
             SectionLabel(tr("Pro 解锁"))
-            BenefitRow(tr("每天 50 枚鹿角（5 倍额度，聊天生成随便用）"), free = false, pro = true)
+            BenefitRow(tr("每天 50 枚鹿角（5 倍额度）"), free = false, pro = true)
             BenefitRow(tr("从照片生成主题"), free = false, pro = true)
             BenefitRow(tr("纹理纸 · 装饰插画 · 自定义图标（规划中）"), free = false, pro = true)
             BenefitRow(tr("全部表情包 · 每月新增（规划中）"), free = false, pro = true)

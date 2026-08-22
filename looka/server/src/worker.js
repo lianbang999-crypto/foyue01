@@ -1011,10 +1011,12 @@ async function route(request, env, ctx) {
     // ── T1（§53）：真流式。SSE 直通透传上游（OpenAI 兼容格式），客户端自行解析 delta。
     //   计量在开流前完成（流中无法再回头扣）；上游连不上则不扣、退回错误 JSON。
     if (b.stream === true) {
-      let resp = null;
+      // X1~X4（§58）：此前这里**没有任何超时保护** —— 上游挂起就一直等，
+      // 客户端 120 秒后抛 timeout（线上故障根因）。现在对齐非流式路径的韧性。
+      let resp = null, streamErr = '';
       for (const model of models) {
         try {
-          resp = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+          const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${env.SILICONFLOW_KEY}`,
@@ -1022,13 +1024,23 @@ async function route(request, env, ctx) {
               'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)'
             },
             body: JSON.stringify({ model, messages, temperature, max_tokens: 2048,
-              enable_thinking: false, stream: true })
+              enable_thinking: false, stream: true }),
+            signal: AbortSignal.timeout(25_000)      // X1：25 秒拿不到响应头就换模型
           });
-          if (resp.ok && resp.body) break;
-          resp = null;
-        } catch (_) { resp = null; }
+          if (r.ok && r.body) { resp = r; break; }   // X3：确认可用才继续（扣费在此之后）
+          const eo = await r.json().catch(() => ({}));
+          streamErr = eo?.error?.message || eo?.message || `上游 ${r.status}`;
+          console.log('stream fail', model, streamErr);
+        } catch (e) {
+          streamErr = e?.name === 'TimeoutError' ? '上游超时' : String(e?.message || e).slice(0, 120);
+          console.log('stream fail', model, streamErr);
+        }
       }
-      if (!resp) return json({ error: 'AI 上游异常（稍后再试）' }, 502);
+      // X4：真实原因透传，不再是黑箱
+      if (!resp) {
+        ctx.waitUntil(track(env, 'looka', 'ai_fail', user.id, request, { err: streamErr.slice(0, 60) }));
+        return json({ error: `AI 暂时不可用（${streamErr}），稍后再试` }, 502);
+      }
       const after = fallbackMode ? bal
         : (await antlerSpend(env, user.id, plan, need, 'chat', null)) || bal;
       ctx.waitUntil(env.DB.prepare(
