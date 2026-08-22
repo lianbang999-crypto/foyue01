@@ -714,3 +714,12 @@
 
 线上验证：version 14/1.7.0 ✓ 双 Cron ✓ sync 带 plan ✓ premium 1511ms ✓ 埋点落库 ✓ 单测过 ✓
 剩余：P0（用户操作 7 项）/ P3 后台 / P4 对齐 / P5 机制 / P6 上线前 —— 见 EXECUTION.md
+
+## 2026-08-22 · foyue-admin 数据后台上线（P3）
+- 独立 Worker 挂 `foyue.org/admin*`（主站是 Worker，route 更具体优先命中，主站零改动）
+- 鉴权：FOYUE_ADMIN_KEY 强口令（用户决定暂不开 CF Access）+ 失败限流 + 全写操作审计
+- 只读：总览（今日/昨日/7日 + 30日漏斗 + 本月收入 + 未认领红点）/ 用户（元数据+脱敏，永不含内容）/ 订阅 / 健康 / 子站 / 审计
+- 写操作：补开 Pro / 生成兑换码 / 绑定未认领订单 / 封禁（looka getUser 已拦截 banned）
+- 告警扩展：未认领订单>0 / premium 失败率>10% / 注册归零 → 邮件 looka01@qq.com
+- 实测：登录 401/200 ✓ 六个只读 API ✓ gencode 写入+审计留痕 ✓ 埋点数据已在总览滚动
+- 口令在 `looka/server/.secrets.txt` 的 FOYUE_ADMIN_KEY

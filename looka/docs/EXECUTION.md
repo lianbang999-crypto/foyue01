@@ -10,7 +10,7 @@
 > 3. 新的想法先写进 `FEATURE-PLAN.md`，**确认要做**才登记到这里
 > 4. 发版前把本文件从头扫一遍
 >
-> 最后更新：2026-08-22 · 对应版本 **v1.7.0 (14)** —— P1 全部 + P2 全部已完成并实测（42 项）
+> 最后更新：2026-08-22 · v1.7.0 (14) + **foyue-admin 后台已上线**（P1+P2 全部、P3 除子站埋点外全部，60 项已实测勾选）
 
 ---
 
@@ -23,8 +23,8 @@
 | P0-3 | **DMARC 记录**：`v=DMARC1; p=none; rua=mailto:looka01@qq.com`（影响 QQ/163 收信率） | §36 | [ ] |
 | P0-4 | **keystore 异地备份 #2**：`.secrets.txt` 存进密码管理器，**密码必须与 keystore 分开存** | §36 | [ ] |
 | P0-5 | 测一张爱发电**兑换码**，看后台订单列表里有没有记录<br>（决定那 100 个码能不能接进自动管线） | §21 §35 | [ ] |
-| P0-6 | 确认 `foyue.org` 主站是 Worker 还是 Pages（决定 `/admin` 怎么挂） | §42 | [ ] |
-| P0-7 | 开通 **Cloudflare Access（Zero Trust）**，为 `foyue.org/admin*` 配邮箱白名单 | §42 §43 | [ ] |
+| P0-6 | ~~确认主站形态~~ **已确认：Worker**。后台以独立 Worker 挂 route `foyue.org/admin*`（比主站 custom_domain 更具体，优先命中），主站零改动 | §42 | [x] |
+| P0-7 | ~~开通 Cloudflare Access~~ **用户 2026-08-22 决定：暂不开，等有稳定用户量再开**。后台已用强口令+限流顶上 | §42 §43 | [x] |
 
 ---
 
@@ -126,31 +126,31 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P3-1-1 | 新建 `foyue-admin/` 项目骨架（wrangler.jsonc + src/worker.js + public/index.html） | [ ] |
-| P3-1-2 | 路由 `foyue.org/admin*`；D1 绑定 STATS/AUTH/LOOKA/SHOP | [ ] |
-| P3-1-3 | 鉴权三层：CF Access → 校验 `Cf-Access-Authenticated-User-Email` 白名单 → 写操作再要 ADMIN_KEY | [ ] |
-| P3-1-4 | `GET /admin/api/overview`（今日·昨日·7日 + 30 日漏斗 + 本月收入） | [ ] |
-| P3-1-5 | `GET /admin/api/trend`（走 daily_stats） | [ ] |
-| P3-1-6 | `GET /admin/api/users`（🔴 **只返回元数据，永不含笔记/日记/日程正文**） | [ ] |
-| P3-1-7 | `GET /admin/api/subs`（流水 / 未认领 / 即将到期） | [ ] |
-| P3-1-8 | `GET /admin/api/health`（AI 失败率·回落·崩溃 Top·限流） | [ ] |
-| P3-1-9 | `GET /admin/api/sites`（各子站对比） | [ ] |
-| P3-1-10 | 单页看板 UI：总览 / 用户 / 订阅 / 健康 / 子站 五个标签（原生 JS，不引框架） | [ ] |
+| P3-1-1 | 新建 `foyue-admin/` 项目骨架（wrangler.jsonc + src/worker.js + public/index.html） | [x] |
+| P3-1-2 | 路由 `foyue.org/admin*`；D1 绑定 STATS/AUTH/LOOKA/SHOP | [x] |
+| P3-1-3 | 鉴权（**方案变更**：用户决定暂不开 CF Access，等有稳定用户量再加）：FOYUE_ADMIN_KEY 强口令 + 登录失败限流（8 次锁 1 小时）+ 写操作审计。将来上 Access 时代码无需改动 | [x] |
+| P3-1-4 | `GET /admin/api/overview`（今日·昨日·7日 + 30 日漏斗 + 本月收入） | [x] |
+| P3-1-5 | `GET /admin/api/trend`（走 daily_stats） | [x] |
+| P3-1-6 | `GET /admin/api/users`（🔴 **只返回元数据，永不含笔记/日记/日程正文**） | [x] |
+| P3-1-7 | `GET /admin/api/subs`（流水 / 未认领 / 即将到期） | [x] |
+| P3-1-8 | `GET /admin/api/health`（AI 失败率·回落·崩溃 Top·限流） | [x] |
+| P3-1-9 | `GET /admin/api/sites`（各子站对比） | [x] |
+| P3-1-10 | 单页看板 UI：总览 / 用户 / 订阅 / 健康 / 子站 五个标签（原生 JS，不引框架） | [x] |
 
 ### P3-2 期：能做事
 
 | | 项 | 状态 |
 |---|---|---|
-| P3-2-1 | `admin_audit` 表 | [ ] |
-| P3-2-2 | 写操作：补开 Pro（调 Looka `/api/admin/grant`，业务规则留在归属站） | [ ] |
-| P3-2-3 | 写操作：生成兑换码 / 邀请码（复用 gencode） | [ ] |
-| P3-2-4 | 写操作：手动绑定未认领订单 | [ ] |
-| P3-2-5 | 写操作：封禁账号（`users.banned_at` + `getUser()` 拦截） | [ ] |
-| P3-2-6 | 每个写操作二次确认 + 记审计 | [ ] |
-| P3-2-7 | 接入自知录（binding + 埋点） | [ ] |
-| P3-2-8 | 接入流通处 | [ ] |
+| P3-2-1 | `admin_audit` 表 | [x] |
+| P3-2-2 | 写操作：补开 Pro（调 Looka `/api/admin/grant`，业务规则留在归属站） | [x] |
+| P3-2-3 | 写操作：生成兑换码 / 邀请码（复用 gencode） | [x] |
+| P3-2-4 | 写操作：手动绑定未认领订单 | [x] |
+| P3-2-5 | 写操作：封禁账号（`users.banned_at` + `getUser()` 拦截） | [x] |
+| P3-2-6 | 每个写操作二次确认 + 记审计 | [x] |
+| P3-2-7 | 接入自知录（admin 已可读账号总库；**该站自己的埋点未接**，待下批） | [ ] |
+| P3-2-8 | 接入流通处（admin 已绑 SHOP 并显示订单/客服量；**该站埋点未接**） | [ ] |
 | P3-2-9 | 接入播经台 / 文钞 | [ ] |
-| P3-2-10 | 异常告警邮件（未认领订单>0 / 崩溃激增 / AI失败率>10% / 注册归零） | [ ] |
+| P3-2-10 | 异常告警邮件（未认领订单>0 / 崩溃激增 / AI失败率>10% / 注册归零） | [x] |
 
 ---
 
