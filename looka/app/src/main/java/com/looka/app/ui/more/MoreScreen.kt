@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.R
 import com.looka.app.data.Prefs
+import com.looka.app.ui.calendar.SectionLabel
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.NavRow
 import com.looka.app.ui.common.plainClick
@@ -130,41 +131,54 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text("Looka", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(tr("可爱版九色鹿 · 极简生活手帐"), fontSize = 12.sp, color = GrayText)
+                    Text(tr("把生活，轻轻收进日历里"), fontSize = 12.sp, color = GrayText)
                 }
             }
             Hairline()
-            // T7（§65，Lifebear「その他」结构）：一屏放下全部入口，不用滚。
-            // 顶排 3 个最重的（深色卡），下面宫格 5 个。
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                GridTile(Icons.Outlined.PersonOutline,
-                    if (loggedIn) email else tr("账号"),
-                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("account") }
-                GridTile(Icons.Outlined.WorkspacePremium,
-                    if (plan == "pro") "Pro 🦌" else tr("订阅 · 鹿角"),
-                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("subscription") }
-                GridTile(Icons.Outlined.Tune, tr("日历设置"),
-                    dark = true, modifier = Modifier.weight(1f)) { nav.navigate("calSettings") }
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                GridTile(Icons.Outlined.Brush, tr("主题"), modifier = Modifier.weight(1f)) { themeSheet = true }
-                GridTile(Icons.Outlined.Search, tr("搜索"), modifier = Modifier.weight(1f)) { nav.navigate("search") }
-                GridTile(Icons.Outlined.SaveAlt, tr("数据与维护"), modifier = Modifier.weight(1f)) { nav.navigate("backup") }
-            }
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                GridTile(Icons.Outlined.NotificationsActive, tr("提醒自检"), modifier = Modifier.weight(1f)) { nav.navigate("selfcheck") }
-                GridTile(Icons.Outlined.Info, tr("关于"), modifier = Modifier.weight(1f)) { aboutDlg = true }
-                Spacer(Modifier.weight(1f))
-            }
+            // §68 四：宫格方案撤回（大黑块太重、分组逻辑错）。
+            // 按语义 6 组分组列表 —— Lifebear More 的真实骨架：emoji 分组标题 + 行级列表（§64 五）。
+            // X1：小鹿 AI 独立入口回归（§67 事故修复）。
+            SectionLabel(tr("我"))
+            NavRow(
+                tr("账号与同步"), icon = Icons.Outlined.PersonOutline,
+                value = if (loggedIn) "$email · ${if (plan == "pro") "Pro" else tr("免费版")}" else tr("未登录")
+            ) { nav.navigate("account") }
+            Hairline()
+            NavRow(tr("订阅 · 鹿角"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
+            Hairline()
+
+            SectionLabel(tr("小鹿"))
+            NavRow(tr("小鹿 AI"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
+            Hairline()
+
+            SectionLabel(tr("外观"))
+            NavRow(
+                tr("主题"), icon = Icons.Outlined.Brush,
+                value = DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
+            ) { themeSheet = true }
+            Hairline()
+
+            SectionLabel(tr("设置"))
+            NavRow(tr("日历设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
+            Hairline()
+            NavRow(tr("提醒自检"), icon = Icons.Outlined.NotificationsActive) { nav.navigate("selfcheck") }
+            Hairline()
+            NavRow(
+                tr("语言 / Language"), icon = Icons.Outlined.Translate,
+                value = com.looka.app.util.I18n.choiceLabel(Prefs.language(ctx))
+            ) { nav.navigate("language") }
+            Hairline()
+
+            SectionLabel(tr("数据"))
+            NavRow(tr("搜索"), icon = Icons.Outlined.Search) { nav.navigate("search") }
+            Hairline()
+            NavRow(tr("备份与维护"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
+            Hairline()
+
+            SectionLabel(tr("帮助"))
+            NavRow(tr("关于 Looka"), icon = Icons.Outlined.Info,
+                value = "v" + com.looka.app.BuildConfig.VERSION_NAME) { aboutDlg = true }
+            Hairline()
             Spacer(Modifier.height(60.dp))
         }
     }
@@ -523,33 +537,3 @@ private fun hueOf(c: androidx.compose.ui.graphics.Color): Float {
 }
 
 
-/** T7（§65）：更多页宫格块。深色卡给最重的三个入口，浅色给其余。 */
-@Composable
-private fun GridTile(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    dark: Boolean = false,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (dark) Ink else com.looka.app.ui.theme.PanelBg)
-            .plainClick(onClick)
-            .padding(vertical = 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        androidx.compose.material3.Icon(
-            icon, label,
-            tint = if (dark) Color.White else Ink,
-            modifier = Modifier.size(22.dp)
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            label, fontSize = 11.sp, maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            color = if (dark) Color.White else Ink
-        )
-    }
-}

@@ -239,8 +239,15 @@ fun TimelineBody(
                             )
                         }
                     }
+                    // §68 三（BEAR）：溢出用右下角折角数字，与月视图同款语义
                     val rest = (list.size - 3).coerceAtLeast(0) + (sysList.size - 2).coerceAtLeast(0)
-                    if (rest > 0) Text("+$rest", fontSize = 8.sp, color = GrayText)
+                    if (rest > 0) Text(
+                        "+$rest", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(topStart = 6.dp))
+                            .background(Color(0xFF6B7280))
+                            .padding(horizontal = 3.dp)
+                    )
                 }
             }
         }
@@ -342,9 +349,6 @@ private fun DayTimelineColumn(
             }
     ) {
         val colW = maxWidth
-        // E4：未分类的统一呈现色 —— 主题主色掺 35% 白
-        val softUncat = androidx.compose.ui.graphics.lerp(
-            MaterialTheme.colorScheme.primary, Color.White, 0.35f)
         val lanes = remember(blocks) { layoutLanes(blocks) }
         lanes.forEach { (b, lane, count, span) ->
             val top = HOUR_DP * (b.startMin / 60f)
@@ -359,19 +363,19 @@ private fun DayTimelineColumn(
                         .height(heightDp)
                         .padding(horizontal = 1.dp, vertical = 1.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(blockColor(catColorMap[o.categoryId], softUncat).copy(alpha = 0.94f))
+                        .background(blockColor(catColorMap[o.categoryId]).copy(alpha = 0.94f))
                         .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                         .plainClick { onOpen(o) }
                         .padding(horizontal = 4.dp, vertical = 3.dp)
                 ) {
                     Column {
-                        val fg = onColor(blockColor(catColorMap[o.categoryId], softUncat))
+                        val fg = onColor(blockColor(catColorMap[o.categoryId]))
                         Text(
                             o.title, fontSize = 10.sp, color = fg, lineHeight = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            // E3（§57）：窄条横排放不下 —— 放开行数，中文自动逐字竖排，
-                            // 长日程再窄也能读出标题（用户截图里那根"看不清的长条"）
-                            maxLines = if (w < 44.dp) 10 else 2,
+                            // §68 三：E3 竖排撤回（用户实测"内容拉长"就是它）。
+                            // K1 向右扩展后窄块已少；仍窄时宁可省略，不做竖排。
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                         if (w >= 60.dp) Text(
@@ -478,9 +482,9 @@ private fun layoutLanes(items: List<TBlock>): List<LaneBox> {
 
 
 /**
- * E4（§57，用户拍板方案 A）：未分类/缺失分类 = **当前主题色的柔和变体**。
- * 此前的散列色是假分类信号 —— 不同颜色让用户以为属于不同分类，其实全是未分类。
- * 一种颜色一个含义；随主题走，整体感也回来了。
+ * §68 三（BEAR 对比图实锤，撤回 E4 主题色变体）：未分类 = 中性灰底白字。
+ * 用户没标颜色就不该有颜色 —— 颜色只表达"分类"这一个语义。
  */
-private fun blockColor(catColor: Color?, softUncat: Color): Color =
-    if (catColor == null || catColor == Color(0xFF9AA0A6)) softUncat else catColor
+private val UNCAT_GRAY = Color(0xFF8A9095)
+private fun blockColor(catColor: Color?, @Suppress("UNUSED_PARAMETER") unused: Color = UNCAT_GRAY): Color =
+    if (catColor == null || catColor == Color(0xFF9AA0A6)) UNCAT_GRAY else catColor
