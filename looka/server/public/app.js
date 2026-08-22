@@ -713,6 +713,7 @@ function renderTodos() {
   $('#listChips').innerHTML =
     `<button class="lchip ${curList === 'all' ? 'on' : ''}" data-l="all">${t('全部')}</button>` +
     `<button class="lchip ${curList === 'starred' ? 'on' : ''}" data-l="starred">⭐ ${starCount}</button>` +
+    `<button class="lchip ${curList === 'next7' ? 'on' : ''}" data-l="next7">${t('未来7天')}</button>` +
     lists.map(l => `<button class="lchip ${curList === l.uid ? 'on' : ''}" data-l="${l.uid}">
       <span class="dot" style="background:${l.color || '#5C6670'}"></span>${esc(l.name)}${openCount[l.uid] ? ' ' + openCount[l.uid] : ''}</button>`).join('') +
     `<button class="lchip add" data-l="__new">＋</button>`;
@@ -726,7 +727,12 @@ function renderTodos() {
   });
 
   let items = taskList();
-  if (curList === 'starred') items = items.filter(k => k.starred);
+  if (curList === 'next7') {   // P4-5：未来 7 天（含今天）有到期日的任务
+    const t0 = todayEpoch();
+    items = items.filter(k => (k.dueDay ?? -1) >= t0 && k.dueDay < t0 + 7)
+                 .sort((a, b) => a.dueDay - b.dueDay);
+  }
+  else if (curList === 'starred') items = items.filter(k => k.starred);
   else if (curList !== 'all') items = items.filter(k => (k.listUid || 'list-default') === curList);
   const open = items.filter(k => !k.done)
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || ((a.dueDay ?? -1) - (b.dueDay ?? -1)));
@@ -1206,7 +1212,7 @@ async function boot() {
   const mPro = $('#mPro');
   if (mPro) mPro.onclick = async () => {
     const zh = (localStorage.getItem('lk_lang') || navigator.language || 'zh').startsWith('zh');
-    let url = 'https://ko-fi.com/looka2026/tiers';
+    let url = 'https://ko-fi.com/c/4c6210054c';
     if (zh) {
       // LK 短码：备注预填、付款后服务端自动归属开通；接口不可达退回裸链接（还有订单号认领兜底）
       url = 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0';
@@ -1284,6 +1290,32 @@ async function boot() {
     };
   };
 
+  // P4-7：备份恢复 —— 导入我们自己导出的 JSON（uid 相同则覆盖，全部标脏待同步）
+  const mImport = $('#mImport');
+  if (mImport) mImport.onclick = () => {
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/json';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      try {
+        const j = JSON.parse(await f.text());
+        const data = j.data || j;
+        let n = 0;
+        for (const kind of KINDS) {
+          if (kind === 'settings') continue;
+          for (const it of (data[kind] || [])) {
+            if (!it.uid) continue;
+            const { uid, ...payload } = it;
+            put(kind, uid, payload); n++;
+          }
+        }
+        toast(t('已导入 {0} 条，正在同步…').replace('{0}', n));
+        renderCalendar(); renderTodos(); renderNotes(); renderDiary();
+      } catch (e) { toast(t('文件格式不对：请选择 Looka 导出的 JSON')); }
+    };
+    inp.click();
+  };
+
   // 数据导出（免费权益）：本地数据一键存成 JSON
   const mExport = $('#mExport');
   if (mExport) mExport.onclick = () => {
@@ -1348,6 +1380,7 @@ async function boot() {
   // 日历
   $('#btnAddEvent').onclick = () => openEventModal(null);
   $('#btnAddStamp').onclick = () => openStickerModal(S.selDay);
+  $('#btnAddDiary2').onclick = () => openDiaryModal(S.selDay);   // P4-1：日面板直达写日记（对齐 App 📖）
 
   // 待办
   const addTodo = () => {

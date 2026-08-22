@@ -126,7 +126,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             BenefitRow(tr("全部表情包 · 每月新增（规划中）"), free = false, pro = true)
             BenefitRow(tr("智能清单 · 自定义筛选（规划中）"), free = false, pro = true)
             BenefitRow(tr("统计与年度回顾（规划中）"), free = false, pro = true)
-            BenefitRow(tr("更聪明的小鹿（GPT 高级模型）"), free = false, pro = true)
+            BenefitRow(tr("更聪明的小鹿 · 不限量（双引擎：GPT + DeepSeek，自动择优）"), free = false, pro = true)
             BenefitRow(tr("AI 造表情 / 主题（规划中）"), free = false, pro = true)
             Hairline()
             Text(
@@ -188,7 +188,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                                     .getOrNull()?.takeIf { it.isNotBlank() }
                                     // 服务端不可达时退回无备注的裸链接（还有订单号认领兜底）
                                     ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/looka2026/tiers"
+                            } else "https://ko-fi.com/c/4c6210054c"
                             Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
                             payTick++
                             runCatching {

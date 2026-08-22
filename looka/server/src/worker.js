@@ -722,7 +722,7 @@ async function route(request, env, ctx) {
         await track(env, 'looka', 'kofi_hook', null, request, { type: String(d.type || '').slice(0, 20) });
         // 验证令牌不符 = 伪造，直接丢弃
         if (!env.KOFI_VERIFY_TOKEN || d.verification_token !== env.KOFI_VERIFY_TOKEN) return;
-        if (!['Subscription', 'Donation'].includes(d.type)) return;   // Shop Order 等先不处理
+        if (!['Subscription', 'Donation', 'Commission'].includes(d.type)) return;   // 用户建的是 Commission 商品，一并支持
         const txId = String(d.kofi_transaction_id || d.message_id || '');
         if (!txId) return;
         // 幂等
@@ -741,7 +741,7 @@ async function route(request, env, ctx) {
         if (!uid) return;   // 留在 pay_orders 待后台手动绑定
         // 月付订阅每次 31 天；单次打赏 ≥$7 也给 31 天（让利原则）
         const amt = Number(d.amount || 0);
-        if (d.type === 'Subscription' || amt >= 7) {
+        if (d.type === 'Subscription' || d.type === 'Commission' || amt >= 7) {
           await grantPro(env, uid, 31);
           await track(env, 'looka', 'pay', uid, null, { amt: String(d.amount), ch: 'kofi' });
           await env.DB.prepare("UPDATE pay_orders SET user_id = ?1 WHERE channel='kofi' AND order_no = ?2")
@@ -937,31 +937,44 @@ async function route(request, env, ctx) {
       const FLAGSHIP_OK = ['openai/gpt-5.5', 'openai/gpt-5', 'anthropic/claude-opus-5', 'deepseek/deepseek-v4-pro'];
       const model = tier === 'flagship' && !FLAGSHIP_OK.includes(orModel) ? 'openai/gpt-5.5' : orModel;
       const t0 = Date.now();
-      // P2-E2/E3：重试一次 + 25 秒超时。实测存在 12 秒长尾/瞬时失败，一次重试大概率救回；
-      // 失败原因必须留痕（E1 日志 + E4 透传），"暂时不可用"不能再是黑箱。
+      // §45 双引擎「更聪明」（2026-08-22）：
+      //   ① OpenRouter GPT（海外链路，质量优）→ ② 硅基流动 DeepSeek-V3.2（.cn 大陆直连，稳）
+      // 用户反馈大陆环境 GPT 时有不可用 —— "更聪明"不再绑死单一海外上游，
+      // 哪个先答上来用哪个，气泡照实标注模型。两个都挂才回落标准档。
       let resp = null, d = {}, text = '', lastErr = '';
-      for (let attempt = 0; attempt < 2; attempt++) {
+      const tryUpstream = async (uurl, headers, bodyObj, timeoutMs) => {
         try {
-          resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${env.OPENROUTER_KEY}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://looka.foyue.org',
-              'X-Title': 'Looka'
-            },
-            body: JSON.stringify({ model, messages, temperature, max_tokens: 2048 }),
-            signal: AbortSignal.timeout(25_000)
+          const r = await fetch(uurl, {
+            method: 'POST', headers,
+            body: JSON.stringify(bodyObj), signal: AbortSignal.timeout(timeoutMs)
           });
-          d = await resp.json().catch(() => ({}));
-          text = pickText(d);
-          if (resp.ok && text) break;
-          lastErr = d?.error?.message || `上游 ${resp.status}`;
+          const dd = await r.json().catch(() => ({}));
+          const tt = pickText(dd);
+          if (r.ok && tt) return { r, dd, tt };
+          return { err: dd?.error?.message || dd?.message || `上游 ${r.status}` };
         } catch (e) {
-          lastErr = e?.name === 'TimeoutError' ? '上游超时(25s)' : String(e?.message || e).slice(0, 120);
-          resp = null; text = '';
+          return { err: e?.name === 'TimeoutError' ? '上游超时' : String(e?.message || e).slice(0, 120) };
         }
-        console.log('premium fail', model, `attempt=${attempt + 1}`, lastErr);   // E1：CF 面板可查
+      };
+      let served = model;
+      {
+        const a = await tryUpstream('https://openrouter.ai/api/v1/chat/completions', {
+          'Authorization': `Bearer ${env.OPENROUTER_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://looka.foyue.org',
+          'X-Title': 'Looka'
+        }, { model, messages, temperature, max_tokens: 2048 }, 20_000);
+        if (a.tt) { resp = a.r; d = a.dd; text = a.tt; }
+        else {
+          lastErr = a.err;
+          console.log('premium fail', model, 'engine=openrouter', lastErr);
+          const cnModel = env.PREMIUM_MODEL_CN || 'deepseek-ai/DeepSeek-V3.2';
+          const b2 = await tryUpstream(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+            'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json'
+          }, { model: cnModel, messages, temperature, max_tokens: 2048, enable_thinking: false }, 30_000);
+          if (b2.tt) { resp = b2.r; d = b2.dd; text = b2.tt; served = cnModel; }
+          else { lastErr = b2.err; console.log('premium fail', cnModel, 'engine=sf', lastErr); }
+        }
       }
       if (!resp?.ok || !text) {
         // 上游失败一律不扣费，回落标准模型（E4：真实原因透传给客户端）
@@ -979,7 +992,7 @@ async function route(request, env, ctx) {
         ).bind(user.id, ym()).run();
         ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { tier }));
         return json({
-          ok: true, content: text, tier: b.tier, model, ms: Date.now() - t0,
+          ok: true, content: text, tier: b.tier, model: served, ms: Date.now() - t0,
           antler: after, spent: need
         });
       }
@@ -1158,6 +1171,22 @@ async function route(request, env, ctx) {
       } catch (e) {
         return json({ ok: false, ms: Date.now() - t0, error: String(e) }, 502);
       }
+    }
+    // target=sf：从 Worker 内实测硅基流动 .cn 的任意模型（premium 大陆通道选型）
+    if (String(b.target || '') === 'sf') {
+      const t0 = Date.now();
+      const mdl = String(b.model || 'deepseek-ai/DeepSeek-V3.2');
+      try {
+        const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: mdl, max_tokens: 40, enable_thinking: false,
+            messages: [{ role: 'user', content: '用一句中文回答：你是谁？' }] })
+        });
+        const d = await r.json().catch(() => ({}));
+        return json({ ok: r.ok, status: r.status, ms: Date.now() - t0, model: mdl,
+          content: pickText(d) || null, error: r.ok ? null : (d?.message || d?.error?.message || `HTTP ${r.status}`) });
+      } catch (e) { return json({ ok: false, ms: Date.now() - t0, model: mdl, error: String(e) }, 502); }
     }
     const model = String(b.model || 'openai/gpt-5.6-luna');
     const t0 = Date.now();

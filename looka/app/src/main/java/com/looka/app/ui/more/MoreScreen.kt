@@ -157,7 +157,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                                 kotlin.runCatching { com.looka.app.net.Api.payIntent(ctx).optString("url") }
                                     .getOrNull()?.takeIf { it.isNotBlank() }
                                     ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/looka2026/tiers"
+                            } else "https://ko-fi.com/c/4c6210054c"
                             Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
                             kotlin.runCatching {
                                 ctx.startActivity(android.content.Intent(

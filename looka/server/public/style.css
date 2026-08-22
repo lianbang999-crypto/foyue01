@@ -297,7 +297,7 @@ main { max-width: 860px; margin: 0 auto; }
 /* ===== 底部菜单栏（2026-08-21，与安卓 App 同构）=====
    iPhone 全面屏底部有 Home 指示条，必须留 safe-area，否则「更多」会被盖住点不到。 */
 .bottombar{
-  position:fixed; left:0; right:0; bottom:0; z-index:30;
+  position:fixed; left:0; right:0; bottom:0; z-index:45;   /* 2026-08-22 截图证实被 day-panel(40) 盖住 —— 底栏永远最上 */
   display:flex; align-items:center; justify-content:space-around;
   background:#fff; border-top:.8px solid var(--line,#d8dbd8);
   padding:4px 4px calc(4px + env(safe-area-inset-bottom));
@@ -440,7 +440,8 @@ body, main, .pane{ background: var(--paper); }
 }
 /* 桌面：日面板自己滚，别把整页撑到底栏底下 */
 @media (min-width:561px){ .day-panel{ flex: 0 0 auto; max-height: 42%; overflow-y: auto; } }
-.week-row { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
+.week-row { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; height: 96px; }
+@media (max-width:560px){ .week-row{ height: 78px; } }
 .week-row .month-wm {   /* P2-B2：水印叠在格子之上、低透明度、一行内装下 */
   position: absolute; inset: 0; z-index: 2; pointer-events: none;
   display: flex; align-items: center; justify-content: center;
@@ -448,7 +449,7 @@ body, main, .pane{ background: var(--paper); }
 }
 /* P2-C4：不再用 transparent（它把 .dim/.sel 的底色一起清掉了 —— CSS 特异度事故）。
    月界改由奇偶月底色表达：偶数月 .m-even 灰、奇数月白，滚动时固定不变 */
-.week-row .day-cell { position: relative; z-index: 1; min-height: 92px; }
+.week-row .day-cell { position: relative; z-index: 1; height: 100%; overflow: hidden; }
 .day-cell.m-even { background: var(--dim); }
 .day-cell.m1 { border-top: 1.6px solid #C9CCC9; }   /* 月首行的上边界略加重 */
 .day-cell.m1 .day-num { width: auto; border-radius: 9px; padding: 0 5px; font-weight: 700; }

@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 15,
-  "versionName": "1.7.1",
+  "versionCode": 16,
+  "versionName": "1.7.2",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3635158,
-  "sha256": "66e74c86a41ef68db6793082186ab8bf53d781177e03ad84fca312d3de69d4e9",
-  "changelog": "· 日历显示设置全端同步：在手机上改「周起始/农历/节假日/显示已完成」，网页跟着变 —— 两端终于看同一本日历\n· 数据后台 foyue.org/admin 修复打不开的问题（Error 1101）\n· 自知录、流通处接入全站统计",
+  "size": 3635466,
+  "sha256": "222a98fa25770dc436be252b4b1218219f3fd10a84bff3250cc329b845fcb8f3",
+  "changelog": "· 「更聪明的小鹿」升级双引擎：GPT 连不上时自动切换国内直连的 DeepSeek，大陆网络也稳定可用\n· 网页端：底部菜单不再被日程面板挡住；日面板新增「＋日记」；待办新增「未来7天」；新增导入恢复\n· 海外支持渠道更新",
   "minSupported": 1
 }
