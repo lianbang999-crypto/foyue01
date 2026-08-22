@@ -26,8 +26,8 @@ Looka Pro · 月度
 
 **方案描述**（整段粘贴）
 ```
-Looka 是一个安静的手帐 App —— 日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
-它不催你，不给红色角标，不做连续打卡。名字取自敦煌壁画《鹿王本生图》里的九色鹿。
+Looka 是一个手帐 App —— 日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
+我们只做一件事：做一只更懂你的小鹿。名字取自敦煌壁画《鹿王本生图》里的九色鹿。
 
 【免费版就能用的，一直免费】
 
@@ -102,9 +102,9 @@ Looka Pro · 年度
 
 ```
 Looka · 可爱版九色鹿
-一个安静的手帐 App：日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
+日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
 
-不催你，不给红色角标，不做连续打卡。
+做一只更懂你的小鹿。
 名字取自敦煌壁画《鹿王本生图》里的九色鹿。
 
 安卓 App 与网页版：looka.foyue.org
@@ -133,10 +133,10 @@ $7 / month
 
 **Description**（paste as-is）
 ```
-Looka is a quiet journaling app — calendar, to-dos, notes and diary,
+Looka is a journaling app — calendar, to-dos, notes and diary,
 with a little deer called Luka to help.
 
-It never nags you. No red badges. No streaks to keep.
+One thing guides everything we build: a deer that understands you better.
 The name comes from the nine-coloured deer of the Dunhuang cave murals.
 
 【FREE — and staying free】
@@ -210,10 +210,10 @@ $70 for twelve months — about $5.83 a month, saving $14 against monthly billin
 ## Page bio
 
 ```
-Looka — a quiet journaling app
-Calendar, to-dos, notes and diary, with a little deer called Luka to help.
+Looka — calendar, to-dos, notes and diary,
+with a little deer called Luka to help.
 
-No nagging. No red badges. No streaks.
+A deer that understands you better.
 Named after the nine-coloured deer of the Dunhuang murals.
 
 Android app and web: looka.foyue.org

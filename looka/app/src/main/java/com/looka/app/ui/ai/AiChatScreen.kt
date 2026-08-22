@@ -185,7 +185,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
         ) {
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(14.dp)).background(PanelBg).padding(12.dp)
+                    .clip(RoundedCornerShape(10.dp)).background(PanelBg).padding(12.dp)
             ) {
                 Text(
                     tr("共 {0} 件事", vm.pendingAiActions.size),
@@ -218,7 +218,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     Spacer(Modifier.weight(1f))
                     Text(
                         tr("执行勾选的"), fontSize = 13.sp, color = Color.White,
-                        modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.primary)
                             .plainClick { vm.confirmPending() }
                             .padding(horizontal = 14.dp, vertical = 7.dp)
@@ -304,8 +304,8 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
 private fun QuickChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier.padding(horizontal = 4.dp)
-            .clip(RoundedCornerShape(15.dp))
-            .border(0.8.dp, Color(0xFFDDE0DD), RoundedCornerShape(15.dp))
+            .clip(RoundedCornerShape(10.dp))
+            .border(0.8.dp, Color(0xFFDDE0DD), RoundedCornerShape(10.dp))
             .plainClick(onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
@@ -336,7 +336,7 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
         ) {
             Box(
-                Modifier.clip(RoundedCornerShape(14.dp, 14.dp, 4.dp, 14.dp))
+                Modifier.clip(RoundedCornerShape(10.dp, 10.dp, 4.dp, 10.dp))
                     .background(MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
@@ -355,8 +355,8 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
             var menu by remember { mutableStateOf(false) }
             Box {
                 Box(
-                    Modifier.clip(RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp))
-                        .border(0.8.dp, Color(0xFFE7EAE7), RoundedCornerShape(4.dp, 14.dp, 14.dp, 14.dp))
+                    Modifier.clip(RoundedCornerShape(4.dp, 10.dp, 10.dp, 10.dp))
+                        .border(0.8.dp, Color(0xFFE7EAE7), RoundedCornerShape(4.dp, 10.dp, 10.dp, 10.dp))
                         .background(Color.White)
                         .combinedClickable(onClick = {}, onLongClick = { menu = true })
                         .padding(horizontal = 12.dp, vertical = 8.dp)

@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 22,
-  "versionName": "1.9.2",
+  "versionCode": 23,
+  "versionName": "1.9.3",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3693933,
-  "sha256": "6051814aed473e144a6538ef9d116689dbe8164314e621b8986dc02ef202a78b",
-  "changelog": "修复批：周视图长条可读+统一未分类颜色 · 更多页极简 · 流式空气泡",
+  "size": 3660097,
+  "sha256": "585cb4c03eecd46e5be7005c8b37609d34d6921278c1b866ab92659bd148e38e",
+  "changelog": "四模式快捷排（日程/任务/表情/日记）· 小鹿全面随主题变色 · 界面统一",
   "minSupported": 1
 }

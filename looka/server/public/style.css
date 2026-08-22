@@ -22,7 +22,7 @@ body {
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 input, textarea, select {
   font-family: inherit; font-size: 14px; color: var(--ink);
-  border: 1px solid #D8DAD8; border-radius: 8px; padding: 9px 12px; outline: none; background: #fff;
+  border: 1px solid #D8DAD8; border-radius: 10px; padding: 9px 12px; outline: none; background: #fff;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--primary); }
 
@@ -39,12 +39,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary); }
 .auth-note { color: var(--gray); font-size: 12px; margin-top: 18px; }
 
 /* ---------- 按钮 ---------- */
-.btn-primary { background: var(--primary); color: #fff; border-radius: 9px; padding: 9px 16px; font-size: 14px; }
-.btn-ghost { border: 1px solid #D8DAD8; border-radius: 9px; padding: 9px 16px; font-size: 14px; }
-.btn-dark { background: var(--dark); color: #fff; border-radius: 8px; padding: 6px 13px; font-size: 13px; }
+.btn-primary { background: var(--primary); color: #fff; border-radius: 10px; padding: 9px 16px; font-size: 14px; }
+.btn-ghost { border: 1px solid #D8DAD8; border-radius: 10px; padding: 9px 16px; font-size: 14px; }
+.btn-dark { background: var(--dark); color: #fff; border-radius: 10px; padding: 6px 13px; font-size: 13px; }
 .btn-mini { font-size: 12px; color: var(--primary); font-weight: 600; padding: 4px 8px; }
-.btn-danger { background: var(--red); color: #fff; border-radius: 8px; padding: 6px 13px; font-size: 13px; }
-.icon-btn { font-size: 17px; color: var(--gray); padding: 4px 9px; border-radius: 8px; }
+.btn-danger { background: var(--red); color: #fff; border-radius: 10px; padding: 6px 13px; font-size: 13px; }
+.icon-btn { font-size: 17px; color: var(--gray); padding: 4px 9px; border-radius: 10px; }
 .icon-btn:hover { background: var(--panel); }
 .round { border-radius: 50%; width: 38px; height: 38px; padding: 0; font-size: 17px; }
 
@@ -148,7 +148,7 @@ main { max-width: 860px; margin: 0 auto; }
 .todo-item.done .ck { background: var(--primary); border-color: var(--primary); transform: scale(1.05); }
 .todo-item .tt { flex: 1; font-size: 14px; }
 .todo-item.done .tt { color: var(--gray); text-decoration: line-through; }
-.todo-item .due { font-size: 11px; color: var(--gray); background: var(--panel); border-radius: 8px; padding: 2px 7px; }
+.todo-item .due { font-size: 11px; color: var(--gray); background: var(--panel); border-radius: 10px; padding: 2px 7px; }
 .todo-item .due.late { color: var(--red); }
 .todo-item .del { color: #C0C3C0; font-size: 15px; padding: 2px 6px; }
 .todo-sec { padding: 8px 16px; color: var(--gray); font-size: 13px; }
@@ -170,7 +170,7 @@ main { max-width: 860px; margin: 0 auto; }
 .msg { display: flex; margin: 6px 0; }
 .msg.user { justify-content: flex-end; }
 .msg .bubble {
-  max-width: 76%; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+  max-width: 76%; padding: 9px 13px; border-radius: 10px; font-size: 14px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
 }
 .msg.user .bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 4px; }
 .msg.ai .bubble { border: 0.8px solid #E7EAE7; border-top-left-radius: 4px; }
@@ -190,7 +190,7 @@ main { max-width: 860px; margin: 0 auto; }
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .dialog {
-  background: #fff; border-radius: 14px; width: min(430px, 94vw);
+  background: #fff; border-radius: 10px; width: min(430px, 94vw);
   max-height: 88vh; overflow: auto; padding: 18px;
 }
 .dialog h3 { font-size: 16px; margin-bottom: 12px; }
@@ -275,7 +275,7 @@ main { max-width: 860px; margin: 0 auto; }
 
 /* ===== 表情选择器（对齐 Lifebear：5×2 + 页点 + 包 Tab） ===== */
 .stk-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:6px 0}
-.stk{border:0;background:none;cursor:pointer;padding:4px 2px;border-radius:12px;
+.stk{border:0;background:none;cursor:pointer;padding:4px 2px;border-radius:10px;
   display:flex;flex-direction:column;align-items:center;gap:2px}
 .stk img{width:42px;height:42px;transition:transform .18s}
 .stk span{font-size:9px;color:#8a8f8e;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -337,7 +337,7 @@ main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
 /* ===== iOS「添加到主屏幕」引导 ===== */
 .ios-tip{
   position:fixed; left:12px; right:12px; bottom:calc(70px + env(safe-area-inset-bottom));
-  background:#1b1b1f; color:#fff; border-radius:12px; padding:12px 14px;
+  background:#1b1b1f; color:#fff; border-radius:10px; padding:12px 14px;
   font-size:12.5px; line-height:1.7; z-index:60; box-shadow:0 6px 20px rgba(0,0,0,.22);
 }
 .ios-tip b{ font-weight:600; }
@@ -378,7 +378,7 @@ main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
 .tier-bar{ display:flex; gap:8px; padding:8px 12px 0; }
 .tier-bar button{
   display:flex; flex-direction:column; align-items:flex-start; gap:1px;
-  padding:5px 12px; border:0; border-radius:9px; background:var(--panel,#f7f8f7);
+  padding:5px 12px; border:0; border-radius:10px; background:var(--panel,#f7f8f7);
 }
 .tier-bar button b{ font-size:12px; font-weight:400; color:var(--ink,#1b1b1f); }
 .tier-bar button i{ font-style:normal; font-size:9px; color:var(--gray,#8a8f8e); }
@@ -405,14 +405,14 @@ body, main, .pane{ background: var(--paper); }
 .landing-hero h1 { font-size: 24px; margin: 6px 0 2px; }
 .landing-sub { color: var(--gray); font-size: 13px; margin: 0 0 10px; }
 .landing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(560px, 92vw); margin: 18px 0 4px; }
-.landing-item { border: 0.8px solid var(--hair); border-radius: 12px; padding: 12px 14px; }
+.landing-item { border: 0.8px solid var(--hair); border-radius: 10px; padding: 12px 14px; }
 .landing-item .li-ico { font-size: 20px; }
 .landing-item b { display: block; font-size: 14px; margin: 4px 0 2px; }
 .landing-item p { font-size: 12px; color: var(--gray); margin: 0; line-height: 1.6; }
 .landing-points { width: min(560px, 92vw); margin: 10px 0; padding: 0 0 0 18px; }
 .landing-points li { font-size: 13px; color: #333; line-height: 2; }
 .landing-dl { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0 18px; }
-.landing-dl .btn-dark { padding: 10px 26px; font-size: 14px; border-radius: 12px; text-decoration: none; }
+.landing-dl .btn-dark { padding: 10px 26px; font-size: 14px; border-radius: 10px; text-decoration: none; }
 .dl-note { font-size: 11px; color: var(--gray); }
 .landing-price { width: min(560px, 92vw); border-collapse: collapse; font-size: 12.5px; }
 .landing-price th, .landing-price td { border: 0.8px solid var(--hair); padding: 7px 9px; text-align: center; }
@@ -452,7 +452,7 @@ body, main, .pane{ background: var(--paper); }
 .week-row .day-cell { position: relative; z-index: 1; height: 100%; overflow: hidden; }
 .day-cell.m-even { background: var(--dim); }
 .day-cell.m1 { border-top: 1.6px solid #C9CCC9; }   /* 月首行的上边界略加重 */
-.day-cell.m1 .day-num { width: auto; border-radius: 9px; padding: 0 5px; font-weight: 700; }
+.day-cell.m1 .day-num { width: auto; border-radius: 10px; padding: 0 5px; font-weight: 700; }
 .search-out { max-height: 50vh; overflow-y: auto; margin-top: 10px; }
 .search-hit { padding: 8px 6px; border-bottom: 0.6px solid var(--hair); font-size: 13px; cursor: pointer; }
 .search-hit .tagk { font-size: 10px; color: var(--gray); border: 0.8px solid var(--hair); border-radius: 4px; padding: 1px 4px; margin-right: 6px; }

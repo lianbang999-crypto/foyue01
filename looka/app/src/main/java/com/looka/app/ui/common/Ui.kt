@@ -231,13 +231,7 @@ fun EmptyDeer(text: String, modifier: Modifier = Modifier, hint: String? = null)
             .padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Image(
-            painterResource(R.drawable.ic_deer_badge), null,
-            modifier = Modifier
-                .size(64.dp)
-                .offset(y = dy.dp),
-            alpha = 0.9f
-        )
+        DeerBadge(64.dp)   // B3 补漏（§58）：空状态小鹿也随主题
         Spacer(Modifier.height(10.dp))
         Text(text, fontSize = 13.sp, color = GrayText)
         // 指向性提示（对齐 Lifebear「ここから作成できます ↓」）：

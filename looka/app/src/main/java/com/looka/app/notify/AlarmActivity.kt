@@ -48,7 +48,7 @@ class AlarmActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Image(painterResource(R.drawable.ic_deer_badge), null, Modifier.size(96.dp))
+                com.looka.app.ui.common.DeerBadge(96.dp)   // B3 补漏（§58）：闹钟页小鹿也随主题
                 Spacer(Modifier.height(24.dp))
                 Text("⏰ $title", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 if (text.isNotBlank()) {

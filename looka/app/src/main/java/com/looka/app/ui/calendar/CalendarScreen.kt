@@ -717,20 +717,66 @@ private fun DaySheet(
                     }
                 }
             }
-            IconButton(onClick = { nav.navigate("diary/$day") }) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.MenuBook, tr("写日记"),
-                    tint = GrayText, modifier = Modifier.size(22.dp)
-                )
-            }
-            IconButton(onClick = {
+        }
+        // 四模式快捷排（学 Lifebear 的弹出面板）：日程 / 任务 / 表情 / 日记 —— 一排等宽
+        var quickTask by remember { mutableStateOf(false) }
+        var quickStamp by remember { mutableStateOf(false) }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            QuickAction("🗓", tr("日程")) {
                 vm.prepareCreateDraft(day)
                 nav.navigate("editor")
-            }) {
-                Icon(Icons.Default.Add, tr("添加日程"), tint = Ink, modifier = Modifier.size(24.dp))
             }
+            QuickAction("☑", tr("任务")) { quickTask = true }
+            QuickAction("🦌", tr("表情")) { quickStamp = true }
+            QuickAction("📖", tr("日记")) { nav.navigate("diary/$day") }
         }
         Hairline()
+
+        // 快速建任务：一个输入框就够（Lifebear 的节奏 —— 弹出即输入，不进全页编辑器）
+        if (quickTask) {
+            var title by remember { mutableStateOf("") }
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { quickTask = false },
+                title = { Text(tr("添加任务"), fontSize = 16.sp) },
+                text = {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = title, onValueChange = { title = it },
+                        placeholder = { Text(Fmt.dateCn(day) + " · " + tr("要做什么？"), fontSize = 13.sp) },
+                        singleLine = true
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(
+                        enabled = title.isNotBlank(),
+                        onClick = { vm.addTask(title.trim(), due = day); quickTask = false }
+                    ) { Text(tr("添加"), color = MaterialTheme.colorScheme.primary) }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { quickTask = false }) {
+                        Text(tr("取消"), color = GrayText)
+                    }
+                }
+            )
+        }
+        // 快速贴表情：直接弹贴纸选择器，选中即贴到这一天
+        if (quickStamp) {
+            androidx.compose.material3.ModalBottomSheet(
+                onDismissRequest = { quickStamp = false },
+                containerColor = Color.White
+            ) {
+                com.looka.app.ui.common.StickerPicker(
+                    selected = "",
+                    onSelect = { asset ->
+                        vm.addStamp("", day, assetId = asset)
+                        quickStamp = false
+                    },
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+            }
+        }
 
         // 注意：不再因为"这天什么都没有"就整段换成空状态插画 ——
         // 日记邀请那一行必须一直够得着（见下方 item），否则空日子反而无从下手。
@@ -1014,5 +1060,19 @@ fun ViewMenuSheet(
             NavRow(tr("跳转到日期"), icon = Icons.Outlined.Event) { onDismiss(); onJump() }
             NavRow(tr("显示设置"), icon = Icons.Outlined.Tune) { onDismiss(); nav.navigate("calSettings") }
         }
+    }
+}
+
+
+/** 四模式快捷键（§58）：图标 + 小字，一排等宽 —— 弹出面板的节奏学 Lifebear */
+@Composable
+private fun QuickAction(emoji: String, label: String, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clip(RoundedCornerShape(10.dp)).plainClick(onClick)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+    ) {
+        Text(emoji, fontSize = 20.sp)
+        Text(label, fontSize = 10.5.sp, color = GrayText)
     }
 }
