@@ -6,7 +6,7 @@
   "name": "foyue-admin",
   "main": "src/worker.js",
   "compatibility_date": "2026-04-01",
-  "assets": { "directory": "./public", "run_worker_first": true },
+  "assets": { "directory": "./public", "binding": "ASSETS" },
   "routes": [
     { "pattern": "foyue.org/admin*", "zone_name": "foyue.org" }
   ],

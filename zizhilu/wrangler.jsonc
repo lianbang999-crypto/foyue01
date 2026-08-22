@@ -1,0 +1,42 @@
+{
+  // 自知录 · 极简功过格记事本 —— Cloudflare Workers 配置
+  "name": "zizhilu",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-04-01",
+  "assets": { "directory": "./public" },
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "zhi.foyue.org", "custom_domain": true }
+  ],
+  "d1_databases": [
+    { "binding": "STATS", "database_name": "foyue-db", "database_id": "be0b21ab-4549-45bc-ac38-5f9e1864d061" },
+    {
+      "binding": "DB",
+      "database_name": "rixing-db",
+      "database_id": "790c4e52-07d0-40ad-a21f-402a4cbf85ff"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "rixing-media"
+    }
+  ],
+  // 每日提醒：每天 13:00 UTC（北京 21:00）扫描未记录用户并推送
+  "triggers": { "crons": ["0 13 * * *"] },
+  "vars": {
+    "VAPID_PUBLIC_KEY": "BJgJ1eB69MGyzieK4cmpkLeR4lyfVyx8OJ6FaQzghFVyxxah_7ko3pFffA1tlW9w9y-hu-5swL8E0nGsgpJq5os",
+    "SILICONFLOW_BASE": "https://api.siliconflow.com/v1",
+    "CHAT_MODEL": "Qwen/Qwen3.5-9B",
+    "VISION_MODEL": "Qwen/Qwen3-VL-8B-Instruct",
+    // 注册邀请码（防止陌生人注册后消耗 AI 额度与存储；改成自己的，或删除本行开放注册）
+    "INVITE_CODE": "zizhilu2026",
+    // 每位用户可邀请的人数：用总码注册的（你自己）20 个，受邀注册的每人 2 个
+    // ——因 AI Key 会下发到已登录浏览器，名额刻意收紧；想放开改大即可
+    "ADMIN_INVITE_QUOTA": "20",
+    "DEFAULT_INVITE_QUOTA": "2",
+    // Android TWA 签名指纹（上架 Google Play 启用 Play App Signing 后，需把 Play 的应用签名 SHA256 用逗号追加在后面）
+    "TWA_FINGERPRINT": "58:54:D4:92:1A:55:A2:6B:E6:A1:97:72:78:73:E2:F0:31:ED:AA:ED:DB:80:C4:97:48:AF:24:08:D6:A4:53:7F"
+  },
+  "observability": { "enabled": true }
+}

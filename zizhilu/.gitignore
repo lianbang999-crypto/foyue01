@@ -1,0 +1,13 @@
+.dev.vars
+.wrangler/
+node_modules/
+.DS_Store
+
+# Android 构建产物（可再生成）
+android/build/
+android/app/build/
+android/.gradle/
+
+# 签名密钥——不入库，务必自行异地备份！
+android/android.keystore
+android/keystore-info.txt

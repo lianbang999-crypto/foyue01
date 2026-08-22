@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>隐私政策 · 自知录</title>
+  <meta name="theme-color" content="#FAF9F6">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23FAF9F6'/%3E%3Ccircle cx='16' cy='16' r='8.5' fill='none' stroke='%23B0492F' stroke-width='2.6'/%3E%3C/svg%3E">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #FAF9F6; color: #1F1E1B;
+      font-size: 15px; line-height: 1.9;
+      padding: 40px 20px 80px;
+    }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { font-family: "Songti SC", serif; font-size: 26px; letter-spacing: .1em; margin-bottom: 4px; }
+    .sub { color: #9B968C; font-size: 13px; margin-bottom: 34px; }
+    h2 { font-family: "Songti SC", serif; font-size: 17px; margin: 28px 0 8px; letter-spacing: .05em; }
+    h2.hl { color: #B0492F; }
+    h2.hl::before { content: ''; display: inline-block; width: 11px; height: 11px; border: 2.2px solid #B0492F; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+    p, li { color: #4a473f; font-size: 14.5px; }
+    ul { padding-left: 20px; }
+    .en { color: #9B968C; font-size: 13px; border-top: 1px solid #ECE8E0; margin-top: 40px; padding-top: 20px; }
+    a { color: #B0492F; }
+    .ring { display: inline-block; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid #B0492F; margin-right: 8px; vertical-align: -1px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1><span class="ring"></span>隐私政策</h1>
+  <p class="sub">自知录 · 功过格（zhi.foyue.org 及其 Android 应用「自知录」org.foyue.zhi）· 更新于 2026-08-17</p>
+
+  <h2>我们收集什么</h2>
+  <ul>
+    <li><b>账号信息</b>：你注册时填写的邮箱或手机号，以及加密存储的密码（PBKDF2 单向散列，我们无法看到原文）。</li>
+    <li><b>你的记录</b>：你主动写下的功过与记事文字、上传的图片/视频/音频、AI 生成的省察与配文。</li>
+    <li><b>推送订阅</b>：若你开启每日提醒，我们保存浏览器颁发的推送地址，仅用于发送提醒信号（不含任何内容数据）。</li>
+    <li>我们<b>不收集</b>通讯录、位置、设备标识，不接入任何广告或统计 SDK。</li>
+  </ul>
+
+  <h2>数据存在哪里</h2>
+  <p>全部数据存储于 Cloudflare（D1 数据库与 R2 对象存储）。你上传的媒体文件为私有存储，仅你本人登录后可访问。</p>
+
+  <h2 class="hl">我们会不会看你的内容</h2>
+  <p><b>不会。</b>你写下的文字与上传的图片、音频、视频，属于你的私人记录。我们不浏览、不分析、不用于训练任何模型、不做广告画像，也不向任何第三方提供或出售。</p>
+  <p>为了对你诚实，以下三种情形需要说明清楚：</p>
+  <ul>
+    <li><b>你主动分享到广场的内容</b>：这是公开的。所有登录用户都能看到，其中的图片、音视频会获得一个公开访问链接。你随时可以撤回，撤回后该链接立即失效。</li>
+    <li><b>被举报的公开内容</b>：若某条广场内容被他人举报，管理员会查看该条内容以判断是否下架。<b>仅限被举报的那一条公开内容</b>，不涉及你的其他记录。</li>
+    <li><b>你主动点击 AI 功能时</b>：相关文本或图片会发送给 AI 服务商<b>硅基流动（SiliconFlow）</b>处理并返回结果。不点击就不会发送。请注意这一步的数据处理适用该服务商自己的条款。</li>
+  </ul>
+  <p>技术上需要坦白的一点：数据存放在 Cloudflare，运维人员在理论上具备访问数据库的技术能力（任何自建服务都是如此）。我们的承诺是：<b>除上述被举报内容的审核外，不会去读取用户的私人记录。</b>如果你有极为敏感的内容，任何联网服务都不建议存放。</p>
+
+  <h2>Cookie</h2>
+  <p>仅使用一个登录会话 Cookie（httpOnly），用于保持登录状态，有效期 60 天，无任何跟踪用途。</p>
+
+  <h2>你的权利</h2>
+  <ul>
+    <li><b>导出</b>：应用内可随时一键导出全部数据（Markdown / JSON）。</li>
+    <li><b>删除</b>：每条记录可自行删除，附件将一并删除；如需注销账号并清除全部数据，请联系我们。</li>
+  </ul>
+
+  <h2>儿童</h2>
+  <p>本应用面向普通用户的个人自省记录，不针对 13 岁以下儿童设计，也不向其定向收集信息。</p>
+
+  <h2>联系</h2>
+  <p>邮箱：<a href="mailto:lebang001@qq.com">lebang001@qq.com</a></p>
+
+  <div class="en">
+    <p><b>Privacy Policy (English summary)</b> — Zizhilu ("自知录", zhi.foyue.org / Android app org.foyue.zhi) collects only: your sign-up email or phone number, a salted password hash, the notes and media you create, and (optionally) a web-push subscription used solely for daily reminders. All data is stored on Cloudflare (D1/R2); media is private to your account.</p>
+    <p><b>We do not read your private entries.</b> Your text and uploads are not browsed, analysed, used for model training, or profiled for advertising, and are never sold or shared. Three exceptions we want to state plainly: (1) content you deliberately share to the public Plaza is visible to all signed-in users and its media gets a public URL — you can withdraw it at any time, which revokes that URL; (2) if a Plaza post is reported, an administrator will review that specific public post to decide on removal — nothing else of yours; (3) when you actively invoke an AI feature, the relevant text or image is sent to SiliconFlow for processing under their terms. Technically, as with any self-hosted service, operators retain the ability to access the database; our commitment is not to read users' private entries outside the reported-content review described above.</p>
+    <p>No ads or analytics SDKs; a single httpOnly session cookie. You can export all data (JSON/Markdown) or delete records at any time; contact <a href="mailto:lebang001@qq.com">lebang001@qq.com</a> for account deletion.</p>
+  </div>
+</main>
+</body>
+</html>

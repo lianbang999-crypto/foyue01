@@ -201,8 +201,17 @@ export default {
     const p = url.pathname;
     const ip = request.headers.get('cf-connecting-ip') || '0';
 
-    // 静态资源（看板页）交给 assets；API 走下面
-    if (!p.startsWith('/admin/api/')) return env.ASSETS.fetch(request);
+    // 静态资源（看板页）交给 assets；API 走下面。
+    // 2026-08-22 修 Error 1101：assets 此前没声明 binding，env.ASSETS 为 undefined，
+    // 任何未被 assets 直出的路径（如大写 /ADMIN）都会抛 TypeError。
+    if (!p.startsWith('/admin/api/')) {
+      // 大小写兜底：/ADMIN、/Admin → /admin/
+      if (p.toLowerCase().startsWith('/admin') && p !== p.toLowerCase()) {
+        return Response.redirect(url.origin + '/admin/', 302);
+      }
+      if (env.ASSETS) return env.ASSETS.fetch(request);
+      return new Response('admin assets unavailable', { status: 500 });
+    }
 
     // 登录（校验口令；失败限流）
     if (p === '/admin/api/login' && request.method === 'POST') {

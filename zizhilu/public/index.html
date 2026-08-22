@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>自知录 · 功过格</title>
+  <meta name="description" content="自知录 —— 极简功过格记事本。日日知非，日日改过。">
+  <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="自知录">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23F5F5F7'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23B0492F' stroke-width='2.6'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ========== 图标库（内联 sprite，零额外请求；线条取自 Lucide） ========== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="m16 13l5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect width="14" height="12" x="2" y="6" rx="2"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><path d="M2 10v3m4-7v11m4-14v18m4-13v7m4-10v13m4-8v3"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18m7-13l3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2a17 17 0 0 0 8 2h1M5 8l3 8a5 5 0 0 1-6 0zV7m2 14h10"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3m8-3v3"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/></symbol>
+    <symbol id="i-calendar-days" viewBox="0 0 24 24"><path d="M8 2v3m8-3v3"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M8 13h.01M12 13h.01M16 13h.01M8 17h.01M12 17h.01M16 17h.01"/></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M15 12h-5m5-4h-5m9 9V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4m2-2h-4"/><circle cx="4" cy="20" r="2"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696a10.75 10.75 0 0 1 19.876 0a1 1 0 0 1 0 .696a10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3m9 12v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10l5 5l5-5"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 3v12m5-7l-5-5l-5 5m14 7v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12l2 2l4-4"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="m16 17l5-5l-5-5m5 5H9m0 9H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9l6 6l6-6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18l-6-6l6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18l6-6l-6-6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21l-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0m-10.47-5.674A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+    <symbol id="i-invite" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6m3-3h-6"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+    <symbol id="i-ask" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092a10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3m.08 4h.01"/></symbol>
+    <symbol id="i-plaza" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 5h.01M3 12h.01M3 19h.01M8 5h13M8 12h13M8 19h13"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/></symbol>
+  </svg>
+
+  <!-- ========== 登录 / 注册 ========== -->
+  <section id="view-auth" class="auth hidden">
+    <div class="auth-card">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"></span>
+        <h1>自知录</h1>
+        <p>日日知非 · 日日改过</p>
+      </div>
+      <div class="auth-tabs" role="tablist">
+        <button id="tab-login" class="on">登录</button>
+        <button id="tab-register">注册</button>
+      </div>
+      <form id="auth-form" autocomplete="on">
+        <label>
+          <span>邮箱或手机号</span>
+          <input id="auth-account" type="text" name="username" placeholder="you@example.com / 138…" required>
+        </label>
+        <label>
+          <span>密码</span>
+          <input id="auth-password" type="password" name="password" placeholder="至少 6 位" minlength="6" required>
+        </label>
+        <label id="invite-label" class="hidden">
+          <span>邀请码</span>
+          <input id="auth-invite" type="text" placeholder="向邀请你的人索取" autocomplete="off" style="text-transform:uppercase">
+        </label>
+        <p id="auth-error" class="auth-error" role="alert"></p>
+        <button id="auth-submit" class="btn-primary" type="submit">登 录</button>
+      </form>
+      <p class="auth-foot">名承莲池大师《自知录》<br>一人一录，数据归你</p>
+    </div>
+  </section>
+
+  <!-- ========== 主界面 ========== -->
+  <section id="view-main" class="main hidden">
+    <!-- ========== 页一：记录 ========== -->
+    <div id="page-record">
+    <header class="page-head">
+      <h1 class="page-title"><span class="mark small" aria-hidden="true"></span>自知录</h1>
+      <p class="page-sub">日日知非，日日改过</p>
+    </header>
+    <main class="col">
+      <!-- 本月统计：整行可点，展开月历 -->
+      <div class="month-line">
+        <button id="month-stat" class="month-stat" aria-expanded="false" aria-controls="calendar"></button>
+      </div>
+
+      <!-- 月历（包裹层做高度过渡） -->
+      <div id="cal-wrap" class="cal-wrap">
+        <div id="calendar" class="calendar card"></div>
+      </div>
+
+      <!-- 记录输入 -->
+      <div class="composer card">
+        <div class="kind-tabs" id="kind-tabs">
+          <button data-kind="merit" class="k-merit" aria-label="记一功">功</button>
+          <button data-kind="fault" class="k-fault" aria-label="记一过">过</button>
+          <button data-kind="note" class="k-note on" aria-label="随手记">记</button>
+          <button id="compose-date" class="date-chip" aria-label="选择记录日期，可补记过去" title="补记过去某天">
+            <svg class="ic" aria-hidden="true"><use href="#i-calendar-days"/></svg><span>今天</span>
+          </button>
+          <input id="compose-date-input" type="date" hidden>
+        </div>
+        <textarea id="compose-text" rows="2" placeholder="随手记一笔……" aria-label="记录内容"></textarea>
+        <div id="presets-row" class="points-row hidden">
+          <button id="btn-presets" class="preset-entry" aria-label="从《自知录》常用事目中选择">
+            <svg class="ic" aria-hidden="true"><use href="#i-list"/></svg><span>常用事目</span>
+          </button>
+        </div>
+        <div id="compose-atts" class="compose-atts"></div>
+        <div class="composer-bar">
+          <div class="attach-btns">
+            <button class="icon-btn" data-pick="image" aria-label="添加图片" title="添加图片">
+              <svg class="ic" aria-hidden="true"><use href="#i-image"/></svg>
+            </button>
+            <button class="icon-btn" data-pick="video" aria-label="添加视频" title="添加视频">
+              <svg class="ic" aria-hidden="true"><use href="#i-video"/></svg>
+            </button>
+            <button class="icon-btn" data-pick="audio" aria-label="添加音频" title="添加音频">
+              <svg class="ic" aria-hidden="true"><use href="#i-audio"/></svg>
+            </button>
+            <input id="pick-image" type="file" accept="image/*" multiple hidden>
+            <input id="pick-video" type="file" accept="video/*" hidden>
+            <input id="pick-audio" type="file" accept="audio/*" hidden>
+          </div>
+          <div class="composer-actions">
+            <button id="btn-judge" class="icon-btn plain" aria-label="AI 判别：这算功、过还是记" title="AI 判别归类">
+              <svg class="ic" aria-hidden="true"><use href="#i-scale"/></svg>
+            </button>
+            <button id="btn-undo-polish" class="icon-btn plain hidden" aria-label="还原润色前的原文" title="还原">
+              <svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg>
+            </button>
+            <button id="btn-polish" class="icon-btn accent" aria-label="AI 润色文字" title="AI 润色">
+              <svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg>
+            </button>
+            <button id="btn-save" class="btn-primary">记下</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 搜索 · 问格（同类功能并置，不用浮动按钮） -->
+      <div class="searchbar">
+        <svg class="ic search-ic" aria-hidden="true"><use href="#i-search"/></svg>
+        <input id="search" type="search" placeholder="搜索记录…" aria-label="搜索记录">
+        <button id="btn-ask" class="icon-btn plain" aria-label="问格：基于你的记录提问" title="问格">
+          <svg class="ic" aria-hidden="true"><use href="#i-ask"/></svg>
+        </button>
+      </div>
+
+      <!-- 骨架屏（首次载入） -->
+      <div id="skeleton" class="skeleton hidden">
+        <div class="sk-line" style="width:38%"></div>
+        <div class="sk-card"></div>
+        <div class="sk-card" style="height:56px"></div>
+        <div class="sk-line" style="width:30%;margin-top:26px"></div>
+        <div class="sk-card" style="height:60px"></div>
+      </div>
+
+      <!-- 时间线 -->
+      <div id="timeline"></div>
+      <p id="empty-hint" class="empty hidden">录上还是空的。<br>从今天第一件小事记起。</p>
+      <button id="btn-older" class="older hidden">
+        <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg><span>更早</span>
+      </button>
+
+    </main>
+    </div>
+
+    <!-- ========== 页二：广场 ========== -->
+    <div id="page-plaza" class="hidden">
+      <header class="page-head">
+        <h1 class="page-title">广场</h1>
+        <p class="page-sub">同修们愿意公开的记录</p>
+      </header>
+      <main class="col">
+        <p class="plaza-intro">只作观摩随喜，不比较、不排名。</p>
+        <div id="plaza-list"></div>
+        <p id="plaza-empty" class="empty hidden">广场上还没有人分享。<br>在自己的记录上点「分享」，便是第一位。</p>
+        <button id="plaza-older" class="older hidden">
+          <svg class="ic" aria-hidden="true"><use href="#i-down"/></svg><span>更早</span>
+        </button>
+      </main>
+    </div>
+
+    <!-- ========== 页三：我的 ========== -->
+    <div id="page-mine" class="hidden">
+      <header class="page-head">
+        <h1 class="page-title">我的</h1>
+      </header>
+      <main class="col">
+        <div class="mine-head">
+          <div class="mine-avatar"><span class="mark" aria-hidden="true"></span></div>
+          <div class="mine-id">
+            <div id="mine-nick" class="mine-nick"></div>
+            <div id="mine-account" class="mine-account"></div>
+          </div>
+        </div>
+        <div id="mine-body"></div>
+      </main>
+    </div>
+
+    <!-- ========== 底部标签栏 ========== -->
+    <nav class="tabbar" role="tablist">
+      <button id="tab-record" class="tab on" role="tab" aria-label="录">
+        <svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg><span>录</span>
+      </button>
+      <button id="tab-plaza" class="tab" role="tab" aria-label="广场">
+        <svg class="ic" aria-hidden="true"><use href="#i-plaza"/></svg><span>广场</span>
+      </button>
+      <button id="tab-mine" class="tab" role="tab" aria-label="我的">
+        <svg class="ic" aria-hidden="true"><use href="#i-person"/></svg><span>我的</span>
+      </button>
+    </nav>
+
+    <!-- 问格：底部抽屉，与「常用事目」同一形态 -->
+    <div id="ask-panel" class="overlay hidden">
+      <div class="sheet card ask-sheet">
+        <div class="sheet-head">
+          <span>问格</span>
+          <button id="ask-close" class="icon-btn plain" aria-label="收起" title="收起">
+            <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+          </button>
+        </div>
+        <div id="ask-log" class="ask-log">
+          <p class="ask-tip">基于你的功过记录回答，例如：<br>「本月我的过多在哪方面？」<br>「这一周我做了哪些功？」</p>
+        </div>
+        <form id="ask-form" class="ask-input">
+          <input id="ask-q" type="text" placeholder="问点什么…" autocomplete="off" aria-label="问题">
+          <button class="btn-primary" type="submit" aria-label="发送">问</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 常用条目面板 -->
+    <div id="presets-overlay" class="overlay hidden">
+      <div class="sheet card">
+        <div class="sheet-head">
+          <span id="presets-title">常用条目</span>
+          <button id="presets-close" class="icon-btn plain" aria-label="关闭" title="关闭">
+            <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+          </button>
+        </div>
+        <div id="presets-body" class="sheet-body"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 通用弹层（关于 / 月报） -->
+  <div id="modal-overlay" class="overlay hidden">
+    <div class="sheet card">
+      <div class="sheet-head">
+        <span id="modal-title"></span>
+        <button id="modal-close" class="icon-btn plain" aria-label="关闭" title="关闭">
+          <svg class="ic" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="sheet-body"></div>
+    </div>
+  </div>
+
+  <!-- 确认弹层（替代系统 confirm） -->
+  <div id="confirm-overlay" class="overlay hidden">
+    <div class="confirm-box card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-msg">
+      <p id="confirm-msg" class="confirm-msg"></p>
+      <div class="confirm-btns">
+        <button id="confirm-no" class="btn-ghost">取消</button>
+        <button id="confirm-yes" class="btn-danger">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图片放大层 -->
+  <div id="lightbox" class="lightbox hidden"><img alt="放大查看的记录图片"></div>
+  <!-- 轻提示 -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
