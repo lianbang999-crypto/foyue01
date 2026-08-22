@@ -694,3 +694,79 @@ Pro：12 元/月 · 98 元/年。内测期注册即送试用，不自动扣费�
 导入恢复	Import & restore
 已导入 {0} 条，正在同步…	Imported {0} items, syncing…
 文件格式不对：请选择 Looka 导出的 JSON	Wrong file format: pick a JSON exported by Looka
+AI 不限次（改为每天 10 次）	Unlimited AI (now 10 a day)
+Looka 闹钟：持续响铃直到手动停止	Looka alarms: keeps ringing until you stop it
+Pro 到期后	When Pro expires
+· 小鹿 AI 助手（免费每天 10 次，Pro 不限次）\n	· Luka, your AI helper (10 a day free, unlimited with Pro)\n
+……等 {0} 组	…and {0} groups in total
+↩️ 已撤销刚才的 {0} 处修改	↩️ Undid {0} change(s)
+↩️ 撤销刚才的修改	↩️ Undo that
+⏰ 当成闹钟（持续响，静音也响）	⏰ Treat as alarm (keeps ringing, even on silent)
+⏰ 测试闹钟（10 秒后持续响）	⏰ Test alarm (rings in 10s)
+⚠️ 没找到要删的任务（#{0}），可能已经删过了	⚠️ Couldn't find task #{0} — maybe it's already gone
+⚠️ 没找到要删的日程（#{0}），可能已经删过了	⚠️ Couldn't find event #{0} — maybe it's already gone
+⚠️ 没找到要删的笔记（#{0}），可能已经删过了	⚠️ Couldn't find note #{0} — maybe it's already gone
+⚠️ 没找到要改的任务（#{0}）—— 告诉我是哪一条？	⚠️ Couldn't find task #{0} — which one did you mean?
+⚠️ 没找到要改的日程（#{0}）—— 告诉我是哪一条？	⚠️ Couldn't find event #{0} — which one did you mean?
+⚠️ 没找到要改的笔记（#{0}）	⚠️ Couldn't find note #{0}
+✅ 已完成任务：{0}	✅ Done: {0}
+✏️ 已修改任务：{0}	✏️ Updated task: {0}
+✏️ 已修改笔记：{0}	✏️ Updated note: {0}
+✏️ 已修改：{0}	✏️ Updated: {0}
+云同步和数据导出	Sync and export
+今天还能聊 {0} 次（Pro 不限次，还能换更聪明的小鹿）	{0} messages left today (Pro is unlimited, with a smarter Luka)
+传照片生成整套主题（规划中）	Build a whole theme from a photo (coming)
+你保留了	You keep
+你的 Pro 还有 {0} 天到期。到期后你做的东西都还在，只是不能再生成新的啦 🦌	Your Pro ends in {0} days. Everything you made stays — you just can't generate new ones 🦌
+修改	Edit
+做过的主题，继续能用	The themes you made, still usable
+停止	Stop
+全部内容和数据	All your content and data
+共 {0} 件事	{0} things
+共 {0} 件事，你勾选确认后我再动手 👇	{0} things — tick the ones you want and I'll do them 👇
+再响5分钟	Snooze 5 min
+到期不收回：你做的东西照样能用，我们只是不再为你生成新的。	Nothing is taken back: what you made keeps working, we just stop generating new ones.
+到期后会怎样？	What happens when it expires?
+发现 {0} 组重复（每组保留最早一条，删除其余 {1} 条）：	Found {0} duplicate groups (keeping the earliest of each, removing {1}):
+好，都不动 🦌	Okay, leaving everything as is 🦌
+官方表情包（104 枚内置）· 九色主题	104 built-in stamps · nine colour themes
+小鹿 AI 对话不限次	Unlimited AI messages with Luka
+小鹿 AI 对话不限次（防滥用限速：每天 100 次，正常使用碰不到）	Unlimited AI messages (fair-use cap of 100 a day; you won't hit it)
+小鹿 AI 对话每天 10 次；Pro 不限次，还能换更聪明的小鹿	10 AI messages a day; Pro is unlimited, with a smarter Luka
+小鹿 AI 对话（每天 10 次）	AI messages with Luka (10 a day)
+已安排：10 秒后会响真闹钟（持续响铃），请锁屏等它	Set: a real alarm will ring in 10s — lock your screen and wait
+已清理 {0} 条重复日程	Removed {0} duplicate events
+年度回顾长图	Year in review
+年度回顾长图 · 精美 PDF 导出（规划中）	Year in review · printable PDF export (coming)
+执行勾选的	Do the ticked ones
+提醒与闹钟 · 密码锁 · 小组件	Reminders and alarms · passcode · widgets
+提醒和闹钟	Reminders and alarms
+收到 = 通知链路是通的，问题出在提醒数据或调度；收不到 = 系统在拦截，按上面五关逐项放行。	Got it = notifications work, so the issue is the reminder data or scheduling. Nothing = the system is blocking; work through the five checks above.
+日历 · 待办 · 笔记 · 日记	Calendar · to-dos · notes · diary
+暂时用不了了	Paused for now
+更聪明的小鹿（DeepSeek 高级模型）	A smarter Luka (DeepSeek)
+更聪明的模型	The smarter model
+标签体系 · 智能清单（规划中）	Tags and smart lists (coming)
+每天 10 次	10 a day
+每天 10 次 · 本月已聊 {0} 次	10 a day · {0} used this month
+没有发现重复的日程 🦌	No duplicate events found 🦌
+测试闹钟 🦌	Test alarm 🦌
+清理	Clean up
+清理重复日程	Clean up duplicate events
+生成新主题 / 新表情包	Generating new themes / stickers
+用户日程（近7天与未来14天，[e数字] 是它的 id）：	User's events (last 7 and next 14 days; [e<number>] is its id):
+用户最近笔记（[n数字] 是它的 id）：	User's recent notes ([n<number>] is its id):
+用户未完成任务（[t数字] 是它的 id）：	User's open tasks ([t<number>] is its id):
+知道了	Got it
+纹理纸 · 装饰插画 · 自定义图标（规划中）	Textured paper · illustrations · custom icon (coming)
+统计：本月日记 {0} 篇；未完成任务共 {1} 项。	Stats: {0} diary entries this month; {1} open tasks.
+能持续响铃，说明闹钟链路是通的	If it keeps ringing, the alarm path works
+被手动调低后闹钟不会全屏弹出；点击恢复为「紧急」	If turned down, alarms won't show full screen. Tap to restore to Urgent.
+闹钟	Alarm
+闹钟渠道	Alarm channel
+（重复日程，整个系列一起调整）	(recurring event — the whole series moved)
+（重复日程，整个系列已删除）	(recurring event — the whole series deleted)
+（重复）	(recurring)
+🗑️ 已删除任务：{0}	🗑️ Deleted task: {0}
+🗑️ 已删除日程：{0}	🗑️ Deleted event: {0}
+🗑️ 已删除笔记：{0}	🗑️ Deleted note: {0}

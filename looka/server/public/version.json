@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 16,
-  "versionName": "1.7.2",
+  "versionCode": 17,
+  "versionName": "1.8.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3635466,
-  "sha256": "222a98fa25770dc436be252b4b1218219f3fd10a84bff3250cc329b845fcb8f3",
-  "changelog": "· 「更聪明的小鹿」升级双引擎：GPT 连不上时自动切换国内直连的 DeepSeek，大陆网络也稳定可用\n· 网页端：底部菜单不再被日程面板挡住；日面板新增「＋日记」；待办新增「未来7天」；新增导入恢复\n· 海外支持渠道更新",
+  "size": 3655822,
+  "sha256": "81e3ca893ff78fcc3e3e800c2b8e259dde658bdbf8aa10b424e41a18c560fe2e",
+  "changelog": "真闹钟（持续响直到手动停）· 小鹿会改会删会查 · 批量确认与撤销 · 主题上云 · FREE/PRO 分档",
   "minSupported": 1
 }

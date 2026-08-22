@@ -185,7 +185,7 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 CalendarGlyph(when (vm.calView) { 0 -> "31"; 1 -> "7"; else -> "1" })
             }
             IconButton(onClick = { nav.navigate("aiChat") }, modifier = Modifier.size(40.dp)) {
-                Image(painterResource(R.drawable.ic_deer_badge), tr("小鹿 AI"), modifier = Modifier.size(28.dp))
+                com.looka.app.ui.common.DeerBadge(28.dp)   // B3：随主题变色
             }
         }
 

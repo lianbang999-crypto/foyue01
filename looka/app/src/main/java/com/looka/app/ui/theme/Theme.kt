@@ -36,7 +36,19 @@ data class DeerTheme(
     /** 页面底色（"纸"）。之前写死白色 —— 换主题只动 10% 的点缀像素，所以毫无感觉 */
     val paper: Color = Color.White,
     /** 面板/输入框底色，比 paper 深一档 */
-    val panel: Color = PanelBg
+    val panel: Color = PanelBg,
+    // ── B2（§48）：主题 6 → 11 字段。全部给默认值 —— 老主题反序列化/旧代码路径不受影响。
+    // texture/decor/banner 等 B5 素材库产出后接入渲染；在那之前它们只是"有位置放"。
+    /** 字色（宣纸配墨色、抹茶配深绿 —— 敦煌稿的整体感一半来自字色） */
+    val ink: Color = Ink,
+    /** 背景纹理资源名（宣纸 / 祥云 / 水彩晕染），null = 纯色纸 */
+    val texture: String? = null,
+    /** 角落装饰插画组名（树叶 / 鹿 / 莲花），null = 无装饰 */
+    val decor: String? = null,
+    /** 顶部横幅资源名（敦煌九色鹿长卷），null = 无横幅 */
+    val banner: String? = null,
+    /** FAB 样式：flat / glow / ring */
+    val fabStyle: String = "flat"
 )
 
 /** 由主色调出一张"纸"：掺 96% 白 —— 有色温但不喧宾夺主，长时间看不累 */
@@ -89,6 +101,7 @@ object ThemeCtl {
     fun set(c: Context, i: Int) {
         index = if (i == CUSTOM_THEME) CUSTOM_THEME else i.coerceIn(0, DEER_THEMES.size - 1)
         Prefs.setThemeIndex(c, index)
+        Prefs.markSettingsDirty(c)   // B1：主题随 settings 实体上云
     }
 
     fun setCustom(c: Context, argb: Long) {
@@ -114,9 +127,9 @@ fun LookaTheme(content: @Composable () -> Unit) {
             secondary = SaveDark,
             onSecondary = Color.White,
             background = t.paper,
-            onBackground = Ink,
+            onBackground = t.ink,   // B2：字色随主题（默认仍是墨色 Ink，行为不变）
             surface = t.paper,
-            onSurface = Ink,
+            onSurface = t.ink,
             surfaceVariant = t.panel,
             onSurfaceVariant = GrayText,
             outline = Color(0xFFD8DAD8),

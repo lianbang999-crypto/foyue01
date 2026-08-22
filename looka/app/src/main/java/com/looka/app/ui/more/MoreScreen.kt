@@ -112,7 +112,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 Modifier.fillMaxWidth().padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(painterResource(R.drawable.ic_deer_badge), null, modifier = Modifier.size(52.dp))
+                com.looka.app.ui.common.DeerBadge(52.dp)   // B3：随主题变色
                 Spacer(Modifier.width(14.dp))
                 Column {
                     Text("Looka", fontSize = 18.sp, fontWeight = FontWeight.Bold)

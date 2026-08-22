@@ -118,6 +118,7 @@ function applyCustomTheme(hex) {
   localStorage.setItem('lk_theme', 'c:' + hex);
   $$('.theme-dot').forEach(el => el.classList.remove('active'));
   $$('.custom-dot').forEach(el => el.classList.toggle('active', el.dataset.c === hex));
+  pushThemeSettings(-1, hex);   // B1：主题上云（自定义 = -1 + ARGB）
 }
 function applyTheme(i) {
   if (typeof i === 'string' && i.startsWith('c:')) return applyCustomTheme(i.slice(2));
@@ -129,6 +130,21 @@ function applyTheme(i) {
   localStorage.setItem('lk_theme', i);
   $$('.custom-dot').forEach(el => el.classList.remove('active'));
   $$('.theme-dot').forEach((el, j) => el.classList.toggle('active', j === +i));
+  pushThemeSettings(+i, null);   // B1：主题上云
+}
+/* B1（§48）：主题并入 settings 同步实体（与 App 的 themeIndex/customColor 同构）。
+   applyingRemote 防回环：收云端设置落地时不再往回推。 */
+let applyingRemoteSettings = false;
+function pushThemeSettings(idx, hex) {
+  if (applyingRemoteSettings || !S.token) return;
+  const p = {
+    weekStartMon: ST.weekStartMon, showLunar: ST.showLunar,
+    holidayMask: ST.holidayMask, showDoneTasks: ST.showDoneTasks,
+    themeIndex: idx,
+    customColor: hex ? parseInt('ff' + hex.slice(1), 16) : 0xFF55B04B
+  };
+  S.dirty.push({ kind: 'settings', uid: 'settings', updated_at: Date.now(), deleted: 0, p });
+  saveDirty(); scheduleSync();
 }
 
 /* ---------------- 状态与存储 ---------------- */
@@ -217,6 +233,15 @@ function applyRec(rec) {
       ST.showLunar = p.showLunar == null ? null : !!p.showLunar;
       ST.holidayMask = p.holidayMask ?? (1 << 6);
       ST.showDoneTasks = p.showDoneTasks !== false;
+      // B1：主题随云（App 换了主题，网页跟着变；防回环见 pushThemeSettings）
+      if (p.themeIndex !== undefined) {
+        applyingRemoteSettings = true;
+        try {
+          if (p.themeIndex === -1 && p.customColor)
+            applyCustomTheme('#' + (p.customColor & 0xFFFFFF).toString(16).padStart(6, '0'));
+          else applyTheme(Math.max(0, p.themeIndex));
+        } finally { applyingRemoteSettings = false; }
+      }
       calWin = null;                       // 周起始变了，周索引原点要重算
       if (S.tab === 'cal') renderCalendar(S.selDay);
     } catch (e) { }
@@ -1205,7 +1230,8 @@ function enterApp() {
 
 async function boot() {
   await loadDict();
-  applyTheme(localStorage.getItem('lk_theme') || 0);
+  applyingRemoteSettings = true;
+  try { applyTheme(localStorage.getItem('lk_theme') || 0); } finally { applyingRemoteSettings = false; }
   // 静态文案按字典替换（tabs / 按钮 / 占位符）
   // 底栏按钮内含 SVG 图标，只能翻译里面的 <span>；直接写 textContent 会把图标一起抹掉
   $$('.bottombar .tab span').forEach(el => el.textContent = t(el.textContent.trim()));
@@ -1254,7 +1280,8 @@ async function boot() {
     tp.appendChild(wrap);
     wrap.querySelectorAll('.custom-dot').forEach(b => b.onclick = () => applyCustomTheme(b.dataset.c));
   }
-  applyTheme(localStorage.getItem('lk_theme') || 0);
+  applyingRemoteSettings = true;
+  try { applyTheme(localStorage.getItem('lk_theme') || 0); } finally { applyingRemoteSettings = false; }
 
   // 登录/注册：单主按钮，文字链切换态；内测邀请码按服务端配置显隐
   let authMode = 'login';

@@ -115,7 +115,10 @@ object SyncEngine {
                     .put("weekStartMon", Prefs.weekStartMonday(app))
                     .put("showLunar", Prefs.showLunarRaw(app) ?: JSONObject.NULL)
                     .put("holidayMask", Prefs.holidayMask(app))
-                    .put("showDoneTasks", Prefs.showDoneTasks(app))))
+                    .put("showDoneTasks", Prefs.showDoneTasks(app))
+                    // B1（§48）：主题上云 —— 用户花心思调的主题换手机不能丢
+                    .put("themeIndex", Prefs.themeIndex(app))
+                    .put("customColor", Prefs.customThemeColor(app))))
         }
         val catUidById = db.categoryDao().list().associate { it.id to it.uid }
 
@@ -246,7 +249,12 @@ object SyncEngine {
                         else sp0.putInt("show_lunar", if (o.optBoolean("showLunar")) 1 else 0)
                         sp0.putInt("holiday_mask", o.optInt("holidayMask", 1 shl 6))
                         sp0.putBoolean("show_done_tasks", o.optBoolean("showDoneTasks", true))
+                        // B1：主题跟随云端（老客户端的载荷没有这两个键时保持本地值）
+                        if (o.has("themeIndex")) sp0.putInt("theme_index", o.optInt("themeIndex", 0))
+                        if (o.has("customColor")) sp0.putLong("custom_theme", o.optLong("customColor", 0xFF55B04BL))
                         sp0.putBoolean("st_dirty", false).putLong("st_updated", up).apply()
+                        // 主题状态是 Compose State，落盘后要刷一次才立即生效
+                        if (o.has("themeIndex")) com.looka.app.ui.theme.ThemeCtl.init(app)
                     }
                 }
 

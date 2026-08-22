@@ -144,10 +144,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                         Modifier.fillMaxWidth().padding(top = 40.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Image(
-                            painterResource(R.drawable.ic_deer_badge), null,
-                            modifier = Modifier.size(72.dp)
-                        )
+                        com.looka.app.ui.common.DeerBadge(72.dp)   // B3：随主题变色
                         Spacer(Modifier.height(12.dp))
                         Text(tr("嗨，我是小鹿 🦌"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Text(
@@ -166,10 +163,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                         Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Image(
-                            painterResource(R.drawable.ic_deer_badge), null,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        com.looka.app.ui.common.DeerBadge(24.dp)
                         Spacer(Modifier.width(8.dp))
                         Text(tr("小鹿正在想…"), fontSize = 13.sp, color = GrayText)
                         Spacer(Modifier.width(6.dp))
@@ -330,10 +324,7 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
         else -> Row(
             Modifier.fillMaxWidth().padding(start = 10.dp, end = 48.dp, top = 4.dp, bottom = 4.dp)
         ) {
-            Image(
-                painterResource(R.drawable.ic_deer_badge), tr("小鹿"),
-                modifier = Modifier.size(26.dp)
-            )
+            com.looka.app.ui.common.DeerBadge(26.dp)
             Spacer(Modifier.width(6.dp))
             // A1/A2（2026-08-21）：长按气泡 → 复制 / 存为笔记。
             // 复制是把内容带出产品，存笔记是把它留在手帐里 —— 后者才是沉淀。

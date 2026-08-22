@@ -180,7 +180,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(48.dp))
-        Image(painterResource(R.drawable.ic_deer_badge), null, modifier = Modifier.size(64.dp))
+        com.looka.app.ui.common.DeerBadge(64.dp)   // B3：随主题变色
         Spacer(Modifier.height(14.dp))
         Text("Looka", fontSize = 26.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
         Text(
