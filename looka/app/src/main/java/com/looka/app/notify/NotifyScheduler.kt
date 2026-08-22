@@ -26,6 +26,8 @@ import java.time.ZoneId
 object NotifyScheduler {
 
     const val CHANNEL = "looka_events"
+    // A2：闹钟渠道必须是**新 id** —— Android 渠道属性创建后不可变，改老渠道无效（§48 A2-1）
+    const val ALARM_CHANNEL = "looka_alarm"
     private const val ALARM_SP = "looka_alarms"
     private const val CODE_DAILY = 900001
 
@@ -34,6 +36,16 @@ object NotifyScheduler {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL, tr("日程提醒"), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = tr("Looka 日程与任务提醒")
+            }
+        )
+        // A2：闹钟渠道 —— 走闹钟音量（静音/震动模式照样响）+ 勿扰豁免。
+        // 声音由 AlarmRingService 的 MediaPlayer 循环播放，渠道自身静音以免叠响。
+        nm.createNotificationChannel(
+            NotificationChannel(ALARM_CHANNEL, tr("闹钟"), NotificationManager.IMPORTANCE_HIGH).apply {
+                description = tr("Looka 闹钟：持续响铃直到手动停止")
+                setSound(null, null)
+                enableVibration(false)
+                setBypassDnd(true)
             }
         )
     }
@@ -98,7 +110,7 @@ object NotifyScheduler {
         val now = System.currentTimeMillis()
         var count = 0
 
-        // 日程提醒
+        // 日程提醒（r.alarm=true 的走真闹钟链路：持续响直到手动停）
         outer@ for (o in occs) {
             for (r in reminders[o.seriesId].orEmpty()) {
                 if (!r.enabled) continue
@@ -107,7 +119,7 @@ object NotifyScheduler {
                 val code = "${o.seriesId}-${o.day}-${r.id}".hashCode()
                 val text = if (o.allDay) "${tr("全天")} · ${Fmt.dateCn(o.day)}"
                 else "${Fmt.dateCn(o.day)} ${Fmt.hm(o.startMin)} - ${Fmt.hm(o.endMin)}"
-                setAlarm(t, pending(c, code, o.title, text, o.day))
+                setAlarm(t, pending(c, code, o.title, text, o.day, r.alarm))
                 codes += code.toString()
                 if (++count >= 200) break@outer
             }
@@ -176,13 +188,29 @@ object NotifyScheduler {
     private fun dayStartMillis(day: Long): Long =
         LocalDate.ofEpochDay(day).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    private fun pending(c: Context, code: Int, title: String, text: String, day: Long): PendingIntent {
+    private fun pending(
+        c: Context, code: Int, title: String, text: String, day: Long, alarm: Boolean = false
+    ): PendingIntent {
         val i = Intent(c, NotifyReceiver::class.java)
             .putExtra("title", title)
             .putExtra("text", text)
             .putExtra("day", day)
+            .putExtra("alarm", alarm)
         return PendingIntent.getBroadcast(
             c, code, i, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    /** A2 自检：10 秒后响一次真闹钟（持续响，验证整条闹钟链路） */
+    fun fireAlarmTestIn10s(c: Context): Boolean {
+        val am = c.getSystemService(AlarmManager::class.java) ?: return false
+        val pi = pending(c, 900003, tr("测试闹钟 🦌"), tr("能持续响铃，说明闹钟链路是通的"), Fmt.today(), alarm = true)
+        return try {
+            if (canExact(c)) am.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10_000, pi)
+            else am.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 10_000, pi)
+            true
+        } catch (_: Exception) { false }
     }
 }

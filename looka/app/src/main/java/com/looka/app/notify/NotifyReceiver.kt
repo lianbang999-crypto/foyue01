@@ -17,6 +17,24 @@ class NotifyReceiver : BroadcastReceiver() {
         val text = intent.getStringExtra("text") ?: ""
         val day = intent.getLongExtra("day", -1L)
 
+        // A2：标记为闹钟的走前台服务持续响铃（精确闹钟触发窗口内允许后台起 FGS）
+        if (intent.getBooleanExtra("alarm", false)) {
+            runCatching {
+                context.startForegroundService(
+                    Intent(context, AlarmRingService::class.java)
+                        .putExtra("title", title).putExtra("text", text).putExtra("day", day)
+                )
+            }.onFailure {
+                // 起服务被系统拒绝（极端 ROM）：至少退回普通通知，别一点动静都没有
+                fallbackNotify(context, title, text, day)
+            }
+            return
+        }
+
+        fallbackNotify(context, title, text, day)
+    }
+
+    private fun fallbackNotify(context: Context, title: String, text: String, day: Long) {
         val open = PendingIntent.getActivity(
             context, (day % Int.MAX_VALUE).toInt(),
             Intent(context, MainActivity::class.java)

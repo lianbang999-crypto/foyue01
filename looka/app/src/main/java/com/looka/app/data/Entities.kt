@@ -99,7 +99,9 @@ data class Reminder(
     val minutesBefore: Int = 15,
     val daysBefore: Int = 0,
     val timeOfDayMin: Int = 480,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    // A2（§48）：true = 当成闹钟 —— 走闹钟音量持续响直到手动停止；false = 普通提醒响一声
+    val alarm: Boolean = false
 )
 
 /** 任务清单：带颜色/排序/归档（Lifebear ToDo 的清单层级） */

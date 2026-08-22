@@ -39,15 +39,17 @@
     // 国内站 .cn（国际站 .com 对 CF 出口有风控，切勿改回）
     "SILICONFLOW_BASE": "https://api.siliconflow.cn/v1",
     "CHAT_MODEL": "Qwen/Qwen3.5-35B-A3B",
-    "PREMIUM_MODEL": "openai/gpt-5.6-luna",
-    "FLAGSHIP_MODEL": "openai/gpt-5.5",
-    "TRIAL_DAYS": "365",
+    // §49/§50：GPT 文本模型全部下架，「更聪明」统一走硅基流动 DeepSeek
+    "PREMIUM_MODEL_CN": "deepseek-ai/DeepSeek-V3.2",
+    "TRIAL_DAYS": "30",
     "CHAT_MODEL_FALLBACK": "Qwen/Qwen3.5-9B",
     // 注册闸门：open（开放）| invite（邀请码内测）| closed（关闭）
     "REGISTER_MODE": "open",
-    // AI 对话不限次；公平使用限速（防滥用，正常用户碰不到）
+    // §50 分档：Pro 不限次（AI_RPD 仅防滥用）；FREE 每天 FREE_AI_RPD 次。
+    // FREE_AI_RPD 特意做成变量：免费池政策一变，改这里即可，不用发版。
     "AI_RPM": "10",
     "AI_RPD": "100",
+    "FREE_AI_RPD": "10",
     // 发件人（Resend 侧需先完成 foyue.org 域名 DNS 验证）
     "MAIL_FROM": "Looka <noreply@foyue.org>"
   },

@@ -657,7 +657,10 @@ function openEventModal(occ) {
       location: d.querySelector('#evLoc').value.trim(), memo: d.querySelector('#evMemo').value.trim(),
       freq, interval: 1, weekdays, monthlyByWeekday: false,
       untilDay: untilDay >= 0 ? untilDay : -1,
-      reminders: allDay ? [{ m: 15, d: 0, t: 480, on: true }] : [{ m: 15, d: 0, t: 480, on: true }],
+      // A2：编辑时保留既有提醒（含 App 设置的 al 闹钟标记）——此前每次保存都被重置为默认，
+      // App 侧精心设的"当成闹钟"会被网页一次编辑悄悄冲掉
+      reminders: (isEdit && p && Array.isArray(p.reminders) && p.reminders.length)
+        ? p.reminders : [{ m: 15, d: 0, t: 480, on: true }],
       exceptions: (isEdit && p && day === p.startDay) ? (p.exceptions || []) : []
     };
     put('event', isEdit ? occ.uid : uuid(), payload);
@@ -882,16 +885,34 @@ async function openStickerModal(day) {
 
 /* ---------------- 小鹿 AI ---------------- */
 function agendaContext() {
+  // A1-2（§48）：给每条标注 [e/t/n 序号]，AI 改/删只认这些序号；序号→uid 的映射存 S.aiRef。
+  // 窗口扩到过去 7 天（「改昨天的」也要能定位）。
   const t = todayEpoch();
-  const occs = expandEvents(t, t + 14)
-    .sort((a, b) => a.day - b.day || (a.allDay ? -1 : a.startMin) - (b.allDay ? -1 : b.startMin)).slice(0, 40);
-  let s = '用户未来14天日程：\n';
-  s += occs.length ? occs.map(o =>
-    `- ${isoDate(o.day)} ${dateCn(o.day)} ${o.allDay ? '全天' : hm(o.startMin) + '-' + hm(o.endMin)} ${o.title}`).join('\n') + '\n'
-    : '（暂无日程）\n';
+  S.aiRef = { e: {}, t: {}, n: {} };
+  let ei = 0, ti = 0, ni = 0;
+  const occs = expandEvents(t - 7, t + 14)
+    .sort((a, b) => a.day - b.day || (a.allDay ? -1 : a.startMin) - (b.allDay ? -1 : b.startMin)).slice(0, 50);
+  let s = '用户日程（近7天与未来14天，[e数字] 是它的 id）：\n';
+  s += occs.length ? occs.map(o => {
+    const seen = Object.keys(S.aiRef.e).find(k => S.aiRef.e[k] === o.uid);
+    const id = seen || (S.aiRef.e[++ei] = o.uid, ei);
+    return `- [e${id}] ${isoDate(o.day)} ${dateCn(o.day)} ${o.allDay ? '全天' : hm(o.startMin) + '-' + hm(o.endMin)} ${o.title}${o.recurring ? '（重复）' : ''}`;
+  }).join('\n') + '\n' : '（暂无日程）\n';
   const open = taskList().filter(k => !k.done).slice(0, 30);
-  s += '用户未完成任务：\n';
-  s += open.length ? open.map(k => `- ${k.title}${(k.dueDay ?? -1) >= 0 ? `（截止${dateCn(k.dueDay)}）` : ''}`).join('\n') : '（无）';
+  s += '用户未完成任务（[t数字] 是它的 id）：\n';
+  s += open.length ? open.map(k => {
+    S.aiRef.t[++ti] = k.uid;
+    return `- [t${ti}] ${k.title}${(k.dueDay ?? -1) >= 0 ? `（截止${dateCn(k.dueDay)}）` : ''}`;
+  }).join('\n') + '\n' : '（无）\n';
+  const ns = [...S.data.note.values()].slice(0, 10);
+  if (ns.length) {
+    s += '用户最近笔记（[n数字] 是它的 id）：\n';
+    s += ns.map(r => { S.aiRef.n[++ni] = r.uid; return `- [n${ni}] ${r.p.title || (r.p.content || '').slice(0, 12)}`; }).join('\n') + '\n';
+  }
+  // A4：统计类问题也要能答真数据
+  const mStart = (() => { const d = fromEpoch(t); return epochOf(d.y, d.m, 1); })();
+  const dCnt = [...S.data.diary.values()].filter(r => (r.p.day ?? -1) >= mStart).length;
+  s += `统计：本月日记 ${dCnt} 篇；未完成任务共 ${taskList().filter(k => !k.done).length} 项。`;
   return s;
 }
 function aiSystemPrompt() {
@@ -905,13 +926,19 @@ function aiSystemPrompt() {
 ${agendaContext()}
 
 回复要求：简体中文、简洁友好、可少量 emoji；回答日程问题时优先引用上面的真实数据，不要编造。
-当需要为用户创建内容时，先用一句话说明，然后在回复末尾输出一个 \`\`\`json 代码块（必须是合法 JSON）：
+当需要为用户创建、修改或删除内容时，先用一句话说明，然后在回复末尾输出一个 \`\`\`json 代码块（必须是合法 JSON）：
 {"actions":[
  {"type":"create_event","title":"标题","date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","all_day":false},
  {"type":"create_task","title":"标题","due":"YYYY-MM-DD"},
- {"type":"create_note","title":"标题","content":"内容"}
+ {"type":"create_note","title":"标题","content":"内容"},
+ {"type":"update_event","id":3,"date":"YYYY-MM-DD","start":"HH:mm","title":"新标题"},
+ {"type":"update_task","id":2,"due":"YYYY-MM-DD","done":true},
+ {"type":"delete_event","id":3},
+ {"type":"delete_task","id":2},
+ {"type":"delete_note","id":1}
 ]}
-规则：相对日期必须换算成具体日期；全天日程 all_day=true 并省略 start/end；没有创建意图时不要输出 json。`;
+修改/删除规则（最重要）：id 只能用上面数据里方括号标注的数字（[e3] → id 是 3）；数据里找不到用户说的那条时，绝不要猜 id —— 直接问用户是哪一条，不输出 json；update 只写要改的字段；「完成了」某任务 = update_task {"done":true}。
+其他规则：相对日期必须换算成具体日期；全天日程 all_day=true 并省略 start/end；用户只是提问时不要输出 json。`;
 }
 function chatBubble(role, text, err) {
   const list = $('#chatList');
@@ -932,17 +959,132 @@ function chatBubble(role, text, err) {
   div.scrollIntoView({ behavior: 'smooth', block: 'end' });
   return div;
 }
+/* A3（§48）：撤销账本 —— 创建→del、修改→回写旧 payload、删除→put 回来 */
+function aiUndoPush(op, kind, uid, prevP) { S.aiUndo.push({ op, kind, uid, prevP }); }
+function aiUndo() {
+  if (!S.aiUndo || !S.aiUndo.length) return;
+  for (const r of S.aiUndo.reverse()) {
+    if (r.op === 'created') del(r.kind, r.uid);
+    else put(r.kind, r.uid, r.prevP);
+  }
+  chatBubble('action', `↩️ 已撤销刚才的修改`);
+  S.aiUndo = [];
+  const u = $('#aiUndoBar'); if (u) u.remove();
+}
+function showUndoBar() {
+  const old = $('#aiUndoBar'); if (old) old.remove();
+  const list = $('#chatList');
+  const div = document.createElement('div');
+  div.id = 'aiUndoBar'; div.className = 'msg action';
+  div.innerHTML = `<div class="bubble" style="cursor:pointer">↩️ ${t('撤销刚才的修改')}</div>`;
+  div.onclick = aiUndo;
+  list.appendChild(div); div.scrollIntoView({ block: 'end' });
+}
+/* A3：删除必确认；一次 ≥3 条必确认（批量误建就是这么来的） */
+function confirmThenExec(actions) {
+  const needConfirm = actions.some(a => a.type && a.type.startsWith('delete_')) || actions.length >= 3;
+  if (!needConfirm) { execActions(actions); return; }
+  const label = a => {
+    const del = a.type.startsWith('delete_');
+    const kind = /event/.test(a.type) ? t('日程') : /task/.test(a.type) ? t('任务') : t('笔记');
+    const verb = a.type.startsWith('create_') ? '' : del ? t('删除') + ' ' : t('修改') + ' ';
+    const body = a.title || (a.id != null ? '#' + a.id : '') || (a.content || '').slice(0, 12);
+    return `${verb}${kind} · ${esc(body)}${a.date ? ' · ' + a.date : ''}${a.start ? ' ' + a.start : ''}`;
+  };
+  modal(`<h3>${t('共 {0} 件事').replace('{0}', actions.length)}</h3>
+    ${actions.map((a, i) => `<label style="display:block;font-size:13px;margin:4px 0${a.type.startsWith('delete_') ? ';color:#E0504A' : ''}">
+      <input type="checkbox" class="aiActChk" data-i="${i}" checked> ${label(a)}</label>`).join('')}
+    <div class="modal-btns"><button class="btn-mini" id="aiActCancel">${t('取消')}</button>
+    <button class="btn-dark" id="aiActOk">${t('执行勾选的')}</button></div>`);
+  $('#aiActCancel').onclick = () => { closeModal(); chatBubble('action', t('好，都不动 🦌')); };
+  $('#aiActOk').onclick = () => {
+    const picked = [...document.querySelectorAll('.aiActChk')].filter(c => c.checked).map(c => actions[+c.dataset.i]);
+    closeModal();
+    if (picked.length) execActions(picked); else chatBubble('action', t('好，都不动 🦌'));
+  };
+}
 function execActions(actions) {
-  const t = todayEpoch();
+  const t0 = todayEpoch();
+  S.aiUndo = [];
+  // A1：改/删 id → uid 解析（只认 agendaContext 发出去的句柄，绝不按标题猜）
+  const ref = S.aiRef || { e: {}, t: {}, n: {} };
+  const uidOf = (a) => {
+    const m = /event/.test(a.type) ? ref.e : /task/.test(a.type) ? ref.t : ref.n;
+    return m[a.id] || null;
+  };
+  const toMin = v => { const m = /^(\d{1,2})[:：](\d{2})$/.exec(v || ''); return m ? +m[1] * 60 + +m[2] : -1; };
   for (const a of actions) {
+    if (a.type === 'update_event' || a.type === 'delete_event') {
+      const uid = uidOf(a); const rec = uid && S.data.event.get(uid);
+      if (!rec) { chatBubble('action', `⚠️ ${t('没找到那条日程 —— 告诉我是哪一条？')}`); continue; }
+      if (a.type === 'delete_event') {
+        aiUndoPush('deleted', 'event', uid, { ...rec.p });
+        del('event', uid);
+        chatBubble('action', `🗑️ ${t('已删除日程')}：${dateCn(rec.p.startDay)} ${rec.p.title}${(rec.p.freq || 0) !== 0 ? t('（重复日程，整个系列已删除）') : ''}`);
+      } else {
+        aiUndoPush('updated', 'event', uid, { ...rec.p });
+        const p = { ...rec.p };
+        const nd = parseIso(a.date);
+        if (nd >= 0) { const dur = (p.endDay ?? p.startDay) - p.startDay; p.startDay = nd; p.endDay = nd + Math.max(dur, 0); }
+        const sm = toMin(a.start);
+        if (sm >= 0) {
+          const dur = Math.max((p.endMin || 0) - (p.startMin || 0), 30);
+          p.startMin = sm; p.allDay = false;
+          const em = toMin(a.end); p.endMin = em > sm ? em : Math.min(sm + dur, 1439);
+        }
+        if (a.title) p.title = a.title;
+        if (a.location) p.location = a.location;
+        if (a.memo) p.memo = a.memo;
+        put('event', uid, p);
+        chatBubble('action', `✏️ ${t('已修改')}：${dateCn(p.startDay)} ${p.allDay ? t('全天') : hm(p.startMin)} ${p.title}${(p.freq || 0) !== 0 ? t('（重复日程，整个系列一起调整）') : ''}`);
+      }
+      continue;
+    }
+    if (a.type === 'update_task' || a.type === 'delete_task') {
+      const uid = uidOf(a); const rec = uid && S.data.task.get(uid);
+      if (!rec) { chatBubble('action', `⚠️ ${t('没找到那条任务 —— 告诉我是哪一条？')}`); continue; }
+      if (a.type === 'delete_task') {
+        aiUndoPush('deleted', 'task', uid, { ...rec.p });
+        del('task', uid);
+        chatBubble('action', `🗑️ ${t('已删除任务')}：${rec.p.title}`);
+      } else {
+        aiUndoPush('updated', 'task', uid, { ...rec.p });
+        const p = { ...rec.p };
+        if (a.title) p.title = a.title;
+        const nd = parseIso(a.due); if (nd >= 0) p.dueDay = nd;
+        if (a.done === true) { p.done = true; p.doneAt = Date.now(); }
+        if (a.done === false) { p.done = false; p.doneAt = -1; }
+        put('task', uid, p);
+        chatBubble('action', a.done === true ? `✅ ${t('已完成任务')}：${p.title}` : `✏️ ${t('已修改任务')}：${p.title}`);
+      }
+      continue;
+    }
+    if (a.type === 'update_note' || a.type === 'delete_note') {
+      const uid = uidOf(a); const rec = uid && S.data.note.get(uid);
+      if (!rec) { chatBubble('action', `⚠️ ${t('没找到那条笔记')}`); continue; }
+      if (a.type === 'delete_note') {
+        aiUndoPush('deleted', 'note', uid, { ...rec.p });
+        del('note', uid);
+        chatBubble('action', `🗑️ ${t('已删除笔记')}：${rec.p.title || (rec.p.content || '').slice(0, 10)}`);
+      } else {
+        aiUndoPush('updated', 'note', uid, { ...rec.p });
+        const p = { ...rec.p };
+        if (a.title) p.title = a.title;
+        if (a.content) p.content = a.content;
+        put('note', uid, p);
+        chatBubble('action', `✏️ ${t('已修改笔记')}：${p.title || ''}`);
+      }
+      continue;
+    }
     if (a.type === 'create_event') {
-      const day = parseIso(a.date) >= 0 ? parseIso(a.date) : t;
-      const toMin = v => { const m = /^(\d{1,2}):(\d{2})$/.exec(v || ''); return m ? +m[1] * 60 + +m[2] : -1; };
+      const day = parseIso(a.date) >= 0 ? parseIso(a.date) : t0;
       const sm = toMin(a.start);
       const allDay = a.all_day || sm < 0;
       const s2 = sm >= 0 ? sm : 9 * 60;
       let em = toMin(a.end); if (em <= s2) em = Math.min(s2 + 60, 1439);
-      put('event', uuid(), {
+      const evUid = uuid();
+      aiUndoPush('created', 'event', evUid, null);
+      put('event', evUid, {
         title: a.title || '未命名日程', categoryUid: 'cat-default-1', allDay,
         startDay: day, endDay: Math.max(parseIso(a.end_date), day) || day,
         startMin: s2, endMin: em, location: a.location || '', memo: a.memo || '',
@@ -951,13 +1093,18 @@ function execActions(actions) {
       });
       chatBubble('action', `✅ 已添加日程：${dateCn(day)} ${allDay ? '全天' : hm(s2)} ${a.title || ''}`);
     } else if (a.type === 'create_task') {
-      put('task', uuid(), { title: a.title || '未命名任务', done: false, dueDay: parseIso(a.due), memo: '', createdAt: Date.now() });
+      const tkUid = uuid();
+      aiUndoPush('created', 'task', tkUid, null);
+      put('task', tkUid, { title: a.title || '未命名任务', done: false, dueDay: parseIso(a.due), memo: '', createdAt: Date.now() });
       chatBubble('action', `✅ 已添加任务：${a.title || ''}`);
     } else if (a.type === 'create_note') {
-      put('note', uuid(), { title: a.title || '', content: a.content || '' });
+      const ntUid = uuid();
+      aiUndoPush('created', 'note', ntUid, null);
+      put('note', ntUid, { title: a.title || '', content: a.content || '' });
       chatBubble('action', `✅ 已添加笔记：${a.title || (a.content || '').slice(0, 10)}`);
     }
   }
+  if (S.aiUndo.length) showUndoBar();
 }
 async function sendChat(text) {
   if (S.aiBusy || !text.trim()) return;
@@ -986,7 +1133,7 @@ async function sendChat(text) {
       try { actions = JSON.parse(fence[1]).actions || []; } catch (e) { }
     }
     if (display) { chatBubble('ai', display); S.chat.push({ role: 'assistant', content: display }); }
-    if (actions.length) execActions(actions);
+    if (actions.length) confirmThenExec(actions);
     if (!display && !actions.length) chatBubble('ai', '小鹿没想好怎么回答，换个说法试试？');
   } catch (e) {
     thinking.remove();
@@ -997,9 +1144,11 @@ async function sendChat(text) {
 }
 function updateQuota() {
   const q = $('#aiQuota');
-  // 对话不限次：只在接近当日公平使用上限时轻提示
+  // §50 分档：FREE 常显剩余并顺带说清 Pro；Pro 只在接近公平上限时轻提示
   if (S.aiRemaining >= 0 && S.aiRemaining < 20) {
-    q.textContent = `今日剩余 ${S.aiRemaining} 次`;
+    q.textContent = S.plan === 'pro'
+      ? t('今日剩余 {0} 次').replace('{0}', S.aiRemaining)
+      : t('今天还能聊 {0} 次（Pro 不限次）').replace('{0}', S.aiRemaining);
     q.classList.remove('hidden');
   } else q.classList.add('hidden');
 }
@@ -1025,7 +1174,7 @@ async function refreshMe() {
     const me = await api('/api/me');
     S.plan = me.plan;
     S.planExpiry = me.plan_expiry || 0;
-    $('#menuPlan').textContent = `${S.account} · ${me.plan === 'pro' ? 'Pro' : t('免费版')} · AI ${t('不限次')}`;
+    $('#menuPlan').textContent = `${S.account} · ${me.plan === 'pro' ? 'Pro · AI ' + t('不限次') : t('免费版') + ' · AI ' + t('每天 10 次')}`;
     // P2-A9（网页版）：付款等待中 → 开通即提示并清除等待
     if (me.plan === 'pro' && +localStorage.getItem('lk_pay_pending')) {
       localStorage.removeItem('lk_pay_pending');
@@ -1210,7 +1359,7 @@ async function boot() {
   // 「更多」页里的动作：复用顶栏已有按钮，避免逻辑重复
   // 支持入口：中文→爱发电（预填 remark=账号，避免开通时对不上人），其余→Ko-fi
   const mPro = $('#mPro');
-  if (mPro) mPro.onclick = async () => {
+  const openPay = async () => {
     const zh = (localStorage.getItem('lk_lang') || navigator.language || 'zh').startsWith('zh');
     let url = 'https://ko-fi.com/c/4c6210054c';
     if (zh) {
@@ -1221,6 +1370,43 @@ async function boot() {
     localStorage.setItem('lk_pay_pending', String(Date.now()));
     window.open(url, '_blank');
     toast(t('付款后切回本页，稍等片刻会自动开通'));
+  };
+  // F-7（§50 六）：开通前把权益与「到期后会怎样」说清楚 ——「你保留了」在前
+  if (mPro) mPro.onclick = () => {
+    modal(`<h3>Looka Pro</h3>
+      <p class="dim-note">${t('AI 不限次 · 更聪明的小鹿 · 生成主题与表情包（规划中）· 标签与年度回顾（规划中）')}</p>
+      <p style="font-size:12px;margin:8px 0 2px"><b>${t('到期后你保留')}</b>：${t('全部内容和数据 · 做过的主题 · 云同步与导出 · 提醒闹钟')}</p>
+      <p style="font-size:12px;margin:2px 0 8px"><b>${t('到期后暂停')}</b>：${t('AI 不限次（改回每天 10 次）· 生成新主题 / 表情包')}</p>
+      <p class="dim-note">${t('不偷偷扣钱：可随时取消；到期不收回你做的东西。')}</p>
+      <div class="modal-btns"><button class="btn-mini" id="proCancel">${t('再想想')}</button>
+      <button class="btn-dark" id="proGo">${t('去开通 · 12元/月')}</button></div>`);
+    $('#proCancel').onclick = closeModal;
+    $('#proGo').onclick = () => { closeModal(); openPay(); };
+  };
+
+  // A1-6：清理重复日程（同标题同日同时间同全天同重复 = 重复组；保最早，删其余；走同步双端一并生效）
+  const mDedup = $('#mDedup');
+  if (mDedup) mDedup.onclick = () => {
+    const groups = {};
+    for (const rec of S.data.event.values()) {
+      const p = rec.p; if (!p || p.title === undefined) continue;
+      const k = [String(p.title).trim(), p.startDay, p.startMin || 0, !!p.allDay, p.freq || 0].join('|');
+      (groups[k] = groups[k] || []).push(rec);
+    }
+    const dups = Object.values(groups).filter(g => g.length > 1)
+      .map(g => g.sort((a, b) => a.updated_at - b.updated_at));
+    if (!dups.length) { toast(t('没有发现重复的日程 🦌')); return; }
+    const extra = dups.reduce((n, g) => n + g.length - 1, 0);
+    modal(`<h3>${t('清理重复日程')}</h3>
+      <p class="dim-note">${t('发现 {0} 组重复，将保留每组最早一条，删除其余 {1} 条：').replace('{0}', dups.length).replace('{1}', extra)}</p>
+      ${dups.slice(0, 8).map(g => `<p style="font-size:12px;margin:2px 0">· ${dateCn(g[0].p.startDay)} ${esc(g[0].p.title)} ×${g.length}</p>`).join('')}
+      <div class="modal-btns"><button class="btn-mini" id="dedupCancel">${t('取消')}</button>
+      <button class="btn-dark" id="dedupOk">${t('清理')}</button></div>`);
+    $('#dedupCancel').onclick = closeModal;
+    $('#dedupOk').onclick = () => {
+      dups.forEach(g => g.slice(1).forEach(rec => del('event', rec.uid)));
+      closeModal(); toast(t('已清理 {0} 条重复日程').replace('{0}', extra));
+    };
   };
 
   // 认领订单：粘贴爱发电订单号 → 服务端反查开通（不依赖备注的唯一兜底）

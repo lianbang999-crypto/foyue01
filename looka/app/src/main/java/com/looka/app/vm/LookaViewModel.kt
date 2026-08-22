@@ -632,21 +632,33 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         // S9：用户可关闭「允许小鹿读取日程」
         if (!Prefs.aiReadAgenda(getApplication())) return tr("（用户未授权读取日程数据）") + "\n"
         val today = Fmt.today()
-        val occs = RecurrenceEngine.expand(seriesAll.value, exceptionsAll.value, today, today + 14)
+        // A1-2：窗口扩到过去 7 天（「改昨天的」也要能定位），并给每条标注 [e/t/n + id]
+        // —— AI 改/删只认这些 id，绝不按标题猜（§48 A1-2）
+        val occs = RecurrenceEngine.expand(seriesAll.value, exceptionsAll.value, today - 7, today + 14)
             .sortedWith(compareBy({ it.day }, { if (it.allDay) -1 else it.startMin }))
-            .take(40)
-        val sb = StringBuilder(tr("用户未来14天日程：") + "\n")
+            .take(50)
+        val sb = StringBuilder(tr("用户日程（近7天与未来14天，[e数字] 是它的 id）：") + "\n")
         if (occs.isEmpty()) sb.append(tr("（暂无日程）") + "\n")
         occs.forEach { o ->
             val t = if (o.allDay) tr("全天") else "${Fmt.hm(o.startMin)}-${Fmt.hm(o.endMin)}"
-            sb.append("- ${Fmt.iso(o.day)} ${Fmt.dateCn(o.day)} $t ${o.title}\n")
+            val rec = if (o.recurring) tr("（重复）") else ""
+            sb.append("- [e${o.seriesId}] ${Fmt.iso(o.day)} ${Fmt.dateCn(o.day)} $t ${o.title}$rec\n")
         }
         val open = tasks.value.filter { !it.done }.take(30)
-        sb.append(tr("用户未完成任务：") + "\n")
+        sb.append(tr("用户未完成任务（[t数字] 是它的 id）：") + "\n")
         if (open.isEmpty()) sb.append(tr("（无）") + "\n")
         open.forEach {
-            sb.append("- ${it.title}${if (it.dueDay >= 0) tr("（截止{0}）", Fmt.dateCn(it.dueDay)) else ""}\n")
+            sb.append("- [t${it.id}] ${it.title}${if (it.dueDay >= 0) tr("（截止{0}）", Fmt.dateCn(it.dueDay)) else ""}\n")
         }
+        val ns = notes.value.take(10)
+        if (ns.isNotEmpty()) {
+            sb.append(tr("用户最近笔记（[n数字] 是它的 id）：") + "\n")
+            ns.forEach { sb.append("- [n${it.id}] ${it.title.ifBlank { it.content.take(12) }}\n") }
+        }
+        // A4：统计类问题（「这个月写了几篇日记」）也要能答真数据
+        val monthStart = java.time.LocalDate.now().withDayOfMonth(1).toEpochDay()
+        val diaryCnt = diaries.value.count { it.day >= monthStart }
+        sb.append(tr("统计：本月日记 {0} 篇；未完成任务共 {1} 项。", diaryCnt, tasks.value.count { !it.done }) + "\n")
         return sb.toString()
     }
 
@@ -668,7 +680,16 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 val usedTier = AiClient.lastTier          // 服务端回传的实际生效档位
                 val (text, actions) = AiActions.split(raw)
                 if (text.isNotBlank()) chat += ChatMsg(ROLE_AI, text, tier = usedTier)
-                if (actions.isNotEmpty()) execActions(actions).forEach { chat += ChatMsg(ROLE_ACTION, it) }
+                if (actions.isNotEmpty()) {
+                    // A3/A1-4（§48）：删除一律先确认；一次 ≥3 条也先确认（批量误建就是这么来的）
+                    if (actions.any { it.isDelete } || actions.size >= 3) {
+                        pendingAiActions.clear(); pendingAiActions.addAll(actions)
+                        pendingChecked.clear(); repeat(actions.size) { pendingChecked.add(true) }
+                        chat += ChatMsg(ROLE_AI, tr("共 {0} 件事，你勾选确认后我再动手 👇", actions.size))
+                    } else {
+                        execActions(actions).forEach { chat += ChatMsg(ROLE_ACTION, it) }
+                    }
+                }
                 if (text.isBlank() && actions.isEmpty()) chat += ChatMsg(ROLE_AI, tr("小鹿没想好怎么回答，换个说法试试？"))
             } catch (e: Exception) {
                 chat += ChatMsg(ROLE_AI, tr("小鹿出错了：{0}", e.message ?: tr("网络异常")), error = true)
@@ -704,9 +725,62 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearChat() = chat.clear()
 
+    // ── A3：批量确认 + 一键撤销（§48）─────────────────────────────
+    /** AI 一次给出的待确认动作（删除必确认；≥3 条必确认） */
+    val pendingAiActions = mutableStateListOf<AiAction>()
+    val pendingChecked = mutableStateListOf<Boolean>()
+
+    /** 上一批的反向操作账本：创建→软删、修改→回写旧值、删除→复活 */
+    private sealed interface UndoRec {
+        data class Ev(val snapshot: EventSeries, val created: Boolean = false) : UndoRec
+        data class Tk(val snapshot: Task, val created: Boolean = false) : UndoRec
+        data class Nt(val snapshot: Note, val created: Boolean = false) : UndoRec
+    }
+    private val lastUndo = ArrayList<UndoRec>()
+    var canUndo by mutableStateOf(false)
+        private set
+
+    fun confirmPending() {
+        val picked = pendingAiActions.filterIndexed { i, _ -> pendingChecked.getOrElse(i) { true } }
+        pendingAiActions.clear(); pendingChecked.clear()
+        if (picked.isEmpty()) { chat += ChatMsg(ROLE_AI, tr("好，都不动 🦌")); return }
+        viewModelScope.launch {
+            execActions(picked).forEach { chat += ChatMsg(ROLE_ACTION, it) }
+        }
+    }
+
+    fun cancelPending() {
+        pendingAiActions.clear(); pendingChecked.clear()
+        chat += ChatMsg(ROLE_AI, tr("好，都不动 🦌"))
+    }
+
+    /** 撤销上一批 AI 修改（逆序回放账本） */
+    fun undoLastBatch() = viewModelScope.launch {
+        val n = now()
+        for (r in lastUndo.reversed()) when (r) {
+            is UndoRec.Ev ->
+                if (r.created) {
+                    eventDao.updateSeries(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
+                    eventDao.deleteRemindersOf(r.snapshot.id)
+                } else eventDao.updateSeries(r.snapshot.copy(dirty = true, updatedAt = n))
+            is UndoRec.Tk ->
+                if (r.created) taskDao.update(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
+                else taskDao.update(r.snapshot.copy(dirty = true, updatedAt = n))
+            is UndoRec.Nt ->
+                if (r.created) noteDao.update(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
+                else noteDao.update(r.snapshot.copy(dirty = true, updatedAt = n))
+        }
+        val cnt = lastUndo.size
+        lastUndo.clear(); canUndo = false
+        afterChange()
+        chat += ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt))
+    }
+
     suspend fun execActions(actions: List<AiAction>): List<String> {
         val c = getApplication<Application>()
         val out = ArrayList<String>()
+        // 新一批动作开启新账本（撤销以"批"为单位）
+        lastUndo.clear(); canUndo = false
         for (a in actions) {
             when (a.type) {
                 "create_event" -> {
@@ -714,14 +788,14 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     val allDay = a.allDay || a.startMin < 0
                     val sm = if (a.startMin >= 0) a.startMin else 9 * 60
                     val em = if (a.endMin > sm) a.endMin else minOf(sm + 60, 24 * 60 - 1)
-                    val id = eventDao.insertSeries(
-                        EventSeries(
-                            title = a.title.ifBlank { tr("未命名日程") },
-                            categoryId = Prefs.defaultCategoryId(c),
-                            allDay = allDay, startDay = day, endDay = maxOf(a.endDay, day),
-                            startMin = sm, endMin = em, location = a.location, memo = a.memo
-                        )
+                    val series = EventSeries(
+                        title = a.title.ifBlank { tr("未命名日程") },
+                        categoryId = Prefs.defaultCategoryId(c),
+                        allDay = allDay, startDay = day, endDay = maxOf(a.endDay, day),
+                        startMin = sm, endMin = em, location = a.location, memo = a.memo
                     )
+                    val id = eventDao.insertSeries(series)
+                    lastUndo += UndoRec.Ev(series.copy(id = id), created = true)
                     // P2-D3/D4/D5（§三十八①）：提醒必须"说出来"——
                     // 用户要求的提醒时刻优先；算出的时刻已过去要明说并自动兜底，不再静默丢弃。
                     var remNote = ""
@@ -761,18 +835,139 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     out += tr("✅ 已添加日程：{0}", "${Fmt.dateCn(day)} ${if (allDay) tr("全天") else Fmt.hm(sm)} ${a.title}") + remNote
                 }
                 "create_task" -> {
-                    taskDao.insert(Task(title = a.title.ifBlank { tr("未命名任务") }, dueDay = a.day,
-                        sortOrder = taskDao.maxSortOrder() + 1))
+                    val t = Task(title = a.title.ifBlank { tr("未命名任务") }, dueDay = a.day,
+                        sortOrder = taskDao.maxSortOrder() + 1)
+                    val id = taskDao.insert(t)
+                    lastUndo += UndoRec.Tk(t.copy(id = id), created = true)
                     out += tr("✅ 已添加任务：{0}", a.title + if (a.day >= 0) "（${Fmt.dateCn(a.day)}）" else "")
                 }
                 "create_note" -> {
-                    noteDao.insert(Note(title = a.title, content = a.content))
+                    val nte = Note(title = a.title, content = a.content)
+                    val id = noteDao.insert(nte)
+                    lastUndo += UndoRec.Nt(nte.copy(id = id), created = true)
                     out += tr("✅ 已添加笔记：{0}", a.title.ifBlank { a.content.take(10) })
+                }
+
+                // ── A1（§48）：改与删。只按上下文里的 id 定位，找不到就明说，绝不猜 ──
+                "update_event" -> {
+                    val s = eventDao.series(a.targetId)
+                    if (s == null || s.deleted) {
+                        out += tr("⚠️ 没找到要改的日程（#{0}）—— 告诉我是哪一条？", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Ev(s)
+                        // 挪日期时保住原时长（跨天日程整体平移）
+                        val nd = if (a.day >= 0) a.day else s.startDay
+                        val ns = s.copy(
+                            title = a.title.ifBlank { s.title },
+                            startDay = nd,
+                            endDay = nd + (s.endDay - s.startDay),
+                            startMin = if (a.startMin >= 0) a.startMin else s.startMin,
+                            endMin = when {
+                                a.endMin >= 0 -> a.endMin
+                                a.startMin >= 0 -> minOf(a.startMin + (s.endMin - s.startMin).coerceAtLeast(30), 24 * 60 - 1)
+                                else -> s.endMin
+                            },
+                            allDay = if (a.startMin >= 0) false else s.allDay,
+                            location = a.location.ifBlank { s.location },
+                            memo = a.memo.ifBlank { s.memo },
+                            dirty = true, updatedAt = now()
+                        )
+                        eventDao.updateSeries(ns)
+                        val rec = if (s.freq != FREQ_NONE) tr("（重复日程，整个系列一起调整）") else ""
+                        out += tr("✏️ 已修改：{0}",
+                            "${Fmt.dateCn(ns.startDay)} ${if (ns.allDay) tr("全天") else Fmt.hm(ns.startMin)} ${ns.title}") + rec
+                    }
+                }
+                "delete_event" -> {
+                    val s = eventDao.series(a.targetId)
+                    if (s == null || s.deleted) {
+                        out += tr("⚠️ 没找到要删的日程（#{0}），可能已经删过了", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Ev(s)
+                        eventDao.updateSeries(s.copy(deleted = true, dirty = true, updatedAt = now()))
+                        val rec = if (s.freq != FREQ_NONE) tr("（重复日程，整个系列已删除）") else ""
+                        out += tr("🗑️ 已删除日程：{0}", "${Fmt.dateCn(s.startDay)} ${s.title}") + rec
+                    }
+                }
+                "update_task" -> {
+                    val t = tasks.value.find { it.id == a.targetId && !it.deleted }
+                    if (t == null) {
+                        out += tr("⚠️ 没找到要改的任务（#{0}）—— 告诉我是哪一条？", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Tk(t)
+                        val nt = t.copy(
+                            title = a.title.ifBlank { t.title },
+                            dueDay = if (a.day >= 0) a.day else t.dueDay,
+                            done = if (a.done >= 0) a.done == 1 else t.done,
+                            doneAt = if (a.done == 1) now() else if (a.done == 0) -1L else t.doneAt,
+                            dirty = true, updatedAt = now()
+                        )
+                        taskDao.update(nt)
+                        out += if (a.done == 1) tr("✅ 已完成任务：{0}", nt.title)
+                               else tr("✏️ 已修改任务：{0}", nt.title + if (nt.dueDay >= 0) "（${Fmt.dateCn(nt.dueDay)}）" else "")
+                    }
+                }
+                "delete_task" -> {
+                    val t = tasks.value.find { it.id == a.targetId && !it.deleted }
+                    if (t == null) {
+                        out += tr("⚠️ 没找到要删的任务（#{0}），可能已经删过了", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Tk(t)
+                        taskDao.update(t.copy(deleted = true, dirty = true, updatedAt = now()))
+                        out += tr("🗑️ 已删除任务：{0}", t.title)
+                    }
+                }
+                "update_note" -> {
+                    val nte = noteDao.byId(a.targetId)
+                    if (nte == null || nte.deleted) {
+                        out += tr("⚠️ 没找到要改的笔记（#{0}）", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Nt(nte)
+                        noteDao.update(nte.copy(
+                            title = a.title.ifBlank { nte.title },
+                            content = a.content.ifBlank { nte.content },
+                            dirty = true, updatedAt = now()
+                        ))
+                        out += tr("✏️ 已修改笔记：{0}", a.title.ifBlank { nte.title })
+                    }
+                }
+                "delete_note" -> {
+                    val nte = noteDao.byId(a.targetId)
+                    if (nte == null || nte.deleted) {
+                        out += tr("⚠️ 没找到要删的笔记（#{0}），可能已经删过了", a.targetId)
+                    } else {
+                        lastUndo += UndoRec.Nt(nte)
+                        noteDao.update(nte.copy(deleted = true, dirty = true, updatedAt = now()))
+                        out += tr("🗑️ 已删除笔记：{0}", nte.title.ifBlank { nte.content.take(10) })
+                    }
                 }
             }
         }
         if (actions.isNotEmpty()) afterChange()
+        canUndo = lastUndo.isNotEmpty()
         return out
+    }
+
+    // ── A1-6（§48）：重复日程查重清理 —— 修 AI 只会「建」时代留下的重复数据 ──
+    /** 同标题 + 同起始日 + 同时间 + 同全天标记 = 重复组（组内按 id 升序，保最早那条） */
+    fun duplicateEventGroups(): List<List<EventSeries>> =
+        seriesAll.value.filter { !it.deleted }
+            .groupBy { listOf(it.title.trim(), it.startDay, it.startMin, it.allDay, it.freq) }
+            .values.filter { it.size > 1 }
+            .map { g -> g.sortedBy { it.id } }
+
+    /** 每组保留最早一条，其余软删（走同步，网页端一并消失）；返回清掉的条数 */
+    fun cleanDuplicateEvents(onDone: (Int) -> Unit) = viewModelScope.launch {
+        var n = 0
+        val ts = now()
+        duplicateEventGroups().forEach { g ->
+            g.drop(1).forEach {
+                eventDao.updateSeries(it.copy(deleted = true, dirty = true, updatedAt = ts))
+                n++
+            }
+        }
+        if (n > 0) afterChange()
+        onDone(n)
     }
 
     suspend fun aiParseActions(input: String): List<AiAction> {

@@ -177,7 +177,7 @@ object SyncEngine {
         val rs = JSONArray()
         reminders.forEach {
             rs.put(JSONObject().put("m", it.minutesBefore).put("d", it.daysBefore)
-                .put("t", it.timeOfDayMin).put("on", it.enabled))
+                .put("t", it.timeOfDayMin).put("on", it.enabled).put("al", it.alarm))
         }
         val exs = JSONArray()
         exceptions.forEach { e ->
@@ -341,7 +341,8 @@ object SyncEngine {
                                     Reminder(
                                         seriesId = id, minutesBefore = ro.optInt("m", 15),
                                         daysBefore = ro.optInt("d"), timeOfDayMin = ro.optInt("t", 480),
-                                        enabled = ro.optBoolean("on", true)
+                                        enabled = ro.optBoolean("on", true),
+                                        alarm = ro.optBoolean("al", false)
                                     )
                                 )
                             }

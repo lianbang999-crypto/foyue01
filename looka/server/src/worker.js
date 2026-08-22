@@ -462,7 +462,13 @@ async function route(request, env, ctx) {
     return json({
       ok: true,
       register_mode: env.REGISTER_MODE || 'open',   // open | invite | closed
-      ai: { chat: 'unlimited', rpm: Number(env.AI_RPM || 10), rpd: Number(env.AI_RPD || 100) }
+      // §50：FREE 每天 free_rpd 次；Pro 不限次（rpd 仅为防滥用的公平上限）
+      ai: {
+        chat: 'tiered',
+        rpm: Number(env.AI_RPM || 10),
+        rpd: Number(env.AI_RPD || 100),
+        free_rpd: Number(env.FREE_AI_RPD || 10)
+      }
     });
   }
 
@@ -892,16 +898,25 @@ async function route(request, env, ctx) {
     });
   }
 
-  // ===== AI 代理（对话不限次；公平使用限速 10 次/分、100 次/日） =====
+  // ===== AI 代理（§50 分档：Pro 不限次仅公平限速；FREE 每天 FREE_AI_RPD 次） =====
   if (p === '/api/ai/chat' && m === 'POST') {
     if (!env.SILICONFLOW_KEY) return json({ error: '服务端未配置 AI Key，请联系管理员' }, 500);
-    const rpm = Number(env.AI_RPM || 10), rpd = Number(env.AI_RPD || 100);
+    // 分档前先查订阅：FREE 走日额度（默认 10，可用环境变量一键调），Pro 只保留防滥用的公平限速
+    const plan = (await planOf(env, user.id)).plan;
+    const rpm = Number(env.AI_RPM || 10);
+    const rpd = plan === 'pro' ? Number(env.AI_RPD || 100) : Number(env.FREE_AI_RPD || 10);
     if (!await rateLimit(env, `ai:m:${user.id}`, rpm, 60_000)) {
       return json({ error: '说得太快啦，休息几秒再问小鹿 🦌' }, 429);
     }
     const dayKey = `ai:d:${user.id}:${today()}`;
     if (!await rateLimit(env, dayKey, rpd, 24 * 3600_000)) {
-      return json({ error: `今日对话已达公平使用上限（${rpd} 次），明天再来找小鹿吧` }, 429);
+      // F-3：额度用完不冷冰冰地「请升级」——小鹿的语气，顺带把 Pro 说清楚
+      return json({
+        error: plan === 'pro'
+          ? `今日对话已达公平使用上限（${rpd} 次），明天再来找小鹿吧`
+          : `今天的 ${rpd} 次聊完啦，明天再来找我 🦌（Pro 可以不限次，也能换更聪明的我）`,
+        quota_exhausted: plan !== 'pro'
+      }, 429);
     }
     const b = await body();
     const messages = Array.isArray(b.messages) ? b.messages.slice(0, 40).map(x => ({
@@ -911,8 +926,7 @@ async function route(request, env, ctx) {
     if (!messages.length) return json({ error: '消息为空' }, 400);
     const temperature = Math.min(Math.max(Number(b.temperature ?? 0.6), 0), 1.5);
 
-    // ── 模型分档：standard 自建通道不计费；premium/flagship 走 OpenRouter，按鹿角计价
-    const plan = (await planOf(env, user.id)).plan;
+    // ── 模型分档（plan 已在限额分档时查过）：standard 免费池；premium「更聪明」走硅基流动付费模型
     let tier = ['standard', 'premium', 'flagship'].includes(b.tier) ? b.tier : 'standard';
     // 旗舰档已下线（2026-08-21 决定②）：后端分支保留，flag 关闭时静默降为 premium
     if (tier === 'flagship' && env.FLAGSHIP_ENABLED !== '1') tier = 'premium';
@@ -930,17 +944,10 @@ async function route(request, env, ctx) {
     }
 
     if (tier !== 'standard') {
-      const orModel = tier === 'premium'
-        ? (env.PREMIUM_MODEL || 'openai/gpt-5.6-luna')
-        : (String(b.model || '') || env.FLAGSHIP_MODEL || 'openai/gpt-5.5');
-      // 只允许白名单里的旗舰模型，防止客户端点播 claude-fable-5 这类 5 鹿角覆盖不住的型号
-      const FLAGSHIP_OK = ['openai/gpt-5.5', 'openai/gpt-5', 'anthropic/claude-opus-5', 'deepseek/deepseek-v4-pro'];
-      const model = tier === 'flagship' && !FLAGSHIP_OK.includes(orModel) ? 'openai/gpt-5.5' : orModel;
       const t0 = Date.now();
-      // §45 双引擎「更聪明」（2026-08-22）：
-      //   ① OpenRouter GPT（海外链路，质量优）→ ② 硅基流动 DeepSeek-V3.2（.cn 大陆直连，稳）
-      // 用户反馈大陆环境 GPT 时有不可用 —— "更聪明"不再绑死单一海外上游，
-      // 哪个先答上来用哪个，气泡照实标注模型。两个都挂才回落标准档。
+      // §49/§50（2026-08-22 用户拍板）：GPT 文本模型全部下架 ——「更聪明」统一走硅基流动
+      // DeepSeek（.cn 大陆直连，稳定；实测 ≈¥0.011/次）。双引擎代码撤除，OpenRouter 仅留给
+      // 未来生图管线（表情包，冻结中）。失败重试一次，仍失败回落标准档、不扣费。
       let resp = null, d = {}, text = '', lastErr = '';
       const tryUpstream = async (uurl, headers, bodyObj, timeoutMs) => {
         try {
@@ -956,25 +963,14 @@ async function route(request, env, ctx) {
           return { err: e?.name === 'TimeoutError' ? '上游超时' : String(e?.message || e).slice(0, 120) };
         }
       };
-      let served = model;
-      {
-        const a = await tryUpstream('https://openrouter.ai/api/v1/chat/completions', {
-          'Authorization': `Bearer ${env.OPENROUTER_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://looka.foyue.org',
-          'X-Title': 'Looka'
-        }, { model, messages, temperature, max_tokens: 2048 }, 20_000);
+      const cnModel = env.PREMIUM_MODEL_CN || 'deepseek-ai/DeepSeek-V3.2';
+      let served = cnModel;
+      for (let attempt = 0; attempt < 2 && !text; attempt++) {
+        const a = await tryUpstream(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+          'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json'
+        }, { model: cnModel, messages, temperature, max_tokens: 2048, enable_thinking: false }, 30_000);
         if (a.tt) { resp = a.r; d = a.dd; text = a.tt; }
-        else {
-          lastErr = a.err;
-          console.log('premium fail', model, 'engine=openrouter', lastErr);
-          const cnModel = env.PREMIUM_MODEL_CN || 'deepseek-ai/DeepSeek-V3.2';
-          const b2 = await tryUpstream(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
-            'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json'
-          }, { model: cnModel, messages, temperature, max_tokens: 2048, enable_thinking: false }, 30_000);
-          if (b2.tt) { resp = b2.r; d = b2.dd; text = b2.tt; served = cnModel; }
-          else { lastErr = b2.err; console.log('premium fail', cnModel, 'engine=sf', lastErr); }
-        }
+        else { lastErr = a.err; console.log('premium fail', cnModel, 'engine=sf', lastErr); }
       }
       if (!resp?.ok || !text) {
         // 上游失败一律不扣费，回落标准模型（E4：真实原因透传给客户端）

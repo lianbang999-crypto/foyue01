@@ -12,6 +12,11 @@
         android:maxSdkVersion="32" />
     <!-- 内部分发自更新：唤起系统安装器 -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- A2 真闹钟（§48）：锁屏全屏弹出 + 前台服务循环响铃 + 振动 -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:name=".LookaApp"
@@ -34,6 +39,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- A2 真闹钟：全屏响铃页（锁屏之上）+ 循环响铃前台服务 -->
+        <activity
+            android:name=".notify.AlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Looka" />
+        <service
+            android:name=".notify.AlarmRingService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
 
         <receiver android:name=".notify.NotifyReceiver" android:exported="false" />
         <receiver android:name=".notify.DailyReceiver" android:exported="false" />

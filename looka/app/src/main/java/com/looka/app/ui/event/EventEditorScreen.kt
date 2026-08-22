@@ -33,6 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -598,6 +599,26 @@ fun ReminderSheet(d: EventDraft, onDismiss: () -> Unit) {
                     }) {
                         Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                     }
+                }
+                // A2-5：提醒 vs 闹钟 —— 提醒响一声可划走；闹钟持续响，必须手动停
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        tr("⏰ 当成闹钟（持续响，静音也响）"), fontSize = 12.sp,
+                        color = if (r.alarm) MaterialTheme.colorScheme.primary else GrayText,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = r.alarm,
+                        onCheckedChange = {
+                            d.reminders[i] = r.copy(alarm = it)
+                            d.remindersTouched = true
+                        },
+                        modifier = Modifier.scale(0.8f),
+                        colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
+                    )
                 }
             }
             TextButton(

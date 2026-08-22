@@ -10,7 +10,11 @@ import java.time.LocalDateTime
 
 /** AI 解析出的可执行动作 */
 data class AiAction(
-    val type: String,            // create_event / create_task / create_note
+    val type: String,            // create/update/delete × event/task/note（A1，§48）
+    // A1：改/删的定位键 —— 只认上下文里标注的 id，绝不按标题猜（删错不可逆）
+    val targetId: Long = -1L,
+    // update_task 专用：-1 不动，0 标未完成，1 标完成
+    val done: Int = -1,
     val title: String = "",
     val day: Long = -1L,
     val endDay: Long = -1L,
@@ -39,8 +43,25 @@ data class AiAction(
             "${tr("日程")} · $d $t · $title$rem"
         }
         "create_task" -> "${tr("任务")} · ${if (day >= 0) Fmt.dateCn(day) + " · " else ""}$title"
+        "update_event", "update_task", "update_note" -> {
+            val what = when (type) { "update_event" -> tr("日程"); "update_task" -> tr("任务"); else -> tr("笔记") }
+            val to = buildString {
+                if (day >= 0) append(Fmt.dateCn(day))
+                if (startMin >= 0) append(" ${Fmt.hm(startMin)}")
+                if (title.isNotBlank()) append(" 「$title」")
+                if (done == 1) append(" ✓")
+            }.trim()
+            "${tr("修改")}$what #$targetId${if (to.isNotBlank()) " → $to" else ""}"
+        }
+        "delete_event", "delete_task", "delete_note" -> {
+            val what = when (type) { "delete_event" -> tr("日程"); "delete_task" -> tr("任务"); else -> tr("笔记") }
+            "${tr("删除")}$what #$targetId${if (title.isNotBlank()) " · $title" else ""}"
+        }
         else -> "${tr("笔记")} · ${title.ifBlank { content.take(12) }}"
     }
+
+    val isDelete get() = type.startsWith("delete_")
+    val isMutation get() = type.startsWith("update_") || isDelete
 }
 
 /** 小鹿 AI 的提示词与动作协议（JSON 指令解析） */
@@ -79,12 +100,22 @@ object AiActions {
         else -> "回复要求：简体中文、简洁友好、可少量 emoji。"
     }
 
-    private val PROTOCOL = """当需要为用户创建内容时，先用一句话说明，然后在回复末尾输出一个 ```json 代码块（必须是合法 JSON）：
+    private val PROTOCOL = """当需要为用户创建、修改或删除内容时，先用一句话说明，然后在回复末尾输出一个 ```json 代码块（必须是合法 JSON）：
 {"actions":[
  {"type":"create_event","title":"标题","date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","all_day":false,"location":"","memo":""},
  {"type":"create_task","title":"标题","due":"YYYY-MM-DD"},
- {"type":"create_note","title":"标题","content":"内容"}
+ {"type":"create_note","title":"标题","content":"内容"},
+ {"type":"update_event","id":123,"date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","title":"新标题"},
+ {"type":"update_task","id":45,"due":"YYYY-MM-DD","title":"新标题","done":true},
+ {"type":"delete_event","id":123},
+ {"type":"delete_task","id":45},
+ {"type":"delete_note","id":7}
 ]}
+修改/删除规则（最重要）：
+- id 只能用上面日程/任务数据里方括号标注的数字（如 [e123] → id 是 123）。
+- **数据里找不到用户说的那条时，绝不要猜 id、绝不要凭标题编造** —— 直接问用户是哪一条，不输出 json。
+- update 只写要改的字段，不改的省略；「挪到明天」= update_event 只带新 date。
+- 「完成了/做完了」某任务 = update_task {"done":true}。
 提醒字段（重要）：
 - 用户说「X 点提醒我 / 通知我 / 叫我」→ 这是【提醒时刻】，写 "remind_at":"HH:mm"（提醒就在那个时刻响，不是提前）。
 - 用户说「提前 N 分钟提醒」→ 写 "remind_before":N（数字，分钟）。
@@ -93,7 +124,7 @@ object AiActions {
 1. 最外层键名必须是 "actions"，值必须是数组。不要用 events / items / data 等其它名字。
 2. 日期只能写 YYYY-MM-DD（如 2026-08-22），时间只能写 HH:mm（如 15:00）。禁止出现 2226 这类年份，禁止在日期后面接多余数字。
 3. 全天日程 all_day=true 并省略 start/end；end_date 仅跨天时填写；未提到的字段直接省略。
-4. **用户只是提问（如「明天有什么安排」）时，绝对不要输出 json 代码块**，正常回答即可。
+4. **用户只是提问（如「明天有什么安排」）时，绝对不要输出 json 代码块**，用上面的真实数据正常回答即可。
 5. 代码块必须以 ``` 正确闭合。"""
 
     /** 聊天系统提示词（带用户真实日程上下文） */
@@ -211,7 +242,8 @@ $PROTOCOL
     /** 含动作特征字段才认定为载荷，避免误删用户正文里的花括号 */
     private fun looksLikePayload(s: String): Boolean =
         s.contains("\"actions\"") || s.contains("\"subtasks\"") ||
-            (s.contains("\"type\"") && s.contains("create_"))
+            (s.contains("\"type\"") &&
+                (s.contains("create_") || s.contains("update_") || s.contains("delete_")))
 
     /** 扫描出所有花括号平衡的片段；未闭合的吃到结尾（截断场景） */
     private fun braceSpans(s: String): List<IntRange> {
@@ -252,22 +284,35 @@ $PROTOCOL
         (0 until arr.length()).mapNotNull { i ->
             val o = arr.optJSONObject(i) ?: return@mapNotNull null
             val type = o.optString("type")
-            if (type !in setOf("create_event", "create_task", "create_note")) return@mapNotNull null
-            // 没标题的动作是模型抽风的产物（实测会吐 title:"明天"这种占位），别塞给用户确认
+            if (type !in setOf(
+                    "create_event", "create_task", "create_note",
+                    "update_event", "update_task", "update_note",
+                    "delete_event", "delete_task", "delete_note"
+                )
+            ) return@mapNotNull null
+            val isMut = type.startsWith("update_") || type.startsWith("delete_")
+            // 改/删必须带定位 id；模型没给就丢弃（执行层还有一道"找不到"兜底）
+            val tid = o.optLong("id", -1L)
+            if (isMut && tid <= 0) return@mapNotNull null
+            // 没标题的**新建**动作是模型抽风的产物（实测会吐 title:"明天"这种占位），别塞给用户确认
             val name = o.optString("title").trim()
-            if (name.isBlank() && o.optString("content").isBlank()) return@mapNotNull null
+            if (!isMut && name.isBlank() && o.optString("content").isBlank()) return@mapNotNull null
             val day = parseDay(o.optString("date").ifBlank { o.optString("due") })
             val endDay = parseDay(o.optString("end_date"))
             val start = parseMin(o.optString("start"))
             val end = parseMin(o.optString("end"))
             AiAction(
                 type = type,
+                targetId = tid,
+                done = if (o.has("done")) (if (o.optBoolean("done")) 1 else 0) else -1,
                 title = name,
                 day = day,
                 endDay = if (endDay >= 0) endDay else day,
                 startMin = start,
-                endMin = if (end >= 0) end else if (start >= 0) minOf(start + 60, 24 * 60 - 1) else -1,
-                allDay = o.optBoolean("all_day", start < 0),
+                // update 时不补默认结束时间：没提到的字段保持"未指定"，执行层原样保留旧值
+                endMin = if (end >= 0) end
+                         else if (start >= 0 && !isMut) minOf(start + 60, 24 * 60 - 1) else -1,
+                allDay = if (isMut) o.optBoolean("all_day", false) else o.optBoolean("all_day", start < 0),
                 location = o.optString("location"),
                 memo = o.optString("memo"),
                 content = o.optString("content"),

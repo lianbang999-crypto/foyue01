@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.compose.foundation.clickable
 import com.looka.app.LookaApp
 import com.looka.app.R
 import com.looka.app.data.Prefs
@@ -331,9 +332,35 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
             else tr("免费版")
         )
         Hairline()
+        // F-8：到期前 7 天内轻提醒（小鹿语气，不吓人）；F-7：到期后会怎样，一点即看
+        if (plan == "pro" && planExpiry > 0) {
+            val daysLeft = ((planExpiry - System.currentTimeMillis()) / 86400000L).toInt()
+            if (daysLeft in 0..7) {
+                Text(
+                    tr("你的 Pro 还有 {0} 天到期。到期后你做的东西都还在，只是不能再生成新的啦 🦌", daysLeft),
+                    fontSize = 12.sp, color = GrayText,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                )
+            }
+            var keepDlg by remember { mutableStateOf(false) }
+            Text(
+                tr("到期后会怎样？"), fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clickable { keepDlg = true }
+            )
+            if (keepDlg) KeepLoseDialog { keepDlg = false }
+            Hairline()
+        }
         InfoRow(
             tr("小鹿 AI"),
-            if (aiMonthUsed >= 0) tr("不限次 · 本月已聊 {0} 次", aiMonthUsed) else tr("不限次")
+            when {
+                plan == "pro" && aiMonthUsed >= 0 -> tr("不限次 · 本月已聊 {0} 次", aiMonthUsed)
+                plan == "pro" -> tr("不限次")
+                aiMonthUsed >= 0 -> tr("每天 10 次 · 本月已聊 {0} 次", aiMonthUsed)
+                else -> tr("每天 10 次")
+            }
         )
         Hairline()
         // 找回邮箱（手机号账号必须绑定并验证才能找回密码）
@@ -599,4 +626,36 @@ private fun InfoRow(title: String, value: String) {
         Text(title, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Text(value, fontSize = 13.sp, color = GrayText)
     }
+}
+
+/** F-7 降级说明（§50 六）：「你保留了」必须在前 —— 顺序反了，用户读到的就是被剥夺 */
+@Composable
+private fun KeepLoseDialog(onDismiss: () -> Unit) {
+    val keeps = listOf(
+        tr("全部内容和数据"), tr("做过的主题，继续能用"),
+        tr("日历 · 待办 · 笔记 · 日记"), tr("提醒和闹钟"),
+        tr("云同步和数据导出")
+    )
+    val loses = listOf(
+        tr("AI 不限次（改为每天 10 次）"), tr("生成新主题 / 新表情包"),
+        tr("更聪明的模型"), tr("年度回顾长图")
+    )
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("知道了")) }
+        },
+        title = { Text(tr("Pro 到期后"), fontSize = 16.sp) },
+        text = {
+            Column {
+                Text(tr("你保留了"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                keeps.forEach { Text("· $it", fontSize = 12.sp, color = GrayText) }
+                Spacer(Modifier.height(10.dp))
+                Text(tr("暂时用不了了"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                loses.forEach { Text("· $it", fontSize = 12.sp, color = GrayText) }
+                Spacer(Modifier.height(10.dp))
+                Text(tr("到期不收回：你做的东西照样能用，我们只是不再为你生成新的。"), fontSize = 11.sp, color = GrayText)
+            }
+        }
+    )
 }

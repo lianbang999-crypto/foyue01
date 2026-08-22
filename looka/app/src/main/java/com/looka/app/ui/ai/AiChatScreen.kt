@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import com.looka.app.data.PlanState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -120,10 +121,13 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             )
         }
 
-        // 对话不限次；只在接近当日公平使用上限时轻提示
+        // §50 分档提示：FREE 显示当日剩余并顺带说清 Pro；Pro 只在接近公平上限时轻提示
         if (AiClient.lastRemaining in 0..19 && Prefs.apiKey(ctx).isBlank()) {
             Text(
-                tr("今日剩余 {0} 次（每日限速防滥用，明天恢复）", AiClient.lastRemaining),
+                if (PlanState.isPro)
+                    tr("今日剩余 {0} 次（每日限速防滥用，明天恢复）", AiClient.lastRemaining)
+                else
+                    tr("今天还能聊 {0} 次（Pro 不限次，还能换更聪明的小鹿）", AiClient.lastRemaining),
                 fontSize = 11.sp, color = GrayText,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
@@ -175,6 +179,60 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     }
                 }
             }
+        }
+
+        // A3（§48）：批量确认卡 —— 删除必确认，一次 ≥3 条必确认；逐条可勾
+        if (vm.pendingAiActions.isNotEmpty()) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(PanelBg).padding(12.dp)
+            ) {
+                Text(
+                    tr("共 {0} 件事", vm.pendingAiActions.size),
+                    fontSize = 13.sp, fontWeight = FontWeight.SemiBold
+                )
+                vm.pendingAiActions.forEachIndexed { i, a ->
+                    Row(
+                        Modifier.fillMaxWidth().plainClick {
+                            if (i < vm.pendingChecked.size) vm.pendingChecked[i] = !vm.pendingChecked[i]
+                        }.padding(vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (vm.pendingChecked.getOrElse(i) { true }) "☑" else "☐",
+                            fontSize = 15.sp,
+                            color = if (a.isDelete) HolidayRed else MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            a.label(), fontSize = 12.sp,
+                            color = if (a.isDelete) HolidayRed else Ink
+                        )
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        tr("取消"), fontSize = 13.sp, color = GrayText,
+                        modifier = Modifier.plainClick { vm.cancelPending() }.padding(8.dp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        tr("执行勾选的"), fontSize = 13.sp, color = Color.White,
+                        modifier = Modifier.clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                            .plainClick { vm.confirmPending() }
+                            .padding(horizontal = 14.dp, vertical = 7.dp)
+                    )
+                }
+            }
+        }
+        // A3：一键撤销上一批（撤销以"批"为单位，直到下一批开始前都有效）
+        if (vm.canUndo && vm.pendingAiActions.isEmpty()) {
+            Text(
+                tr("↩️ 撤销刚才的修改"), fontSize = 12.sp, color = GrayText,
+                modifier = Modifier.padding(start = 16.dp, bottom = 2.dp)
+                    .plainClick { vm.undoLastBatch() }
+            )
         }
 
         // 快捷指令

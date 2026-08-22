@@ -104,7 +104,8 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     color = if (plan == "pro") MaterialTheme.colorScheme.primary else Ink
                 )
                 Text(
-                    tr("小鹿 AI 对话不限次数（防滥用限速：每天 100 次，正常使用碰不到）"),
+                    if (plan == "pro") tr("小鹿 AI 对话不限次（防滥用限速：每天 100 次，正常使用碰不到）")
+                    else tr("小鹿 AI 对话每天 10 次；Pro 不限次，还能换更聪明的小鹿"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
                 )
                 if (!loggedIn) Text(
@@ -118,16 +119,18 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             BenefitRow(tr("日历 / 待办 / 笔记 / 日记 / 表情"), free = true, pro = true)
             BenefitRow(tr("多端云同步"), free = true, pro = true)
             BenefitRow(tr("数据导出（JSON / 日历 / Markdown）"), free = true, pro = true)
-            BenefitRow(tr("小鹿 AI 对话（不限次）"), free = true, pro = true)
-            BenefitRow(tr("官方表情包（104 枚内置）"), free = true, pro = true)
+            BenefitRow(tr("小鹿 AI 对话（每天 10 次）"), free = true, pro = true)
+            BenefitRow(tr("提醒与闹钟 · 密码锁 · 小组件"), free = true, pro = true)
+            BenefitRow(tr("官方表情包（104 枚内置）· 九色主题"), free = true, pro = true)
 
             SectionLabel(tr("Pro 解锁"))
-            BenefitRow(tr("全部主题 · 每月新增 · 季节限定（规划中）"), free = false, pro = true)
+            BenefitRow(tr("小鹿 AI 对话不限次"), free = false, pro = true)
+            BenefitRow(tr("更聪明的小鹿（DeepSeek 高级模型）"), free = false, pro = true)
+            BenefitRow(tr("传照片生成整套主题（规划中）"), free = false, pro = true)
+            BenefitRow(tr("纹理纸 · 装饰插画 · 自定义图标（规划中）"), free = false, pro = true)
             BenefitRow(tr("全部表情包 · 每月新增（规划中）"), free = false, pro = true)
-            BenefitRow(tr("智能清单 · 自定义筛选（规划中）"), free = false, pro = true)
-            BenefitRow(tr("统计与年度回顾（规划中）"), free = false, pro = true)
-            BenefitRow(tr("更聪明的小鹿 · 不限量（双引擎：GPT + DeepSeek，自动择优）"), free = false, pro = true)
-            BenefitRow(tr("AI 造表情 / 主题（规划中）"), free = false, pro = true)
+            BenefitRow(tr("标签体系 · 智能清单（规划中）"), free = false, pro = true)
+            BenefitRow(tr("年度回顾长图 · 精美 PDF 导出（规划中）"), free = false, pro = true)
             Hairline()
             Text(
                 tr("内测期注册即送 Pro 试用。\n有建议或问题请联系：looka01@qq.com"),
@@ -507,6 +510,21 @@ fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
             Hairline()
+            // A2-6：第 5 关 —— 闹钟渠道被用户手动静音/降级时，闹钟会退化成安静通知
+            val alarmChOk = remember(tick) {
+                val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+                val ch = nm?.getNotificationChannel(NotifyScheduler.ALARM_CHANNEL)
+                ch == null || ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
+            }
+            CheckRow(tr("闹钟渠道"), alarmChOk, tr("被手动调低后闹钟不会全屏弹出；点击恢复为「紧急」")) {
+                runCatching {
+                    ctx.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+                        .putExtra(Settings.EXTRA_CHANNEL_ID, NotifyScheduler.ALARM_CHANNEL)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            }
+            Hairline()
 
             // ── 调度实况（2026-08-21 升级：查权限只能证明"能响"，这里证明"排上了没有"）
             val st = remember(tick) { NotifyScheduler.stats(ctx) }
@@ -540,8 +558,17 @@ fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
                 },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             ) { Text(tr("🔔 立即测试（10 秒后响）")) }
+            // A2：闹钟链路单独测 —— 通知通不代表闹钟通（渠道、全屏意图、前台服务是另一条链）
+            OutlinedButton(
+                onClick = {
+                    val ok = NotifyScheduler.fireAlarmTestIn10s(ctx)
+                    toast(ctx, if (ok) tr("已安排：10 秒后会响真闹钟（持续响铃），请锁屏等它")
+                               else tr("测试闹钟安排失败 —— 说明系统拦了闹钟权限"))
+                },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
+            ) { Text(tr("⏰ 测试闹钟（10 秒后持续响）")) }
             Text(
-                tr("收到 = 通知链路是通的，问题出在提醒数据或调度；收不到 = 系统在拦截，按上面四关逐项放行。"),
+                tr("收到 = 通知链路是通的，问题出在提醒数据或调度；收不到 = 系统在拦截，按上面五关逐项放行。"),
                 fontSize = 11.5.sp, color = GrayText, lineHeight = 18.sp,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )

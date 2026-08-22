@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TaskList::class, Task::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -50,6 +50,13 @@ abstract class LookaDb : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_diary_uid ON diary(uid)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_stamp_uid ON stamp(uid)")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_stamp_day ON stamp(day)")
+            }
+        }
+
+        /** v4 → v5（A2 真闹钟）：reminder.alarm —— 「当成闹钟」标记 */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE reminder ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

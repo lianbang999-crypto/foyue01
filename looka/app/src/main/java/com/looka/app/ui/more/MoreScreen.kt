@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.CloudDownload
 import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.SyncProblem
+import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
@@ -77,6 +78,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     var aboutDlg by remember { mutableStateOf(false) }
     var themeSheet by remember { mutableStateOf(false) }
     var checkingUpdate by remember { mutableStateOf(false) }
+    var dedupDlg by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.looka.app.util.UpdateManager.Info?>(null) }
     var updateMsg by remember { mutableStateOf<String?>(null) }
     // 自创主题 Pro 门禁：记录用户点的那个颜色，弹窗里就用它演示（看得见才想要）
@@ -176,6 +178,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
             NavRow(tr("备份与恢复"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
             Hairline()
+            // A1-6：清掉 AI 早期只会「建」时造成的重复日程（同标题同日同时间）
+            NavRow(tr("清理重复日程"), icon = Icons.Outlined.CleaningServices) { dedupDlg = true }
+            Hairline()
             NavRow(tr("提醒自检"), icon = Icons.Outlined.NotificationsActive) { nav.navigate("selfcheck") }
             Hairline()
             NavRow(tr("同步冲突记录"), icon = Icons.Outlined.SyncProblem) { nav.navigate("conflicts") }
@@ -189,6 +194,45 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
             Spacer(Modifier.height(60.dp))
         }
+    }
+
+    // A1-6：重复日程清理确认框（列出重复组，保最早、删其余；走同步网页端一并生效）
+    if (dedupDlg) {
+        val groups = remember(dedupDlg) { vm.duplicateEventGroups() }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { dedupDlg = false },
+            title = { Text(tr("清理重复日程"), fontSize = 16.sp) },
+            text = {
+                if (groups.isEmpty()) Text(tr("没有发现重复的日程 🦌"), fontSize = 13.sp)
+                else Column {
+                    Text(
+                        tr("发现 {0} 组重复（每组保留最早一条，删除其余 {1} 条）：",
+                            groups.size, groups.sumOf { it.size - 1 }),
+                        fontSize = 13.sp
+                    )
+                    groups.take(8).forEach { g ->
+                        Text(
+                            "· ${com.looka.app.util.Fmt.dateCn(g[0].startDay)} ${g[0].title} ×${g.size}",
+                            fontSize = 12.sp, color = GrayText,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    if (groups.size > 8) Text(tr("……等 {0} 组", groups.size), fontSize = 12.sp, color = GrayText)
+                }
+            },
+            confirmButton = {
+                if (groups.isNotEmpty()) TextButton(onClick = {
+                    vm.cleanDuplicateEvents { n ->
+                        android.widget.Toast.makeText(ctx, tr("已清理 {0} 条重复日程", n),
+                            android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    dedupDlg = false
+                }) { Text(tr("清理"), color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { dedupDlg = false }) { Text(tr("取消"), color = GrayText) }
+            }
+        )
     }
 
     // 九色主题选择
@@ -357,7 +401,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                             tr("· 灵感来自敦煌壁画「九色鹿」：一鹿九色，故有九套主题\n") +
                             tr("· 日历为中心：日程、任务、日记、印章围绕日期组织\n") +
                             tr("· 数据本机优先，登录后云同步（looka.foyue.org 网页端可用）\n") +
-                            tr("· 小鹿 AI 对话不限次数\n") +
+                            tr("· 小鹿 AI 助手（免费每天 10 次，Pro 不限次）\n") +
                             tr("· 独立原创品牌与设计"),
                     fontSize = 13.sp, lineHeight = 21.sp
                 )
