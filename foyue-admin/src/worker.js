@@ -376,6 +376,13 @@ export default {
           const rows = await env.STATS.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 50').all();
           return J(rows.results || []);
         }
+        // C4（§54）：崩溃列表 —— C1 补传链路修通后，这里终于能看到线上崩溃了
+        if (p === '/admin/api/crashes') {
+          const rows = await env.LOOKA.prepare(
+            'SELECT id, ver, model, substr(stack,1,2000) AS stack, created_at FROM crashes ORDER BY id DESC LIMIT 50'
+          ).all();
+          return J(rows.results || []);
+        }
       }
 
       if (request.method === 'POST') {

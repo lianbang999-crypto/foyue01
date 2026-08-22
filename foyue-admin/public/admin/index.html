@@ -56,6 +56,7 @@ input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
     <button data-t="sites">子站</button>
     <button data-t="retention">留存</button>
     <button data-t="audit">审计</button>
+    <button data-t="crashes">崩溃</button>
   </div>
   <div id="content"><div class="card">加载中…</div></div>
 </div>
@@ -64,6 +65,7 @@ input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
 
 <script>
 const $ = s => document.querySelector(s);
+const esc = x => String(x).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let KEY = sessionStorage.getItem('fy_admin_key') || '';
 
 function msg(t) { const m = $('#msg'); m.textContent = t; m.classList.remove('hidden'); setTimeout(() => m.classList.add('hidden'), 2600); }
@@ -268,3 +270,11 @@ if (KEY) boot(); else $('#loginView').classList.remove('hidden');
 </script>
 </body>
 </html>
+
+  async crashes() {
+    const list = await api('crashes');
+    const rows = list.map(c => `<tr><td>${fmt(c.created_at)}</td><td>${c.ver}</td><td>${esc(c.model || '')}</td>
+      <td><pre style="max-width:640px;white-space:pre-wrap;font-size:11px;margin:0">${esc((c.stack || '').slice(0, 1200))}</pre></td></tr>`).join('');
+    $('#content').innerHTML = `<div class="card"><h3>崩溃日志（C4 · 最近 50 条）</h3>
+      <table><tr><th>时间</th><th>版本</th><th>机型</th><th>堆栈</th></tr>${rows || '<tr><td colspan=4>暂无 —— 好消息</td></tr>'}</table></div>`;
+  },
