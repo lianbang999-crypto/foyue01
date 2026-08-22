@@ -1,0 +1,25 @@
+{
+  // 佛悦全站数据管理后台（P3，2026-08-22）
+  // 挂在主站 Worker 同 zone 的 /admin* 路径上（route 比主站的 custom_domain 更具体，优先命中）。
+  // 鉴权：FOYUE_ADMIN_KEY 强口令（用户决定暂不开 Cloudflare Access，等有稳定用户量再加）+
+  //       登录失败限流 + 全部写操作记 admin_audit。
+  "name": "foyue-admin",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-04-01",
+  "assets": { "directory": "./public", "run_worker_first": true },
+  "routes": [
+    { "pattern": "foyue.org/admin*", "zone_name": "foyue.org" }
+  ],
+  "d1_databases": [
+    // 全站埋点（events / daily_stats / admin_audit）
+    { "binding": "STATS", "database_name": "foyue-db",   "database_id": "be0b21ab-4549-45bc-ac38-5f9e1864d061" },
+    // 账号总库（users：自知录 + Looka 共用）
+    { "binding": "AUTH",  "database_name": "rixing-db",  "database_id": "790c4e52-07d0-40ad-a21f-402a4cbf85ff" },
+    // Looka 业务库（plans / pay_orders / antler / crashes …）
+    { "binding": "LOOKA", "database_name": "looka-db",   "database_id": "086f0ba9-853a-493a-9012-90d87f47933f" },
+    // 流通处（products / orders / cs_msgs）
+    { "binding": "SHOP",  "database_name": "foyue-shop", "database_id": "ce07b8bb-b115-437c-9278-5829b1b00f05" }
+  ],
+  // 密钥（npx wrangler secret put FOYUE_ADMIN_KEY）
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>佛悦 · 数据后台</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root { --ink:#1b1b1f; --gray:#8a8f8e; --hair:#e3e5e3; --bg:#f7f8f7; --ok:#2e7d32; --warn:#c62828; }
+* { box-sizing:border-box; margin:0; }
+body { font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif; color:var(--ink); background:var(--bg); }
+.wrap { max-width:960px; margin:0 auto; padding:20px 16px 60px; }
+h1 { font-size:18px; margin-bottom:14px; }
+h2 { font-size:14px; color:var(--gray); margin:18px 0 8px; font-weight:600; }
+.tabs { display:flex; gap:6px; margin:12px 0; flex-wrap:wrap; }
+.tabs button { border:.8px solid var(--hair); background:#fff; padding:6px 14px; border-radius:9px; cursor:pointer; font-size:13px; }
+.tabs button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.card { background:#fff; border:.8px solid var(--hair); border-radius:12px; padding:14px 16px; margin-bottom:12px; overflow-x:auto; }
+table { border-collapse:collapse; width:100%; font-size:13px; }
+th,td { border-bottom:.6px solid var(--hair); padding:6px 8px; text-align:left; white-space:nowrap; }
+th { color:var(--gray); font-weight:500; }
+.num { font-variant-numeric:tabular-nums; }
+.badge { font-size:11px; padding:1px 7px; border-radius:8px; background:#eef; }
+.badge.pro { background:#e3f2e3; color:var(--ok); }
+.badge.ban { background:#fde3e3; color:var(--warn); }
+.warn { color:var(--warn); font-weight:600; }
+.login { max-width:320px; margin:18vh auto; text-align:center; }
+.login input { width:100%; padding:10px 12px; border:.8px solid var(--hair); border-radius:10px; margin:10px 0; font-size:14px; }
+.login button, .act { background:var(--ink); color:#fff; border:0; padding:9px 22px; border-radius:10px; cursor:pointer; }
+.act.sm { padding:3px 10px; font-size:12px; }
+.act.ghost { background:#fff; color:var(--ink); border:.8px solid var(--hair); }
+.hidden { display:none; }
+input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
+.funnel { font-size:13px; color:var(--gray); }
+.funnel b { color:var(--ink); }
+#msg { position:fixed; left:50%; bottom:30px; transform:translateX(-50%); background:var(--ink); color:#fff;
+       padding:8px 16px; border-radius:10px; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div id="loginView" class="login hidden">
+  <h1>佛悦 · 数据后台</h1>
+  <input id="key" type="password" placeholder="管理口令" autocomplete="current-password">
+  <button onclick="doLogin()">进入</button>
+  <p id="loginErr" style="color:var(--warn);font-size:13px"></p>
+</div>
+
+<div id="app" class="wrap hidden">
+  <h1>佛悦 · 数据后台 <span id="attention" class="warn"></span></h1>
+  <div class="tabs">
+    <button data-t="overview" class="on">总览</button>
+    <button data-t="users">用户</button>
+    <button data-t="subs">订阅</button>
+    <button data-t="health">健康</button>
+    <button data-t="sites">子站</button>
+    <button data-t="audit">审计</button>
+  </div>
+  <div id="content"><div class="card">加载中…</div></div>
+</div>
+
+<div id="msg" class="hidden"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let KEY = sessionStorage.getItem('fy_admin_key') || '';
+
+function msg(t) { const m = $('#msg'); m.textContent = t; m.classList.remove('hidden'); setTimeout(() => m.classList.add('hidden'), 2600); }
+async function api(path, body) {
+  const r = await fetch('/admin/api/' + path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Authorization': 'Bearer ' + KEY, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (r.status === 401) { sessionStorage.removeItem('fy_admin_key'); location.reload(); throw 0; }
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || r.status);
+  return d;
+}
+async function doLogin() {
+  const key = $('#key').value.trim();
+  const r = await fetch('/admin/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
+  if (r.ok) { KEY = key; sessionStorage.setItem('fy_admin_key', key); boot(); }
+  else $('#loginErr').textContent = (await r.json()).error || '失败';
+}
+$('#key')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+const fmt = ms => ms ? new Date(ms).toLocaleString('zh-CN', { hour12: false }).slice(0, 17) : '—';
+const day = ms => ms ? new Date(ms).toLocaleDateString('zh-CN') : '—';
+// 账号脱敏：后台自己人看也不必满屏明文
+const maskAcc = a => a.length > 7 ? a.slice(0, 3) + '***' + a.slice(-4) : a;
+
+const KIND_CN = { register:'新注册', app_open:'活跃', apk_download:'APK下载', pay:'新付费', ai_chat:'AI调用', crash:'崩溃', landing_view:'落地页' };
+
+const views = {
+  async overview() {
+    const d = await api('overview');
+    $('#attention').textContent = d.attention.unclaimed_orders > 0 ? `⚠️ 未认领订单 ${d.attention.unclaimed_orders} 笔` : '';
+    const rows = Object.keys(KIND_CN).map(k =>
+      `<tr><td>${KIND_CN[k]}</td><td class="num">${d.today[k]}</td><td class="num">${d.yest[k]}</td><td class="num">${d.d7[k]}</td></tr>`).join('');
+    const f = d.funnel30;
+    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+    return `
+    <div class="card"><h2>今天 / 昨天 / 7 日</h2>
+      <table><tr><th></th><th>今天</th><th>昨天</th><th>7日</th></tr>${rows}</table></div>
+    <div class="card"><h2>转化漏斗（30 日）</h2>
+      <p class="funnel">落地页 <b>${f.landing_view}</b> ─${pct(f.apk_download, f.landing_view)}→ 下载 <b>${f.apk_download}</b>
+      ─${pct(f.register, f.apk_download)}→ 注册 <b>${f.register}</b> ─${pct(f.pay, f.register)}→ 付费 <b>${f.pay}</b></p></div>
+    <div class="card"><h2>钱（本月）</h2>
+      <p>收入 <b>¥${d.money.income_month}</b> · 订阅中 <b>${d.money.subs_active}</b> · 7 日内到期 <b>${d.money.expiring_7d}</b>
+      · 账号总数 <b>${d.total_users}</b></p></div>`;
+  },
+
+  async users(q) {
+    const list = await api('users' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    const rows = list.map(u => `<tr>
+      <td>${u.id}</td><td title="${u.kind}">${maskAcc(u.account)}</td>
+      <td><span class="badge ${u.plan === 'pro' ? 'pro' : ''}">${u.plan}</span>${u.banned_at ? ' <span class="badge ban">封禁</span>' : ''}</td>
+      <td>${(u.created_at || '').slice(0, 10)}</td><td>${u.reg_site || '—'}</td><td>${fmt(u.last_seen_at)}</td>
+      <td>
+        <button class="act sm ghost" onclick="grantPro(${u.id})">补开Pro</button>
+        <button class="act sm ghost" onclick="banUser(${u.id}, ${u.banned_at ? 'true' : 'false'})">${u.banned_at ? '解封' : '封禁'}</button>
+      </td></tr>`).join('');
+    return `<div class="card">
+      <input class="q" id="uq" placeholder="搜账号…" value="${q || ''}" onkeydown="if(event.key==='Enter')render('users',this.value)">
+      <table style="margin-top:8px"><tr><th>ID</th><th>账号</th><th>状态</th><th>注册</th><th>来源</th><th>最后活跃</th><th>操作</th></tr>${rows}</table>
+      <p style="font-size:11px;color:var(--gray);margin-top:8px">🔒 只显示元数据；笔记 / 日记 / 日程内容永不出现在后台。</p></div>`;
+  },
+
+  async subs() {
+    const d = await api('subs');
+    const un = d.unclaimed.map(o => `<tr><td>${o.order_no}</td><td>¥${o.amount}</td><td>${fmt(o.handled_at)}</td>
+      <td><button class="act sm" onclick="bindOrder('${o.order_no}')">绑定到账号</button></td></tr>`).join('');
+    const os = d.orders.map(o => `<tr><td>${o.channel}</td><td>${o.order_no}</td><td>${o.user_id ?? '<span class=warn>未认领</span>'}</td>
+      <td>¥${o.amount}</td><td>${fmt(o.handled_at)}</td></tr>`).join('');
+    const ex = d.expiring.map(e => `<tr><td>${e.user_id}</td><td>${day(e.expires_at)}</td></tr>`).join('');
+    return `
+    ${d.unclaimed.length ? `<div class="card"><h2 class="warn">⚠️ 未认领订单（有人付了钱没拿到货）</h2>
+      <table><tr><th>订单号</th><th>金额</th><th>时间</th><th></th></tr>${un}</table></div>` : ''}
+    <div class="card"><h2>生成兑换码</h2>
+      <button class="act sm ghost" onclick="genCode(31)">31 天码</button>
+      <button class="act sm ghost" onclick="genCode(366)">366 天码</button>
+      <span id="codeOut" style="font-size:12px;margin-left:8px"></span></div>
+    <div class="card"><h2>订单流水（近 50）</h2>
+      <table><tr><th>渠道</th><th>订单号</th><th>用户</th><th>金额</th><th>时间</th></tr>${os}</table></div>
+    <div class="card"><h2>7 日内到期</h2><table><tr><th>用户</th><th>到期日</th></tr>${ex || '<tr><td colspan=2>无</td></tr>'}</table></div>`;
+  },
+
+  async health() {
+    const d = await api('health');
+    const cv = d.crash_by_ver.map(c => `<tr><td>${c.ver}</td><td class="num">${c.c}</td></tr>`).join('');
+    const failRate = d.ai_chat_24h ? (d.premium_fail_24h / d.ai_chat_24h * 100).toFixed(1) + '%' : '—';
+    return `<div class="card"><h2>24 小时</h2>
+      <p>AI 调用 <b>${d.ai_chat_24h}</b> · 高级模型失败 <b class="${d.premium_fail_24h > 20 ? 'warn' : ''}">${d.premium_fail_24h}</b>（失败率 ${failRate}）
+      · 崩溃 <b class="${d.crashes_24h > 5 ? 'warn' : ''}">${d.crashes_24h}</b></p>
+      ${cv ? `<h2>崩溃按版本</h2><table><tr><th>版本</th><th>次数</th></tr>${cv}</table>` : ''}</div>`;
+  },
+
+  async sites() {
+    const d = await api('sites');
+    return `<div class="card">
+      <p>账号总数（全站共享）<b>${d.accounts_total}</b></p>
+      <p>Looka 30 日注册 <b>${d.looka.register_30d}</b></p>
+      <p>流通处 订单 <b>${d.shop.orders_total}</b> · 客服消息 <b>${d.shop.cs_msgs}</b></p>
+      <p style="font-size:12px;color:var(--gray)">${d.note}</p></div>`;
+  },
+
+  async audit() {
+    const list = await api('audit');
+    const rows = list.map(a => `<tr><td>${fmt(a.ts)}</td><td>${a.action}</td><td>${a.target}</td><td style="white-space:normal;font-size:12px">${a.detail}</td></tr>`).join('');
+    return `<div class="card"><table><tr><th>时间</th><th>操作</th><th>对象</th><th>详情</th></tr>${rows || '<tr><td colspan=4>暂无</td></tr>'}</table></div>`;
+  }
+};
+
+// —— 写操作全部二次确认 ——
+async function grantPro(uid) {
+  const days = prompt(`给用户 ${uid} 补开 Pro，天数：`, '31');
+  if (!days) return;
+  if (!confirm(`确认给用户 ${uid} 补开 ${days} 天 Pro？`)) return;
+  try { const r = await api('grant', { user_id: uid, days: +days }); msg('已开通至 ' + day(r.expires_at)); render('users'); }
+  catch (e) { msg(e.message); }
+}
+async function banUser(uid, unban) {
+  if (!confirm(unban ? `解封用户 ${uid}？` : `封禁用户 ${uid}？其会话将被踢出`)) return;
+  try { await api('ban', { user_id: uid, unban }); msg('完成'); render('users'); } catch (e) { msg(e.message); }
+}
+async function bindOrder(no) {
+  const uid = prompt(`把订单 ${no} 绑定到哪个用户 ID？`);
+  if (!uid) return;
+  if (!confirm(`确认绑定订单 ${no} → 用户 ${uid} 并开通对应时长？`)) return;
+  try { await api('bind-order', { order_no: no, user_id: +uid }); msg('已绑定并开通'); render('subs'); } catch (e) { msg(e.message); }
+}
+async function genCode(days) {
+  if (!confirm(`生成 1 张 ${days} 天订阅码？`)) return;
+  try { const r = await api('gencode', { days, count: 1 }); $('#codeOut').textContent = r.codes.join(' '); msg('已生成'); render('audit'); }
+  catch (e) { msg(e.message); }
+}
+
+let cur = 'overview';
+async function render(t, arg) {
+  cur = t || cur;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === cur));
+  $('#content').innerHTML = '<div class="card">加载中…</div>';
+  try { $('#content').innerHTML = await views[cur](arg); }
+  catch (e) { $('#content').innerHTML = `<div class="card warn">加载失败：${e.message || e}</div>`; }
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => render(b.dataset.t));
+
+async function boot() {
+  $('#loginView').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  render('overview');
+}
+if (KEY) boot(); else $('#loginView').classList.remove('hidden');
+</script>
+</body>
+</html>
