@@ -710,6 +710,48 @@ async function route(request, env, ctx) {
     return json({ ec: 200, em: '' });
   }
 
+  // ===== Ko-fi Webhook（无需登录；路径带随机段）=====
+  // Ko-fi 以 application/x-www-form-urlencoded 发送，data 字段是 JSON 字符串。
+  // 鉴权：payload 里的 verification_token 必须等于我们存的 KOFI_VERIFY_TOKEN——
+  // 未配置 token 时只记录不开通（防伪造）。始终 200（否则 Ko-fi 反复重试）。
+  if (env.KOFI_HOOK_SECRET && p === `/api/pay/kofi/${env.KOFI_HOOK_SECRET}` && m === 'POST') {
+    ctx.waitUntil((async () => {
+      try {
+        const form = await request.formData();
+        const d = JSON.parse(form.get('data') || '{}');
+        await track(env, 'looka', 'kofi_hook', null, request, { type: String(d.type || '').slice(0, 20) });
+        // 验证令牌不符 = 伪造，直接丢弃
+        if (!env.KOFI_VERIFY_TOKEN || d.verification_token !== env.KOFI_VERIFY_TOKEN) return;
+        if (!['Subscription', 'Donation'].includes(d.type)) return;   // Shop Order 等先不处理
+        const txId = String(d.kofi_transaction_id || d.message_id || '');
+        if (!txId) return;
+        // 幂等
+        const ins = await env.DB.prepare(
+          `INSERT OR IGNORE INTO pay_orders (channel, order_no, user_id, amount, raw, handled_at)
+           VALUES ('kofi', ?1, NULL, ?2, ?3, ?4)`
+        ).bind(txId, String(d.amount || ''), JSON.stringify(d).slice(0, 4096), Date.now()).run();
+        if (!ins.meta.changes) return;
+        // 归属：Ko-fi 自带付款人邮箱 —— 直接匹配账号
+        const email = String(d.email || '').trim().toLowerCase();
+        let uid = null;
+        if (email && isEmail(email)) {
+          const u = await env.AUTH_DB.prepare('SELECT id FROM users WHERE account = ?1').bind(email).first();
+          if (u) uid = u.id;
+        }
+        if (!uid) return;   // 留在 pay_orders 待后台手动绑定
+        // 月付订阅每次 31 天；单次打赏 ≥$7 也给 31 天（让利原则）
+        const amt = Number(d.amount || 0);
+        if (d.type === 'Subscription' || amt >= 7) {
+          await grantPro(env, uid, 31);
+          await track(env, 'looka', 'pay', uid, null, { amt: String(d.amount), ch: 'kofi' });
+          await env.DB.prepare("UPDATE pay_orders SET user_id = ?1 WHERE channel='kofi' AND order_no = ?2")
+            .bind(uid, txId).run();
+        }
+      } catch (e) { console.log('kofi hook', String(e)); }
+    })());
+    return new Response('ok', { status: 200 });
+  }
+
   // ============ 以下都需要登录 ============
   const user = await getUser(request, env);
   if (!user) return json({ error: '未登录或会话已过期' }, 401);
