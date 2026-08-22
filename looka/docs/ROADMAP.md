@@ -687,3 +687,30 @@
 - 日详情面板常驻「日记」行，空白日子显示「随便写点什么吧 ✎」邀请（对齐 Lifebear 的 メモなど…）
 - 🔴 **更正 v1.6.0 的一处误判**：今天=浅灰底、选中日=黑描边（两者分工，上一版误合成灰底导致撞色）
 - 详见 FEATURE-PLAN §三十七；待拍板：印章模式是否跟随 Lifebear 退回月历
+
+## v1.7.0 (14) — 2026-08-22 · 依据 EXECUTION.md 执行 P1+P2 全部 42 项
+
+### P1 埋点（全站数据地基，已实测落库）
+- foyue-db 三表（events/daily_stats/ip_salts）+ users 加 last_seen_at/reg_site
+- 8 个接入点：APK下载/落地页/注册/登录/日活/付费/AI调用/崩溃；waitUntil 全异步
+- 隐私三红线：IP 每日盐哈希前16位、UA 只归类、明细 90 天自动删；隐私政策同步补条款
+- 实测：landing_view / app_open / ai_chat 已进 events 表
+
+### P2-A 订阅闭环（13步→3步）
+- PlanState 唯一真值源收编 5 个读取口；AccountScreen:312 根因行修复（真值落盘）
+- onResume 5分钟节流刷新 + /api/sync 捎带 plan + 网页 visibilitychange
+- **Cron `*/5` 拉单对账已生效**（webhook 未配也最慢 5 分钟自动开通）
+- 订阅页三态卡（等待中每 15 秒轮询→已开通→超 2 分钟才出认领）；认领入口撤出更多页
+- 更多页「升级 Pro·12元/月」一键直达；兑换码折叠为「有兑换码？」
+
+### P2-B/C 月历与网页（两端同步）
+- 白灰按月份奇偶交替（滚动不再闪变）；水印叠格子之上一行内；数据窗口 ±2 月
+- 网页：去掉 transparent 特异度事故；表单 wrap；弹窗折叠「显示详细设置」；100dvh + JS 实测栏高
+
+### P2-D/E AI
+- AiAction 增 remind_at/remind_before；「X点提醒我」= X 点响；回复报出提醒时刻
+- 时间已过明说 + 自动退化为开始时提醒（不再静默丢弃）
+- premium 重试1次 + 25s 超时 + console.log + 失败原因透传气泡 + health 增 premium_fail_24h
+
+线上验证：version 14/1.7.0 ✓ 双 Cron ✓ sync 带 plan ✓ premium 1511ms ✓ 埋点落库 ✓ 单测过 ✓
+剩余：P0（用户操作 7 项）/ P3 后台 / P4 对齐 / P5 机制 / P6 上线前 —— 见 EXECUTION.md

@@ -10,7 +10,7 @@
 > 3. 新的想法先写进 `FEATURE-PLAN.md`，**确认要做**才登记到这里
 > 4. 发版前把本文件从头扫一遍
 >
-> 最后更新：2026-08-22 · 对应版本 v1.6.1 (13)
+> 最后更新：2026-08-22 · 对应版本 **v1.7.0 (14)** —— P1 全部 + P2 全部已完成并实测（42 项）
 
 ---
 
@@ -34,18 +34,18 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P1-1 | `foyue-db` 建表：`events` / `daily_stats` / `ip_salts`（DDL 见 §43 0.1） | [ ] |
-| P1-2 | `rixing-db.users` 加列：`last_seen_at INTEGER` / `reg_site TEXT` | [ ] |
-| P1-3 | Looka `wrangler.jsonc` 增加 D1 绑定 `STATS → foyue-db` | [ ] |
-| P1-4 | worker.js 写入 `track()` / `dailySalt()` / `sha256hex()` 三个辅助函数 | [ ] |
-| P1-5 | 接入点 a：`/dl/looka-latest.apk` → `apk_download`（🔴 当前完全空白） | [ ] |
-| P1-6 | 接入点 b/c：注册 / 登录 → `register` / `login` + 写 `reg_site` | [ ] |
-| P1-7 | 接入点 d：`getUser()` 后当日首次 → `app_open` + 更新 `last_seen_at`（每天最多写一次） | [ ] |
-| P1-8 | 接入点 e/f/g：`pay` / `ai_chat` / `crash` | [ ] |
-| P1-9 | 接入点 h：网页未登录首页 → `POST /api/ev` 记 `landing_view` | [ ] |
-| P1-10 | 每日 Cron：汇总 `daily_stats` + 清 90 天前 events + 清 30 天前 salts | [ ] |
-| P1-11 | 🔴 **隐私政策补「运行数据」条款**（文案见 §43 0.6） | [ ] |
-| P1-12 | 全部 `track()` 用 `ctx.waitUntil()` 调用，确认不占用户等待时间 | [ ] |
+| P1-1 | `foyue-db` 建表：`events` / `daily_stats` / `ip_salts`（DDL 见 §43 0.1） | [x] |
+| P1-2 | `rixing-db.users` 加列：`last_seen_at INTEGER` / `reg_site TEXT` | [x] |
+| P1-3 | Looka `wrangler.jsonc` 增加 D1 绑定 `STATS → foyue-db` | [x] |
+| P1-4 | worker.js 写入 `track()` / `dailySalt()` / `sha256hex()` 三个辅助函数 | [x] |
+| P1-5 | 接入点 a：`/dl/looka-latest.apk` → `apk_download`（🔴 当前完全空白） | [x] |
+| P1-6 | 接入点 b/c：注册 / 登录 → `register` / `login` + 写 `reg_site` | [x] |
+| P1-7 | 接入点 d：`getUser()` 后当日首次 → `app_open` + 更新 `last_seen_at`（每天最多写一次） | [x] |
+| P1-8 | 接入点 e/f/g：`pay` / `ai_chat` / `crash` | [x] |
+| P1-9 | 接入点 h：网页未登录首页 → `POST /api/ev` 记 `landing_view` | [x] |
+| P1-10 | 每日 Cron：汇总 `daily_stats` + 清 90 天前 events + 清 30 天前 salts | [x] |
+| P1-11 | 🔴 **隐私政策补「运行数据」条款**（文案见 §43 0.6） | [x] |
+| P1-12 | 全部 `track()` 用 `ctx.waitUntil()` 调用，确认不占用户等待时间 | [x] |
 
 ---
 
@@ -57,18 +57,18 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P2-A1 | `Prefs` 增加 `planExpiry` / `planSyncedAt`；`isPro` 本地即可判过期 | [ ] |
-| P2-A2 | 新建 `PlanState`（Compose State），**收编全部 5 个读取口** | [ ] |
-| P2-A3 | 🔴 `AccountScreen.kt:312` 改为 `apply()` 落盘（**根因那一行**：读到真值却不记下来） | [ ] |
-| P2-A4 | 🔴 认领成功后 `apply()`（App `ExtraScreens:280` + 网页 `mClaim` 都漏了 refresh） | [ ] |
-| P2-A5 | 新增 `onResume` 刷新（>5 分钟节流）—— **让自动开通看起来是即时的** | [ ] |
-| P2-A6 | `/api/sync` 响应带 `plan` + `plan_expiry`（免费获得持续刷新通道） | [ ] |
-| P2-A7 | 网页 `visibilitychange` 监听 + `isPro` 统一判定 | [ ] |
-| P2-A8 | `wrangler.jsonc` Cron 加 `*/5 * * * *` 拉单对账，`scheduled` 按表达式分流<br>（**即使 Webhook 永不配置，最慢 5 分钟也自动开通**） | [ ] |
-| P2-A9 | 订阅页「等待付款」三态卡片：等待中 / ✅已开通 / 超时后才给认领入口 | [ ] |
-| P2-A10 | 认领入口从「更多」页**撤下**，只在超时后出现（平时显示 = 暗示流程会坏） | [ ] |
-| P2-A11 | 更多页加一行「升级 Pro · 12元/月」直达付款（入口 3 层 → 1 层） | [ ] |
-| P2-A12 | 兑换码改文案「有兑换码？」收进订阅页折叠区（保留送人场景） | [ ] |
+| P2-A1 | `Prefs` 增加 `planExpiry` / `planSyncedAt`；`isPro` 本地即可判过期 | [x] |
+| P2-A2 | 新建 `PlanState`（Compose State），**收编全部 5 个读取口** | [x] |
+| P2-A3 | 🔴 `AccountScreen.kt:312` 改为 `apply()` 落盘（**根因那一行**：读到真值却不记下来） | [x] |
+| P2-A4 | 🔴 认领成功后 `apply()`（App `ExtraScreens:280` + 网页 `mClaim` 都漏了 refresh） | [x] |
+| P2-A5 | 新增 `onResume` 刷新（>5 分钟节流）—— **让自动开通看起来是即时的** | [x] |
+| P2-A6 | `/api/sync` 响应带 `plan` + `plan_expiry`（免费获得持续刷新通道） | [x] |
+| P2-A7 | 网页 `visibilitychange` 监听 + `isPro` 统一判定 | [x] |
+| P2-A8 | `wrangler.jsonc` Cron 加 `*/5 * * * *` 拉单对账，`scheduled` 按表达式分流<br>（**即使 Webhook 永不配置，最慢 5 分钟也自动开通**） | [x] |
+| P2-A9 | 订阅页「等待付款」三态卡片：等待中 / ✅已开通 / 超时后才给认领入口 | [x] |
+| P2-A10 | 认领入口从「更多」页**撤下**，只在超时后出现（平时显示 = 暗示流程会坏） | [x] |
+| P2-A11 | 更多页加一行「升级 Pro · 12元/月」直达付款（入口 3 层 → 1 层） | [x] |
+| P2-A12 | 兑换码改文案「有兑换码？」收进订阅页折叠区（保留送人场景） | [x] |
 
 ### P2-B 月历显示（v1.6.0 我引入的回归）
 
@@ -76,10 +76,10 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P2-B1 | 白/灰改**按月份奇偶交替**，与滚动位置无关（`inMonth` 概念在连续滚动里本就不成立） | [ ] |
-| P2-B2 | 月份水印改画在**格子之上**、低透明度、缩到一行装得下（现在被格子底色盖住，只漏出顶部 30%） | [ ] |
-| P2-B3 | 数据窗口 ±1 月 → **±2 月**，并改用**视口中心日**做锚（少一层延迟传导） | [ ] |
-| P2-B4 | 网页端同步：去掉 `.week-row .day-cell{background:transparent}`（它把 `.dim`/`.sel` 一起干掉了） | [ ] |
+| P2-B1 | 白/灰改**按月份奇偶交替**，与滚动位置无关（`inMonth` 概念在连续滚动里本就不成立） | [x] |
+| P2-B2 | 月份水印改画在**格子之上**、低透明度、缩到一行装得下（现在被格子底色盖住，只漏出顶部 30%） | [x] |
+| P2-B3 | 数据窗口 ±1 月 → **±2 月**，并改用**视口中心日**做锚（少一层延迟传导） | [x] |
+| P2-B4 | 网页端同步：去掉 `.week-row .day-cell{background:transparent}`（它把 `.dim`/`.sel` 一起干掉了） | [x] |
 
 ### P2-C 网页端 4 个可证 bug
 
@@ -87,10 +87,10 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P2-C1 | **W1** `.frow-inline{flex-wrap:wrap}` + 子项 `min-width:140px`（四个字段挤在一行，时间框被裁成 `09:0`） | [ ] |
-| P2-C2 | **W2** 弹窗折叠：只留 标题/日期/全天，其余进「显示详细设置」——**与 App 同一套措辞** | [ ] |
-| P2-C3 | **W3** flex 撑满 + `100dvh`，顶栏/底栏高度用 JS 实测写进 CSS 变量（弃用 `calc(100vh - 210px)` 这个拍脑袋常数） | [ ] |
-| P2-C4 | **W4** 同 P2-B4（CSS 特异度覆盖事故） | [ ] |
+| P2-C1 | **W1** `.frow-inline{flex-wrap:wrap}` + 子项 `min-width:140px`（四个字段挤在一行，时间框被裁成 `09:0`） | [x] |
+| P2-C2 | **W2** 弹窗折叠：只留 标题/日期/全天，其余进「显示详细设置」——**与 App 同一套措辞** | [x] |
+| P2-C3 | **W3** flex 撑满 + `100dvh`，顶栏/底栏高度用 JS 实测写进 CSS 变量（弃用 `calc(100vh - 210px)` 这个拍脑袋常数） | [x] |
+| P2-C4 | **W4** 同 P2-B4（CSS 特异度覆盖事故） | [x] |
 
 ### P2-D AI 提醒（最影响信任：说了会提醒，结果没响）
 
@@ -98,11 +98,11 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P2-D1 | `AiAction` 增加 `remindAtMin` / `remindMinBefore` 字段 | [ ] |
-| P2-D2 | 提示词教会区分：「10:55 开会」= 日程；**「10:55 提醒我」= 提醒时刻就是 10:55**（`minutesBefore=0`） | [ ] |
-| P2-D3 | AI 回复必须报出提醒时刻：「✅ 已添加：10:55 吃药 · **10:55 提醒你**」 | [ ] |
-| P2-D4 | 🔴 提醒时间已过去要**明说**，不再静默 `continue`（`NotifyScheduler.kt:106`） | [ ] |
-| P2-D5 | 提醒时刻已过但日程在未来 → 自动退化成「日程开始时提醒」 | [ ] |
+| P2-D1 | `AiAction` 增加 `remindAtMin` / `remindMinBefore` 字段 | [x] |
+| P2-D2 | 提示词教会区分：「10:55 开会」= 日程；**「10:55 提醒我」= 提醒时刻就是 10:55**（`minutesBefore=0`） | [x] |
+| P2-D3 | AI 回复必须报出提醒时刻：「✅ 已添加：10:55 吃药 · **10:55 提醒你**」 | [x] |
+| P2-D4 | 🔴 提醒时间已过去要**明说**，不再静默 `continue`（`NotifyScheduler.kt:106`） | [x] |
+| P2-D5 | 提醒时刻已过但日程在未来 → 自动退化成「日程开始时提醒」 | [x] |
 
 ### P2-E AI 高级模型可观测
 
@@ -110,11 +110,11 @@
 
 | | 项 | 状态 |
 |---|---|---|
-| P2-E1 | 服务端 `console.log('premium fail', model, status, err)` | [ ] |
-| P2-E2 | **失败重试一次再回落**（实测存在 12 秒长尾，一次重试大概率救回） | [ ] |
-| P2-E3 | OpenRouter 调用加 `AbortSignal.timeout(25000)` | [ ] |
-| P2-E4 | `fell_back.detail` 透传到客户端，气泡下方显示真实原因 | [ ] |
-| P2-E5 | `/api/admin/health` 增加 `premium_fail_24h` | [ ] |
+| P2-E1 | 服务端 `console.log('premium fail', model, status, err)` | [x] |
+| P2-E2 | **失败重试一次再回落**（实测存在 12 秒长尾，一次重试大概率救回） | [x] |
+| P2-E3 | OpenRouter 调用加 `AbortSignal.timeout(25000)` | [x] |
+| P2-E4 | `fell_back.detail` 透传到客户端，气泡下方显示真实原因 | [x] |
+| P2-E5 | `/api/admin/health` 增加 `premium_fail_24h` | [x] |
 
 ---
 

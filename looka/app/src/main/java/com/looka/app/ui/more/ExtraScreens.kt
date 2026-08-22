@@ -35,6 +35,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -82,7 +83,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val loggedIn = remember(vm.settingsVersion) { Api.authed(ctx) }
-    val plan = remember(vm.settingsVersion) { Prefs.plan(ctx) }
+    val plan = com.looka.app.data.PlanState.plan   // P2-A2：唯一真值源，变了自动重组
     var code by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var claimDlg by remember { mutableStateOf(false) }
@@ -129,7 +130,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             BenefitRow(tr("AI 造表情 / 主题（规划中）"), free = false, pro = true)
             Hairline()
             Text(
-                tr("内测期间全部功能免费开放，暂不收费。\n有建议或问题请联系：looka01@qq.com"),
+                tr("内测期注册即送 Pro 试用。\n有建议或问题请联系：looka01@qq.com"),
                 fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             )
@@ -138,16 +139,58 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             // 中文走 /api/pay/intent 拿 LK 短码（备注已预填，付款后服务端自动开通）；
             // 邮箱进 remark 的旧方案废弃 —— 不把用户隐私暴露到第三方平台。
             if (loggedIn) {
-                val zh = com.looka.app.util.I18n.lang.startsWith("zh")
-                OutlinedButton(
+                // P2-A9：支付等待三态。pendingSince>0 = 用户已跳去付款；
+                // 等待期间每 15 秒强刷一次订阅状态（服务端 webhook/对账开通后立即可见）。
+                var payTick by remember { mutableStateOf(0) }
+                val pendingSince = remember(payTick, vm.settingsVersion) { Prefs.payPendingSince(ctx) }
+                val isPro = com.looka.app.data.PlanState.isPro
+                LaunchedEffect(pendingSince) {
+                    while (Prefs.payPendingSince(ctx) > 0 && !com.looka.app.data.PlanState.isPro) {
+                        kotlinx.coroutines.delay(15_000)
+                        com.looka.app.data.PlanState.refresh(ctx, force = true)
+                        payTick++
+                    }
+                }
+                if (pendingSince > 0 && isPro) {
+                    // 成功卡：看到一次就够了，清掉 pending
+                    LaunchedEffect(Unit) { Prefs.setPayPendingSince(ctx, 0L) }
+                    Text(
+                        tr("✅ Pro 已开通，有效期至 {0}", Fmt.dateCn(com.looka.app.data.PlanState.expiry / 86_400_000L)),
+                        fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                } else if (pendingSince > 0) {
+                    val waited = System.currentTimeMillis() - pendingSince
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        Text(
+                            tr("⏳ 正在等待付款结果…付完款回到这里就行，通常几秒到账"),
+                            fontSize = 12.sp, color = GrayText, lineHeight = 18.sp
+                        )
+                        // A10：认领入口只在超过 2 分钟仍未到账时才出现 ——
+                        // 平时常驻等于暗示"这个流程会出问题"
+                        if (waited > 2 * 60_000) {
+                            TextButton(onClick = { claimDlg = true }) {
+                                Text(tr("还没收到？我已付款，帮我找订单"), fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        TextButton(onClick = { Prefs.setPayPendingSince(ctx, 0L); payTick++ }) {
+                            Text(tr("我没有付款，关闭提示"), fontSize = 11.sp, color = GrayText)
+                        }
+                    }
+                }
+                if (!isPro) OutlinedButton(
                     onClick = {
                         scope.launch {
+                            val zh = com.looka.app.util.I18n.lang.startsWith("zh")
                             val url = if (zh) {
                                 runCatching { Api.payIntent(ctx).optString("url") }
                                     .getOrNull()?.takeIf { it.isNotBlank() }
                                     // 服务端不可达时退回无备注的裸链接（还有订单号认领兜底）
                                     ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
                             } else "https://ko-fi.com/looka2026/tiers"
+                            Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
+                            payTick++
                             runCatching {
                                 ctx.startActivity(android.content.Intent(
                                     android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
@@ -156,20 +199,15 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) { Text(tr("支持小鹿 · 开通 Pro"), fontSize = 13.sp) }
-                Text(
-                    tr("付款后回到这里，稍等片刻会自动开通；没动静就点下面「我已付款」。"),
-                    fontSize = 11.sp, color = GrayText, lineHeight = 17.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-                // 自助认领：唯一不依赖备注的兜底
-                TextButton(onClick = { claimDlg = true }, modifier = Modifier.padding(horizontal = 8.dp)) {
-                    Text(tr("我已付款，认领订单"), fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary)
-                }
             }
 
-            // 兑换码
-            Row(
+            // A12：兑换码收进折叠区（主流程是自动开通，码只服务"送人"场景）
+            var showRedeem by remember { mutableStateOf(false) }
+            if (!showRedeem) TextButton(
+                onClick = { showRedeem = true },
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) { Text(tr("有兑换码？"), fontSize = 12.sp, color = GrayText) }
+            if (showRedeem) Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -185,7 +223,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                             busy = true
                             try {
                                 val r = Api.redeem(ctx, code.trim())
-                                Prefs.setPlan(ctx, r.optString("plan", "pro"))
+                                com.looka.app.data.PlanState.apply(ctx, r.optString("plan", "pro"), r.optLong("expires_at", 0L))
                                 vm.bumpSettings()
                                 toast(ctx, tr("兑换成功，已升级 Pro 🎉"))
                                 code = ""
@@ -277,7 +315,10 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     scope.launch {
                         busy = true
                         try {
-                            Api.payClaim(ctx, claimNo.trim())
+                            val r = Api.payClaim(ctx, claimNo.trim())
+                            com.looka.app.data.PlanState.apply(
+                                ctx, r.optString("plan", "pro"), r.optLong("expires_at", 0L))
+                            Prefs.setPayPendingSince(ctx, 0L)
                             vm.bumpSettings()
                             toast(ctx, tr("认领成功，Pro 已开通 🎉"))
                             claimDlg = false; claimNo = ""

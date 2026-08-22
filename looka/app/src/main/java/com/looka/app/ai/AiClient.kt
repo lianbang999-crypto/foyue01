@@ -67,7 +67,13 @@ object AiClient {
             lastFellBack = resp.optJSONObject("fell_back")?.let { fb ->
                 if (fb.optInt("need", 0) > 0)
                     tr("本月高级模型体验次数已用完，已切回标准模型（开通 Pro 不限量）")
-                else tr("高级模型暂时不可用，已用标准模型回答")
+                else {
+                    // P2-E4：透传真实原因 —— "暂时不可用"不能再是黑箱（§三十八③）
+                    val detail = fb.optString("detail").ifBlank { fb.optString("error") }
+                    if (detail.isNotBlank())
+                        tr("高级模型暂时不可用（{0}），已用标准模型回答", detail)
+                    else tr("高级模型暂时不可用，已用标准模型回答")
+                }
             }
             val content = resp.optString("content")
                 .replace(Regex("(?s)<think>.*?</think>"), "").trim()

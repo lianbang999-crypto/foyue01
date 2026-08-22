@@ -30,8 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -197,8 +195,9 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
             0 -> {
                 // 连续滚动的滑动窗口：标题月 ±1 月。视口约 6 周，±1 月足够盖住可见区，
                 // 滚动带动 calMonth 变化时窗口自动跟着挪 —— 不会"滚过去日程消失"，也不会展开十年。
-                occRangeStart = vm.calMonth.minusMonths(1).atDay(1).toEpochDay()
-                occRangeEnd = vm.calMonth.plusMonths(1).atEndOfMonth().toEpochDay()
+                // P2-B3：±2 月 —— calMonth 由滚动反推慢一拍，±1 月在快速甩动时会露白
+                occRangeStart = vm.calMonth.minusMonths(2).atDay(1).toEpochDay()
+                occRangeEnd = vm.calMonth.plusMonths(2).atEndOfMonth().toEpochDay()
             }
             1 -> {
                 val ws = weekStart(vm.selectedDay, weekStartMon)
@@ -454,39 +453,16 @@ private fun MonthFull(
                 val rowH = maxHeight / 6
                 val maxLines = ((rowH - 17.dp) / 11.dp).toInt().coerceIn(3, 8)
                 val today = Fmt.today()
-                val density = LocalDensity.current
-                // 月份水印画笔（复用，避免每帧分配）
-                val wmPaint = remember {
-                    android.graphics.Paint().apply {
-                        color = 0x12000000
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        isAntiAlias = true
-                        typeface = android.graphics.Typeface.create(
-                            android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD
-                        )
-                    }
-                }
 
                 LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     items(TOTAL_WEEKS, key = { it }) { wi ->
                         val ws = origin + wi * 7L
-                        // 本周是否包含某月 15 日 → 在该行画跨行大水印（Lifebear 的巨大月份数字）
+                        // P2-B2：水印叠在格子「之上」（之前 drawBehind 被格子不透明底色盖住，
+                        // 只有溢出到上一行的顶部 30% 漏出来）。低透明度 + 一行内装得下。
                         val wmMonth = (0..6).map { Fmt.d(ws + it) }.firstOrNull { it.dayOfMonth == 15 }?.monthValue
+                        Box(Modifier.height(rowH).fillMaxWidth()) {
                         Row(
-                            Modifier
-                                .height(rowH)
-                                .fillMaxWidth()
-                                .drawBehind {
-                                    if (wmMonth != null) {
-                                        wmPaint.textSize = size.height * 2.2f
-                                        drawIntoCanvas { c ->
-                                            c.nativeCanvas.drawText(
-                                                "$wmMonth", size.width / 2f,
-                                                size.height / 2f + wmPaint.textSize * 0.36f, wmPaint
-                                            )
-                                        }
-                                    }
-                                }
+                            Modifier.fillMaxSize()
                         ) {
                             for (c in 0 until 7) {
                                 val day = ws + c
@@ -519,6 +495,14 @@ private fun MonthFull(
                                 )
                             }
                         }
+                        if (wmMonth != null) Text(
+                            "$wmMonth",
+                            fontSize = (rowH.value * 0.82f).sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.Black.copy(alpha = 0.05f),
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                        }
                     }
                 }
             }
@@ -547,13 +531,10 @@ private fun DayCellV2(
 ) {
     val dt = Fmt.d(day)
     val lunar = if (showLunar) LunarCal.of(day) else null
-    val numTint = when {
-        !inMonth -> Color(0xFFC5C8C5)
-        else -> weekdayTint(dt.dayOfWeek.value, holidayMask) ?: Ink
-    }
+    // P2-B1：连续滚动下没有"非本月"，所有日期都用正常色
+    val numTint = weekdayTint(dt.dayOfWeek.value, holidayMask) ?: Ink
     val lunarTint = when {
         lunar?.festival != null -> HolidayRed
-        !inMonth -> Color(0xFFCFD2CF)
         lunar?.isShuoWang == true -> MaterialTheme.colorScheme.primary
         else -> Color(0xFFA8ADA8)
     }
@@ -561,17 +542,10 @@ private fun DayCellV2(
 
     Box(
         modifier
-            // 2026-08-21 二次录屏更正：Lifebear 的两种态是分工的，不能混为一谈 ——
-            //   今天   = 整格浅灰底 + 日号黑方块（"你在这里"，常驻）
-            //   选中日 = 黑色描边框（"你正在看这一天"，跟着抽屉走）
-            // 上一版把选中日改成灰底，反而和"今天"撞色了，这里改回来。
-            .background(
-                when {
-                    isToday -> Color(0xFFE9EBE9)
-                    !inMonth -> DimBg
-                    else -> Color.White
-                }
-            )
+            // 2026-08-22 P2-B1（用户实测反馈）：白/灰按「月份奇偶」交替，与滚动位置无关。
+            // 上一版按 inMonth（= 是否为标题月）染色，标题一跳整屏翻转 —— 那是翻页时代的遗留概念。
+            // Lifebear：一个月白、一个月灰，下划不改。今天格用日号黑方块标识即可，不再整格染灰。
+            .background(if (dt.monthValue % 2 == 0) DimBg else Color.White)
             .drawBehind {
                 drawLine(hairColor, Offset(0f, size.height), Offset(size.width, size.height), 1f)
                 drawLine(hairColor, Offset(size.width, 0f), Offset(size.width, size.height), 1f)

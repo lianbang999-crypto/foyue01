@@ -78,6 +78,11 @@ object SyncEngine {
                     push = JSONArray()   // 上行只发一次，后续纯拉取
                 }
                 val next = resp.optLong("next_since", since)
+                // P2-A6：同步顺路捎回的订阅状态 —— 高频免费刷新通道
+                if (resp.has("plan")) {
+                    com.looka.app.data.PlanState.apply(
+                        app, resp.optString("plan", "free"), resp.optLong("plan_expiry", 0L))
+                }
                 if (next > since) {
                     since = next
                     Prefs.setLastPullMs(app, since)

@@ -243,6 +243,74 @@ async function antlerAdd(env, userId, plan, amount, bucket, reason, ref = null) 
   return { granted: g, paid: pd, total: g + pd };
 }
 
+// ---------- 全站埋点（P1，2026-08-22）----------
+// 三条红线：不存原始 IP（每日盐哈希前 16 位）、不存完整 UA（只归类）、埋点失败绝不影响业务。
+async function sha256hex(s) {
+  return toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+}
+
+async function dailySalt(env, day) {
+  const row = await env.STATS.prepare('SELECT salt FROM ip_salts WHERE day = ?1').bind(day).first();
+  if (row) return row.salt;
+  const salt = randHex(16);
+  await env.STATS.prepare('INSERT OR IGNORE INTO ip_salts (day, salt) VALUES (?1, ?2)')
+    .bind(day, salt).run();
+  return (await env.STATS.prepare('SELECT salt FROM ip_salts WHERE day = ?1').bind(day).first())?.salt || salt;
+}
+
+async function track(env, site, kind, userId, request, meta = {}) {
+  try {
+    if (!env.STATS) return;
+    const ip = request?.headers?.get('cf-connecting-ip') || '';
+    const day = today();
+    const ipHash = ip ? (await sha256hex(ip + await dailySalt(env, day))).slice(0, 16) : null;
+    const ua = request?.headers?.get('user-agent') || '';
+    const uaClass = /Android/i.test(ua) ? 'android'
+      : /iPhone|iPad|iPod/i.test(ua) ? 'ios'
+      : /Mozilla/i.test(ua) ? 'desktop' : 'other';
+    let ref = '';
+    try { ref = new URL(request?.headers?.get('referer') || '').host; } catch { /* 无来源 */ }
+    await env.STATS.prepare(
+      `INSERT INTO events (site, kind, user_id, ip_hash, ua_class, ref, meta, ts)
+       VALUES ('looka', ?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+    ).bind(kind, userId ?? null, ipHash, uaClass, ref,
+      JSON.stringify(meta).slice(0, 256), Date.now()).run();
+  } catch (_) { /* 埋点失败永远不能影响业务 */ }
+}
+
+// 「当日首次活跃」内存缓存：isolate 存活期内避免每个请求都写库；重启后重查一次而已
+const seenToday = new Map();
+
+async function markActive(env, userId, request) {
+  const day = today();
+  if (seenToday.get(userId) === day) return;
+  seenToday.set(userId, day);
+  try {
+    const dayStartMs = Date.parse(day + 'T00:00:00+08:00');
+    const r = await env.AUTH_DB.prepare(
+      'UPDATE users SET last_seen_at = ?1 WHERE id = ?2 AND last_seen_at < ?3'
+    ).bind(Date.now(), userId, dayStartMs).run();
+    if (r.meta.changes) await track(env, 'looka', 'app_open', userId, request);
+  } catch (_) { /* 活跃标记失败不影响业务 */ }
+}
+
+/** 每日汇总（03:17 Cron）：昨日明细 → daily_stats；清 90 天前明细、30 天前盐 */
+async function statsRollup(env) {
+  if (!env.STATS) return;
+  try {
+    const y = new Date(Date.now() - 24 * 3600_000);
+    const day = new Date(y.getTime() + 8 * 3600_000).toISOString().slice(0, 10); // 北京昨日
+    const a = Date.parse(day + 'T00:00:00+08:00'), b = a + 24 * 3600_000;
+    await env.STATS.prepare(
+      `INSERT OR REPLACE INTO daily_stats (site, day, kind, cnt, uniq)
+       SELECT site, ?1, kind, COUNT(*), COUNT(DISTINCT COALESCE(CAST(user_id AS TEXT), ip_hash, 'x'))
+       FROM events WHERE ts >= ?2 AND ts < ?3 GROUP BY site, kind`
+    ).bind(day, a, b).run();
+    await env.STATS.prepare('DELETE FROM events WHERE ts < ?1').bind(Date.now() - 90 * 24 * 3600_000).run();
+    await env.STATS.prepare("DELETE FROM ip_salts WHERE day < date('now', '-30 days')").run();
+  } catch (e) { console.log('statsRollup', String(e)); }
+}
+
 // ---------- 爱发电（国内支付通道，2026-08-21）----------
 // 签名：sign = md5(token + "params" + params + "ts" + ts + "user_id" + user_id)
 // Workers 的 crypto.subtle 不支持 MD5，只能内置一份纯 JS 实现（仅用于此签名，非安全用途）。
@@ -345,6 +413,7 @@ async function afdianSettle(env, o) {
   if (!uid) return { ok: true, matched: false };   // 留在 pay_orders 待自助认领
 
   await grantPro(env, uid, afdianDays(month));
+  await track(env, 'looka', 'pay', uid, null, { amt: String(o.total_amount), mon: month });
   await env.DB.prepare(
     "UPDATE pay_orders SET user_id = ?1 WHERE channel = 'afdian' AND order_no = ?2"
   ).bind(uid, String(o.out_trade_no)).run();
@@ -402,6 +471,8 @@ async function route(request, env, ctx) {
     const obj = m === 'HEAD' ? await env.APK.head('looka-latest.apk')
                              : await env.APK.get('looka-latest.apk');
     if (!obj) return json({ error: '暂无可下载的安装包' }, 404);
+    // P1-5：下载埋点（此前完全空白，HEAD 探测不算）
+    if (m === 'GET') ctx.waitUntil(track(env, 'looka', 'apk_download', null, request));
     return new Response(m === 'HEAD' ? null : obj.body, {
       headers: {
         'Content-Type': 'application/vnd.android.package-archive',
@@ -476,7 +547,13 @@ async function route(request, env, ctx) {
       await antlerAdd(env, userId, 'pro', 20, 'granted', 'welcome_bonus', String(userId));
     }
     const token = await newSession(env, userId);
-    return json({ ok: true, token, account, plan: trialPlan, trial_days: trialDays });
+    ctx.waitUntil((async () => {
+      await env.AUTH_DB.prepare("UPDATE users SET reg_site = 'looka' WHERE id = ?1 AND reg_site = ''")
+        .bind(userId).run().catch(() => {});
+      await track(env, 'looka', 'register', userId, request, { kind });
+    })());
+    const trialExp = trialDays > 0 ? Date.now() + trialDays * 24 * 3600 * 1000 : 0;
+    return json({ ok: true, token, account, plan: trialPlan, trial_days: trialDays, plan_expiry: trialExp });
   }
 
   // ===== 登录 =====
@@ -504,7 +581,8 @@ async function route(request, env, ctx) {
     await env.DB.prepare('DELETE FROM login_fails WHERE account = ?1').bind(account).run();
     const token = await newSession(env, u.id);
     const pl = await planOf(env, u.id);
-    return json({ ok: true, token, account: u.account, plan: pl.plan });
+    ctx.waitUntil(track(env, 'looka', 'login', u.id, request));
+    return json({ ok: true, token, account: u.account, plan: pl.plan, plan_expiry: pl.expiresAt });
   }
 
   if (p === '/api/auth/logout' && m === 'POST') {
@@ -586,6 +664,16 @@ async function route(request, env, ctx) {
   }
 
   // ===== 崩溃上报（无需登录，限流） =====
+  // P1-9：未登录首页浏览埋点（限流防刷）
+  if (p === '/api/ev' && m === 'POST') {
+    if (await rateLimit(env, `ev:${clientIp(request)}`, 30, 3600_000)) {
+      const b = await body();
+      const kind = String(b.kind || '');
+      if (['landing_view'].includes(kind)) ctx.waitUntil(track(env, 'looka', kind, null, request));
+    }
+    return json({ ok: true });
+  }
+
   if (p === '/api/crash' && m === 'POST') {
     if (!await rateLimit(env, `crash:${clientIp(request)}`, 5, 24 * 3600_000)) {
       return json({ ok: true });
@@ -597,6 +685,7 @@ async function route(request, env, ctx) {
       String(b.ver || '').slice(0, 32), String(b.model || '').slice(0, 64),
       String(b.stack || '').slice(0, 8192), Date.now()
     ).run();
+    ctx.waitUntil(track(env, 'looka', 'crash', null, request, { ver: String(b.ver || '').slice(0, 16) }));
     return json({ ok: true });
   }
 
@@ -620,6 +709,7 @@ async function route(request, env, ctx) {
   // ============ 以下都需要登录 ============
   const user = await getUser(request, env);
   if (!user) return json({ error: '未登录或会话已过期' }, 401);
+  ctx.waitUntil(markActive(env, user.id, request));   // P1-7：当日首次活跃（内存缓存去重）
 
   if (p === '/api/me' && m === 'GET') {
     const pl = await planOf(env, user.id);
@@ -747,10 +837,12 @@ async function route(request, env, ctx) {
     const hasMore = list.length > SYNC_PAGE;
     if (hasMore) list = list.slice(0, SYNC_PAGE);
     const nextSince = list.length ? list[list.length - 1].updated_at : since;
+    const pl = await planOf(env, user.id);   // P2-A6：顺路捎回订阅状态，客户端落盘
     return json({
       ok: true, apply: list,
       has_more: hasMore, next_since: nextSince,
-      server_time: Date.now()
+      server_time: Date.now(),
+      plan: pl.plan, plan_expiry: pl.expiresAt
     });
   }
 
@@ -799,21 +891,36 @@ async function route(request, env, ctx) {
       const FLAGSHIP_OK = ['openai/gpt-5.5', 'openai/gpt-5', 'anthropic/claude-opus-5', 'deepseek/deepseek-v4-pro'];
       const model = tier === 'flagship' && !FLAGSHIP_OK.includes(orModel) ? 'openai/gpt-5.5' : orModel;
       const t0 = Date.now();
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.OPENROUTER_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://looka.foyue.org',
-          'X-Title': 'Looka'
-        },
-        body: JSON.stringify({ model, messages, temperature, max_tokens: 2048 })
-      });
-      const d = await resp.json().catch(() => ({}));
-      const text = pickText(d);
-      if (!resp.ok || !text) {
-        // 上游失败一律不扣费，直接回落标准模型重试（下面的通用分支）
-        fellBack = { from: tier, error: d?.error?.message || `上游 ${resp.status}` };
+      // P2-E2/E3：重试一次 + 25 秒超时。实测存在 12 秒长尾/瞬时失败，一次重试大概率救回；
+      // 失败原因必须留痕（E1 日志 + E4 透传），"暂时不可用"不能再是黑箱。
+      let resp = null, d = {}, text = '', lastErr = '';
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.OPENROUTER_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://looka.foyue.org',
+              'X-Title': 'Looka'
+            },
+            body: JSON.stringify({ model, messages, temperature, max_tokens: 2048 }),
+            signal: AbortSignal.timeout(25_000)
+          });
+          d = await resp.json().catch(() => ({}));
+          text = pickText(d);
+          if (resp.ok && text) break;
+          lastErr = d?.error?.message || `上游 ${resp.status}`;
+        } catch (e) {
+          lastErr = e?.name === 'TimeoutError' ? '上游超时(25s)' : String(e?.message || e).slice(0, 120);
+          resp = null; text = '';
+        }
+        console.log('premium fail', model, `attempt=${attempt + 1}`, lastErr);   // E1：CF 面板可查
+      }
+      if (!resp?.ok || !text) {
+        // 上游失败一律不扣费，回落标准模型（E4：真实原因透传给客户端）
+        fellBack = { from: tier, error: lastErr, detail: lastErr };
+        ctx.waitUntil(track(env, 'looka', 'premium_fail', user.id, request, { err: lastErr.slice(0, 60) }));
         tier = 'standard'; need = 0;
       } else {
         // 成功才扣：ref 用 generation id，天然幂等
@@ -824,6 +931,7 @@ async function route(request, env, ctx) {
           `INSERT INTO ai_usage (user_id, ym, used) VALUES (?1, ?2, 1)
            ON CONFLICT(user_id, ym) DO UPDATE SET used = used + 1`
         ).bind(user.id, ym()).run();
+        ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { tier }));
         return json({
           ok: true, content: text, tier: b.tier, model, ms: Date.now() - t0,
           antler: after, spent: need
@@ -873,6 +981,7 @@ async function route(request, env, ctx) {
        ON CONFLICT(user_id, ym) DO UPDATE SET used = used + 1`
     ).bind(user.id, ym()).run();
     const dayUsed = await env.DB.prepare('SELECT cnt FROM rate_limits WHERE rk = ?1').bind(dayKey).first();
+    ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { tier: 'standard' }));
     return json({
       ok: true, content, tier: 'standard',
       remaining: Math.max(0, rpd - (dayUsed?.cnt || 0)),
@@ -923,9 +1032,11 @@ async function route(request, env, ctx) {
       "SELECT * FROM pay_orders WHERE channel = 'afdian' AND order_no = ?1"
     ).bind(no).first();
     if (exist && exist.user_id) {
-      return json(exist.user_id === user.id
-        ? { ok: true, already: true, plan: (await planOf(env, user.id)) }
-        : { error: '该订单已被其他账号认领，如有疑问请联系 looka01@qq.com' }, exist.user_id === user.id ? 200 : 409);
+      if (exist.user_id !== user.id) {
+        return json({ error: '该订单已被其他账号认领，如有疑问请联系 looka01@qq.com' }, 409);
+      }
+      const cur = await planOf(env, user.id);
+      return json({ ok: true, already: true, plan: cur.plan, expires_at: cur.expiresAt });
     }
     let raw = exist ? JSON.parse(exist.raw || '{}') : null;
     if (!exist) {
@@ -935,9 +1046,11 @@ async function route(request, env, ctx) {
       const r = await afdianSettle(env, o);          // 校验 + 幂等落库（可能已按 remark 直接开通）
       if (!r.ok) return json({ error: '订单校验未通过（未支付或金额异常）' }, 400);
       if (r.matched) {
-        return json(r.user_id === user.id
-          ? { ok: true, plan: await planOf(env, user.id) }
-          : { error: '该订单已按备注归属到其他账号，如有疑问请联系 looka01@qq.com' }, r.user_id === user.id ? 200 : 409);
+        if (r.user_id !== user.id) {
+          return json({ error: '该订单已按备注归属到其他账号，如有疑问请联系 looka01@qq.com' }, 409);
+        }
+        const cur = await planOf(env, user.id);
+        return json({ ok: true, plan: cur.plan, expires_at: cur.expiresAt });
       }
       raw = o;
     }
@@ -1032,6 +1145,13 @@ async function route(request, env, ctx) {
   if (p === '/api/admin/health' && m === 'POST') {
     const b = await body();
     if (!env.ADMIN_KEY || String(b.key || '') !== env.ADMIN_KEY) return json({ error: '无权限' }, 403);
+    // P2-E5：24 小时内高级模型失败次数（从埋点事件表查）
+    let premiumFail24h = -1;
+    try {
+      premiumFail24h = (await env.STATS.prepare(
+        "SELECT COUNT(*) n FROM events WHERE site='looka' AND kind='premium_fail' AND ts > ?1"
+      ).bind(Date.now() - 24 * 3600_000).first())?.n ?? -1;
+    } catch (_) { }
     const [aiMonth, crashes24h, users, antlerOut] = await Promise.all([
       env.DB.prepare('SELECT SUM(used) s FROM ai_usage WHERE ym = ?1').bind(ym()).first(),
       env.DB.prepare('SELECT COUNT(*) c FROM crashes WHERE created_at > ?1').bind(Date.now() - 86400000).first(),
@@ -1043,7 +1163,8 @@ async function route(request, env, ctx) {
       ai_calls_month: aiMonth?.s || 0,
       crashes_24h: crashes24h?.c || 0,
       active_sessions_users: users?.c || 0,
-      antler_spent_24h: antlerOut?.s || 0
+      antler_spent_24h: antlerOut?.s || 0,
+      premium_fail_24h: premiumFail24h
     });
   }
 
@@ -1137,7 +1258,17 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    // 对账放最前：webhook 掉单靠它捞回来（幂等，重复拉不重复发）
-    ctx.waitUntil(afdianReconcile(env).then(() => cleanup(env)).then(() => dailyAlert(env)));
+    // */5 = 只做爱发电拉单对账（webhook 没配/掉单时，最慢 5 分钟自动开通）；
+    // 03:17 北京（19:17 UTC）= 全套：对账 + 清理 + 埋点汇总 + 告警
+    if (event.cron === '*/5 * * * *') {
+      ctx.waitUntil(afdianReconcile(env));
+      return;
+    }
+    ctx.waitUntil(
+      afdianReconcile(env)
+        .then(() => cleanup(env))
+        .then(() => statsRollup(env))
+        .then(() => dailyAlert(env))
+    );
   }
 };

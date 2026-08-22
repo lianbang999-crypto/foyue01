@@ -197,7 +197,8 @@ main { max-width: 860px; margin: 0 auto; }
 .dialog .frow { margin-bottom: 10px; }
 .dialog .frow label { display: block; font-size: 12px; color: var(--gray); margin-bottom: 4px; }
 .dialog .frow input, .dialog .frow textarea, .dialog .frow select { width: 100%; }
-.dialog .frow-inline { display: flex; gap: 8px; }
+.dialog .frow-inline { display: flex; gap: 8px; flex-wrap: wrap; }   /* P2-C1：窄屏 2×2，别把 date/time 裁成半截 */
+.dialog .frow-inline > div { min-width: 140px; }
 .dialog .frow-inline > div { flex: 1; }
 .dialog .btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; }
 .dialog .left { margin-right: auto; }
@@ -423,20 +424,32 @@ body, main, .pane{ background: var(--paper); }
 .landing-support { width: min(640px, 94vw); margin-top: 14px; }
 
 /* ==================== 连续滚动月历（2026-08-21 对齐 App） ==================== */
-.cal-wrap { display: flex; flex-direction: column; }
+/* P2-C3：布局不再"算数"。--tb/--bb 由 JS 实测顶栏/底栏高度写入；
+   100dvh 正确处理手机浏览器收起地址栏那段（100vh 的经典陷阱） */
+#tab-cal { display: flex; flex-direction: column;
+  height: calc(100vh - var(--tb, 96px) - var(--bb, 66px)); }
+@supports (height: 100dvh) {
+  #tab-cal { height: calc(100dvh - var(--tb, 96px) - var(--bb, 66px)); }
+}
+.cal-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .month-grid {
   display: block;                       /* 由 7 列网格改为按周行堆叠 */
   overflow-y: auto; overscroll-behavior: contain;
-  height: calc(100vh - 210px);          /* 顶栏 + 星期头 + 底栏之外全给月历 */
+  flex: 1; min-height: 0;
   border-top: 0.8px solid var(--hair);
 }
+/* 桌面：日面板自己滚，别把整页撑到底栏底下 */
+@media (min-width:561px){ .day-panel{ flex: 0 0 auto; max-height: 42%; overflow-y: auto; } }
 .week-row { display: grid; grid-template-columns: repeat(7, 1fr); position: relative; }
-.week-row .month-wm {                   /* 跨行月份大水印（Lifebear 式） */
-  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+.week-row .month-wm {   /* P2-B2：水印叠在格子之上、低透明度、一行内装下 */
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
   display: flex; align-items: center; justify-content: center;
-  font-size: 200px; font-weight: 800; color: rgba(0,0,0,0.055); line-height: 1;
+  font-size: 76px; font-weight: 800; color: rgba(0,0,0,0.05); line-height: 1;
 }
-.week-row .day-cell { position: relative; z-index: 1; min-height: 92px; background: transparent; }
+/* P2-C4：不再用 transparent（它把 .dim/.sel 的底色一起清掉了 —— CSS 特异度事故）。
+   月界改由奇偶月底色表达：偶数月 .m-even 灰、奇数月白，滚动时固定不变 */
+.week-row .day-cell { position: relative; z-index: 1; min-height: 92px; }
+.day-cell.m-even { background: var(--dim); }
 .day-cell.m1 { border-top: 1.6px solid #C9CCC9; }   /* 月首行的上边界略加重 */
 .day-cell.m1 .day-num { width: auto; border-radius: 9px; padding: 0 5px; font-weight: 700; }
 .search-out { max-height: 50vh; overflow-y: auto; margin-top: 10px; }

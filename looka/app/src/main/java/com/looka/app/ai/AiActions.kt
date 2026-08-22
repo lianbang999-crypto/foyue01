@@ -19,14 +19,24 @@ data class AiAction(
     val allDay: Boolean = false,
     val location: String = "",
     val memo: String = "",
-    val content: String = ""
+    val content: String = "",
+    // P2-D1（§三十八①）：提醒语义。此前 AI 没有任何字段能表达"提醒时间"，
+    // 「10:55 提醒我」只能被翻成"10:55 的日程 + 默认提前 15 分钟" —— 提醒落在 10:40，
+    // 而 10:40 已过就被调度器静默丢弃，用户什么都收不到。
+    val remindAtMin: Int = -1,       // 当天提醒时刻（分钟）。"X点提醒我" → 就是 X 点
+    val remindMinBefore: Int = -1    // 提前 N 分钟。"提前半小时提醒" → 30
 ) {
     /** 预览文案 */
     fun label(): String = when (type) {
         "create_event" -> {
             val d = if (day >= 0) Fmt.dateCn(day) else tr("今天")
             val t = if (allDay || startMin < 0) tr("全天") else "${Fmt.hm(startMin)}-${Fmt.hm(endMin)}"
-            "${tr("日程")} · $d $t · $title"
+            val rem = when {
+                remindAtMin >= 0 -> " · ⏰${Fmt.hm(remindAtMin)}"
+                remindMinBefore >= 0 -> " · ⏰${tr("提前{0}分", remindMinBefore)}"
+                else -> ""
+            }
+            "${tr("日程")} · $d $t · $title$rem"
         }
         "create_task" -> "${tr("任务")} · ${if (day >= 0) Fmt.dateCn(day) + " · " else ""}$title"
         else -> "${tr("笔记")} · ${title.ifBlank { content.take(12) }}"
@@ -75,6 +85,10 @@ object AiActions {
  {"type":"create_task","title":"标题","due":"YYYY-MM-DD"},
  {"type":"create_note","title":"标题","content":"内容"}
 ]}
+提醒字段（重要）：
+- 用户说「X 点提醒我 / 通知我 / 叫我」→ 这是【提醒时刻】，写 "remind_at":"HH:mm"（提醒就在那个时刻响，不是提前）。
+- 用户说「提前 N 分钟提醒」→ 写 "remind_before":N（数字，分钟）。
+- 用户只说事件时间没提"提醒"两个字 → 两个字段都省略（走默认提醒）。
 硬性规则：
 1. 最外层键名必须是 "actions"，值必须是数组。不要用 events / items / data 等其它名字。
 2. 日期只能写 YYYY-MM-DD（如 2026-08-22），时间只能写 HH:mm（如 15:00）。禁止出现 2226 这类年份，禁止在日期后面接多余数字。
@@ -114,10 +128,10 @@ $PROTOCOL
 日期参照（直接使用，不要自己加减）：${dateAnchors()}
 只输出一个 ```json 代码块，不要任何其他文字。格式：
 {"actions":[
- {"type":"create_event","title":"...","date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","all_day":false},
+ {"type":"create_event","title":"...","date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","all_day":false,"remind_at":"HH:mm","remind_before":15},
  {"type":"create_task","title":"...","due":"YYYY-MM-DD"}
 ]}
-规则：相对日期换算为具体日期；有明确时间点的事情用 create_event（end 默认 start+1 小时）；只有事项没有时间的用 create_task；一句话里有多件事就解析成多条；完全无法解析时输出 {"actions":[]}。
+规则：相对日期换算为具体日期；有明确时间点的事情用 create_event（end 默认 start+1 小时）；「X点提醒我/通知我」时 remind_at 就是 X 点（该时刻响铃），事件时间没另说就让 start 也等于 X 点；「提前N分钟提醒」用 remind_before；没提"提醒"就省略这两个字段；只有事项没有时间的用 create_task；一句话里有多件事就解析成多条；完全无法解析时输出 {"actions":[]}。
 """.trimIndent()
 
     /** 任务拆解：只输出 JSON */
@@ -256,7 +270,9 @@ $PROTOCOL
                 allDay = o.optBoolean("all_day", start < 0),
                 location = o.optString("location"),
                 memo = o.optString("memo"),
-                content = o.optString("content")
+                content = o.optString("content"),
+                remindAtMin = parseMin(o.optString("remind_at")),
+                remindMinBefore = o.optInt("remind_before", -1)
             )
         }
     } catch (_: Exception) {

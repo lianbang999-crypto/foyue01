@@ -20,6 +20,12 @@
       "binding": "AUTH_DB",
       "database_name": "rixing-db",
       "database_id": "790c4e52-07d0-40ad-a21f-402a4cbf85ff"
+    },
+    {
+      // 全站埋点库（P1，2026-08-22）：events / daily_stats / ip_salts
+      "binding": "STATS",
+      "database_name": "foyue-db",
+      "database_id": "be0b21ab-4549-45bc-ac38-5f9e1864d061"
     }
   ],
   // APK 自更新分发（/dl/looka-latest.apk）
@@ -27,7 +33,8 @@
     { "binding": "APK", "bucket_name": "looka-apk" }
   ],
   // 每天北京时间 03:17 清理：过期会话 / 限流窗口 / 重置令牌 / 90 天墓碑 / 崩溃日志截尾
-  "triggers": { "crons": ["17 19 * * *"] },
+  // 03:17 北京 = 全套清理+汇总+告警；*/5 = 爱发电拉单对账（webhook 掉了也最慢 5 分钟自动开通）
+  "triggers": { "crons": ["17 19 * * *", "*/5 * * * *"] },
   "vars": {
     // 国内站 .cn（国际站 .com 对 CF 出口有风控，切勿改回）
     "SILICONFLOW_BASE": "https://api.siliconflow.cn/v1",

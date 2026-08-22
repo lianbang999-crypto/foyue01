@@ -67,6 +67,7 @@ import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
 import com.looka.app.ui.theme.ThemeCtl
 import com.looka.app.vm.LookaViewModel
+import kotlinx.coroutines.launch
 import com.looka.app.util.tr
 
 /** 更多 Tab：账号 / 九色主题 / 各设置入口 */
@@ -92,7 +93,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
     val email = remember(vm.settingsVersion) { Prefs.accountEmail(ctx) }
-    val plan = remember(vm.settingsVersion) { Prefs.plan(ctx) }
+    val plan = com.looka.app.data.PlanState.plan
     val loggedIn = remember(vm.settingsVersion) { Prefs.authToken(ctx) != null }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -139,6 +140,35 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
             NavRow(tr("订阅与小鹿 AI"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
             Hairline()
+            // P2-A11：入口 3 层 → 1 层。免费用户点一下直达付款页（等待卡在订阅页看）
+            if (!com.looka.app.data.PlanState.isPro) {
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                NavRow(
+                    tr("升级 Pro · 12元/月"),
+                    icon = Icons.Outlined.WorkspacePremium,
+                    value = tr("更聪明的小鹿 + 自创主题")
+                ) {
+                    if (!com.looka.app.net.Api.authed(ctx)) {
+                        nav.navigate("account")
+                    } else {
+                        scope.launch {
+                            val zh = com.looka.app.util.I18n.lang.startsWith("zh")
+                            val url = if (zh) {
+                                kotlin.runCatching { com.looka.app.net.Api.payIntent(ctx).optString("url") }
+                                    .getOrNull()?.takeIf { it.isNotBlank() }
+                                    ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
+                            } else "https://ko-fi.com/looka2026/tiers"
+                            Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
+                            kotlin.runCatching {
+                                ctx.startActivity(android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                            }
+                            nav.navigate("subscription")   // 回来能看到等待卡
+                        }
+                    }
+                }
+                Hairline()
+            }
             NavRow(
                 tr("语言 / Language"), icon = Icons.Outlined.Translate,
                 value = com.looka.app.util.I18n.choiceLabel(Prefs.language(ctx))

@@ -722,16 +722,43 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                             startMin = sm, endMin = em, location = a.location, memo = a.memo
                         )
                     )
-                    if (allDay) {
+                    // P2-D3/D4/D5（§三十八①）：提醒必须"说出来"——
+                    // 用户要求的提醒时刻优先；算出的时刻已过去要明说并自动兜底，不再静默丢弃。
+                    var remNote = ""
+                    if (!allDay) {
+                        val now = System.currentTimeMillis()
+                        val dayStart = java.time.LocalDate.ofEpochDay(day)
+                            .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                        // 目标提醒时刻（分钟）：AI 指定时刻 > AI 指定提前量 > 用户默认设置
+                        var remMin = when {
+                            a.remindAtMin >= 0 -> a.remindAtMin
+                            a.remindMinBefore >= 0 -> sm - a.remindMinBefore
+                            else -> {
+                                val d0 = Prefs.defTimedReminderMin(c)
+                                if (d0 >= 0) sm - d0 else -1
+                            }
+                        }
+                        if (remMin >= 0) {
+                            if (dayStart + remMin * 60_000L <= now && dayStart + sm * 60_000L > now) {
+                                // D5：提醒时刻已过但日程还没开始 → 退化为开始时提醒
+                                remMin = sm
+                                remNote = tr("（原提醒时刻已过，改为 {0} 开始时提醒）", Fmt.hm(sm))
+                            }
+                            if (dayStart + remMin * 60_000L > now) {
+                                eventDao.insertReminder(Reminder(seriesId = id, minutesBefore = sm - remMin))
+                                if (remNote.isEmpty()) remNote = tr(" · {0} 提醒你", Fmt.hm(remMin))
+                            } else {
+                                // D4：整个时间都过去了 → 明说，而不是让用户以为会响
+                                remNote = tr("（这个时间已经过了，没有设提醒 —— 要改到明天吗？）")
+                            }
+                        }
+                    } else {
                         val days = Prefs.defAllDayReminderDays(c)
                         if (days >= 0) eventDao.insertReminder(
                             Reminder(seriesId = id, daysBefore = days, timeOfDayMin = Prefs.defAllDayReminderTime(c))
                         )
-                    } else {
-                        val m = Prefs.defTimedReminderMin(c)
-                        if (m >= 0) eventDao.insertReminder(Reminder(seriesId = id, minutesBefore = m))
                     }
-                    out += tr("✅ 已添加日程：{0}", "${Fmt.dateCn(day)} ${if (allDay) tr("全天") else Fmt.hm(sm)} ${a.title}")
+                    out += tr("✅ 已添加日程：{0}", "${Fmt.dateCn(day)} ${if (allDay) tr("全天") else Fmt.hm(sm)} ${a.title}") + remNote
                 }
                 "create_task" -> {
                     taskDao.insert(Task(title = a.title.ifBlank { tr("未命名任务") }, dueDay = a.day,

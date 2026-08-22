@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +15,15 @@ import com.looka.app.ui.theme.LookaTheme
 import com.looka.app.util.PendingNav
 
 class MainActivity : ComponentActivity() {
+
+    override fun onResume() {
+        super.onResume()
+        // P2-A5：回到前台刷订阅状态（内部 5 分钟节流）。
+        // 关键场景：用户去浏览器付完款切回来 —— webhook/对账已在服务端开通，这一刷让它"看起来是即时的"
+        val app = application as LookaApp
+        app.appScope.launch { com.looka.app.data.PlanState.refresh(this@MainActivity) }
+    }
+
 
     private val notifPermLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }

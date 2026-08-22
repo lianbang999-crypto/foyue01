@@ -35,6 +35,9 @@ class LookaApp : Application() {
         I18n.init(this)
         installCrashHandler()
         NotifyScheduler.ensureChannel(this)
+        // P2-A：订阅状态唯一真值源 —— 先从本地恢复（瞬时），网络刷新随后跟上
+        com.looka.app.data.PlanState.load(this)
+        appScope.launch { com.looka.app.data.PlanState.refresh(this@LookaApp, force = true) }
         // 首次启动播种默认数据；uid 固定 + updatedAt=1：
         // 已有云端数据时（首登合并），本地种子必然被云端版本覆盖，避免覆盖用户改名（B18）
         appScope.launch {

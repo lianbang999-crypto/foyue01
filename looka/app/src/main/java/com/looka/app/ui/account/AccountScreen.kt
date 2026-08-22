@@ -155,7 +155,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
                 else Api.login(ctx, account.trim(), password)
                 Prefs.setAuthToken(ctx, r.optString("token"))
                 Prefs.setAccountEmail(ctx, account.trim().lowercase())
-                Prefs.setPlan(ctx, r.optString("plan", "free"))
+                com.looka.app.data.PlanState.apply(ctx, r.optString("plan", "free"), r.optLong("plan_expiry", 0L))
                 Prefs.setLastPullMs(ctx, 0L)
                 SyncEngine.markAllDirty(app)   // 本机数据合并进账号
                 vm.bumpSettings()
@@ -308,8 +308,11 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
     // 拉取账号信息与 AI 用量
     val me by produceState<JSONObject?>(initialValue = null, refresh) {
         value = runCatching { Api.me(ctx) }.getOrNull()
+        // P2-A3（§三十九根因行）：读到真值就落盘 —— 此前只显示不保存，
+        // 人一离开这个页面，其他页面读到的还是旧缓存
+        value?.let { com.looka.app.data.PlanState.apply(ctx, it.optString("plan", "free"), it.optLong("plan_expiry", 0L)) }
     }
-    val plan = me?.optString("plan") ?: Prefs.plan(ctx)
+    val plan = com.looka.app.data.PlanState.plan
     val aiMonthUsed = me?.optInt("ai_month_used", -1) ?: -1
     val planExpiry = me?.optLong("plan_expiry", 0L) ?: 0L
     val boundEmail = me?.optString("bound_email") ?: ""
@@ -409,7 +412,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
                         busyRedeem = true
                         try {
                             val r = Api.redeem(ctx, code.trim())
-                            Prefs.setPlan(ctx, r.optString("plan", "pro"))
+                            com.looka.app.data.PlanState.apply(ctx, r.optString("plan", "pro"), r.optLong("expires_at", 0L))
                             vm.bumpSettings()
                             toast(ctx, tr("兑换成功，已升级 {0} 🎉", r.optString("plan", "pro").uppercase()))
                             code = ""
@@ -440,7 +443,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
                 scope.launch {
                     Api.logout(ctx)
                     Prefs.setAuthToken(ctx, null)
-                    Prefs.setPlan(ctx, "free")
+                    com.looka.app.data.PlanState.clear(ctx)
                     vm.bumpSettings()
                     toast(ctx, tr("已退出登录（本机数据保留）"))
                     onChanged()
@@ -568,7 +571,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
                             try {
                                 val r = Api.deleteAccount(ctx, pw)
                                 Prefs.setAuthToken(ctx, null)
-                                Prefs.setPlan(ctx, "free")
+                                com.looka.app.data.PlanState.clear(ctx)
                                 vm.bumpSettings()
                                 toast(ctx, r.optString("message", tr("已注销")))
                                 delDlg = false

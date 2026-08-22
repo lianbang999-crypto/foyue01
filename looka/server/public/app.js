@@ -413,7 +413,8 @@ function renderCalendar(anchorDay) {
       const day = ws + i;
       const f = fromEpoch(day);
       const wd = dow(day);
-      const cls = ['day-cell', day === t ? 'today' : '', day === S.selDay ? 'sel' : '', f.d === 1 ? 'm1' : ''].join(' ');
+      const cls = ['day-cell', f.m % 2 === 0 ? 'm-even' : '', day === t ? 'today' : '',
+        day === S.selDay ? 'sel' : '', f.d === 1 ? 'm1' : ''].join(' ');
       const numCls = ['day-num', wd === 7 ? 'hol' : '', wd === 6 ? 'sat' : ''].join(' ');
       const evs = byDay[day] || [];
       const tks = tasksByDay[day] || [];
@@ -570,19 +571,22 @@ function openEventModal(occ) {
       <div class="frow" id="evTimeWrap1"><label>开始</label><input id="evStart" type="time" value="${hm(init.startMin)}"></div>
       <div class="frow" id="evTimeWrap2"><label>结束</label><input id="evEnd" type="time" value="${hm(init.endMin)}"></div>
     </div>
-    <div class="frow"><label>分类</label><select id="evCat">${catOpts}</select></div>
+    <button class="btn-ghost" id="evAdvToggle" style="padding:4px 0;color:var(--sat,#4a7ddc);font-size:13px">${t('显示详细设置')}</button>
+    <div id="evAdv" class="hidden">
+    <div class="frow"><label>${t('分类')}</label><select id="evCat">${catOpts}</select></div>
     <div class="frow-inline">
-      <div class="frow"><label>重复</label>
+      <div class="frow"><label>${t('重复')}</label>
         <select id="evFreq">
-          <option value="0">无</option><option value="1">每天</option><option value="2">每周</option>
-          <option value="3">每月</option><option value="4">每年</option>
+          <option value="0">${t('无')}</option><option value="1">${t('每天')}</option><option value="2">${t('每周')}</option>
+          <option value="3">${t('每月')}</option><option value="4">${t('每年')}</option>
         </select></div>
-      <div class="frow"><label>结束日（可空）</label><input id="evUntil" type="date" value="${init.untilDay >= 0 ? isoDate(init.untilDay) : ''}"></div>
+      <div class="frow"><label>${t('结束日（可空）')}</label><input id="evUntil" type="date" value="${init.untilDay >= 0 ? isoDate(init.untilDay) : ''}"></div>
     </div>
     <div class="wk-row hidden" id="evWkRow">${WEEK_CN.map((w, i) =>
       `<button class="wk ${(init.weekdays >> i) & 1 ? 'on' : ''}" data-i="${i}">${w}</button>`).join('')}</div>
-    <div class="frow"><input id="evLoc" placeholder="地点" value="${esc(init.location)}"></div>
-    <div class="frow"><textarea id="evMemo" rows="2" placeholder="备注">${esc(init.memo)}</textarea></div>
+    <div class="frow"><input id="evLoc" placeholder="${t('地点')}" value="${esc(init.location)}"></div>
+    <div class="frow"><textarea id="evMemo" rows="2" placeholder="${t('备注')}">${esc(init.memo)}</textarea></div>
+    </div>
     <div class="btns">
       ${isEdit ? '<button class="btn-ghost left" id="evDel" style="color:var(--red)">删除</button>' : ''}
       <button class="btn-ghost" id="evX">取消</button>
@@ -599,6 +603,11 @@ function openEventModal(occ) {
   };
   syncVis();
   d.querySelector('#evAllDay').onchange = syncVis;
+  // P2-C2：渐进披露（与 App「显示详细设置」同一措辞）。编辑已填过的日程默认展开
+  const advBox = d.querySelector('#evAdv'), advBtn = d.querySelector('#evAdvToggle');
+  const hasAdv = isEdit && (init.location || init.memo || init.freq > 0 || (occ && occ.categoryUid && occ.categoryUid !== 'cat-default-1'));
+  if (hasAdv) { advBox.classList.remove('hidden'); advBtn.classList.add('hidden'); }
+  advBtn.onclick = () => { advBox.classList.remove('hidden'); advBtn.classList.add('hidden'); };
   // 节奏：弹窗一开光标就在标题上（对齐 Lifebear —— 少一次"从哪开始写"的停顿）
   setTimeout(() => { const el = d.querySelector('#evTitle'); if (el && !el.value) el.focus(); }, 60);
   freqSel.onchange = syncVis;
@@ -981,13 +990,29 @@ function logoutLocal() {
   S.token = ''; localStorage.removeItem('lk_token');
   $('#appView').classList.add('hidden');
   $('#authView').classList.remove('hidden');
+  // P1-9：落地页访问埋点（未登录才算；fetch 失败无所谓）
+  try { fetch('/api/ev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'landing_view' }) }); } catch (e) { }
 }
 async function refreshMe() {
   try {
     const me = await api('/api/me');
     S.plan = me.plan;
+    S.planExpiry = me.plan_expiry || 0;
     $('#menuPlan').textContent = `${S.account} · ${me.plan === 'pro' ? 'Pro' : t('免费版')} · AI ${t('不限次')}`;
+    // P2-A9（网页版）：付款等待中 → 开通即提示并清除等待
+    if (me.plan === 'pro' && +localStorage.getItem('lk_pay_pending')) {
+      localStorage.removeItem('lk_pay_pending');
+      toast(t('✅ Pro 已开通，感谢支持小鹿 🦌'));
+    }
+    updateClaimVis();
   } catch (e) { }
+}
+const isPro = () => S.plan === 'pro' && (!S.planExpiry || Date.now() < S.planExpiry);
+// A10：认领入口平时隐藏，只在付款超 2 分钟仍未到账时出现
+function updateClaimVis() {
+  const el = $('#mClaim'); if (!el) return;
+  const pend = +localStorage.getItem('lk_pay_pending') || 0;
+  el.classList.toggle('hidden', !(pend > 0 && Date.now() - pend > 2 * 60_000 && S.plan !== 'pro'));
 }
 
 /* ---------------- 启动与事件 ---------------- */
@@ -1166,8 +1191,9 @@ async function boot() {
       url = 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0';
       try { const r = await api('/api/pay/intent', { plan: 'month' }); if (r.url) url = r.url; } catch (e) { }
     }
+    localStorage.setItem('lk_pay_pending', String(Date.now()));
     window.open(url, '_blank');
-    toast(t('付款后回到这里，稍等片刻会自动开通；没动静就点「认领订单」。'));
+    toast(t('付款后切回本页，稍等片刻会自动开通'));
   };
 
   // 认领订单：粘贴爱发电订单号 → 服务端反查开通（不依赖备注的唯一兜底）
@@ -1184,7 +1210,9 @@ async function boot() {
       if (no.length < 6) { toast(t('请输入完整的爱发电订单号')); return; }
       try {
         await api('/api/pay/claim', { order_no: no });
+        localStorage.removeItem('lk_pay_pending');
         closeModal(); toast(t('认领成功，Pro 已开通 🎉'));
+        refreshMe();
       } catch (e) { toast(e.message || t('认领失败')); }
     };
   };
@@ -1260,6 +1288,29 @@ async function boot() {
   if (matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
     document.getElementById('afdianLeaflet')?.closest('.landing-support')?.remove();
   }
+
+  // P2-C3：顶栏/底栏高度实测写入 CSS 变量（布局不再猜数字）
+  function setLayoutVars() {
+    const tb = document.querySelector('.topbar');
+    const bb = document.querySelector('.bottombar');
+    const r = document.documentElement.style;
+    if (tb) r.setProperty('--tb', tb.offsetHeight + 'px');
+    if (bb) r.setProperty('--bb', bb.offsetHeight + 'px');
+  }
+  setLayoutVars();
+  window.addEventListener('resize', setLayoutVars);
+
+  // P2-A7：回到前台刷订阅状态。付款等待期每次都刷；平时 5 分钟节流
+  let lastMeAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || !S.token) return;
+    const pending = +localStorage.getItem('lk_pay_pending') > 0;
+    if (pending || Date.now() - lastMeAt > 5 * 60_000) {
+      lastMeAt = Date.now();
+      refreshMe();
+    }
+    updateClaimVis();
+  });
 
   // iOS「添加到主屏幕」引导：Safari 不会自动提示，且只有装到桌面才能全屏 + 收通知
   (function iosInstallTip() {

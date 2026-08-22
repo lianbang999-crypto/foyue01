@@ -118,9 +118,19 @@ object Prefs {
     fun accountEmail(c: Context) = sp(c).getString("account_email", "")!!
     fun setAccountEmail(c: Context, v: String) = sp(c).edit().putString("account_email", v).apply()
 
+    // ⚠️ 订阅状态唯一真值源是 PlanState（P2-A，2026-08-22）。
+    // 这三个函数只给 PlanState 做持久化用，页面一律读 PlanState.isPro / PlanState.plan。
     fun plan(c: Context) = sp(c).getString("plan", "free")!!
     fun setPlan(c: Context, v: String) = sp(c).edit().putString("plan", v).apply()
-    fun isPro(c: Context) = plan(c) == "pro"
+    fun planExpiry(c: Context) = sp(c).getLong("plan_expiry", 0L)
+    fun setPlanExpiry(c: Context, v: Long) = sp(c).edit().putLong("plan_expiry", v).apply()
+    fun planSyncedAt(c: Context) = sp(c).getLong("plan_synced_at", 0L)
+    fun setPlanSyncedAt(c: Context, v: Long) = sp(c).edit().putLong("plan_synced_at", v).apply()
+    /** @deprecated 页面请用 PlanState.isPro（带本地过期判断 + 自动重组） */
+    fun isPro(c: Context) = PlanState.isPro
+    // 支付等待中：点「开通 Pro」跳走的时刻；开通成功或超时清零（P2-A9）
+    fun payPendingSince(c: Context) = sp(c).getLong("pay_pending_since", 0L)
+    fun setPayPendingSince(c: Context, v: Long) = sp(c).edit().putLong("pay_pending_since", v).apply()
 
     /** E2 编辑草稿（防进程被杀丢内容）：500ms 防抖写入，保存成功后清除 */
     /** 自创主题主色（ARGB，0 = 未设置过） */
