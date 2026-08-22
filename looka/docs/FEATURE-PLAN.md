@@ -3329,3 +3329,264 @@ ALTER TABLE users ADD COLUMN reg_site     TEXT NOT NULL DEFAULT '';    -- 从哪
 | 1 | `foyue.org` 主站现在是 Worker 还是 Pages？ | 决定 `/admin` 是加路由还是独立 Worker + 路由规则。**独立 Worker 更干净**，主站不受影响 |
 | 2 | 后台用 Cloudflare Access 吗？ | **强烈建议用**。免费、零代码、比自己写登录安全一个数量级 |
 | 3 | 埋点要不要现在就做？ | **建议立刻做**。这是全篇唯一"晚一天就少一天数据"的事 |
+
+---
+
+## 四十三、管理后台完整规格（三期全做，2026-08-22 用户拍板）
+
+> §四十二 是"为什么这么设计"，本节是**"照着做就能建出来"**的施工图。
+> 每一项都可勾选，执行时对照 `docs/EXECUTION.md`。
+
+---
+
+# 第 0 期 · 埋点（🔴 有时效性，最先做）
+
+### 0.1 建表（`foyue-db`，全站共用）
+
+```sql
+-- ① 通用事件流：新增指标只加 kind，不加表
+CREATE TABLE IF NOT EXISTS events (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  site     TEXT    NOT NULL,     -- looka | zhi | shop | foyue | bojing | wenchao
+  kind     TEXT    NOT NULL,     -- 见 0.2 事件字典
+  user_id  INTEGER,              -- 未登录事件为 NULL
+  ip_hash  TEXT,                 -- SHA256(ip + 当日盐) 前 16 位；不可反查
+  ua_class TEXT,                 -- android | ios | desktop | other
+  ref      TEXT,                 -- 来源域名（只留 host，丢弃 path 与 query）
+  meta     TEXT,                 -- 小 JSON，如 {"ver":"1.6.1"}；≤256 字节
+  ts       INTEGER NOT NULL      -- Unix 毫秒
+);
+CREATE INDEX IF NOT EXISTS idx_ev_site_kind_ts ON events(site, kind, ts);
+CREATE INDEX IF NOT EXISTS idx_ev_ts           ON events(ts);
+
+-- ② 每日汇总：明细留 90 天，汇总永久保留
+CREATE TABLE IF NOT EXISTS daily_stats (
+  site TEXT NOT NULL,
+  day  TEXT NOT NULL,            -- 'YYYY-MM-DD'（北京时区）
+  kind TEXT NOT NULL,
+  cnt  INTEGER NOT NULL,         -- 总次数
+  uniq INTEGER NOT NULL,         -- 按 ip_hash / user_id 去重
+  PRIMARY KEY (site, day, kind)
+);
+
+-- ③ 每日轮换盐：保证 ip_hash 跨天不可关联（隐私要求）
+CREATE TABLE IF NOT EXISTS ip_salts (
+  day  TEXT PRIMARY KEY,
+  salt TEXT NOT NULL
+);
+```
+
+### 0.2 事件字典（先定死，避免以后 kind 乱长）
+
+| kind | 触发点 | user_id | meta |
+|---|---|---|---|
+| `landing_view` | 未登录首页渲染 | ∅ | `{}` |
+| `apk_download` | `GET /dl/looka-latest.apk` | ∅ | `{"ver":"1.6.1"}` |
+| `register` | 注册成功 | ✅ | `{"kind":"email"}` |
+| `login` | 登录成功 | ✅ | `{}` |
+| `app_open` | 当日首次通过鉴权的请求 | ✅ | `{"plat":"android"}` |
+| `pay` | `afdianSettle` 开通成功 | ✅ | `{"amt":"12.00","mon":1}` |
+| `ai_chat` | AI 调用成功 | ✅ | `{"tier":"premium"}` |
+| `crash` | 崩溃上报 | 可空 | `{"ver":"1.6.1"}` |
+
+### 0.3 `users` 表补两列（`rixing-db`）
+
+```sql
+ALTER TABLE users ADD COLUMN last_seen_at INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN reg_site     TEXT    NOT NULL DEFAULT '';
+```
+
+> ⚠️ 已知不一致：`users.created_at` 是 **TEXT**（ISO 字符串），其余时间戳都是
+> **INTEGER 毫秒**。按日期分组时必须 `date(created_at)` 特判。**新列一律 INTEGER。**
+
+### 0.4 Looka 侧接入点（`server/src/worker.js`）
+
+| | 位置 | 做什么 |
+|---|---|---|
+| a | `/dl/looka-latest.apk` 路由内 | `track(env,'looka','apk_download',null,req,{ver})` |
+| b | `/api/auth/register` 成功后 | `track(...,'register',userId,...)` + 写 `reg_site='looka'` |
+| c | `/api/auth/login` 成功后 | `track(...,'login',userId,...)` |
+| d | `getUser()` 返回后 | 当日首次则 `track('app_open')` + `UPDATE users SET last_seen_at` |
+| e | `afdianSettle` 开通成功 | `track(...,'pay',uid,...,{amt,mon})` |
+| f | `/api/ai/chat` 成功返回前 | `track(...,'ai_chat',uid,...,{tier})` |
+| g | `/api/crash` | `track(...,'crash',...)` |
+| h | 网页 `index.html` 未登录时 | `POST /api/ev` 记 `landing_view` |
+
+**辅助函数（写进 worker.js）**
+
+```js
+// 埋点：绝不阻塞主流程，绝不存可反查的原始信息
+async function track(env, site, kind, userId, request, meta = {}) {
+  try {
+    const ip = request?.headers.get('cf-connecting-ip') || '';
+    const day = today();                       // 'YYYY-MM-DD'（北京）
+    const salt = await dailySalt(env, day);    // ip_salts 表，当天没有就生成
+    const ipHash = ip ? (await sha256hex(ip + salt)).slice(0, 16) : null;
+    const ua = request?.headers.get('user-agent') || '';
+    const uaClass = /Android/i.test(ua) ? 'android'
+                  : /iPhone|iPad|iPod/i.test(ua) ? 'ios'
+                  : /Mozilla/i.test(ua) ? 'desktop' : 'other';
+    let ref = '';
+    try { ref = new URL(request.headers.get('referer') || '').host; } catch {}
+    await env.STATS.prepare(
+      `INSERT INTO events (site,kind,user_id,ip_hash,ua_class,ref,meta,ts)
+       VALUES (?1,?2,?3,?4,?5,?6,?7,?8)`
+    ).bind(site, kind, userId ?? null, ipHash, uaClass, ref,
+           JSON.stringify(meta).slice(0, 256), Date.now()).run();
+  } catch (_) { /* 埋点失败永远不能影响业务 */ }
+}
+```
+
+> ⚠️ 全部用 `ctx.waitUntil(track(...))` 调用 —— **不占用户等待时间**。
+> Looka 的 `wrangler.jsonc` 需新增一条 `STATS → foyue-db` 的 D1 绑定。
+
+### 0.5 每日 Cron（并入现有 03:17 那次）
+
+```
+1. 汇总昨日 events → daily_stats（cnt / uniq）
+2. 删除 90 天前的 events 明细
+3. 删除 30 天前的 ip_salts
+```
+
+### 0.6 隐私政策同步补写（🔴 必做，不可省）
+
+`privacy.html`「我们收集什么」增加一条：
+
+> **运行数据**：我们会记录必要的运行数据（页面访问、安装包下载、注册与活跃、崩溃、
+> 匿名化的来源域名）用于改进产品。其中 IP 仅以**每日轮换盐加密后的摘要**保存、无法反查到你，
+> 明细 **90 天后自动删除**。这些数据**不包含**你的笔记、日记与日程内容，也不与第三方共享。
+
+---
+
+# 第 1 期 · 看板（能看）
+
+### 1.1 新建项目 `foyue-admin/`
+
+```
+foyue-admin/
+├── wrangler.jsonc
+├── src/worker.js          # 鉴权 + 聚合查询 API
+└── public/index.html      # 单页看板（原生 JS，不引框架，与各子站风格一致）
+```
+
+**`wrangler.jsonc` 关键配置**
+
+```jsonc
+{
+  "name": "foyue-admin",
+  "main": "src/worker.js",
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "foyue.org/admin*", "zone_name": "foyue.org" }],
+  "d1_databases": [
+    { "binding": "STATS", "database_name": "foyue-db"    },
+    { "binding": "AUTH",  "database_name": "rixing-db"   },
+    { "binding": "LOOKA", "database_name": "looka-db"    },
+    { "binding": "SHOP",  "database_name": "foyue-shop"  }
+  ],
+  "triggers": { "crons": ["0 1 * * *"] }
+}
+```
+
+### 1.2 鉴权三层
+
+```
+① Cloudflare Access（Zero Trust）
+   · Application: foyue.org/admin*
+   · Policy: Allow → Emails → 你的邮箱（一次性验证码）
+   · 请求根本到不了 Worker，零代码
+② Worker 内校验 Access JWT 头 Cf-Access-Authenticated-User-Email 在白名单内
+   （防 Access 策略被误删导致裸奔）
+③ 写操作另需 ADMIN_KEY（放 wrangler secret）
+```
+
+### 1.3 只读 API
+
+| 路径 | 返回 |
+|---|---|
+| `GET /admin/api/overview` | 今日/昨日/7日：注册·活跃·下载·付费·AI·崩溃 + 30 日漏斗 + 本月收入 |
+| `GET /admin/api/trend?days=30&kind=` | 折线数据（走 `daily_stats`，快） |
+| `GET /admin/api/users?q=&page=` | 账号·注册时间·来源站·最后活跃·订阅态（**不含任何内容字段**） |
+| `GET /admin/api/subs` | pay_orders 流水 / 未认领订单 / 7 日内到期 |
+| `GET /admin/api/health` | AI 失败率·高级模型回落·崩溃 Top·限流触发·同步冲突 |
+| `GET /admin/api/sites` | 各子站注册与活跃对比 |
+
+### 1.4 看板 UI（单页，五个标签）
+
+```
+┌ 总览 ─────────────────────────────────────┐
+│  今天    昨天    7日                        │
+│  新注册   12      9     74                  │
+│  活跃     58     61      —                  │
+│  APK下载  31     40    210                  │
+│  新付费    1      0      3                  │
+│  AI调用  420    380  2,610                  │
+│  崩溃      0      2      5                  │
+│                                             │
+│  漏斗（30日）                                │
+│  落地页1240 ─18%→ 下载224 ─41%→ 注册92 ─7%→ 付费6 │
+│                                             │
+│  钱（本月）  收入¥72  订阅中6  7日内到期2      │
+│              鹿角消耗≈¥3.1（成本敞口）        │
+│                                             │
+│  ⚠️ 需要处理：未认领订单 1 笔                 │
+└─────────────────────────────────────────────┘
+[总览] [用户] [订阅] [健康] [子站] [审计]
+```
+
+**用户页红线**：只显示元数据。**笔记/日记/日程正文永不出现在后台**，做技术支持也不例外。
+
+---
+
+# 第 2 期 · 能做事
+
+### 2.1 写操作（每个都二次确认 + 记审计）
+
+| 操作 | 实现方式 |
+|---|---|
+| 给账号补开 Pro | 调 looka 的 `/api/admin/grant`（新增，业务规则留在 Looka） |
+| 生成兑换码 / 邀请码 | 复用现有 `/api/admin/gencode` |
+| 处理未认领订单 | 手动把 `pay_orders.user_id` 绑到指定账号 |
+| 封禁账号 | `users` 加 `banned_at`，`getUser()` 处拦截 |
+
+### 2.2 审计表
+
+```sql
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor      TEXT    NOT NULL,   -- Access 邮箱
+  action     TEXT    NOT NULL,   -- grant_pro | gencode | bind_order | ban
+  target     TEXT,               -- user_id / order_no
+  detail     TEXT,               -- 小 JSON
+  ts         INTEGER NOT NULL
+);
+```
+
+### 2.3 接入其余子站
+
+每站两步：① `foyue-admin` 加一条 D1 binding；② 该站接埋点（同 0.4）。
+顺序建议：**自知录 → 流通处 → 播经台 → 文钞**。
+
+### 2.4 异常告警（邮件到 looka01@qq.com）
+
+`dailyAlert()` 已有骨架，扩展阈值：
+
+```
+· 未认领订单 > 0          → 立刻发（有人付了钱没拿到货）
+· 崩溃数 > 昨日 3 倍       → 发
+· AI 上游失败率 > 10%      → 发
+· 高级模型回落 > 20 次/日   → 发
+· 当日注册 = 0 且昨日 > 5   → 发（可能注册链路挂了）
+```
+
+---
+
+> ## 📌 施工请看 `docs/EXECUTION.md`
+>
+> 本计划书是**为什么这么做**的完整论证（43 节 / 3579 行），
+> 但它太长了 —— 方案写得越全，越容易「写过了 = 以为做过了」。
+>
+> **全部未完成项已收拢成一张可勾选的清单**：`docs/EXECUTION.md`
+> 按 P0～P7 分组、按依赖排序、每项标了出处。
+>
+> **规矩**：新想法先写进本计划书 → 确认要做 → 登记到 EXECUTION.md → 做完在那里勾。
+> 发版前把 EXECUTION.md 从头扫一遍。
