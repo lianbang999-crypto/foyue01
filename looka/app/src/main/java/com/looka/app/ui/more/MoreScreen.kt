@@ -66,6 +66,7 @@ import com.looka.app.ui.common.NavRow
 import com.looka.app.ui.common.plainClick
 import com.looka.app.ui.theme.DEER_THEMES
 import com.looka.app.ui.theme.GrayText
+import com.looka.app.ui.theme.HolidayRed
 import com.looka.app.ui.theme.Ink
 import com.looka.app.ui.theme.ThemeCtl
 import com.looka.app.vm.LookaViewModel
@@ -155,6 +156,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             NavRow(tr("日历与默认设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
             Hairline()
             NavRow(tr("订阅与小鹿 AI"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
+            Hairline()
+            // G1（§54）：鹿角入口 —— 安静的一行，不做顶栏角标
+            NavRow(tr("我的鹿角"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("antler") }
             Hairline()
             // P2-A11：入口 3 层 → 1 层。免费用户点一下直达付款页（等待卡在订阅页看）
             if (!com.looka.app.data.PlanState.isPro) {
@@ -480,6 +484,32 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                             tr("· 独立原创品牌与设计"),
                     fontSize = 13.sp, lineHeight = 21.sp
                 )
+                // C2（§54）：崩溃日志在私有目录，用户自己拿不到 —— 给一个主动上报通道
+                val crashF = remember { (ctx.applicationContext as com.looka.app.LookaApp).crashFile() }
+                if (crashF.exists()) {
+                    val cScope = androidx.compose.runtime.rememberCoroutineScope()
+                    Text(
+                        tr("检测到上次异常退出 · 点击发送崩溃日志"),
+                        fontSize = 12.sp, color = HolidayRed,
+                        modifier = Modifier.padding(top = 8.dp).plainClick {
+                            cScope.launch {
+                                runCatching {
+                                    val lines = crashF.readText().lines()
+                                    com.looka.app.net.Api.crash(ctx,
+                                        com.looka.app.BuildConfig.VERSION_NAME,
+                                        lines.getOrElse(1) { "" }.take(64),
+                                        lines.drop(3).joinToString("\n").take(8000))
+                                    crashF.delete()
+                                    android.widget.Toast.makeText(ctx, tr("已发送，感谢帮助小鹿变好 🦌"),
+                                        android.widget.Toast.LENGTH_SHORT).show()
+                                }.onFailure {
+                                    android.widget.Toast.makeText(ctx, tr("发送失败，稍后再试"),
+                                        android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    )
+                }
                 Row(Modifier.padding(top = 10.dp)) {
                     Text(tr("隐私政策"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.plainClick {

@@ -115,6 +115,7 @@ fun LookaRoot() {
         composable("aiChat") { AiChatScreen(vm, nav) }
         composable("account") { AccountScreen(vm, nav) }
         composable("subscription") { com.looka.app.ui.more.SubscriptionScreen(vm, nav) }
+        composable("antler") { com.looka.app.ui.more.AntlerScreen(vm, nav) }
         composable("backup") { com.looka.app.ui.more.BackupScreen(vm, nav) }
         composable("selfcheck") { com.looka.app.ui.more.SelfCheckScreen(vm, nav) }
         composable("conflicts") { com.looka.app.ui.more.ConflictScreen(vm, nav) }

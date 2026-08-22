@@ -118,7 +118,10 @@ object SyncEngine {
                     .put("showDoneTasks", Prefs.showDoneTasks(app))
                     // B1（§48）：主题上云 —— 用户花心思调的主题换手机不能丢
                     .put("themeIndex", Prefs.themeIndex(app))
-                    .put("customColor", Prefs.customThemeColor(app))))
+                    .put("customColor", Prefs.customThemeColor(app))
+                    // D1（§52）：小鹿记事本随云走
+                    .put("deerFacts", org.json.JSONArray().also { a ->
+                        Prefs.deerFacts(app).forEach { a.put(it) } })))
         }
         val catUidById = db.categoryDao().list().associate { it.id to it.uid }
 
@@ -252,6 +255,8 @@ object SyncEngine {
                         // B1：主题跟随云端（老客户端的载荷没有这两个键时保持本地值）
                         if (o.has("themeIndex")) sp0.putInt("theme_index", o.optInt("themeIndex", 0))
                         if (o.has("customColor")) sp0.putLong("custom_theme", o.optLong("customColor", 0xFF55B04BL))
+                        // D1：小鹿记事本跟随云端
+                        o.optJSONArray("deerFacts")?.let { sp0.putString("deer_facts", it.toString()) }
                         sp0.putBoolean("st_dirty", false).putLong("st_updated", up).apply()
                         // 主题状态是 Compose State，落盘后要刷一次才立即生效
                         if (o.has("themeIndex")) com.looka.app.ui.theme.ThemeCtl.init(app)

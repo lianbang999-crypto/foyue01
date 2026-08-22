@@ -250,7 +250,19 @@ fun TimelineBody(
         val scroll = rememberScrollState()
         val density = LocalDensity.current
         val hourPx = with(density) { HOUR_DP.toPx() }
-        LaunchedEffect(Unit) { scroll.scrollTo((hourPx * 7.5f).toInt()) }
+        // W1（§52/§54）：不再写死 7:30 —— 滚到「今天最早日程」或「现在」前 1 小时。
+        // 晚上 9 点打开停在早上 7:30、第一个日程在 14:00 还得手动滚，都是这行的旧账。
+        LaunchedEffect(days) {
+            val nowMin0 = LocalTime.now().let { it.hour * 60 + it.minute }
+            val earliest = blocksByDay.values.flatten().minOfOrNull { it.startMin }
+            val target = when {
+                earliest != null && today in days -> minOf(earliest, nowMin0) - 60
+                earliest != null -> earliest - 60
+                today in days -> nowMin0 - 60
+                else -> 7 * 60 + 30
+            }.coerceIn(0, 23 * 60)
+            scroll.scrollTo((hourPx * target / 60f).toInt())
+        }
 
         Row(
             Modifier
@@ -331,32 +343,32 @@ private fun DayTimelineColumn(
     ) {
         val colW = maxWidth
         val lanes = remember(blocks) { layoutLanes(blocks) }
-        lanes.forEach { (b, lane, count) ->
+        lanes.forEach { (b, lane, count, span) ->
             val top = HOUR_DP * (b.startMin / 60f)
             val heightDp = HOUR_DP * ((b.endMin - b.startMin).coerceAtLeast(26) / 60f)
-            val w = colW / count
+            val w = colW / count * span   // K1：孤立块向右占满，不再被长日程连坐
             if (b.occ != null) {
                 val o = b.occ
                 Box(
                     Modifier
-                        .offset(x = w * lane, y = top)
+                        .offset(x = colW / count * lane, y = top)
                         .width(w)
                         .height(heightDp)
                         .padding(horizontal = 1.dp, vertical = 1.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background((catColorMap[o.categoryId] ?: Color(0xFF9AA0A6)).copy(alpha = 0.94f))
+                        .background(blockColor(catColorMap[o.categoryId], o.title).copy(alpha = 0.94f))
                         .border(1.dp, Color.White.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                         .plainClick { onOpen(o) }
                         .padding(horizontal = 4.dp, vertical = 3.dp)
                 ) {
                     Column {
-                        val fg = onColor(catColorMap[o.categoryId] ?: Color(0xFF9AA0A6))
+                        val fg = onColor(blockColor(catColorMap[o.categoryId], o.title))
                         Text(
                             o.title, fontSize = 10.sp, color = fg, lineHeight = 12.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 2, overflow = TextOverflow.Ellipsis
                         )
-                        Text(
+                        if (w >= 60.dp) Text(
                             "${Fmt.hm(o.startMin)}-${Fmt.hm(o.endMin)}",
                             fontSize = 8.sp, color = fg.copy(alpha = 0.85f), maxLines = 1
                         )
@@ -367,7 +379,7 @@ private fun DayTimelineColumn(
                 val c = Color(e.color)
                 Box(
                     Modifier
-                        .offset(x = w * lane, y = top)
+                        .offset(x = colW / count * lane, y = top)
                         .width(w)
                         .height(heightDp)
                         .padding(horizontal = 1.dp, vertical = 1.dp)
@@ -409,16 +421,37 @@ private fun DayTimelineColumn(
 }
 
 /** 重叠块分泳道：返回（块, 泳道号, 泳道总数） */
-private fun layoutLanes(items: List<TBlock>): List<Triple<TBlock, Int, Int>> {
+/**
+ * K1（§54 二 问题2）：泳道布局 v2。
+ * 旧版让整簇平分列宽 —— 一根 9:00→14:30 的长日程会把 5 个半小时里的所有日程
+ * "串"成一簇，每块被压成 1/N 宽（周视图上只剩 ~17dp，一个字都放不下）。
+ * 新版（Google Calendar 同款语义）：lane 分配不变，但每块**向右扩展**，
+ * 直到撞上一个与它时间真正重叠的块所在的 lane —— 孤立的块占满剩余宽度。
+ * 返回 (块, lane, laneCount, span)。
+ */
+private data class LaneBox(val b: TBlock, val lane: Int, val count: Int, val span: Int)
+
+private fun layoutLanes(items: List<TBlock>): List<LaneBox> {
     val sorted = items.sortedWith(compareBy({ it.startMin }, { it.endMin }))
-    val out = ArrayList<Triple<TBlock, Int, Int>>()
+    val out = ArrayList<LaneBox>()
     var cluster = ArrayList<Pair<TBlock, Int>>()
     var lanes = ArrayList<Int>()
     var clusterEnd = -1
 
+    fun overlaps(a: TBlock, c: TBlock) = a.startMin < c.endMin && a.endMin > c.startMin
+
     fun flush() {
         val count = lanes.size.coerceAtLeast(1)
-        cluster.forEach { (b, lane) -> out += Triple(b, lane, count) }
+        cluster.forEach { (b, lane) ->
+            var span = 1
+            // 向右伸展：下一条 lane 里没有与我重叠的块，就把它也占了
+            for (nl in lane + 1 until count) {
+                val blocked = cluster.any { (other, ol) -> ol == nl && overlaps(b, other) }
+                if (blocked) break
+                span++
+            }
+            out += LaneBox(b, lane, count, span)
+        }
         cluster = ArrayList(); lanes = ArrayList(); clusterEnd = -1
     }
 
@@ -436,3 +469,19 @@ private fun layoutLanes(items: List<TBlock>): List<Triple<TBlock, Int, Int>> {
     flush()
     return out
 }
+
+
+/**
+ * K2③（§54 二 问题1）：块配色。
+ * 「未分类」的颜色与回落色都是 #9AA0A6 —— AI 建的日程全落在未分类里，整屏死灰。
+ * 灰色/缺失时按标题散列取一个柔和色：信息量回来了，又不动用户的分类数据。
+ */
+private val SOFT_COLORS = listOf(
+    Color(0xFF4A7DDC), Color(0xFF55B04B), Color(0xFF2FA69A), Color(0xFFE077A8),
+    Color(0xFFF2913D), Color(0xFF7E6BD8), Color(0xFF4A9EDB), Color(0xFFC9A227)
+)
+
+private fun blockColor(catColor: Color?, title: String): Color =
+    if (catColor == null || catColor == Color(0xFF9AA0A6))
+        SOFT_COLORS[kotlin.math.abs(title.hashCode()) % SOFT_COLORS.size]
+    else catColor

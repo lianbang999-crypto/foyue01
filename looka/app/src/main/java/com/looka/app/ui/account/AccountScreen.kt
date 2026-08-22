@@ -139,6 +139,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
     var account by remember { mutableStateOf(Prefs.accountEmail(ctx)) }
     var password by remember { mutableStateOf("") }
     var invite by remember { mutableStateOf("") }
+    var refCode by remember { mutableStateOf("") }   // §55 P5：朋友的邀请码（选填，双方各+100鹿角）
     var busy by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
     var forgotDlg by remember { mutableStateOf(false) }
@@ -152,7 +153,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
         scope.launch {
             busy = true; err = null
             try {
-                val r: JSONObject = if (isRegister) Api.registerWithInvite(ctx, account.trim(), password, invite.trim())
+                val r: JSONObject = if (isRegister) Api.registerWithInvite(ctx, account.trim(), password, invite.trim(), refCode.trim())
                 else Api.login(ctx, account.trim(), password)
                 Prefs.setAuthToken(ctx, r.optString("token"))
                 Prefs.setAccountEmail(ctx, account.trim().lowercase())
@@ -200,6 +201,11 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
         if (isRegister && registerMode == "invite") {
             Spacer(Modifier.height(10.dp))
             MiniField(invite, { invite = it }, tr("邀请码"))
+        }
+        // §55 P5：朋友的邀请码（选填）—— 填了双方各得 100 枚鹿角
+        if (isRegister) {
+            Spacer(Modifier.height(10.dp))
+            MiniField(refCode, { refCode = it }, tr("朋友的邀请码（选填，各得 100 🦌）"))
         }
 
         err?.let {
@@ -376,10 +382,10 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         InfoRow(
             tr("小鹿 AI"),
             when {
-                plan == "pro" && aiMonthUsed >= 0 -> tr("不限次 · 本月已聊 {0} 次", aiMonthUsed)
-                plan == "pro" -> tr("不限次")
-                aiMonthUsed >= 0 -> tr("每天 10 次 · 本月已聊 {0} 次", aiMonthUsed)
-                else -> tr("每天 10 次")
+                plan == "pro" && aiMonthUsed >= 0 -> tr("每天 50 🦌 · 本月已聊 {0} 次", aiMonthUsed)
+                plan == "pro" -> tr("每天 50 🦌")
+                aiMonthUsed >= 0 -> tr("每天 10 🦌 · 本月已聊 {0} 次", aiMonthUsed)
+                else -> tr("每天 10 🦌")
             }
         )
         Hairline()
@@ -694,8 +700,8 @@ private fun KeepLoseDialog(onDismiss: () -> Unit) {
         tr("云同步和数据导出")
     )
     val loses = listOf(
-        tr("AI 不限次（改为每天 10 次）"), tr("生成新主题 / 新表情包"),
-        tr("更聪明的模型"), tr("年度回顾长图")
+        tr("每天 50 枚鹿角（改回每天 10 枚）"), tr("生成新主题 / 新表情包"),
+        tr("年度回顾长图")
     )
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,

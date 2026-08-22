@@ -141,7 +141,8 @@ function pushThemeSettings(idx, hex) {
     weekStartMon: ST.weekStartMon, showLunar: ST.showLunar,
     holidayMask: ST.holidayMask, showDoneTasks: ST.showDoneTasks,
     themeIndex: idx,
-    customColor: hex ? parseInt('ff' + hex.slice(1), 16) : 0xFF55B04B
+    customColor: hex ? parseInt('ff' + hex.slice(1), 16) : 0xFF55B04B,
+    deerFacts: JSON.parse(localStorage.getItem('lk_deer_facts') || '[]')
   };
   S.dirty.push({ kind: 'settings', uid: 'settings', updated_at: Date.now(), deleted: 0, p });
   saveDirty(); scheduleSync();
@@ -233,6 +234,8 @@ function applyRec(rec) {
       ST.showLunar = p.showLunar == null ? null : !!p.showLunar;
       ST.holidayMask = p.holidayMask ?? (1 << 6);
       ST.showDoneTasks = p.showDoneTasks !== false;
+      // D1：小鹿记事本随云
+      if (Array.isArray(p.deerFacts)) localStorage.setItem('lk_deer_facts', JSON.stringify(p.deerFacts));
       // B1：主题随云（App 换了主题，网页跟着变；防回环见 pushThemeSettings）
       if (p.themeIndex !== undefined) {
         applyingRemoteSettings = true;
@@ -950,7 +953,7 @@ function aiSystemPrompt() {
 
 ${agendaContext()}
 
-回复要求：简体中文、简洁友好、可少量 emoji；回答日程问题时优先引用上面的真实数据，不要编造。
+${(() => { const f = JSON.parse(localStorage.getItem('lk_deer_facts') || '[]'); return f.length ? '你记住过的用户偏好：' + f.join('；') + '\n' : ''; })()}回复要求：简体中文、简洁友好、可少量 emoji；回答日程问题时优先引用上面的真实数据，不要编造。
 当需要为用户创建、修改或删除内容时，先用一句话说明，然后在回复末尾输出一个 \`\`\`json 代码块（必须是合法 JSON）：
 {"actions":[
  {"type":"create_event","title":"标题","date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","all_day":false},
@@ -960,8 +963,10 @@ ${agendaContext()}
  {"type":"update_task","id":2,"due":"YYYY-MM-DD","done":true},
  {"type":"delete_event","id":3},
  {"type":"delete_task","id":2},
- {"type":"delete_note","id":1}
+ {"type":"delete_note","id":1},
+ {"type":"remember","fact":"用户告诉你的一条长期偏好"}
 ]}
+remember 规则：只记长期有效的偏好或事实；一次性安排、情绪、秘密不要记；用户说「别记」时不要输出。
 修改/删除规则（最重要）：id 只能用上面数据里方括号标注的数字（[e3] → id 是 3）；数据里找不到用户说的那条时，绝不要猜 id —— 直接问用户是哪一条，不输出 json；update 只写要改的字段；「完成了」某任务 = update_task {"done":true}。
 其他规则：相对日期必须换算成具体日期；全天日程 all_day=true 并省略 start/end；用户只是提问时不要输出 json。`;
 }
@@ -1101,6 +1106,16 @@ function execActions(actions) {
       }
       continue;
     }
+    if (a.type === 'remember') {
+      // D2（§52）：小鹿记事本（本地 + 随 settings 上云）
+      const facts = JSON.parse(localStorage.getItem('lk_deer_facts') || '[]');
+      if (a.fact && !facts.includes(a.fact)) {
+        facts.push(a.fact);
+        localStorage.setItem('lk_deer_facts', JSON.stringify(facts.slice(0, 30)));
+      }
+      chatBubble('action', `🦌 ${t('记住啦')}：${esc(a.fact || '')}`);
+      continue;
+    }
     if (a.type === 'create_event') {
       const day = parseIso(a.date) >= 0 ? parseIso(a.date) : t0;
       const sm = toMin(a.start);
@@ -1139,18 +1154,49 @@ async function sendChat(text) {
   const thinking = chatBubble('ai', '小鹿正在想…');
   try {
     const messages = [{ role: 'system', content: aiSystemPrompt() }, ...S.chat.slice(-12)];
-    const tier = localStorage.getItem('lk_tier') || 'standard';
-    const r = await api('/api/ai/chat', { messages, temperature: 0.6, tier });
-    thinking.remove();
-    S.aiRemaining = r.remaining ?? -1;
-    updateQuota();
-    // 体验额度用尽或上游故障时服务端会回落标准模型 —— 如实告诉用户（措辞不提内部计量）
-    if (r.fell_back) {
-      chatBubble('action', r.fell_back.need > 0
-        ? t('本月高级模型体验次数已用完，已切回标准模型（开通 Pro 不限量）')
-        : t('高级模型暂时不可用，已用标准模型回答'));
+    // T1（§53）：真流式 —— fetch + ReadableStream；T2：渲染在 ``` 处截断，绝不露动作 JSON
+    const resp = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${S.token}` },
+      body: JSON.stringify({ messages, temperature: 0.6, stream: true })
+    });
+    if (!resp.ok) {
+      const eo = await resp.json().catch(() => ({}));
+      throw new Error(eo.error || `HTTP ${resp.status}`);
     }
-    const raw = (r.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    thinking.remove();
+    // G3/G4：从响应头拿账面
+    S.antler = +(resp.headers.get('X-Antler-Total') ?? -1);
+    const grantedToday = +(resp.headers.get('X-Antler-Granted-Today') ?? 0);
+    if (grantedToday > 0) chatBubble('action', `+${grantedToday} 🦌 ${t('今天的鹿角到账啦')}`);
+    updateQuota();
+    const liveDiv = chatBubble('ai', '');
+    const liveBubble = liveDiv.querySelector('.bubble');
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '', full = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const delta = JSON.parse(data)?.choices?.[0]?.delta?.content || '';
+          if (delta) {
+            full += delta;
+            // T2：截断在代码块前 —— 动作 JSON 逐字冒出也不给用户看
+            liveBubble.textContent = full.split('```')[0].replace(/[`{]+$/, '');
+            liveDiv.scrollIntoView({ block: 'end' });
+          }
+        } catch (e) { }
+      }
+    }
+    const raw = full.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    liveDiv.remove();   // 占位撤掉，下面按最终解析结果重新渲染
     let display = raw, actions = [];
     const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fence) {
@@ -1169,11 +1215,9 @@ async function sendChat(text) {
 }
 function updateQuota() {
   const q = $('#aiQuota');
-  // §50 分档：FREE 常显剩余并顺带说清 Pro；Pro 只在接近公平上限时轻提示
-  if (S.aiRemaining >= 0 && S.aiRemaining < 20) {
-    q.textContent = S.plan === 'pro'
-      ? t('今日剩余 {0} 次').replace('{0}', S.aiRemaining)
-      : t('今天还能聊 {0} 次（Pro 不限次）').replace('{0}', S.aiRemaining);
+  // G4（§54）：只在余额吃紧时提示 —— 鹿角是够用的额度，不是要攒的资产
+  if (S.antler >= 0 && S.antler < 10) {
+    q.textContent = t('还剩 {0} 枚鹿角（明天自动补充）').replace('{0}', S.antler);
     q.classList.remove('hidden');
   } else q.classList.add('hidden');
 }
@@ -1358,6 +1402,7 @@ async function boot() {
   const syncAuthUi = () => {
     const reg = authMode === 'register';
     $('#btnAuthMain').textContent = reg ? t('注册') : t('登录');
+    const refEl = $('#authRef'); if (refEl) refEl.classList.toggle('hidden', !reg);
     $('#authSwitchText').textContent = reg ? '已有账号？' : '还没有账号？';
     $('#authSwitchLink').textContent = reg ? t('登录') : t('注册');
     $('#authInvite').classList.toggle('hidden', !(reg && registerMode === 'invite'));
@@ -1376,7 +1421,12 @@ async function boot() {
     errEl.classList.add('hidden');
     try {
       const body = { account, password: pass };
-      if (isReg) body.invite = $('#authInvite').value.trim();
+      if (isReg) {
+        body.invite = $('#authInvite').value.trim();
+        // §55 P5：朋友的邀请码（选填）—— 双方各 +100 鹿角
+        const rc = $('#authRef').value.trim();
+        if (rc) body.ref = rc;
+      }
       const r = await api(isReg ? '/api/auth/register' : '/api/auth/login', body);
       S.token = r.token; S.account = r.account; S.plan = r.plan || 'free';
       localStorage.setItem('lk_token', S.token);
@@ -1510,6 +1560,34 @@ async function boot() {
       try { rec.start(); } catch (e) { toast(t('语音识别出错了')); }
     };
   }
+
+  // G1/G2（§54）+ P4/P5（§55）：我的鹿角 —— 余额/明细/参考价/邀请码
+  const mAntler = $('#mAntler');
+  if (mAntler) mAntler.onclick = async () => {
+    let bal = -1, rows = [], invite = '';
+    try {
+      const r = await api('/api/antler');
+      bal = r.antler?.total ?? r.total ?? -1;
+      rows = r.ledger || [];
+    } catch (e) { }
+    try { invite = (await api('/api/me')).invite_code || ''; } catch (e) { }
+    const reasonName = x => ({
+      daily_grant: t('每日到账'), monthly_grant: t('月度发放（旧）'), chat: t('和小鹿聊天'),
+      milestone: t('里程碑奖励'), referral_new: t('邀请奖励'), referral_inviter: t('邀请奖励')
+    }[x] || x);
+    modal(`<h3>🦌 ${bal >= 0 ? bal : '…'}</h3>
+      <p class="dim-note">${t('每天自动到账（免费 10 枚 / Pro 50 枚），不用签到、断了也不罚')}<br>
+      ${t('参考价：100 枚 ≈ ¥6（暂不出售 —— 每天送的就够用）')}</p>
+      ${invite ? `<p style="font-size:13px"><b>${t('我的邀请码')}：${invite}</b><br>
+        <span class="dim-note">${t('朋友注册时填上它，你们各得 100 枚 🦌')}</span></p>` : ''}
+      <div style="max-height:200px;overflow:auto">
+      ${rows.slice(0, 30).map(r => `<p style="font-size:12px;margin:3px 0;display:flex;justify-content:space-between">
+        <span>${reasonName(r.reason)}</span><span>${r.delta > 0 ? '+' : ''}${r.delta}</span></p>`).join('') ||
+        `<p class="dim-note">${t('还没有记录')}</p>`}
+      </div>
+      <div class="modal-btns"><button class="btn-mini" id="antlerClose">${t('知道了')}</button></div>`);
+    $('#antlerClose').onclick = closeModal;
+  };
 
   // 昵称：小鹿怎么称呼你（与自知录共用同一账号的昵称）
   const mNick = $('#mNick');

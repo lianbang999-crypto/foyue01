@@ -160,13 +160,16 @@ function pickText(data) {
 // ---------- 鹿角（算力券）----------
 // 双桶记账：granted(赠送，有累计上限、不清零) / paid(购买，不过期)。消耗一律先扣 granted，
 // 保护用户真金白银买的那部分。余额表是流水的冗余缓存，两者必须在同一个 batch 里原子更新。
+// §55（2026-08-22 定案）：鹿角是唯一额度口径（取代按天次数），按动作计价、每日到账。
+// 红线：写日记/建日程/贴表情/同步/导出/闹钟 永不消耗。
 const ANTLER = {
-  grant: { free: 60, pro: 200 },      // 每月赠送
-  cap:   { free: 120, pro: 400 },     // 赠送桶累计上限
-  cost:  { standard: 0, premium: 1, flagship: 5 }  // 聊天分档单价（Pro 用 premium 不扣，见 chargeChat）
+  grant: { free: 10, pro: 50 },       // 每日到账（进 App 自动领，无签到感：不连签、断签无惩罚）
+  cap:   { free: 60, pro: 300 },      // 赠送桶累计上限（攒得住但不无限；paid 桶不受限）
+  cost:  { chat: 1, theme: 2, ocr: 3, stickers: 20 }  // 按动作：对话/生成主题/截图识别/表情包
 };
 
 const ymNow = () => new Date().toISOString().slice(0, 7);   // YYYY-MM
+const dayNow = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD（鹿角日发周期）
 
 /** 读余额；顺带做「惰性月度发放」——不用定时任务，用户来了才结算，天然幂等 */
 async function antlerOf(env, userId, plan) {
@@ -177,7 +180,10 @@ async function antlerOf(env, userId, plan) {
     ).bind(userId, Date.now()).run();
     row = { user_id: userId, granted: 0, paid: 0, grant_cycle: null };
   }
-  const cycle = ymNow();
+  // G6（§54）：惰性**日**发 —— 用户当天第一次来就到账，天然幂等；
+  // 老数据 grant_cycle 是 YYYY-MM 格式，与今天不等 → 自动切到日周期，无需迁移。
+  const cycle = dayNow();
+  let grantedToday = 0;
   if (row.grant_cycle !== cycle) {
     const add = ANTLER.grant[plan] || ANTLER.grant.free;
     const cap = ANTLER.cap[plan] || ANTLER.cap.free;
@@ -190,12 +196,13 @@ async function antlerOf(env, userId, plan) {
       ).bind(userId, next, cycle, Date.now()),
       env.DB.prepare(
         `INSERT OR IGNORE INTO antler_ledger (id, user_id, delta, bucket, reason, ref, balance_after, created_at)
-         VALUES (?1,?2,?3,'granted','monthly_grant',?4,?5,?6)`
+         VALUES (?1,?2,?3,'granted','daily_grant',?4,?5,?6)`
       ).bind(crypto.randomUUID(), userId, real, `${cycle}`, next + row.paid, Date.now())
     ]);
     row.granted = next; row.grant_cycle = cycle;
+    grantedToday = real;
   }
-  return { granted: row.granted, paid: row.paid, total: row.granted + row.paid };
+  return { granted: row.granted, paid: row.paid, total: row.granted + row.paid, granted_today: grantedToday };
 }
 
 /**
@@ -244,6 +251,16 @@ async function antlerAdd(env, userId, plan, amount, bucket, reason, ref = null) 
   ]);
   return { granted: g, paid: pd, total: g + pd };
 }
+
+// ---------- 邀请奖励（§55 P5：双方各 +100，成本≈0 的获客筹码）----------
+// 邀请码 = 'LK' + 用户 id 的 36 进制（无需存储，可逆）。referrals 表防重复绑定。
+const inviteCodeOf = id => 'LK' + Number(id).toString(36).toUpperCase();
+const inviteCodeToId = code => {
+  const m = /^LK([0-9A-Z]{1,8})$/i.exec(String(code || '').trim());
+  if (!m) return 0;
+  const id = parseInt(m[1], 36);
+  return Number.isFinite(id) && id > 0 ? id : 0;
+};
 
 // ---------- 全站埋点（P1，2026-08-22）----------
 // 三条红线：不存原始 IP（每日盐哈希前 16 位）、不存完整 UA（只归类）、埋点失败绝不影响业务。
@@ -521,6 +538,25 @@ async function route(request, env, ctx) {
       'INSERT INTO users (account, kind, pass_hash, created_at) VALUES (?1, ?2, ?3, ?4)'
     ).bind(account, kind, await hashPassword(password), nowISO()).run();
     const userId = r.meta.last_row_id;
+    // §55 P5：邀请奖励。ref 可选；自邀/无效码静默忽略（注册不因此失败）。
+    // referrals 主键 = 新用户 id → 一个新账号只能被绑定一次；antlerAdd 的 ref 幂等再兜一层。
+    const refId = inviteCodeToId(b.ref);
+    if (refId > 0 && refId !== userId) {
+      ctx.waitUntil((async () => {
+        try {
+          const refUser = await env.AUTH_DB.prepare('SELECT id FROM users WHERE id = ?1')
+            .bind(refId).first();
+          if (!refUser) return;
+          const ins = await env.DB.prepare(
+            'INSERT OR IGNORE INTO referrals (new_user_id, referrer_id, created_at) VALUES (?1,?2,?3)'
+          ).bind(userId, refId, Date.now()).run();
+          if (!ins.meta.changes) return;   // 已绑定过，不重复发
+          await antlerAdd(env, userId, 'free', 100, 'granted', 'referral_new', `ref:${refId}`);
+          await antlerAdd(env, refId, 'free', 100, 'granted', 'referral_inviter', `ref:${userId}`);
+          await track(env, 'looka', 'referral', refId, request, {});
+        } catch (_) { /* 奖励失败不影响注册 */ }
+      })());
+    }
     if (inviteRow) {
       await env.DB.prepare('UPDATE invite_codes SET used_by = ?1, used_at = ?2 WHERE code = ?3')
         .bind(userId, Date.now(), invite).run();
@@ -774,6 +810,8 @@ async function route(request, env, ctx) {
       ok: true, account: user.account, kind: user.kind,
       // 昵称：与自知录共用 users.nickname（同账号体系，两站看到同一个名字）
       nickname: user.nickname || '',
+      // §55 P5：我的邀请码（朋友注册时填，双方各 +100 鹿角）
+      invite_code: inviteCodeOf(user.id),
       plan: pl.plan, plan_expiry: pl.expiresAt,
       ai_month_used: used?.used || 0, ai_rpd: Number(env.AI_RPD || 100),
       bound_email: be?.email || '', email_verified: !!be?.verified,
@@ -793,6 +831,11 @@ async function route(request, env, ctx) {
     if ([...nick].length > 20) return json({ error: '昵称最多 20 个字' }, 400);
     await env.AUTH_DB.prepare('UPDATE users SET nickname = ?1 WHERE id = ?2')
       .bind(nick || null, user.id).run();
+    // §55 P6：里程碑 —— 首次起名 +20（antlerAdd 的 ref 幂等，只发一次；清空再设不重复发）
+    if (nick) {
+      const pl0 = await planOf(env, user.id);
+      ctx.waitUntil(antlerAdd(env, user.id, pl0.plan, 20, 'granted', 'milestone', 'nickname'));
+    }
     return json({ ok: true, nickname: nick });
   }
 
@@ -898,6 +941,16 @@ async function route(request, env, ctx) {
       }
     }
 
+    // §55 P6：里程碑 —— 第一篇日记 +20（antlerAdd 幂等；只在这批真的带日记时才查一次）
+    if (push.some(r => r.kind === 'diary' && !r.deleted)) {
+      ctx.waitUntil((async () => {
+        try {
+          const pl0 = await planOf(env, user.id);
+          await antlerAdd(env, user.id, pl0.plan, 20, 'granted', 'milestone', 'first_diary');
+        } catch (_) { }
+      })());
+    }
+
     const rows = await env.DB.prepare(
       `SELECT kind, uid, updated_at, deleted, payload FROM items
        WHERE user_id = ?1 AND updated_at > ?2 ORDER BY updated_at LIMIT ${SYNC_PAGE + 1}`
@@ -915,25 +968,14 @@ async function route(request, env, ctx) {
     });
   }
 
-  // ===== AI 代理（§50 分档：Pro 不限次仅公平限速；FREE 每天 FREE_AI_RPD 次） =====
+  // ===== AI 代理（§55：鹿角是唯一额度口径；模型统一 Qwen，§53 M0 用户拍板） =====
+  // premium/DeepSeek 分支已下线（§53 M6）：完整实现见 git 历史 v1.8.2（tag 可整段恢复）。
   if (p === '/api/ai/chat' && m === 'POST') {
     if (!env.SILICONFLOW_KEY) return json({ error: '服务端未配置 AI Key，请联系管理员' }, 500);
-    // 分档前先查订阅：FREE 走日额度（默认 10，可用环境变量一键调），Pro 只保留防滥用的公平限速
     const plan = (await planOf(env, user.id)).plan;
-    const rpm = Number(env.AI_RPM || 10);
-    const rpd = plan === 'pro' ? Number(env.AI_RPD || 100) : Number(env.FREE_AI_RPD || 10);
-    if (!await rateLimit(env, `ai:m:${user.id}`, rpm, 60_000)) {
+    // 防滥用限速保留（正常用户碰不到）
+    if (!await rateLimit(env, `ai:m:${user.id}`, Number(env.AI_RPM || 10), 60_000)) {
       return json({ error: '说得太快啦，休息几秒再问小鹿 🦌' }, 429);
-    }
-    const dayKey = `ai:d:${user.id}:${today()}`;
-    if (!await rateLimit(env, dayKey, rpd, 24 * 3600_000)) {
-      // F-3：额度用完不冷冰冰地「请升级」——小鹿的语气，顺带把 Pro 说清楚
-      return json({
-        error: plan === 'pro'
-          ? `今日对话已达公平使用上限（${rpd} 次），明天再来找小鹿吧`
-          : `今天的 ${rpd} 次聊完啦，明天再来找我 🦌（Pro 可以不限次，也能换更聪明的我）`,
-        quota_exhausted: plan !== 'pro'
-      }, 429);
     }
     const b = await body();
     const messages = Array.isArray(b.messages) ? b.messages.slice(0, 40).map(x => ({
@@ -943,79 +985,70 @@ async function route(request, env, ctx) {
     if (!messages.length) return json({ error: '消息为空' }, 400);
     const temperature = Math.min(Math.max(Number(b.temperature ?? 0.6), 0), 1.5);
 
-    // ── 模型分档（plan 已在限额分档时查过）：standard 免费池；premium「更聪明」走硅基流动付费模型
-    let tier = ['standard', 'premium', 'flagship'].includes(b.tier) ? b.tier : 'standard';
-    // 旗舰档已下线（2026-08-21 决定②）：后端分支保留，flag 关闭时静默降为 premium
-    if (tier === 'flagship' && env.FLAGSHIP_ENABLED !== '1') tier = 'premium';
-    // Pro 用高级模型不扣鹿角；免费用户想尝鲜就花 1 个（不设身份墙，只设成本墙）
-    let need = tier === 'premium' && plan === 'pro' ? 0 : (ANTLER.cost[tier] || 0);
-    let fellBack = null;
-
-    if (need > 0) {
-      const bal = await antlerOf(env, user.id, plan);
-      if (bal.total < need) {
-        // 余额不足绝不硬停：回落标准模型，把降级如实告诉客户端
-        fellBack = { from: tier, need, have: bal.total };
-        tier = 'standard'; need = 0;
-      }
-    }
-
-    if (tier !== 'standard') {
-      const t0 = Date.now();
-      // §49/§50（2026-08-22 用户拍板）：GPT 文本模型全部下架 ——「更聪明」统一走硅基流动
-      // DeepSeek（.cn 大陆直连，稳定；实测 ≈¥0.011/次）。双引擎代码撤除，OpenRouter 仅留给
-      // 未来生图管线（表情包，冻结中）。失败重试一次，仍失败回落标准档、不扣费。
-      let resp = null, d = {}, text = '', lastErr = '';
-      const tryUpstream = async (uurl, headers, bodyObj, timeoutMs) => {
-        try {
-          const r = await fetch(uurl, {
-            method: 'POST', headers,
-            body: JSON.stringify(bodyObj), signal: AbortSignal.timeout(timeoutMs)
-          });
-          const dd = await r.json().catch(() => ({}));
-          const tt = pickText(dd);
-          if (r.ok && tt) return { r, dd, tt };
-          return { err: dd?.error?.message || dd?.message || `上游 ${r.status}` };
-        } catch (e) {
-          return { err: e?.name === 'TimeoutError' ? '上游超时' : String(e?.message || e).slice(0, 120) };
-        }
-      };
-      const cnModel = env.PREMIUM_MODEL_CN || 'deepseek-ai/DeepSeek-V3.2';
-      let served = cnModel;
-      for (let attempt = 0; attempt < 2 && !text; attempt++) {
-        const a = await tryUpstream(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
-          'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json'
-        }, { model: cnModel, messages, temperature, max_tokens: 2048, enable_thinking: false }, 30_000);
-        if (a.tt) { resp = a.r; d = a.dd; text = a.tt; }
-        else { lastErr = a.err; console.log('premium fail', cnModel, 'engine=sf', lastErr); }
-      }
-      if (!resp?.ok || !text) {
-        // 上游失败一律不扣费，回落标准模型（E4：真实原因透传给客户端）
-        fellBack = { from: tier, error: lastErr, detail: lastErr };
-        ctx.waitUntil(track(env, 'looka', 'premium_fail', user.id, request, { err: lastErr.slice(0, 60) }));
-        tier = 'standard'; need = 0;
-      } else {
-        // 成功才扣：ref 用 generation id，天然幂等
-        const after = need > 0
-          ? await antlerSpend(env, user.id, plan, need, `chat_${b.tier}`, d?.id || null)
-          : await antlerOf(env, user.id, plan);
-        await env.DB.prepare(
-          `INSERT INTO ai_usage (user_id, ym, used) VALUES (?1, ?2, 1)
-           ON CONFLICT(user_id, ym) DO UPDATE SET used = used + 1`
-        ).bind(user.id, ym()).run();
-        ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { tier }));
+    // ── 鹿角结算（G0：取代按天次数）。读余额顺带完成当日到账（惰性日发）。
+    const bal = await antlerOf(env, user.id, plan);
+    const need = ANTLER.cost.chat;
+    let fallbackMode = false;
+    if (bal.total < need) {
+      // G7：余额 0 不硬停 —— 每天保底 3 次（0 次 = 用户再也想不起这个功能）
+      if (!await rateLimit(env, `ai:fb:${user.id}:${today()}`, 3, 24 * 3600_000)) {
         return json({
-          ok: true, content: text, tier: b.tier, model: served, ms: Date.now() - t0,
-          antler: after, spent: need
-        });
+          error: plan === 'pro'
+            ? '今天的鹿角用完啦，明天还有 50 枚 🦌'
+            : '今天的鹿角用完啦，明天还有 10 枚 🦌（Pro 每天 50 枚，攒着还能生成表情包）',
+          antler_empty: true
+        }, 429);
       }
+      fallbackMode = true;   // 保底次数：不扣费
     }
 
-    // 免费池偶发拥挤：主模型重试 3 次，仍忙则切备用模型
+    // ── 模型：统一 Qwen（免费池），主模型重试 + 备用模型（拥挤时段兜底）
     const models = [
-      env.CHAT_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
-      env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3-8B'
+      env.CHAT_MODEL || 'Qwen/Qwen3.5-35B-A3B',
+      env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3.5-9B'
     ];
+
+    // ── T1（§53）：真流式。SSE 直通透传上游（OpenAI 兼容格式），客户端自行解析 delta。
+    //   计量在开流前完成（流中无法再回头扣）；上游连不上则不扣、退回错误 JSON。
+    if (b.stream === true) {
+      let resp = null;
+      for (const model of models) {
+        try {
+          resp = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.SILICONFLOW_KEY}`,
+              'Content-Type': 'application/json',
+              'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)'
+            },
+            body: JSON.stringify({ model, messages, temperature, max_tokens: 2048,
+              enable_thinking: false, stream: true })
+          });
+          if (resp.ok && resp.body) break;
+          resp = null;
+        } catch (_) { resp = null; }
+      }
+      if (!resp) return json({ error: 'AI 上游异常（稍后再试）' }, 502);
+      const after = fallbackMode ? bal
+        : (await antlerSpend(env, user.id, plan, need, 'chat', null)) || bal;
+      ctx.waitUntil(env.DB.prepare(
+        `INSERT INTO ai_usage (user_id, ym, used) VALUES (?1, ?2, 1)
+         ON CONFLICT(user_id, ym) DO UPDATE SET used = used + 1`
+      ).bind(user.id, ym()).run());
+      ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { stream: 1 }));
+      return new Response(resp.body, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-store',
+          // 客户端要在流开始前知道账面（G3 到账提示 / G4 低额提示）
+          'X-Antler-Total': String(after.total),
+          'X-Antler-Granted-Today': String(bal.granted_today || 0),
+          ...cors
+        }
+      });
+    }
+
+    // ── 非流式（兼容旧客户端）
     let data = null, ok = false, lastMsg = 'AI 上游异常';
     outer: for (const model of models) {
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -1025,21 +1058,15 @@ async function route(request, env, ctx) {
             'Authorization': `Bearer ${env.SILICONFLOW_KEY}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'User-Agent': 'Looka/1.2 (+https://looka.foyue.org)'
+            'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)'
           },
           // enable_thinking:false —— Qwen3 系是思考型模型，默认会把正文写进 reasoning_content
-          // 而让 content 为空，且慢到会超时。手帐助手不需要显式思维链。
           body: JSON.stringify({ model, messages, temperature, max_tokens: 2048, enable_thinking: false })
         });
         data = await resp.json().catch(() => ({}));
-        // 200 但正文为空同样算失败，否则会把空气泡甩给用户（2026-08-21 实测到的坑）
+        // 200 但正文为空同样算失败（2026-08-21 实测的坑）
         if (resp.ok && pickText(data)) { ok = true; break outer; }
-        if (resp.ok) {
-          // 200 但正文为空：同一模型重试大概率还是空（多为该 prompt 触发的确定性行为），
-          // 立刻换下一个模型，别在这儿耗掉 90 秒把请求拖超时。
-          lastMsg = '上游返回空内容';
-          break;
-        }
+        if (resp.ok) { lastMsg = '上游返回空内容'; break; }
         lastMsg = data?.error?.message || data?.message || `AI 上游错误 ${resp.status}`;
         const busy = resp.status === 429 || /busy|rate|overload/i.test(lastMsg);
         if (!busy) break outer;
@@ -1047,18 +1074,19 @@ async function route(request, env, ctx) {
       }
     }
     if (!ok) return json({ error: lastMsg + '（稍后再试）' }, 502);
-    const content = pickText(data);
+    // 成功才扣（保底模式不扣）
+    const after = fallbackMode ? bal
+      : (await antlerSpend(env, user.id, plan, need, 'chat', null)) || bal;
     await env.DB.prepare(
       `INSERT INTO ai_usage (user_id, ym, used) VALUES (?1, ?2, 1)
        ON CONFLICT(user_id, ym) DO UPDATE SET used = used + 1`
     ).bind(user.id, ym()).run();
-    const dayUsed = await env.DB.prepare('SELECT cnt FROM rate_limits WHERE rk = ?1').bind(dayKey).first();
-    ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, { tier: 'standard' }));
+    ctx.waitUntil(track(env, 'looka', 'ai_chat', user.id, request, {}));
     return json({
-      ok: true, content, tier: 'standard',
-      remaining: Math.max(0, rpd - (dayUsed?.cnt || 0)),
-      // 降级要如实告诉客户端，由它提示用户「已切回标准模型」，而不是假装无事发生
-      fell_back: fellBack
+      ok: true, content: pickText(data),
+      antler: { total: after.total, granted: after.granted, paid: after.paid },
+      granted_today: bal.granted_today || 0,
+      spent: fallbackMode ? 0 : need
     });
   }
 

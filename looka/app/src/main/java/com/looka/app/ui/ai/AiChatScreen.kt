@@ -40,6 +40,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -115,37 +118,36 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             }
         }
 
-        // 模型档位：标准（不限次）/ 更聪明（GPT）。
-        // 不可用时要说明原因 —— 原来直接不渲染，用户会以为"功能没了"。
+        // §53 M1：档位已下线（单模型 Qwen）。自带 Key / 未登录时仍要说明状态。
         when {
             Prefs.apiKey(ctx).isNotBlank() -> Text(
-                tr("你填了自己的 AI Key，小鹿直连你的服务商，不提供档位切换"),
+                tr("你填了自己的 AI Key，小鹿直连你的服务商"),
                 fontSize = 11.sp, color = GrayText,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
             !Api.authed(ctx) -> Text(
-                tr("登录后可切换到更聪明的小鹿"),
+                tr("登录后即可使用小鹿 AI"),
                 fontSize = 11.sp, color = GrayText,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
-            else -> TierBar()
         }
 
-        // 服务端在鹿角不足或上游故障时会回落标准模型 —— 如实告诉用户，不假装无事发生
-        AiClient.lastFellBack?.let {
+        // G3（§54）：当日鹿角到账轻提示 —— 一行小字，看过即清，不弹窗不做特效
+        if (AiClient.grantedToday > 0) {
             Text(
-                it, fontSize = 11.sp, color = HolidayRed,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp)
+                tr("+{0} 🦌 今天的鹿角到账啦", AiClient.grantedToday),
+                fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(4000)
+                AiClient.grantedToday = 0
+            }
         }
-
-        // §50 分档提示：FREE 显示当日剩余并顺带说清 Pro；Pro 只在接近公平上限时轻提示
-        if (AiClient.lastRemaining in 0..19 && Prefs.apiKey(ctx).isBlank()) {
+        // G4：只在余额吃紧时才提示（平时不打扰 —— 鹿角是够用的额度，不是要攒的资产）
+        if (AiClient.lastAntler in 1..9 && Prefs.apiKey(ctx).isBlank()) {
             Text(
-                if (PlanState.isPro)
-                    tr("今日剩余 {0} 次（每日限速防滥用，明天恢复）", AiClient.lastRemaining)
-                else
-                    tr("今天还能聊 {0} 次（Pro 不限次，还能换更聪明的小鹿）", AiClient.lastRemaining),
+                tr("还剩 {0} 枚鹿角（明天自动补充）", AiClient.lastAntler),
                 fontSize = 11.sp, color = GrayText,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
@@ -185,16 +187,20 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                         Spacer(Modifier.width(8.dp))
                         Text(tr("小鹿正在想…"), fontSize = 13.sp, color = GrayText)
                         Spacer(Modifier.width(6.dp))
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp, modifier = Modifier.size(13.dp), color = MaterialTheme.colorScheme.primary
-                        )
+                        ThinkingDots()   // U3：三点呼吸，替代转圈
                     }
                 }
             }
         }
 
         // A3（§48）：批量确认卡 —— 删除必确认，一次 ≥3 条必确认；逐条可勾
-        if (vm.pendingAiActions.isNotEmpty()) {
+        // U6：入场不硬闪
+        androidx.compose.animation.AnimatedVisibility(
+            visible = vm.pendingAiActions.isNotEmpty(),
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
+                androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(200)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140))
+        ) {
             Column(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
                     .clip(RoundedCornerShape(14.dp)).background(PanelBg).padding(12.dp)
@@ -286,6 +292,15 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             )
             Spacer(Modifier.width(8.dp))
             val canSend = input.isNotBlank() && !vm.aiBusy
+            // U4：按压反馈 —— 与任务勾选同款 spring 手感
+            val sendPressed = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+            val isPressed by sendPressed.collectIsPressedAsState()
+            val sendScale by androidx.compose.animation.core.animateFloatAsState(
+                if (isPressed) 0.85f else 1f,
+                androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+                label = "send"
+            )
             IconButton(
                 onClick = {
                     if (canSend) {
@@ -293,7 +308,10 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                         input = ""
                     }
                 },
-                modifier = Modifier.size(44.dp).clip(CircleShape)
+                interactionSource = sendPressed,
+                modifier = Modifier.size(44.dp)
+                    .scale(sendScale)
+                    .clip(CircleShape)
                     .background(if (canSend) MaterialTheme.colorScheme.primary else PanelBg)
             ) {
                 Icon(
@@ -322,18 +340,22 @@ private fun QuickChip(label: String, onClick: () -> Unit) {
 @Composable
 private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
     when (m.role) {
-        ROLE_ACTION -> Box(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                m.text, fontSize = 11.sp, color = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(horizontal = 24.dp)
-                    .clip(RoundedCornerShape(10.dp)).background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            )
+        // U5（§52）：动作反馈用全站卡片语法（浅底 + 10dp 圆角），不再是居中小字
+        ROLE_ACTION -> MsgAppear {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 3.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    m.text, fontSize = 12.sp, lineHeight = 17.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
-        ROLE_USER -> Row(
+        ROLE_USER -> MsgAppear(fromRight = true) { Row(
             Modifier.fillMaxWidth().padding(start = 56.dp, end = 14.dp, top = 4.dp, bottom = 4.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End
         ) {
@@ -344,8 +366,8 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
             ) {
                 Text(m.text, fontSize = 14.sp, color = Color.White, lineHeight = 21.sp)
             }
-        }
-        else -> Row(
+        } }
+        else -> MsgAppear { Row(
             Modifier.fillMaxWidth().padding(start = 10.dp, end = 48.dp, top = 4.dp, bottom = 4.dp)
         ) {
             com.looka.app.ui.common.DeerBadge(26.dp)
@@ -366,14 +388,6 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
                     Text(
                         m.text, fontSize = 14.sp, lineHeight = 21.sp,
                         color = if (m.error) HolidayRed else Ink
-                    )
-                }
-                // 让"用没用上更聪明的小鹿"可见 —— 否则用户无从判断档位是否生效
-                if (m.tier == "premium") {
-                    Text(
-                        tr("✨ 更聪明的小鹿"),
-                        fontSize = 9.5.sp, color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = -2.dp)
                     )
                 }
                 androidx.compose.material3.DropdownMenu(
@@ -398,7 +412,7 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
                     )
                 }
             }
-        }
+        } }
     }
 }
 
@@ -406,40 +420,42 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null) {
  * 模型档位条：标准（不限次）/ 高级（Pro 不限量·免费档每月 60 次体验）。
  * 2026-08-21 决定：旗舰档下线、鹿角撤出 UI —— 对用户只有「次数」，没有代币概念。
  */
+
+
+/** U1（§52）：消息进场 —— 全站动画语法（fadeIn 180 + 轻位移），用户从右、小鹿从左 */
 @Composable
-private fun TierBar() {
-    val ctx = LocalContext.current
-    var tier by remember { mutableStateOf(Prefs.aiTier(ctx).takeIf { it != "flagship" } ?: "premium") }
-    val pro = Prefs.isPro(ctx)
+fun MsgAppear(fromRight: Boolean = false, content: @Composable () -> Unit) {
+    val appeared = remember {
+        androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true }
+    }
+    androidx.compose.animation.AnimatedVisibility(
+        visibleState = appeared,
+        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
+            androidx.compose.animation.slideInHorizontally(
+                androidx.compose.animation.core.tween(180)
+            ) { full -> if (fromRight) full / 6 else -full / 6 }
+    ) { content() }
+}
 
-    data class T(val id: String, val label: String, val hint: String)
-    val tiers = listOf(
-        T("standard", tr("标准"), tr("不限次")),
-        T("premium", tr("更聪明"), if (pro) tr("Pro 不限量") else tr("每月 60 次体验"))
-    )
-
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        tiers.forEach { t ->
-            val on = t.id == tier
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .padding(end = 6.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(if (on) MaterialTheme.colorScheme.primaryContainer else PanelBg)
-                    .plainClick { tier = t.id; Prefs.setAiTier(ctx, t.id) }
-                    .padding(horizontal = 12.dp, vertical = 5.dp)
-            ) {
-                Text(
-                    t.label, fontSize = 12.sp,
-                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (on) MaterialTheme.colorScheme.primary else Ink
-                )
-                Text(t.hint, fontSize = 9.sp, color = GrayText)
-            }
+/** U3（§52）：思考态 —— 三个点依次呼吸，替代转圈（小鹿不该像个加载器） */
+@Composable
+fun ThinkingDots() {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "dots")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        repeat(3) { i ->
+            val a by t.animateFloat(
+                initialValue = 0.25f, targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    animation = androidx.compose.animation.core.tween(600),
+                    repeatMode = androidx.compose.animation.core.RepeatMode.Reverse,
+                    initialStartOffset = androidx.compose.animation.core.StartOffset(i * 200)
+                ), label = "dot$i"
+            )
+            Box(
+                Modifier.padding(horizontal = 2.dp).size(6.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = a))
+            )
         }
     }
 }

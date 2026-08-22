@@ -15,6 +15,10 @@ data class AiAction(
     val targetId: Long = -1L,
     // update_task 专用：-1 不动，0 标未完成，1 标完成
     val done: Int = -1,
+    // remember 专用（D2 §52）：要记进小鹿记事本的一句事实
+    val fact: String = "",
+    // create_event 可选（K2 §54）：AI 从用户现有分类里选的分类名
+    val category: String = "",
     val title: String = "",
     val day: Long = -1L,
     val endDay: Long = -1L,
@@ -57,6 +61,7 @@ data class AiAction(
             val what = when (type) { "delete_event" -> tr("日程"); "delete_task" -> tr("任务"); else -> tr("笔记") }
             "${tr("删除")}$what #$targetId${if (title.isNotBlank()) " · $title" else ""}"
         }
+        "remember" -> "${tr("记住")} · $fact"
         else -> "${tr("笔记")} · ${title.ifBlank { content.take(12) }}"
     }
 
@@ -109,8 +114,12 @@ object AiActions {
  {"type":"update_task","id":45,"due":"YYYY-MM-DD","title":"新标题","done":true},
  {"type":"delete_event","id":123},
  {"type":"delete_task","id":45},
- {"type":"delete_note","id":7}
+ {"type":"delete_note","id":7},
+ {"type":"remember","fact":"用户告诉你的一条长期偏好"}
 ]}
+remember 规则：只记**长期有效的偏好或事实**（如「不爱早上开会」「女儿叫小雨」）；
+一次性安排、情绪、秘密**不要记**；用户说「别记/忘掉」时不要输出 remember。
+create_event 可带 "category":"分类名"（只能用上面列出的分类名，猜不到就省略）。
 修改/删除规则（最重要）：
 - id 只能用上面日程/任务数据里方括号标注的数字（如 [e123] → id 是 123）。
 - **数据里找不到用户说的那条时，绝不要猜 id、绝不要凭标题编造** —— 直接问用户是哪一条，不输出 json。
@@ -287,9 +296,13 @@ $PROTOCOL
             if (type !in setOf(
                     "create_event", "create_task", "create_note",
                     "update_event", "update_task", "update_note",
-                    "delete_event", "delete_task", "delete_note"
+                    "delete_event", "delete_task", "delete_note", "remember"
                 )
             ) return@mapNotNull null
+            if (type == "remember") {
+                val fact = o.optString("fact").trim().take(60)
+                return@mapNotNull if (fact.isBlank()) null else AiAction(type = "remember", fact = fact)
+            }
             val isMut = type.startsWith("update_") || type.startsWith("delete_")
             // 改/删必须带定位 id；模型没给就丢弃（执行层还有一道"找不到"兜底）
             val tid = o.optLong("id", -1L)
@@ -304,6 +317,7 @@ $PROTOCOL
             AiAction(
                 type = type,
                 targetId = tid,
+                category = o.optString("category").trim(),
                 done = if (o.has("done")) (if (o.optBoolean("done")) 1 else 0) else -1,
                 title = name,
                 day = day,

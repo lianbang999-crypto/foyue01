@@ -26,8 +26,9 @@ import java.util.concurrent.TimeUnit
  */
 object AiClient {
 
-    /** 服务端代理返回的今日剩余次数（公平使用限速，-1 = 未知） */
-    var lastRemaining by mutableStateOf(-1); private set
+    /** §55：鹿角余额（-1 = 未知）与今日到账数（G3 轻提示用，展示一次后清零） */
+    var lastAntler by mutableStateOf(-1); private set
+    var grantedToday by mutableStateOf(0)
 
     private val client by lazy {
         OkHttpClient.Builder()
@@ -38,18 +39,15 @@ object AiClient {
     }
 
     /**
-     * 上一轮的档位与回落状态。用 Compose State 而非普通 var ——
-     * 否则 UI 不保证重组（A2 修复，2026-08-21）。鹿角已撤出 UI，只留内部记账。
+     * 统一聊天入口（§53 M0：单模型 Qwen，档位已下线）。
+     * onDelta 非空 → 走真流式（T1），每段增量回调；null → 非流式一次性返回。
      */
-    var lastTier by mutableStateOf("standard"); private set
-    var lastFellBack by mutableStateOf<String?>(null); private set
-
     suspend fun chat(
         ctx: Context,
         system: String,
         history: List<Pair<String, String>>,
         temperature: Double = 0.6,
-        tier: String = Prefs.aiTier(ctx)
+        onDelta: ((String) -> Unit)? = null
     ): String {
         val customKey = Prefs.apiKey(ctx).trim()
         if (customKey.isNotBlank()) return direct(ctx, customKey, system, history, temperature)
@@ -59,28 +57,23 @@ object AiClient {
             for ((role, content) in history) {
                 msgs.put(JSONObject().put("role", role).put("content", content))
             }
-            val resp = Api.aiChat(ctx, msgs, temperature, tier)
-            lastRemaining = resp.optInt("remaining", -1)
-            lastTier = resp.optString("tier", "standard")
-            // 服务端在体验额度用尽或上游失败时会回落标准模型 —— 必须让用户知道。
-            // 注意措辞：鹿角是内部计量（2026-08-21 决定①），对用户只说「体验次数」。
-            lastFellBack = resp.optJSONObject("fell_back")?.let { fb ->
-                if (fb.optInt("need", 0) > 0)
-                    tr("本月高级模型体验次数已用完，已切回标准模型（开通 Pro 不限量）")
-                else {
-                    // P2-E4：透传真实原因 —— "暂时不可用"不能再是黑箱（§三十八③）
-                    val detail = fb.optString("detail").ifBlank { fb.optString("error") }
-                    if (detail.isNotBlank())
-                        tr("高级模型暂时不可用（{0}），已用标准模型回答", detail)
-                    else tr("高级模型暂时不可用，已用标准模型回答")
-                }
+            if (onDelta != null) {
+                val raw = Api.aiChatStream(ctx, msgs, temperature, { total, granted ->
+                    lastAntler = total; if (granted > 0) grantedToday = granted
+                }, onDelta)
+                val content = raw.replace(Regex("(?s)<think>.*?</think>"), "").trim()
+                if (content.isBlank()) throw IOException(tr("AI 返回为空，请重试"))
+                return content
             }
+            val resp = Api.aiChat(ctx, msgs, temperature)
+            lastAntler = resp.optJSONObject("antler")?.optInt("total", -1) ?: -1
+            resp.optInt("granted_today", 0).let { if (it > 0) grantedToday = it }
             val content = resp.optString("content")
                 .replace(Regex("(?s)<think>.*?</think>"), "").trim()
             if (content.isBlank()) throw IOException(tr("AI 返回为空，请重试"))
             return content
         }
-        throw IOException(tr("请先在「更多 → 账号与同步」登录后使用小鹿 AI（对话不限次）"))
+        throw IOException(tr("请先在「更多 → 账号与同步」登录后使用小鹿 AI"))
     }
 
     /** 直连硅基流动（用户自己的 Key） */

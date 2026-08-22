@@ -104,8 +104,8 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                     color = if (plan == "pro") MaterialTheme.colorScheme.primary else Ink
                 )
                 Text(
-                    if (plan == "pro") tr("小鹿 AI 对话不限次（防滥用限速：每天 100 次，正常使用碰不到）")
-                    else tr("小鹿 AI 对话每天 10 次；Pro 不限次，还能换更聪明的小鹿"),
+                    if (plan == "pro") tr("每天自动到账 50 枚鹿角（和小鹿聊天 1 枚/次，根本用不完）")
+                    else tr("每天自动到账 10 枚鹿角；Pro 每天 50 枚，攒着还能生成表情包"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
                 )
                 if (!loggedIn) Text(
@@ -119,18 +119,20 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             BenefitRow(tr("日历 / 待办 / 笔记 / 日记 / 表情"), free = true, pro = true)
             BenefitRow(tr("多端云同步"), free = true, pro = true)
             BenefitRow(tr("数据导出（JSON / 日历 / Markdown）"), free = true, pro = true)
-            BenefitRow(tr("小鹿 AI 对话（每天 10 次）"), free = true, pro = true)
+            BenefitRow(tr("小鹿 AI（每天 10 枚鹿角）"), free = true, pro = true)
             BenefitRow(tr("提醒与闹钟 · 密码锁 · 小组件"), free = true, pro = true)
             BenefitRow(tr("官方表情包（104 枚内置）· 九色主题"), free = true, pro = true)
 
             SectionLabel(tr("Pro 解锁"))
-            BenefitRow(tr("小鹿 AI 对话不限次"), free = false, pro = true)
-            BenefitRow(tr("更聪明的小鹿（DeepSeek 高级模型）"), free = false, pro = true)
-            BenefitRow(tr("传照片生成整套主题（规划中）"), free = false, pro = true)
+            BenefitRow(tr("每天 50 枚鹿角（5 倍额度，聊天生成随便用）"), free = false, pro = true)
+            BenefitRow(tr("从照片生成主题"), free = false, pro = true)
             BenefitRow(tr("纹理纸 · 装饰插画 · 自定义图标（规划中）"), free = false, pro = true)
             BenefitRow(tr("全部表情包 · 每月新增（规划中）"), free = false, pro = true)
             BenefitRow(tr("标签体系 · 智能清单（规划中）"), free = false, pro = true)
             BenefitRow(tr("年度回顾长图 · 精美 PDF 导出（规划中）"), free = false, pro = true)
+            Hairline()
+            // D4（§52）：小鹿记事本 —— 可看可删
+            DeerMemorySection(vm)
             Hairline()
             Text(
                 tr("内测期注册即送 Pro 试用。\n有建议或问题请联系：looka01@qq.com"),
@@ -701,6 +703,154 @@ fun LanguageScreen(vm: LookaViewModel, nav: NavHostController) {
                 tr("切换语言只改变界面文字，不会翻译你写的内容。\n切到英文时：默认周日开始、12 小时制、隐藏农历（都可在日历设置中单独修改，已手动设置过的不受影响）。"),
                 fontSize = 12.sp, color = GrayText, lineHeight = 20.sp,
                 modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+// ==================== 鹿角页（§54 G1/G2 + §55 P4，2026-08-22） ====================
+
+/**
+ * 我的鹿角：余额 + 今日到账 + 折算参考价 + 收支明细 + 邀请码。
+ * 呈现原则（§49 十一）：鹿角是「够用的额度」不是「要攒的资产」——
+ * 无金币特效、无签到日历、无连击；价格只做参考锚定，不开购买入口（§55 定价≠开卖）。
+ */
+@Composable
+fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
+    val ctx = LocalContext.current
+    var bal by remember { mutableStateOf(-1) }
+    var granted by remember { mutableStateOf(0) }
+    var paid by remember { mutableStateOf(0) }
+    var ledger by remember { mutableStateOf<List<Triple<Long, String, Long>>>(emptyList()) }
+    var invite by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        runCatching {
+            val r = Api.antler(ctx)
+            bal = r.optJSONObject("antler")?.optInt("total", -1)
+                ?: r.optInt("total", -1)
+            granted = r.optJSONObject("antler")?.optInt("granted", 0) ?: r.optInt("granted", 0)
+            paid = r.optJSONObject("antler")?.optInt("paid", 0) ?: r.optInt("paid", 0)
+            val rows = r.optJSONArray("ledger") ?: org.json.JSONArray()
+            ledger = (0 until rows.length()).mapNotNull { i ->
+                val o = rows.optJSONObject(i) ?: return@mapNotNull null
+                Triple(o.optLong("delta"), o.optString("reason"), o.optLong("created_at"))
+            }
+        }
+        runCatching { invite = Api.me(ctx).optString("invite_code") }
+    }
+
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("我的鹿角"), onBack = { nav.popBackStack() })
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Text(
+                    if (bal >= 0) "🦌 $bal" else "🦌 …",
+                    fontSize = 30.sp, fontWeight = FontWeight.Bold
+                )
+                Text(
+                    tr("每天自动到账（免费 10 枚 / Pro 50 枚），不用签到、断了也不罚"),
+                    fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
+                )
+                Text(
+                    tr("参考价：100 枚 ≈ ¥6（暂不出售 —— 每天送的就够用）"),
+                    fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Hairline()
+            SectionLabel(tr("会用到鹿角的"))
+            Text(
+                tr("和小鹿聊天 1 枚 · AI 生成主题 2 枚 · 截图识别 3 枚（规划中）· 生成表情包 20 枚（规划中）") + "\n" +
+                    tr("写日记、建日程、贴表情、同步、导出、闹钟 —— 永远不用鹿角"),
+                fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+            Hairline()
+            // §55 P5：邀请 —— 成本近零的获客筹码
+            if (invite.isNotBlank()) {
+                SectionLabel(tr("邀请朋友"))
+                val clip = LocalClipboardManager.current
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("我的邀请码：{0}", invite), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            tr("朋友注册时填上它，你们各得 100 枚 🦌"),
+                            fontSize = 11.sp, color = GrayText
+                        )
+                    }
+                    OutlinedButton(onClick = {
+                        clip.setText(AnnotatedString(invite))
+                        toast(ctx, tr("已复制"))
+                    }) { Text(tr("复制"), fontSize = 13.sp) }
+                }
+                Hairline()
+            }
+            SectionLabel(tr("明细"))
+            if (ledger.isEmpty()) Text(
+                tr("还没有记录"), fontSize = 12.sp, color = GrayText,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            ledger.take(50).forEach { (delta, reason, at) ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        when (reason) {
+                            "daily_grant" -> tr("每日到账")
+                            "monthly_grant" -> tr("月度发放（旧）")
+                            "chat" -> tr("和小鹿聊天")
+                            "milestone" -> tr("里程碑奖励")
+                            "referral_new", "referral_inviter" -> tr("邀请奖励")
+                            else -> reason
+                        },
+                        fontSize = 13.sp, modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        (if (delta > 0) "+" else "") + delta,
+                        fontSize = 13.sp,
+                        color = if (delta > 0) MaterialTheme.colorScheme.primary else GrayText
+                    )
+                }
+            }
+            Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+// ==================== 小鹿记事本（§52 D4，2026-08-22） ====================
+
+/**
+ * 「小鹿记住了什么」：可看、可逐条删。
+ * 看不见的记忆是监视，看得见可删的记忆才是助理（§52 一）。
+ */
+@Composable
+fun DeerMemorySection(vm: LookaViewModel) {
+    val ctx = LocalContext.current
+    var facts by remember { mutableStateOf(Prefs.deerFacts(ctx)) }
+    SectionLabel(tr("小鹿记住了什么"))
+    if (facts.isEmpty()) {
+        Text(
+            tr("还没有。聊天时告诉小鹿你的偏好（比如「我不爱早上开会」），它会记在这里。"),
+            fontSize = 12.sp, color = GrayText,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+    }
+    facts.forEach { f ->
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("· $f", fontSize = 13.sp, modifier = Modifier.weight(1f))
+            Text(
+                tr("忘掉"), fontSize = 12.sp, color = GrayText,
+                modifier = Modifier.plainClick {
+                    val next = facts.filter { it != f }
+                    Prefs.setDeerFacts(ctx, next)
+                    facts = next
+                }.padding(6.dp)
             )
         }
     }

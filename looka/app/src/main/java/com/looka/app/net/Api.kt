@@ -50,12 +50,14 @@ object Api {
     }
 
     /** 注册（与 zhi.foyue.org 同一账号体系；内测期需邀请码） */
-    suspend fun register(c: Context, account: String, password: String): JSONObject =
-        call(c, "/api/auth/register", JSONObject().put("account", account).put("password", password), auth = false)
+    suspend fun register(c: Context, account: String, password: String, ref: String = ""): JSONObject =
+        call(c, "/api/auth/register", JSONObject().put("account", account).put("password", password)
+            .also { if (ref.isNotBlank()) it.put("ref", ref) }, auth = false)
 
-    suspend fun registerWithInvite(c: Context, account: String, password: String, invite: String): JSONObject =
+    suspend fun registerWithInvite(c: Context, account: String, password: String, invite: String, ref: String = ""): JSONObject =
         call(c, "/api/auth/register", JSONObject()
-            .put("account", account).put("password", password).put("invite", invite), auth = false)
+            .put("account", account).put("password", password).put("invite", invite)
+            .also { if (ref.isNotBlank()) it.put("ref", ref) }, auth = false)
 
     suspend fun login(c: Context, account: String, password: String): JSONObject =
         call(c, "/api/auth/login", JSONObject().put("account", account).put("password", password), auth = false)
@@ -92,9 +94,54 @@ object Api {
      * tier: standard 标准模型不限次不计费 / premium 高级模型(Pro 免费·免费用户 1 鹿角) /
      *       flagship 旗舰模型 5 鹿角。余额不足服务端自动回落标准模型并回传 fell_back。
      */
-    suspend fun aiChat(c: Context, messages: JSONArray, temperature: Double, tier: String = "standard"): JSONObject =
+    suspend fun aiChat(c: Context, messages: JSONArray, temperature: Double): JSONObject =
         call(c, "/api/ai/chat", JSONObject()
-            .put("messages", messages).put("temperature", temperature).put("tier", tier))
+            .put("messages", messages).put("temperature", temperature))
+
+    /**
+     * T1（§53）：流式聊天。服务端 SSE 透传上游（OpenAI 兼容格式）。
+     * onDelta 每收到一段增量文本回调一次；返回值 = 完整原文。
+     * onAntler(total, grantedToday)：开流前从响应头拿到账面（G3/G4）。
+     */
+    suspend fun aiChatStream(
+        c: Context,
+        messages: JSONArray,
+        temperature: Double,
+        onAntler: (Int, Int) -> Unit,
+        onDelta: (String) -> Unit
+    ): String = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("messages", messages).put("temperature", temperature).put("stream", true)
+        val b = Request.Builder().url(Prefs.serverUrl(c).trimEnd('/') + "/api/ai/chat")
+        Prefs.authToken(c)?.let { b.header("Authorization", "Bearer $it") }
+        b.post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+        client.newCall(b.build()).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                val txt = resp.body?.string().orEmpty()
+                val o = try { JSONObject(txt) } catch (_: Exception) { JSONObject() }
+                if (resp.code == 401) Prefs.setAuthToken(c, null)
+                throw IOException(o.optString("error").ifBlank { tr("请求失败（HTTP {0}）", resp.code) })
+            }
+            onAntler(
+                resp.header("X-Antler-Total")?.toIntOrNull() ?: -1,
+                resp.header("X-Antler-Granted-Today")?.toIntOrNull() ?: 0
+            )
+            val src = resp.body?.source() ?: throw IOException(tr("AI 返回为空，请重试"))
+            val sb = StringBuilder()
+            while (true) {
+                val line = try { src.readUtf8Line() } catch (_: Exception) { null } ?: break
+                if (!line.startsWith("data:")) continue
+                val data = line.substring(5).trim()
+                if (data == "[DONE]") break
+                val delta = try {
+                    JSONObject(data).optJSONArray("choices")?.optJSONObject(0)
+                        ?.optJSONObject("delta")?.optString("content").orEmpty()
+                } catch (_: Exception) { "" }
+                if (delta.isNotEmpty()) { sb.append(delta); onDelta(delta) }
+            }
+            sb.toString()
+        }
+    }
 
     /** 鹿角余额与流水 */
     suspend fun antler(c: Context): JSONObject = call(c, "/api/antler")

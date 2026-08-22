@@ -124,6 +124,24 @@ object Prefs {
     /** 界面上「怎么称呼这个用户」：有昵称用昵称，没有就用账号 */
     fun displayName(c: Context) = nickname(c).ifBlank { accountEmail(c) }
 
+    // ===== D1（§52）：小鹿记事本 —— 用户主动说过的长期偏好，JSON 数组存储，随 settings 上云 =====
+    fun deerFacts(c: Context): List<String> = try {
+        val arr = org.json.JSONArray(sp(c).getString("deer_facts", "[]"))
+        (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
+    } catch (_: Exception) { emptyList() }
+
+    fun setDeerFacts(c: Context, v: List<String>) {
+        val arr = org.json.JSONArray(); v.take(30).forEach { arr.put(it) }
+        sp(c).edit().putString("deer_facts", arr.toString()).apply()
+        markSettingsDirty(c)
+    }
+
+    fun addDeerFact(c: Context, fact: String) {
+        val cur = deerFacts(c)
+        if (fact.isBlank() || cur.contains(fact)) return
+        setDeerFacts(c, cur + fact)
+    }
+
     // ===== P5-1 设置上云：设置是同步实体（kind='settings'，uid 固定 'settings'）=====
     // 两端必须看到同一本日历 —— 周起始/农历/节假日/显示已完成 改一处、处处生效
     fun settingsDirty(c: Context) = sp(c).getBoolean("st_dirty", false)

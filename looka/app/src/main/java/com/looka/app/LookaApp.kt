@@ -38,6 +38,25 @@ class LookaApp : Application() {
         // P2-A：订阅状态唯一真值源 —— 先从本地恢复（瞬时），网络刷新随后跟上
         com.looka.app.data.PlanState.load(this)
         appScope.launch { com.looka.app.data.PlanState.refresh(this@LookaApp, force = true) }
+        // C1（§54）：补上断掉的那一环 —— 崩溃日志此前只写本机、从来没人上传，
+        // crashes 表永远是空的，我们对线上崩溃全瞎。上传成功才删文件（失败下次再试）。
+        appScope.launch {
+            runCatching {
+                val f = crashFile()
+                if (f.exists()) {
+                    val txt = f.readText()
+                    // C3：脱敏 —— 只传版本行/机型行/堆栈，堆栈本身不含业务数据
+                    val lines = txt.lines()
+                    com.looka.app.net.Api.crash(
+                        this@LookaApp,
+                        ver = BuildConfig.VERSION_NAME,
+                        model = lines.getOrElse(1) { "" }.take(64),
+                        stack = lines.drop(3).joinToString("\n").take(8000)
+                    )
+                    f.delete()
+                }
+            }
+        }
         // 首次启动播种默认数据；uid 固定 + updatedAt=1：
         // 已有云端数据时（首登合并），本地种子必然被云端版本覆盖，避免覆盖用户改名（B18）
         appScope.launch {

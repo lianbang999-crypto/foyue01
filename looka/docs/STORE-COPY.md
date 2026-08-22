@@ -37,12 +37,12 @@ Looka 是一个安静的手帐 App —— 日历、待办、笔记、日记，�
 多端云同步（手机与网页）
 数据导出（JSON / 日历 / Markdown）—— 你的数据永远属于你
 搜索 · 密码锁 · 小组件 · 读取系统日历 · 简繁英三语
-小鹿 AI 对话 每天 10 次
+小鹿 AI：每天 10 枚鹿角自动到账（聊一次 1 枚，不用签到）
 
 【开通 Pro，你会得到】
 
 🦌 小鹿变成真正的助理
-   AI 对话不限次，还能切换更聪明的模型
+   每天 50 枚鹿角（5 倍额度），聊天、生成主题、以后生成表情包都从这里出
    🚧 会改、会删、会查 —— 不只是帮你记，是帮你安排
    🚧 一句话批量处理：「这周的会都推迟一小时」
    🚧 拍张照就能建日程 —— 会议通知、海报、机票，拍下来自动提取时间地点
@@ -147,12 +147,12 @@ Reminders and alarms — these are basics, we won't charge for them
 Sync across phone and web
 Export your data (JSON / iCal / Markdown) — your data is always yours
 Search · passcode lock · widgets · system calendar · EN / 简体 / 繁體
-10 AI messages a day with Luka
+10 antlers a day for Luka (1 antler per chat, no check-ins required)
 
 【With Pro, you get】
 
 🦌 Luka becomes a real assistant
-   Unlimited AI messages, and a smarter model to switch to
+   50 antlers a day (5× the free allowance) for chats, theme generation and more
    🚧 It can edit, delete and look things up — not just write them down
    🚧 Batch changes in one sentence: "push all my meetings this week back an hour"
    🚧 Snap a photo to create an event — posters, tickets, meeting notices

@@ -659,6 +659,12 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         val monthStart = java.time.LocalDate.now().withDayOfMonth(1).toEpochDay()
         val diaryCnt = diaries.value.count { it.day >= monthStart }
         sb.append(tr("统计：本月日记 {0} 篇；未完成任务共 {1} 项。", diaryCnt, tasks.value.count { !it.done }) + "\n")
+        // K2①（§54）：把分类名单给 AI，建日程时可以选（否则永远落进灰色的「未分类」）
+        val cats = categories.value.filter { !it.deleted }.take(10)
+        if (cats.isNotEmpty()) sb.append(tr("用户的日程分类：") + cats.joinToString("、") { it.name } + "\n")
+        // D1（§52）：小鹿记事本 —— 用户主动说过的长期偏好
+        val facts = Prefs.deerFacts(getApplication())
+        if (facts.isNotEmpty()) sb.append(tr("你记住过的用户偏好：") + facts.joinToString("；") + "\n")
         return sb.toString()
     }
 
@@ -676,10 +682,19 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 if (history.isNotEmpty() && payload != display) {
                     history[history.size - 1] = "user" to payload
                 }
-                val raw = AiClient.chat(getApplication(), sys, history)
-                val usedTier = AiClient.lastTier          // 服务端回传的实际生效档位
+                // T1（§53）：真流式 —— 先挂一条空 AI 消息，随增量刷新；
+                // T2：渲染在 ``` 处截断，动作 JSON 逐字冒出也绝不给用户看（线上踩过的坑）
+                val idx = chat.size
+                chat += ChatMsg(ROLE_AI, "")
+                val sb = StringBuilder()
+                val raw = AiClient.chat(getApplication(), sys, history) { delta ->
+                    sb.append(delta)
+                    val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
+                    chat[idx] = chat[idx].copy(text = visible)
+                }
                 val (text, actions) = AiActions.split(raw)
-                if (text.isNotBlank()) chat += ChatMsg(ROLE_AI, text, tier = usedTier)
+                if (text.isNotBlank()) chat[idx] = chat[idx].copy(text = text)
+                else chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
                 if (actions.isNotEmpty()) {
                     // A3/A1-4（§48）：删除一律先确认；一次 ≥3 条也先确认（批量误建就是这么来的）
                     if (actions.any { it.isDelete } || actions.size >= 3) {
@@ -692,6 +707,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 if (text.isBlank() && actions.isEmpty()) chat += ChatMsg(ROLE_AI, tr("小鹿没想好怎么回答，换个说法试试？"))
             } catch (e: Exception) {
+                // 流式中断留下的空占位撤掉，别让用户看到空气泡
+                if (chat.isNotEmpty() && chat.last().role == ROLE_AI && chat.last().text.isBlank())
+                    chat.removeAt(chat.size - 1)
                 chat += ChatMsg(ROLE_AI, tr("小鹿出错了：{0}", e.message ?: tr("网络异常")), error = true)
             } finally {
                 aiBusy = false
@@ -788,9 +806,13 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     val allDay = a.allDay || a.startMin < 0
                     val sm = if (a.startMin >= 0) a.startMin else 9 * 60
                     val em = if (a.endMin > sm) a.endMin else minOf(sm + 60, 24 * 60 - 1)
+                    // K2①：AI 给了分类名就按名匹配（找不到才回落默认分类）
+                    val catId = a.category.takeIf { it.isNotBlank() }
+                        ?.let { name -> categories.value.find { !it.deleted && it.name == name }?.id }
+                        ?: Prefs.defaultCategoryId(c)
                     val series = EventSeries(
                         title = a.title.ifBlank { tr("未命名日程") },
-                        categoryId = Prefs.defaultCategoryId(c),
+                        categoryId = catId,
                         allDay = allDay, startDay = day, endDay = maxOf(a.endDay, day),
                         startMin = sm, endMin = em, location = a.location, memo = a.memo
                     )
@@ -930,6 +952,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         ))
                         out += tr("✏️ 已修改笔记：{0}", a.title.ifBlank { nte.title })
                     }
+                }
+                "remember" -> {
+                    // D2：记进小鹿记事本（可在「订阅与小鹿 AI」页查看与删除）
+                    Prefs.addDeerFact(c, a.fact)
+                    out += tr("🦌 记住啦：{0}", a.fact)
                 }
                 "delete_note" -> {
                     val nte = noteDao.byId(a.targetId)
