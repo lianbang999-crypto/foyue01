@@ -7143,3 +7143,89 @@ commit → push GitHub(looka) → 构建 APK → 传 R2 → 部署 Worker
 | X12 | release.sh 加 push 前置（推送成功才部署） | 中 | [ ] |
 | — | Clerk / Supabase / PostHog / Sentry | **建议不接**，理由见四、五 | — |
 | — | 区域路由 | 等真有海外用户 | — |
+
+---
+
+## 六十八、Lifebear 系统性对齐总纲（2026-08-23，三文档研究 + 开始执行）
+
+> 三份母档（Product DNA / Calendar UIUX v1.1 / Sticker Canvas v1.0）是此后所有设计决策的**上位依据**。
+> 本节先冻结结论，再列执行批次。
+
+### 一、Product DNA 十原则 —— 冻结为 Looka 的产品宪法
+
+```
+P1  Native-first, Date-projection second   对象先按原生心智建模，有日期才投影进日历
+P2  Progressive disclosure                 默认界面短，高级能力按需展开
+P3  Context defaults                       从点击处自动带入日期/时间/清单
+P4  Preference as speed                    长期偏好变默认值
+P5  Template as reusable intent            模板存"是什么"，Context 定"何时"
+P6  心智一致 > 表单一致                     Event/Task/Diary 不强求同一表单
+P7  Calm Utility × Emotional Warmth        骨架克制，情绪层柔软
+P8  Personalization is utility             颜色/贴纸/主题是留存功能不是装饰
+P9  Global Create as action center         中央 + 读当前模块上下文
+P10 商业层不污染核心                        广告/Plan/Shop 不改变核心心智
+```
+
+**对照自查（我们违反过的）**：
+- P10：鹿角一度做成 12 项机制（§60 已减法）✅ 已纠
+- P7：表白式文案（§57 E6 已清）✅ 已纠
+- **P13（AI 原则）：「AI 应隐藏在 Context/Defaults/Template 之间，不是一个新模块」——
+  这与你说的「AI 只是工具」完全一致，文档给了实现路径**
+
+### 二、Sticker 文档 —— 🔴 修正我们 §59 N5 的计划
+
+文档 V010 实机冻结的结论，与我们原计划有一处关键出入：
+
+| | §59 N5 原计划 | 文档冻结（实机证据） |
+|---|---|---|
+| 移动 Reposition | ✅ | ✅ Place → Reposition，位置是实例状态 |
+| 落点日期 | 没细想 | ✅ **交互框中心命中日期格 → host_date 变化** |
+| **缩放/旋转** | **计划做** | ❌ **v1 明确不开放**（无实机证据，Lifebear 也没做） |
+
+**→ N5 修正为：先做「标准化尺寸 + 拖动 + 落点映射」，scale/rotation 降级为待验证项。**
+（你问过"表情怎么不能放大拉伸"——答案是：**对齐 Lifebear 后 v1 就不该有放大拉伸**，
+它的可爱靠素材、秩序靠标准：视觉主体 ≈0.42×列宽，交互圈固定 ≈1.02×列宽。）
+
+**冻结的响应式规格**（写进实现）：
+```
+cellW            = 月视图内容宽 / 7
+stickerVisual    = 0.42 × cellW（范围 0.36~0.46，按光学归一）
+interactionD     = 1.02 × cellW（固定虚线操作圈，视觉≠交互框）
+anchor           = 交互框中心 → 命中哪格，host_date 就是哪天
+未绑定菜单        = 建日程 / 删除；绑定后 = 编辑
+```
+
+### 三、周视图两图对比 —— X5 有答案了
+
+BEAR 对比图实锤：**Lifebear 的未分类事件 = 灰底白字小标签**，全天区**一格最多 4 条 + 右下角折角 +N**。
+
+```
+X5 拍板依据：未分类 → 中性灰（对齐 BEAR），不用主题色变体（E4 撤回）
+E3 竖排     → 退回（"拉长"确认是它）
+全天区      → cap + 右下角折角数字（月视图已有同款折角，语义统一）
+```
+
+### 四、更多页 —— 承认宫格方案失败，回到语义分组列表
+
+你说"他看起来很自然，我们很突兀"。对比后原因清楚：
+Lifebear 的深色区是**全宽横排**、图标轻；我们的 GridTile 是**大黑块**，视觉太重，
+且分组逻辑错了（§67 六已分析）。→ 回到**分组列表**（6 组 11 项，含丢失的小鹿 AI 入口）。
+
+### 五、文案（你的第 5 点，直接采纳）
+
+- 品牌区：「可爱版九色鹿 · 极简生活手帐」→ **「把生活，轻轻收进日历里」**
+- 商店描述 v3（你写的整段）存入 `STORE-COPY.md`，App 自述/官网同源
+
+### 六、执行批次（本轮开始）
+
+```
+批1  X1 AI 入口恢复 + 更多页语义分组重构（替换宫格）
+批2  周视图：E4→中性灰 / E3 退回 / 全天区折角+N
+批3  文案：品牌语 + 商店描述 v3 入库
+批4  后台 undefined 修复（overview 补齐/显示 —）
+批5  GitHub：remote 切 looka 私库 + 推 44 commits + release.sh 加 push 前置
+批6  发版 v1.10.1 + EXECUTION 打勾
+下一批（需 Room 迁移窗口，紧接着做）
+     Sticker Canvas v1：x/y 字段 + 拖动 + 落点映射 + 标准化尺寸（按二的冻结规格）
+     CAL-070 Bottom Sheet 对齐 / CAL-072 显示来源层 / Today 悬浮返回
+```
