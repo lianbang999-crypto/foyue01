@@ -1,7 +1,12 @@
-# 爱发电 / Ko-fi 页面文案 · 正式版
+# 爱发电 / Ko-fi 页面文案 · **v2**
 
-> 2026-08-21 · 国内 ¥12/月 · ¥98/年 ｜ 海外 $7/月 · $70/年
+> 2026-08-22 · 国内 ¥12/月 · ¥98/年 ｜ 海外 $7/月 · $70/年
 > 🚧 标记 = 开发中，上线后自动解锁、不另收费
+>
+> ⚠️ **v2 相对 v1 的关键改动**：AI 对话从「免费不限次」改为「免费每天 10 次，Pro 不限次」。
+> v1 曾把「小鹿 AI 对话不限次」列在【一直免费，不会变成付费项】里 —— **该表述已全部移除**。
+> 改动时点：全站仅 7 个账号且均为自有/测试账号，无外部存量用户（见 FEATURE-PLAN §50 一）。
+> **爱发电与 Ko-fi 两处后台都必须同步更新，不能只改一处。**
 
 ---
 
@@ -24,25 +29,35 @@ Looka Pro · 月度
 Looka 是一个安静的手帐 App —— 日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
 它不催你，不给红色角标，不做连续打卡。名字取自敦煌壁画《鹿王本生图》里的九色鹿。
 
-【这些一直免费，不会变成付费项】
-全部手帐功能 · 多端云同步（手机与网页）· 数据导出（JSON / 日历 / Markdown）
-小鹿 AI 对话不限次 · 104 枚官方表情 · 九色主题 · 密码锁 · 小组件
+【免费版就能用的，一直免费】
+
+手帐全功能：日历 · 待办 · 任务清单 · 笔记 · 日记 · 分类
+104 枚官方表情 · 九色主题
+提醒与闹钟 —— 基础功能，我们不会拿它收费
+多端云同步（手机与网页）
+数据导出（JSON / 日历 / Markdown）—— 你的数据永远属于你
+搜索 · 密码锁 · 小组件 · 读取系统日历 · 简繁英三语
+小鹿 AI 对话 每天 10 次
 
 【开通 Pro，你会得到】
 
-🦌 更聪明的小鹿
-   解锁 GPT 高级模型，规划、总结、拆解任务都更准
+🦌 小鹿变成真正的助理
+   AI 对话不限次，还能切换更聪明的模型
+   🚧 会改、会删、会查 —— 不只是帮你记，是帮你安排
+   🚧 一句话批量处理：「这周的会都推迟一小时」
    🚧 拍张照就能建日程 —— 会议通知、海报、机票，拍下来自动提取时间地点
-   🚧 写完日记，小鹿帮你挑一枚今天的表情贴到日历上
 
 🎨 做自己的手帐
-   🚧 自创主题配色，调成你喜欢的样子
-   🚧 上传自己的封面纸与背景
+   🚧 传一张照片，小鹿为你生成一整套主题
+      不只是换个主色 —— 纸的纹理、角落的插画、顶部的横幅，整体风格都变
+   🚧 生成属于你的专属表情包
+   调色台：自己调出想要的颜色
    🚧 自定义 App 图标
-   🚧 全部主题与表情包，每月还有新的
+   🚧 主题云端保存，换手机也还在
+   🚧 把你做的主题分享给朋友
 
 📖 更深的用法
-   🚧 智能清单与自定义筛选
+   🚧 标签体系与智能清单
    🚧 模板库（日记模板 / 日程模板，也能自己建）
    🚧 年度回顾长图 —— 一年写了多少、去过哪里，一张图看完
    🚧 作品导出：排版精美、可打印的 PDF，贴进你的实体本
@@ -56,12 +71,12 @@ Looka 是一个安静的手帐 App —— 日历、待办、笔记、日记，�
 
 不偷偷扣你钱。订阅可随时取消，取消后立即不再扣款；
 不想被自动续费，也可以只买一次性的月卡或年卡。
-到期不收回。你做的主题、写的内容、导出的东西，到期后照样能用。
 
-【重要】下单时请在留言里填写你的 Looka 账号邮箱，
-我们会在 24 小时内把开通码发到该邮箱。
-（从 App 内点「开通 Pro」跳转的话，备注会自动填好，不用手动输入。）
+到期不收回。你做的主题、生成的表情、写下的内容、导出的文件，
+到期之后照样能用、照样能看 —— 我们只是不再为你生成新的。
 ```
+
+---
 
 ## 方案 2 · 年度
 
@@ -75,17 +90,26 @@ Looka Pro · 年度
 98 元 / 年
 ```
 
-**方案描述**：与月度相同，把开头加一句：
+**方案描述**（整段粘贴）
 ```
-年付相当于每月 8.2 元，比月付省两个多月。
+与「Looka Pro · 月度」完全相同的权益，按年计费。
+一年 98 元，相当于每月 8.2 元，比月付省 46 元。
+
+（下面权益说明与月度方案一致，此处粘贴月度那一整段）
 ```
 
+---
+
 ## 主页简介
+
 ```
 Looka · 可爱版九色鹿
-一个不催你的手帐 App。日历 / 待办 / 笔记 / 日记，加一只叫小鹿的 AI。
+一个安静的手帐 App：日历、待办、笔记、日记，加一只叫小鹿的 AI 助手。
+
+不催你，不给红色角标，不做连续打卡。
 名字取自敦煌壁画《鹿王本生图》里的九色鹿。
-looka.foyue.org
+
+安卓 App 与网页版：looka.foyue.org
 ```
 
 ---
@@ -94,7 +118,7 @@ looka.foyue.org
 
 ## Membership tier
 
-**Name**
+**Tier name**
 ```
 Looka Pro
 ```
@@ -104,67 +128,96 @@ Looka Pro
 $7 / month
 ```
 
-**Description**（整段粘贴）
+**Description**（paste as-is）
 ```
-Looka is a calm journal app — calendar, tasks, notes and diary, with a little
-deer called Looka helping out. No streaks. No red badges. No nagging.
-Named after the nine-coloured deer from the Dunhuang cave murals.
+Looka is a quiet journaling app — calendar, to-dos, notes and diary,
+with a little deer called Luka to help.
 
-[ALWAYS FREE — these will never move behind a paywall]
-Every journal feature · Sync across phone and web · Full data export
-(JSON / Calendar / Markdown) · Unlimited chat with the deer
-104 official stickers · Nine themes · Passcode lock · Widgets
+It never nags you. No red badges. No streaks to keep.
+The name comes from the nine-coloured deer of the Dunhuang cave murals.
 
-[WITH PRO YOU GET]
+【FREE — and staying free】
 
-🦌 A smarter deer
-   Unlocks the premium GPT model — better planning, summaries, task breakdowns
-   🚧 Snap a photo to create an event — posters, invites, boarding passes
-   🚧 After you journal, the deer picks a sticker for your day
+Everything for journaling: calendar · to-dos · task lists · notes · diary · categories
+104 illustrated stamps · nine colour themes
+Reminders and alarms — these are basics, we won't charge for them
+Sync across phone and web
+Export your data (JSON / iCal / Markdown) — your data is always yours
+Search · passcode lock · widgets · system calendar · EN / 简体 / 繁體
+10 AI messages a day with Luka
 
-🎨 Make it yours
-   🚧 Custom theme colours
-   🚧 Upload your own cover papers and backgrounds
+【With Pro, you get】
+
+🦌 Luka becomes a real assistant
+   Unlimited AI messages, and a smarter model to switch to
+   🚧 It can edit, delete and look things up — not just write them down
+   🚧 Batch changes in one sentence: "push all my meetings this week back an hour"
+   🚧 Snap a photo to create an event — posters, tickets, meeting notices
+
+🎨 Make the journal yours
+   🚧 Send a photo, and Luka builds a whole theme from it
+      Not just a colour swap — paper texture, corner illustrations, the top banner, all of it
+   🚧 Generate your own sticker set
+   A colour wheel to mix exactly the shade you want
    🚧 Custom app icon
-   🚧 Every theme and sticker pack, plus new ones each month
+   🚧 Themes saved to the cloud, still there on a new phone
+   🚧 Share the themes you make with friends
 
-📖 Go deeper
-   🚧 Smart lists and custom filters
-   🚧 Template library for journals and events
-   🚧 Year-in-review poster — your whole year in one image
-   🚧 Print-ready exports — beautiful PDFs to paste into your paper journal
+📖 Deeper habits
+   🚧 Tags and smart lists
+   🚧 Template library (diary and schedule templates, or build your own)
+   🚧 Year in review — everything you wrote and everywhere you went, in one long image
+   🚧 Beautiful printable PDF export, to paste into your paper journal
 
-🌱 Beta access
-   Try new features first, and your suggestions decide what gets built next
+🌱 Early access
+   Try new features first. What you ask for shapes the next release.
 
-🚧 marks features in development. They unlock automatically when they ship,
-at no extra charge.
+🚧 = in development. It unlocks automatically when it ships, at no extra cost.
 
-[TWO PROMISES ABOUT PAYING]
+【Two promises about payment】
 
-No sneaky charges. Cancel anytime and billing stops immediately —
-or skip subscriptions entirely with a one-time month/year pass.
-Nothing gets taken back. Themes you made and things you wrote stay yours.
+We won't quietly charge you. Cancel any time and billing stops immediately.
+If you'd rather not have a recurring subscription, one-off monthly and yearly
+passes are available too.
 
-[IMPORTANT] Please put the email address of your Looka account in the order
-note. We'll send your activation code within 24 hours.
+We won't take it back when it expires. The themes you made, the stickers you
+generated, everything you wrote and exported — all of it keeps working.
+We simply stop generating new ones for you.
 ```
+
+---
 
 ## Shop item（年付，可选）
+
+**Title**
 ```
-Name:  Looka Pro · 1 Year
-Price: $70
-Desc:  12 months of Looka Pro — two months free compared to monthly.
-       Please include your Looka account email in the order note.
+Looka Pro — 1 Year
 ```
+
+**Price**
+```
+$70
+```
+
+**Description**
+```
+The same Pro benefits, billed yearly.
+$70 for twelve months — about $5.83 a month, saving $14 against monthly billing.
+```
+
+---
 
 ## Page bio
-```
-Looka — a calm journal app. Calendar, tasks, notes and diary, with a little
-deer to help. Named after the nine-coloured deer of the Dunhuang murals.
-looka.foyue.org
-```
 
+```
+Looka — a quiet journaling app
+Calendar, to-dos, notes and diary, with a little deer called Luka to help.
+
+No nagging. No red badges. No streaks.
+Named after the nine-coloured deer of the Dunhuang murals.
+
+Android app and web: looka.foyue.org
+```
 ---
 
 # 运营须知
