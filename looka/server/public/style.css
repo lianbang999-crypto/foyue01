@@ -99,6 +99,7 @@ main { max-width: 860px; margin: 0 auto; }
 .day-cell {
   min-height: 76px; border-bottom: 0.8px solid var(--hair); border-right: 0.8px solid var(--hair);
   padding: 2px; cursor: pointer; overflow: hidden; background: #fff;
+  position: relative;   /* Sticker Canvas v1：摆放层绝对定位的参照 */
 }
 .day-cell:nth-child(7n) { border-right: none; }
 .day-cell.dim { background: var(--dim); }

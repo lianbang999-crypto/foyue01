@@ -77,7 +77,8 @@ fun TimelineBody(
     sysEvents: List<SysCal.SysEvent>,
     holidayMask: Int,
     catColorMap: Map<Long, Color>,
-    onOpenSys: (SysCal.SysEvent) -> Unit
+    onOpenSys: (SysCal.SysEvent) -> Unit,
+    onLongPressAllDay: (Long) -> Unit = {}
 ) {
     val today = Fmt.today()
     val todayTint = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
@@ -186,6 +187,10 @@ fun TimelineBody(
                             }
                         )
                         .padding(horizontal = 1.dp, vertical = 2.dp)
+                        .pointerInput(d) {
+                            // CAL-CRE-003（P3 Context）：长按全天区 → 直接建这天的全天日程
+                            detectTapGestures(onLongPress = { onLongPressAllDay(d) })
+                        }
                 ) {
                     // 节假日红块（Lifebear「山の日」式）
                     (if (showLunar) LunarCal.of(d).festival else null)?.let { fest ->

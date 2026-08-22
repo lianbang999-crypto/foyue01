@@ -469,6 +469,8 @@ object SyncEngine {
                                 emoji = o.optString("emoji", "🦌"), day = o.optLong("day"),
                                 eventUid = o.optString("eventUid"),
                                 assetId = o.optString("assetId"),
+                                posX = o.optDouble("px", -1.0).toFloat(),
+                                posY = o.optDouble("py", -1.0).toFloat(),
                                 uid = uid, updatedAt = up, dirty = false
                             )
                         )
@@ -478,6 +480,8 @@ object SyncEngine {
                                 emoji = o.optString("emoji", ex.emoji), day = o.optLong("day", ex.day),
                                 eventUid = o.optString("eventUid", ex.eventUid),
                                 assetId = o.optString("assetId", ex.assetId),
+                                posX = o.optDouble("px", ex.posX.toDouble()).toFloat(),
+                                posY = o.optDouble("py", ex.posY.toDouble()).toFloat(),
                                 updatedAt = up, dirty = false, deleted = false
                             )
                         )

@@ -27,6 +27,10 @@ import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -257,12 +261,18 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 val ws = weekStart(vm.selectedDay, weekStartMon)
                 TimelineBody(
                     vm, nav, (0..6).map { ws + it }, occs, sysEvents, holidayMask, catColorMap,
-                    onOpenSys = { sysDetail = it }
+                    onOpenSys = { sysDetail = it },
+                    onLongPressAllDay = { d ->
+                        vm.prepareCreateDraft(d, allDay = true); nav.navigate("editor")
+                    }
                 )
             }
             else -> TimelineBody(
                 vm, nav, listOf(vm.selectedDay), occs, sysEvents, holidayMask, catColorMap,
-                onOpenSys = { sysDetail = it }
+                onOpenSys = { sysDetail = it },
+                onLongPressAllDay = { d ->
+                    vm.prepareCreateDraft(d, allDay = true); nav.navigate("editor")
+                }
             )
         }
     }
@@ -365,6 +375,9 @@ private fun MonthFull(
     onOpenSys: (SysCal.SysEvent) -> Unit,
     sheetContent: @Composable () -> Unit
 ) {
+    // Sticker Canvas v1：点击摆放印章 → 菜单（建日程 / 删除）
+    var stampMenu by remember { mutableStateOf<Stamp?>(null) }
+
     val scope = rememberCoroutineScope()
     val firstDow = if (weekStartMon) 1 else 7
     val origin = remember(weekStartMon) { weekOrigin(weekStartMon) }
@@ -494,7 +507,9 @@ private fun MonthFull(
                                         // CAL-CRE-002：长按日期直接创建并预填
                                         vm.prepareCreateDraft(day)
                                         nav.navigate("editor")
-                                    }
+                                    },
+                                    onStampMove = { id, nd, px, py -> vm.moveStamp(id, nd, px, py) },
+                                    onStampTap = { stampMenu = it }
                                 )
                             }
                         }
@@ -508,8 +523,54 @@ private fun MonthFull(
                         }
                     }
                 }
-            }
+            
+                // CAL-001 v1.1：远离今天时右下浮现「回今天」（连续滚动特有）
+                val todayIdx = remember(weekStartMon) { ((weekStart(today, weekStartMon) - origin) / 7).toInt() }
+                val farFromToday by remember {
+                    derivedStateOf { kotlin.math.abs(listState.firstVisibleItemIndex - todayIdx) > 2 }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = farFromToday,
+                    enter = androidx.compose.animation.fadeIn(tween(com.looka.app.ui.theme.Motion.ENTER)) +
+                        androidx.compose.animation.scaleIn(tween(com.looka.app.ui.theme.Motion.ENTER), initialScale = 0.85f),
+                    exit = androidx.compose.animation.fadeOut(tween(com.looka.app.ui.theme.Motion.EXIT)),
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 16.dp)
+                ) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Ink.copy(alpha = 0.86f))
+                            .plainClick {
+                                vm.selectedDay = today
+                                vm.calMonth = YearMonth.now()
+                                vm.calScrollReq = today
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(tr("回今天"), fontSize = 12.5.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                    }
+                }
+}
         }
+    }
+
+    stampMenu?.let { st ->
+        AlertDialog(
+            onDismissRequest = { stampMenu = null },
+            title = { Text(if (st.assetId.isNotBlank()) tr("这枚印章") else st.emoji, fontSize = 17.sp) },
+            text = { Text(Fmt.dateCn(st.day), fontSize = 13.sp, color = GrayText) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.prepareCreateDraft(st.day); stampMenu = null; nav.navigate("editor")
+                }) { Text(tr("建日程"), color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.deleteStamp(st.id); stampMenu = null }) {
+                    Text(tr("删除"), color = HolidayRed)
+                }
+            },
+            containerColor = Color.White
+        )
     }
 }
 
@@ -530,7 +591,9 @@ private fun DayCellV2(
     catColorMap: Map<Long, Color>,
     listColorMap: Map<String, Color>,
     onSelect: () -> Unit,
-    onLongPress: () -> Unit
+    onLongPress: () -> Unit,
+    onStampMove: (Long, Long, Float, Float) -> Unit = { _, _, _, _ -> },
+    onStampTap: (Stamp) -> Unit = {}
 ) {
     val dt = Fmt.d(day)
     val lunar = if (showLunar) LunarCal.of(day) else null
@@ -593,13 +656,14 @@ private fun DayCellV2(
             }
 
             var budget = maxLines
-            if (stampList.isNotEmpty() && budget > 1) {
+            val inlineStamps = stampList.filter { it.posX < 0f }
+            if (inlineStamps.isNotEmpty() && budget > 1) {
                 val ctx2 = androidx.compose.ui.platform.LocalContext.current
                 Row(
                     Modifier.height(11.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    stampList.take(5).forEach { st ->
+                    inlineStamps.take(5).forEach { st ->
                         val bmp = if (st.assetId.isNotBlank()) StampAssets.bitmap(ctx2, st.assetId) else null
                         if (bmp != null) {
                             Image(bmp, null, modifier = Modifier.size(11.dp))
@@ -641,6 +705,66 @@ private fun DayCellV2(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
                 )
                 shown++
+            }
+        }
+
+        // ── Sticker Canvas v1（§68 二，Lifebear 冻结规格）──────────────────
+        // 视觉主体 0.42×cellW；长按进入拖动态（虚线圈 ≈1.02×cellW，视觉≠交互框）；
+        // 落点 = 圈心命中哪格，day 就换到哪天（列/行偏移纯数学换算）。
+        val placed = stampList.filter { it.posX >= 0f }
+        if (placed.isNotEmpty()) {
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+                val cellWpx = constraints.maxWidth.toFloat()
+                val cellHpx = constraints.maxHeight.toFloat()
+                val visualDp = maxWidth * 0.42f
+                val ringDp = maxWidth * 1.02f
+                val ctxSt = androidx.compose.ui.platform.LocalContext.current
+                placed.forEach { st ->
+                    var dragOff by remember(st.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+                    var dragging by remember(st.id) { mutableStateOf(false) }
+                    val baseX = st.posX * cellWpx
+                    val baseY = st.posY * cellHpx
+                    Box(
+                        Modifier
+                            .offset { androidx.compose.ui.unit.IntOffset(
+                                (baseX + dragOff.x - cellWpx * 0.21f).toInt(),
+                                (baseY + dragOff.y - cellWpx * 0.21f).toInt()) }
+                            .size(visualDp)
+                            .zIndex(if (dragging) 30f else 3f)
+                            .pointerInput(st.id) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { dragging = true },
+                                    onDrag = { change, amt -> change.consume(); dragOff += amt },
+                                    onDragCancel = { dragging = false; dragOff = androidx.compose.ui.geometry.Offset.Zero },
+                                    onDragEnd = {
+                                        dragging = false
+                                        val fx = baseX + dragOff.x
+                                        val fy = baseY + dragOff.y
+                                        val colOff = kotlin.math.floor(fx / cellWpx).toInt()
+                                        val rowOff = kotlin.math.floor(fy / cellHpx).toInt()
+                                        val newDay = day + colOff + rowOff * 7L
+                                        val px = (fx - colOff * cellWpx) / cellWpx
+                                        val py = (fy - rowOff * cellHpx) / cellHpx
+                                        dragOff = androidx.compose.ui.geometry.Offset.Zero
+                                        onStampMove(st.id, newDay, px, py)
+                                    }
+                                )
+                            }
+                            .plainClick { onStampTap(st) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (dragging) Canvas(Modifier.size(ringDp)) {
+                            drawCircle(
+                                color = Color(0xFF9AA0A6),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                    width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+                            )
+                        }
+                        val bmp = if (st.assetId.isNotBlank()) StampAssets.bitmap(ctxSt, st.assetId) else null
+                        if (bmp != null) Image(bmp, null, modifier = Modifier.size(visualDp))
+                        else Text(st.emoji, fontSize = (visualDp.value * 0.7f).sp)
+                    }
+                }
             }
         }
 

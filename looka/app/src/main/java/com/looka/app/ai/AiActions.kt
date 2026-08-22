@@ -235,7 +235,9 @@ $PROTOCOL
             actions.isNotEmpty() -> tr("好的，帮你记上了 🦌")
             else -> tr("小鹿没太听懂，换个说法再说一次？")
         }
-        return display to actions
+        // §69 快修：内部 id 标注（[e12]/[t3]/[n5]）绝不给用户看 —— 显示层清洗，不靠提示词
+        val clean = display.replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "").replace(Regex(" {2,}"), " ")
+        return clean to actions
     }
 
     /** 含动作特征字段才认定为载荷，避免误删用户正文里的花括号 */

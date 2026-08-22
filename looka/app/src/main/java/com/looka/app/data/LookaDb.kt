@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TaskList::class, Task::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -57,6 +57,14 @@ abstract class LookaDb : RoomDatabase() {
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE reminder ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** v5 → v6（Sticker Canvas v1，§68）：印章格内相对坐标，-1 = 未摆放 */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stamp ADD COLUMN posX REAL NOT NULL DEFAULT -1")
+                db.execSQL("ALTER TABLE stamp ADD COLUMN posY REAL NOT NULL DEFAULT -1")
             }
         }
     }

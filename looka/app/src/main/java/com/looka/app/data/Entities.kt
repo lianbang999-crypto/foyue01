@@ -201,6 +201,10 @@ data class Stamp(
     val day: Long,
     val eventUid: String = "",
     val assetId: String = "",
+    // Sticker Canvas v1（§68 二，Lifebear 冻结规格）：格内相对坐标 0~1。
+    // -1 = 未摆放（沿用旧的行内小图排列）。位置是实例状态，可反复拖动（Place→Reposition）。
+    val posX: Float = -1f,
+    val posY: Float = -1f,
     val uid: String = newUid(),
     val updatedAt: Long = System.currentTimeMillis(),
     val dirty: Boolean = true,

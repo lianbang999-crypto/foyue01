@@ -487,14 +487,26 @@ function renderCalendar(anchorDay) {
       const rest = evs.length + tks.length - shown;
       if (rest > 0) lines += `<div class="ev-more">+${rest}</div>`;
       const lun = stShowLunar() ? lunarText(day) : '';
-      const stampHtml = sts.slice(0, 3).map(st => st.assetId
+      // Sticker Canvas v1（§68 二）：posX>=0 的走画布层绝对定位（视觉主体 42% 列宽），
+      // 其余沿用行内小图。网页 v1 只渲染不拖动（拖动在 App 端）。
+      const inlineSts = sts.filter(st => !(st.px >= 0));
+      const placedSts = sts.filter(st => st.px >= 0);
+      const stampHtml = inlineSts.slice(0, 3).map(st => st.assetId
         ? `<img class="stamp-img" src="stamps/${st.assetId}.webp" alt="">`
         : `<span>${st.emoji}</span>`).join('');
+      const canvasHtml = placedSts.map(st => {
+        const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
+          `width:42%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+        return st.assetId
+          ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
+          : `<span style="${style};font-size:18px">${st.emoji}</span>`;
+      }).join('');
       // 连续滚动下月界要看得见：每月 1 号带月份
       const numHtml = f.d === 1 ? `${f.m}月1` : f.d;
       cells += `<div class="${cls}" data-day="${day}">
         <div class="day-num-wrap"><span class="${numCls}">${numHtml}</span>${lun ? `<span class="lunar">${lun}</span>` : ''}</div>
-        ${sts.length ? `<div class="cell-stamps">${stampHtml}</div>` : ''}
+        ${inlineSts.length ? `<div class="cell-stamps">${stampHtml}</div>` : ''}
+        ${canvasHtml}
         ${lines}</div>`;
     }
     html += `<div class="week-row" data-wi="${w}">${wm}${cells}</div>`;
@@ -906,7 +918,7 @@ async function openStickerModal(day) {
   d.querySelector('#sX').onclick = closeModal;
   d.querySelector('#sOk').onclick = () => {
     if (!sel) { toast('先选一个表情'); return; }
-    put('stamp', uuid(), { emoji: '🦌', day, eventUid: '', assetId: sel });
+    put('stamp', uuid(), { emoji: '🦌', day, eventUid: '', assetId: sel, px: 0.5, py: 0.62 });
     closeModal(); toast(t('已贴上表情'));
   };
 }
@@ -1205,6 +1217,8 @@ async function sendChat(text) {
       display = raw.replace(fence[0], '').trim();
       try { actions = JSON.parse(fence[1]).actions || []; } catch (e) { }
     }
+    // §69 快修：内部 id 标注不给用户看（显示层清洗，不靠提示词）
+    display = display.replace(/[（(]?\[[etn]\d+\][）)]?/g, '').replace(/ {2,}/g, ' ').trim();
     if (display) { chatBubble('ai', display); S.chat.push({ role: 'assistant', content: display }); }
     if (actions.length) confirmThenExec(actions);
     if (!display && !actions.length) chatBubble('ai', '小鹿没想好怎么回答，换个说法试试？');

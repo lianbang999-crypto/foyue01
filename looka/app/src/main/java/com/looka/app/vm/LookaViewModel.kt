@@ -607,11 +607,25 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 eventUid = uid
             }
-            stampDao.insert(Stamp(emoji = emoji, day = day, eventUid = eventUid, assetId = assetId))
+            // Sticker Canvas v1：新贴的印章直接进入摆放态（格子中偏下），之后可长按拖动
+            stampDao.insert(Stamp(emoji = emoji, day = day, eventUid = eventUid, assetId = assetId,
+                posX = 0.5f, posY = 0.62f))
             if (assetId.isNotBlank()) Prefs.pushRecentStamp(c, assetId)
             afterChange()
             onDone()
         }
+
+    /** Sticker Canvas v1：拖动落点写回。位置是实例状态（Place → Reposition 可反复）。 */
+    fun moveStamp(id: Long, newDay: Long, px: Float, py: Float) = viewModelScope.launch {
+        stampDao.byId(id)?.let {
+            stampDao.update(it.copy(
+                day = newDay,
+                posX = px.coerceIn(0f, 1f), posY = py.coerceIn(0f, 1f),
+                dirty = true, updatedAt = now()
+            ))
+            afterChange()
+        }
+    }
 
     fun deleteStamp(id: Long) = viewModelScope.launch {
         stampDao.byId(id)?.let {
@@ -691,6 +705,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 val raw = AiClient.chat(getApplication(), sys, history) { delta ->
                     sb.append(delta)
                     val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
+                        .replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "")
                     if (visible.isNotBlank()) {
                         if (idx < 0) { idx = chat.size; chat += ChatMsg(ROLE_AI, visible) }
                         else chat[idx] = chat[idx].copy(text = visible)
