@@ -723,3 +723,9 @@
 - 告警扩展：未认领订单>0 / premium 失败率>10% / 注册归零 → 邮件 looka01@qq.com
 - 实测：登录 401/200 ✓ 六个只读 API ✓ gencode 写入+审计留痕 ✓ 埋点数据已在总览滚动
 - 口令在 `looka/server/.secrets.txt` 的 FOYUE_ADMIN_KEY
+
+## v1.7.1 (15) — 2026-08-22 · 批A：设置上云 + 后台修复 + 子站埋点
+- 🔴 admin Error 1101 根因修复：assets 未声明 binding → env.ASSETS undefined → 任意未直出路径抛 TypeError。已加 binding + 大小写兜底
+- P5-1 设置四项（周起始/农历/节假日/显示已完成）成为同步实体：App 主人、网页跟随，服务端 KINDS+settings；网页周起始/星期头/农历/已完成全部动态化
+- P5-2 文案真源确认：两端共用同一 i18n key；P5-3 UI-SPEC 扩成两端对照表（发版逐行过）
+- P3-2-7/8：自知录（注册/登录）、流通处（下单）接入全站 events；webhook 加 afdian_hook 到达埋点

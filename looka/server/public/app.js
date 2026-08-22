@@ -132,7 +132,11 @@ function applyTheme(i) {
 }
 
 /* ---------------- 状态与存储 ---------------- */
-const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp'];
+const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp', 'settings'];
+// P5-1 设置上云：App 是设置的主人，网页跟随（两端看同一本日历）。
+// 默认值与 App Prefs 一致：周一起始 / 农历跟随中文 / 显示已完成
+const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true };
+const stShowLunar = () => ST.showLunar == null ? isZh() : !!ST.showLunar;
 const S = {
   token: localStorage.getItem('lk_token') || '',
   account: localStorage.getItem('lk_account') || '',
@@ -206,6 +210,18 @@ async function sync() {
   }
 }
 function applyRec(rec) {
+  if (rec.kind === 'settings') {           // P5-1：云端设置 → 本地生效并重画
+    try {
+      const p = JSON.parse(rec.payload || '{}');
+      ST.weekStartMon = p.weekStartMon !== false;
+      ST.showLunar = p.showLunar == null ? null : !!p.showLunar;
+      ST.holidayMask = p.holidayMask ?? (1 << 6);
+      ST.showDoneTasks = p.showDoneTasks !== false;
+      calWin = null;                       // 周起始变了，周索引原点要重算
+      if (S.tab === 'cal') renderCalendar(S.selDay);
+    } catch (e) { }
+    return;
+  }
   const map = S.data[rec.kind]; if (!map) return;
   const ex = map.get(rec.uid);
   if (ex && ex.updated_at > rec.updated_at) return;
@@ -335,15 +351,16 @@ function scopeDlg(title, onPick) {
 // ==================== 连续滚动月历（2026-08-21 对齐 App / Lifebear）====================
 // 以「周」为行的跨月无限滚动：一次渲染当前位置 ±26 周，滚到边缘自动扩段；
 // 标题月由视口反推（取视口 1/3 处那行的周四）；月界靠水印数字 + 每月 1 号带月份。
-const WEEK0 = (() => { const e = epochOf(2016, 1, 1); return e - (dow(e) - 1); })();
-const weekIdxOf = day => Math.floor((day - WEEK0) / 7);
+// 周起始可变（P5-1）：原点随 ST.weekStartMon 变化
+const week0 = () => { const e = epochOf(2016, 1, 1); const first = ST.weekStartMon ? 1 : 7; return e - ((dow(e) - first + 7) % 7); };
+const weekIdxOf = day => Math.floor((day - week0()) / 7);
 let calWin = null;           // { from, to } 已渲染的周号区间
 let calRowH = 92;            // 实测行高（渲染后校准）
 
 function calProbeMonth() {
   const grid = $('#monthGrid');
   const row = Math.floor(grid.scrollTop / calRowH) + 1;   // 视口第 2 行 ≈ 1/3 处
-  const probe = WEEK0 + (calWin.from + row) * 7 + 3;      // 那周的周四定月份
+  const probe = week0() + (calWin.from + row) * 7 + 3;      // 那周的周四定月份
   return fromEpoch(probe);
 }
 
@@ -370,16 +387,19 @@ function renderCalendar(anchorDay) {
 
   // 渲染窗口：锚点周 ±26 周（约一年）
   const anchor = anchorDay != null ? anchorDay
-    : (calWin != null ? WEEK0 + (calWin.from + Math.floor(grid.scrollTop / calRowH)) * 7
+    : (calWin != null ? week0() + (calWin.from + Math.floor(grid.scrollTop / calRowH)) * 7
                       : epochOf(S.month.y, S.month.m, 15));
   const wi = weekIdxOf(anchor);
   calWin = { from: wi - 26, to: wi + 26 };
-  const gridStart = WEEK0 + calWin.from * 7;
-  const gridEnd = WEEK0 + (calWin.to + 1) * 7 - 1;
+  const gridStart = week0() + calWin.from * 7;
+  const gridEnd = week0() + (calWin.to + 1) * 7 - 1;
 
   // 星期头（周一开始）
-  $('#weekHeader').innerHTML = WEEK_CN.map((w, i) =>
-    `<span class="${i === 6 ? 'hol' : i === 5 ? 'sat' : ''}">${w}</span>`).join('');
+  {
+    const names = ST.weekStartMon ? WEEK_CN : ['日', ...WEEK_CN.slice(0, 6)];
+    $('#weekHeader').innerHTML = names.map(w =>
+      `<span class="${w === '日' ? 'hol' : w === '六' ? 'sat' : ''}">${w}</span>`).join('');
+  }
 
   const occs = expandEvents(gridStart, gridEnd);
   const byDay = {};
@@ -393,6 +413,7 @@ function renderCalendar(anchorDay) {
   const tasksByDay = {};
   for (const r of S.data.task.values()) {
     const p = r.p; if (!p || (p.dueDay ?? -1) < 0) continue;
+    if (!ST.showDoneTasks && p.done) continue;   // P5-1：跟随「显示已完成」设置
     (tasksByDay[p.dueDay] = tasksByDay[p.dueDay] || []).push({ uid: r.uid, ...p });
   }
   const stampsByDay = {};
@@ -404,7 +425,7 @@ function renderCalendar(anchorDay) {
 
   let html = '';
   for (let w = calWin.from; w <= calWin.to; w++) {
-    const ws = WEEK0 + w * 7;
+    const ws = week0() + w * 7;
     // 本周含某月 15 号 → 画跨行月份水印（Lifebear 的巨大数字）
     let wm = '';
     for (let i = 0; i < 7; i++) { const f = fromEpoch(ws + i); if (f.d === 15) { wm = `<span class="month-wm">${f.m}</span>`; break; } }
@@ -437,7 +458,7 @@ function renderCalendar(anchorDay) {
       }
       const rest = evs.length + tks.length - shown;
       if (rest > 0) lines += `<div class="ev-more">+${rest}</div>`;
-      const lun = lunarText(day);
+      const lun = stShowLunar() ? lunarText(day) : '';
       const stampHtml = sts.slice(0, 3).map(st => st.assetId
         ? `<img class="stamp-img" src="stamps/${st.assetId}.webp" alt="">`
         : `<span>${st.emoji}</span>`).join('');
@@ -471,7 +492,7 @@ function renderCalendar(anchorDay) {
         const rows = calWin.to - calWin.from + 1;
         const row = grid.scrollTop / calRowH;
         if (row < 6 || row > rows - 12) {
-          const cur = WEEK0 + (calWin.from + Math.floor(row) + 1) * 7 + 3;
+          const cur = week0() + (calWin.from + Math.floor(row) + 1) * 7 + 3;
           renderCalendar(cur);
         }
       });

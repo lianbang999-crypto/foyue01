@@ -6,7 +6,7 @@
 //            AI 对话不限次（分钟/日限速）、崩溃收集、CORS、Cron 清理、R2 APK 分发。
 
 const PBKDF2_ITER = 100000;
-const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp'];
+const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp', 'settings'];  // P5-1：设置也是同步实体
 const SYNC_PAGE = 1000;            // 同步单页上限（配 has_more/next_since 游标）
 const enc = new TextEncoder();
 
@@ -78,8 +78,10 @@ async function getUser(request, env) {
     await env.DB.prepare('DELETE FROM sessions WHERE token = ?1').bind(token).run();
     return null;
   }
-  const u = await env.AUTH_DB.prepare('SELECT id, account, kind FROM users WHERE id = ?1')
+  const u = await env.AUTH_DB.prepare('SELECT id, account, kind, banned_at FROM users WHERE id = ?1')
     .bind(s.user_id).first();
+  // P3-2-5：封禁账号一律视为未登录（后台 /admin 可封禁/解封，操作记审计）
+  if (u && u.banned_at > 0) return null;
   return u || null;
 }
 
@@ -695,6 +697,8 @@ async function route(request, env, ctx) {
   if (env.AFDIAN_HOOK_SECRET && p === `/api/pay/afdian/${env.AFDIAN_HOOK_SECRET}` && m === 'POST') {
     let no = '';
     try { no = String((await request.json())?.data?.order?.out_trade_no || ''); } catch { /* 忽略坏包 */ }
+    // 到达埋点：后台 events 表可查爱发电有没有真的推过来（含「发送测试」）
+    ctx.waitUntil(track(env, 'looka', 'afdian_hook', null, request, { no: no.slice(0, 32) }));
     if (no && /^[0-9A-Za-z_-]{6,64}$/.test(no)) {
       ctx.waitUntil((async () => {
         try {
@@ -1228,6 +1232,28 @@ async function dailyAlert(env) {
     ).bind(Date.now() - 86400000).first();
     const spent = antlerOut?.s || 0;
     if (spent > Number(env.ANTLER_DAY_ALERT || 5000)) alerts.push(`近 24 小时鹿角消耗 ${spent}，超出预期`);
+    // P3-2-10 新增阈值（2026-08-22）
+    // ① 未认领订单：有人付了钱没拿到货，最高优先级
+    const unclaimed = await env.DB.prepare('SELECT COUNT(*) c FROM pay_orders WHERE user_id IS NULL').first();
+    if ((unclaimed?.c || 0) > 0) alerts.push(`🔴 有 ${unclaimed.c} 笔付款订单未归属到账号，请到 foyue.org/admin → 订阅 处理`);
+    if (env.STATS) {
+      // ② 高级模型失败率 > 10%
+      const [pf, ai] = await Promise.all([
+        env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='premium_fail' AND ts>?1").bind(Date.now() - 86400000).first(),
+        env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='ai_chat' AND ts>?1").bind(Date.now() - 86400000).first()
+      ]);
+      if ((ai?.c || 0) >= 10 && (pf?.c || 0) / ai.c > 0.1) {
+        alerts.push(`高级模型 24 小时失败 ${pf.c}/${ai.c} 次（>10%），查 Cloudflare 日志「premium fail」`);
+      }
+      // ③ 注册归零（昨日 >5 而今日 0，可能注册链路挂了）
+      const y = await env.STATS.prepare(
+        "SELECT cnt FROM daily_stats WHERE site='looka' AND kind='register' AND day=?1"
+      ).bind(new Date(Date.now() - 86400000 + 8 * 3600_000).toISOString().slice(0, 10)).first();
+      const t0 = await env.STATS.prepare(
+        "SELECT COUNT(*) c FROM events WHERE site='looka' AND kind='register' AND ts>?1"
+      ).bind(Date.parse(today() + 'T00:00:00+08:00')).first();
+      if ((y?.cnt || 0) > 5 && (t0?.c || 0) === 0) alerts.push('昨日注册>5 而今日为 0 —— 注册链路可能挂了');
+    }
     if (alerts.length) {
       await sendEmail(env, env.ALERT_MAIL || 'looka01@qq.com', `⚠️ Looka 每日自检：${alerts.length} 项异常`,
         mailShell('每日自检发现异常', alerts.map(a => `<p>· ${a}</p>`).join('')));

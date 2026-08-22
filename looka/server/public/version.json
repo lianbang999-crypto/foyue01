@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 14,
-  "versionName": "1.7.0",
+  "versionCode": 15,
+  "versionName": "1.7.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3635154,
-  "sha256": "ff7bfc9c02e165aab900bf1bc2300137721e235662d62d9e70d29a8decc7f11a",
-  "changelog": "· 付款后回到 App 自动开通 Pro，全程有进度提示（等待→已开通；超时才需要手动认领）\n· 更多页一键直达开通；兑换码收进「有兑换码？」\n· 修复：Pro 状态各页面不一致（账号页是 Pro、更多页还是免费版）\n· 月历一个月白一个月灰、滚动不再闪变；月份大水印看得清了\n· 跟小鹿说「X点提醒我」现在真的会在 X 点提醒，时间过了会明说\n· 网页端：新建弹窗折叠详细设置、时间框不再被裁、底部菜单不再被挡",
+  "size": 3635158,
+  "sha256": "66e74c86a41ef68db6793082186ab8bf53d781177e03ad84fca312d3de69d4e9",
+  "changelog": "· 日历显示设置全端同步：在手机上改「周起始/农历/节假日/显示已完成」，网页跟着变 —— 两端终于看同一本日历\n· 数据后台 foyue.org/admin 修复打不开的问题（Error 1101）\n· 自知录、流通处接入全站统计",
   "minSupported": 1
 }

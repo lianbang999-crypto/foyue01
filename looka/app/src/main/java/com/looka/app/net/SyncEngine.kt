@@ -108,6 +108,15 @@ object SyncEngine {
     private suspend fun buildPush(app: LookaApp): JSONArray {
         val db = app.db
         val arr = JSONArray()
+        // P5-1：设置也是同步实体（uid 固定 'settings'）—— 两端必须看到同一本日历
+        if (Prefs.settingsDirty(app)) {
+            arr.put(rec("settings", "settings", Prefs.settingsUpdatedAt(app), false,
+                JSONObject()
+                    .put("weekStartMon", Prefs.weekStartMonday(app))
+                    .put("showLunar", Prefs.showLunarRaw(app) ?: JSONObject.NULL)
+                    .put("holidayMask", Prefs.holidayMask(app))
+                    .put("showDoneTasks", Prefs.showDoneTasks(app))))
+        }
         val catUidById = db.categoryDao().list().associate { it.id to it.uid }
 
         for (c in db.categoryDao().dirtyList()) {
@@ -228,6 +237,19 @@ object SyncEngine {
             }
 
             when (kind) {
+                "settings" -> {
+                    // 远端更新才应用（本地更新中的脏设置不被旧值覆盖）
+                    if (!Prefs.settingsDirty(app) || up > Prefs.settingsUpdatedAt(app)) {
+                        val sp0 = app.getSharedPreferences("looka_prefs", android.content.Context.MODE_PRIVATE).edit()
+                        sp0.putBoolean("week_start_mon", o.optBoolean("weekStartMon", true))
+                        if (o.isNull("showLunar")) sp0.putInt("show_lunar", -1)
+                        else sp0.putInt("show_lunar", if (o.optBoolean("showLunar")) 1 else 0)
+                        sp0.putInt("holiday_mask", o.optInt("holidayMask", 1 shl 6))
+                        sp0.putBoolean("show_done_tasks", o.optBoolean("showDoneTasks", true))
+                        sp0.putBoolean("st_dirty", false).putLong("st_updated", up).apply()
+                    }
+                }
+
                 "category" -> {
                     val ex = db.categoryDao().byUid(uid)
                     if (del) {
@@ -462,6 +484,8 @@ object SyncEngine {
             val up = r.optLong("updated_at")
             val del = r.optInt("deleted") == 1
             when (kind) {
+                "settings" -> Prefs.setSettingsDirty(app, false)
+
                 "category" -> {
                     if (del) db.categoryDao().hardDeleteByUid(uid)
                     else db.categoryDao().byUid(uid)?.let {

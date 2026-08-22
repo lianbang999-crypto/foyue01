@@ -109,13 +109,13 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             ) { holidayDlg = true }
             Hairline()
             SwitchRow(tr("在日历显示已完成任务"), showDone) {
-                showDone = it; Prefs.setShowDoneTasks(ctx, it); vm.bumpSettings()
+                showDone = it; Prefs.setShowDoneTasks(ctx, it); vm.bumpSettings(); com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
             }
             Hairline()
             SwitchRow(
                 tr("显示农历与节日"), showLunar,
                 subtitle = tr("月/周/日视图中的农历、节假日")
-            ) { showLunar = it; Prefs.setShowLunar(ctx, it); vm.bumpSettings() }
+            ) { showLunar = it; Prefs.setShowLunar(ctx, it); vm.bumpSettings(); com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp) }
             Hairline()
             SwitchRow(
                 tr("12 小时制"), use12h,
@@ -223,7 +223,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         tr("一周开始日"),
         options = listOf(true to tr("周一"), false to tr("周日")),
         selected = weekStartMon,
-        onSelect = { weekStartMon = it; Prefs.setWeekStartMonday(ctx, it); vm.bumpSettings() },
+        onSelect = { weekStartMon = it; Prefs.setWeekStartMonday(ctx, it); vm.bumpSettings(); com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp) },
         onDismiss = { weekStartDlg = false }
     )
 
@@ -251,7 +251,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         },
         confirmButton = {
             TextButton(onClick = {
-                Prefs.setHolidayMask(ctx, holidayMask); vm.bumpSettings(); holidayDlg = false
+                Prefs.setHolidayMask(ctx, holidayMask); vm.bumpSettings(); holidayDlg = false; com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
             }) { Text(tr("确定")) }
         },
         dismissButton = {

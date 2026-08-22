@@ -48,20 +48,20 @@ object Prefs {
     fun showLunarRaw(c: Context): Boolean? = when (sp(c).getInt("show_lunar", -1)) {
         1 -> true; 0 -> false; else -> null
     }
-    fun setShowLunar(c: Context, v: Boolean) = sp(c).edit().putInt("show_lunar", if (v) 1 else 0).apply()
+    fun setShowLunar(c: Context, v: Boolean) { sp(c).edit().putInt("show_lunar", if (v) 1 else 0).apply(); markSettingsDirty(c) }
 
     // ---- 日历显示 ----
     /** 一周从周一开始（false = 周日开始） */
     fun weekStartMonday(c: Context) = sp(c).getBoolean("week_start_mon", true)
-    fun setWeekStartMonday(c: Context, v: Boolean) = sp(c).edit().putBoolean("week_start_mon", v).apply()
+    fun setWeekStartMonday(c: Context, v: Boolean) { sp(c).edit().putBoolean("week_start_mon", v).apply(); markSettingsDirty(c) }
 
     /** 休日星期位掩码 bit0=周一…bit6=周日，休日以红色强调 */
     fun holidayMask(c: Context) = sp(c).getInt("holiday_mask", 1 shl 6)
-    fun setHolidayMask(c: Context, v: Int) = sp(c).edit().putInt("holiday_mask", v).apply()
+    fun setHolidayMask(c: Context, v: Int) { sp(c).edit().putInt("holiday_mask", v).apply(); markSettingsDirty(c) }
 
     /** 已完成任务是否显示在日历 */
     fun showDoneTasks(c: Context) = sp(c).getBoolean("show_done_tasks", true)
-    fun setShowDoneTasks(c: Context, v: Boolean) = sp(c).edit().putBoolean("show_done_tasks", v).apply()
+    fun setShowDoneTasks(c: Context, v: Boolean) { sp(c).edit().putBoolean("show_done_tasks", v).apply(); markSettingsDirty(c) }
 
     // ---- 新建默认值 ----
     fun defaultCategoryId(c: Context) = sp(c).getLong("def_category", 1L)
@@ -117,6 +117,15 @@ object Prefs {
 
     fun accountEmail(c: Context) = sp(c).getString("account_email", "")!!
     fun setAccountEmail(c: Context, v: String) = sp(c).edit().putString("account_email", v).apply()
+
+    // ===== P5-1 设置上云：设置是同步实体（kind='settings'，uid 固定 'settings'）=====
+    // 两端必须看到同一本日历 —— 周起始/农历/节假日/显示已完成 改一处、处处生效
+    fun settingsDirty(c: Context) = sp(c).getBoolean("st_dirty", false)
+    fun setSettingsDirty(c: Context, v: Boolean) = sp(c).edit().putBoolean("st_dirty", v).apply()
+    fun settingsUpdatedAt(c: Context) = sp(c).getLong("st_updated", 0L)
+    fun setSettingsUpdatedAt(c: Context, v: Long) = sp(c).edit().putLong("st_updated", v).apply()
+    fun markSettingsDirty(c: Context) = sp(c).edit()
+        .putBoolean("st_dirty", true).putLong("st_updated", System.currentTimeMillis()).apply()
 
     // ⚠️ 订阅状态唯一真值源是 PlanState（P2-A，2026-08-22）。
     // 这三个函数只给 PlanState 做持久化用，页面一律读 PlanState.isPro / PlanState.plan。
