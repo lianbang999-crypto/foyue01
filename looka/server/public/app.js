@@ -945,7 +945,7 @@ function aiSystemPrompt() {
   return `你是小鹿，Looka 手帐里的一只九色鹿，帮用户管理日程、任务、笔记与日记。
 说话方式：温和、简短、不啰嗦。像一个安静的朋友，不像客服。一次说清一件事。
 边界：不催促（几天没写日记也不要提）；不评判（推迟的事只陈述事实）；不确定时直说不知道；用户情绪低落时先接住情绪，别急着给建议。
-你的名字来自敦煌壁画《鹿王本生图》里的九色鹿 —— 那个故事讲的是善良与守信。
+你的名字来自敦煌壁画《鹿王本生图》里的九色鹿 —— 那个故事讲的是善良与守信。${S.nickname ? `\n用户的昵称是「${S.nickname}」。偶尔这样称呼他，但别每句都叫，那样很生硬。` : ''}
 当前时间：${n.getFullYear()}年${n.getMonth() + 1}月${n.getDate()}日 周${WEEK_CN[dow(todayEpoch()) - 1]} ${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}
 
 ${agendaContext()}
@@ -1194,12 +1194,17 @@ function logoutLocal() {
   // P1-9：落地页访问埋点（未登录才算；fetch 失败无所谓）
   try { fetch('/api/ev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'landing_view' }) }); } catch (e) { }
 }
+S.nickname = localStorage.getItem('lk_nick') || '';
 async function refreshMe() {
   try {
     const me = await api('/api/me');
     S.plan = me.plan;
     S.planExpiry = me.plan_expiry || 0;
-    $('#menuPlan').textContent = `${S.account} · ${me.plan === 'pro' ? 'Pro · AI ' + t('不限次') : t('免费版') + ' · AI ' + t('每天 10 次')}`;
+    S.nickname = me.nickname || '';
+    localStorage.setItem('lk_nick', S.nickname);
+    // 有昵称就显示昵称 —— 用户看到的是自己起的名字
+    const who = S.nickname || S.account;
+    $('#menuPlan').textContent = `${who} · ${me.plan === 'pro' ? 'Pro · AI ' + t('不限次') : t('免费版') + ' · AI ' + t('每天 10 次')}`;
     // P2-A9（网页版）：付款等待中 → 开通即提示并清除等待
     if (me.plan === 'pro' && +localStorage.getItem('lk_pay_pending')) {
       localStorage.removeItem('lk_pay_pending');
@@ -1473,6 +1478,57 @@ async function boot() {
       <button class="btn-dark" id="proGo">${t('去开通 · 12元/月')}</button></div>`);
     $('#proCancel').onclick = closeModal;
     $('#proGo').onclick = () => { closeModal(); openPay(); };
+  };
+
+  // 语音输入（§51）：Web Speech API —— 浏览器原生，零成本，且带 interimResults
+  // 可以边说边出字（这才是"同步"的体验）。不支持的浏览器（Firefox）直接隐藏按钮。
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btnVoice = $('#btnVoice');
+  if (SR && btnVoice) {
+    btnVoice.classList.remove('hidden');
+    let rec = null, listening = false, baseText = '';
+    btnVoice.onclick = () => {
+      if (listening) { rec && rec.stop(); return; }
+      rec = new SR();
+      rec.lang = (localStorage.getItem('lk_lang') || navigator.language || 'zh-CN').startsWith('zh') ? 'zh-CN' : 'en-US';
+      rec.interimResults = true;      // 边说边出字
+      rec.continuous = false;
+      baseText = $('#chatText').value.trim();
+      rec.onstart = () => { listening = true; btnVoice.textContent = '⏹'; btnVoice.style.color = '#E0504A'; };
+      rec.onresult = e => {
+        let txt = '';
+        for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+        // 只填进输入框，不自动发送 —— 听错了用户能先改
+        $('#chatText').value = baseText ? baseText + ' ' + txt : txt;
+      };
+      rec.onerror = ev => {
+        listening = false; btnVoice.textContent = '🎙'; btnVoice.style.color = '';
+        if (ev.error === 'not-allowed') toast(t('麦克风被拒绝了，去浏览器设置里允许一下'));
+        else if (ev.error !== 'aborted' && ev.error !== 'no-speech') toast(t('语音识别出错了'));
+      };
+      rec.onend = () => { listening = false; btnVoice.textContent = '🎙'; btnVoice.style.color = ''; };
+      try { rec.start(); } catch (e) { toast(t('语音识别出错了')); }
+    };
+  }
+
+  // 昵称：小鹿怎么称呼你（与自知录共用同一账号的昵称）
+  const mNick = $('#mNick');
+  if (mNick) mNick.onclick = () => {
+    modal(`<h3>${t('怎么称呼你？')}</h3>
+      <input id="nickInput" type="text" maxlength="20" placeholder="${t('最多 20 个字')}" style="width:100%" value="${esc(S.nickname || '')}">
+      <p class="dim-note">${t('小鹿会这样叫你。留空就用账号显示。')}</p>
+      <div class="modal-btns"><button class="btn-mini" id="nickCancel">${t('取消')}</button>
+      <button class="btn-dark" id="nickOk">${t('保存')}</button></div>`);
+    $('#nickCancel').onclick = closeModal;
+    $('#nickOk').onclick = async () => {
+      const v = $('#nickInput').value.trim();
+      try {
+        const r = await api('/api/me/nickname', { nickname: v });
+        S.nickname = r.nickname || '';
+        localStorage.setItem('lk_nick', S.nickname);
+        closeModal(); toast(t('好的 🦌')); refreshMe();
+      } catch (e) { toast(e.message || t('保存失败')); }
+    };
   };
 
   // A1-6：清理重复日程（同标题同日同时间同全天同重复 = 重复组；保最早，删其余；走同步双端一并生效）

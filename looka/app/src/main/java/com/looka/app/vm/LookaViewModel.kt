@@ -668,7 +668,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         aiBusy = true
         viewModelScope.launch {
             try {
-                val sys = AiActions.chatSystemPrompt(agendaContext())
+                val sys = AiActions.chatSystemPrompt(agendaContext(), Prefs.nickname(getApplication()))
                 val history = ArrayList<Pair<String, String>>()
                 chat.filter { !it.error && it.role != ROLE_ACTION }.takeLast(12).forEach {
                     history += (if (it.role == ROLE_USER) "user" else "assistant") to it.text

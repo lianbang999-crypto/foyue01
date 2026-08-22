@@ -67,6 +67,10 @@ object Api {
     /** 账号信息 + AI 用量 */
     suspend fun me(c: Context): JSONObject = call(c, "/api/me")
 
+    /** 改昵称（空串 = 清除，回到用账号显示） */
+    suspend fun setNickname(c: Context, nickname: String): JSONObject =
+        call(c, "/api/me/nickname", JSONObject().put("nickname", nickname))
+
     /** 兑换订阅码 */
     suspend fun redeem(c: Context, code: String): JSONObject =
         call(c, "/api/redeem", JSONObject().put("code", code))

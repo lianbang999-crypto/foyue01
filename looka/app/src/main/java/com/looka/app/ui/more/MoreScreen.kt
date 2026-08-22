@@ -107,7 +107,8 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             checkingUpdate = false
         }
     }
-    val email = remember(vm.settingsVersion) { Prefs.accountEmail(ctx) }
+    // 有昵称就显示昵称 —— 用户看到的是自己起的名字，不是一串邮箱/手机号
+    val email = remember(vm.settingsVersion) { Prefs.displayName(ctx) }
     val plan = com.looka.app.data.PlanState.plan
     val loggedIn = remember(vm.settingsVersion) { Prefs.authToken(ctx) != null }
 

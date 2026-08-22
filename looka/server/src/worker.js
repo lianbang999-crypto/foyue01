@@ -78,7 +78,7 @@ async function getUser(request, env) {
     await env.DB.prepare('DELETE FROM sessions WHERE token = ?1').bind(token).run();
     return null;
   }
-  const u = await env.AUTH_DB.prepare('SELECT id, account, kind, banned_at FROM users WHERE id = ?1')
+  const u = await env.AUTH_DB.prepare('SELECT id, account, kind, nickname, banned_at FROM users WHERE id = ?1')
     .bind(s.user_id).first();
   // P3-2-5：封禁账号一律视为未登录（后台 /admin 可封禁/解封，操作记审计）
   if (u && u.banned_at > 0) return null;
@@ -561,7 +561,7 @@ async function route(request, env, ctx) {
       await track(env, 'looka', 'register', userId, request, { kind });
     })());
     const trialExp = trialDays > 0 ? Date.now() + trialDays * 24 * 3600 * 1000 : 0;
-    return json({ ok: true, token, account, plan: trialPlan, trial_days: trialDays, plan_expiry: trialExp });
+    return json({ ok: true, token, account, nickname: '', plan: trialPlan, trial_days: trialDays, plan_expiry: trialExp });
   }
 
   // ===== 登录 =====
@@ -590,7 +590,7 @@ async function route(request, env, ctx) {
     const token = await newSession(env, u.id);
     const pl = await planOf(env, u.id);
     ctx.waitUntil(track(env, 'looka', 'login', u.id, request));
-    return json({ ok: true, token, account: u.account, plan: pl.plan, plan_expiry: pl.expiresAt });
+    return json({ ok: true, token, account: u.account, nickname: u.nickname || '', plan: pl.plan, plan_expiry: pl.expiresAt });
   }
 
   if (p === '/api/auth/logout' && m === 'POST') {
@@ -772,11 +772,28 @@ async function route(request, env, ctx) {
     const ant = await antlerOf(env, user.id, pl.plan);
     return json({
       ok: true, account: user.account, kind: user.kind,
+      // 昵称：与自知录共用 users.nickname（同账号体系，两站看到同一个名字）
+      nickname: user.nickname || '',
       plan: pl.plan, plan_expiry: pl.expiresAt,
       ai_month_used: used?.used || 0, ai_rpd: Number(env.AI_RPD || 100),
       bound_email: be?.email || '', email_verified: !!be?.verified,
       antler: ant, antler_cost: ANTLER.cost
     });
+  }
+
+  // ===== 昵称：改名 =====
+  // 空字符串 = 清除昵称（回到用账号显示）。不做实名校验，但挡住控制字符与超长。
+  if (p === '/api/me/nickname' && m === 'POST') {
+    if (!await rateLimit(env, `nick:${user.id}`, 10, 3600_000)) {
+      return json({ error: '改得有点频繁，过一会儿再试' }, 429);
+    }
+    const b = await body();
+    // 去掉控制字符与首尾空白；按「字」计长度（emoji 不该被算成 4 个字符）
+    let nick = String(b.nickname ?? '').replace(/[ -]/g, '').trim();
+    if ([...nick].length > 20) return json({ error: '昵称最多 20 个字' }, 400);
+    await env.AUTH_DB.prepare('UPDATE users SET nickname = ?1 WHERE id = ?2')
+      .bind(nick || null, user.id).run();
+    return json({ ok: true, nickname: nick });
   }
 
   // ===== 鹿角：余额 + 流水 =====
@@ -1167,6 +1184,23 @@ async function route(request, env, ctx) {
       } catch (e) {
         return json({ ok: false, ms: Date.now() - t0, error: String(e) }, 502);
       }
+    }
+    // target=asr：列出硅基流动当前可用的语音模型（§51 语音选型 —— 不实测就别写进产品）
+    // 用法：{"key":"...","target":"asr"}；想测具体模型再传 model 走 sf 分支。
+    if (String(b.target || '') === 'asr') {
+      const t0 = Date.now();
+      try {
+        const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/models?sub_type=speech`, {
+          headers: { 'Authorization': `Bearer ${env.SILICONFLOW_KEY}` }
+        });
+        const d = await r.json().catch(() => ({}));
+        const ids = (d?.data || []).map(x => x.id);
+        return json({
+          ok: r.ok, status: r.status, ms: Date.now() - t0,
+          count: ids.length, models: ids,
+          error: r.ok ? null : (d?.message || d?.error?.message || `HTTP ${r.status}`)
+        });
+      } catch (e) { return json({ ok: false, ms: Date.now() - t0, error: String(e) }, 502); }
     }
     // target=sf：从 Worker 内实测硅基流动 .cn 的任意模型（premium 大陆通道选型）
     if (String(b.target || '') === 'sf') {

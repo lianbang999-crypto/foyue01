@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 18,
-  "versionName": "1.8.1",
+  "versionCode": 19,
+  "versionName": "1.8.2",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3674461,
-  "sha256": "75c022bd8f04904394d293e8c1411c6a916a8277f3b653a69e4ef1e1848c045b",
-  "changelog": "从照片生成主题（照片不离开手机）· 支付页更新 · 文案优化",
+  "size": 3675141,
+  "sha256": "4a15f91f61050d182d933aa1b45abbeb89ffdc08fe48b20d96ad3c3e881bc266",
+  "changelog": "昵称（小鹿会叫你的名字）· 语音输入 · 从照片生成主题",
   "minSupported": 1
 }

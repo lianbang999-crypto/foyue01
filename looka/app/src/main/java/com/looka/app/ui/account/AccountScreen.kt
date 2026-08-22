@@ -156,6 +156,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
                 else Api.login(ctx, account.trim(), password)
                 Prefs.setAuthToken(ctx, r.optString("token"))
                 Prefs.setAccountEmail(ctx, account.trim().lowercase())
+                Prefs.setNickname(ctx, r.optString("nickname", ""))
                 com.looka.app.data.PlanState.apply(ctx, r.optString("plan", "free"), r.optLong("plan_expiry", 0L))
                 Prefs.setLastPullMs(ctx, 0L)
                 SyncEngine.markAllDirty(app)   // 本机数据合并进账号
@@ -319,11 +320,30 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
     val boundEmail = me?.optString("bound_email") ?: ""
     val emailVerified = me?.optBoolean("email_verified") ?: false
     val accountKind = me?.optString("kind") ?: "email"
+    // 昵称：服务端是唯一真值，拉到就落盘（离线显示 + 小鹿称呼都读本地缓存）
+    androidx.compose.runtime.LaunchedEffect(me) {
+        me?.let { Prefs.setNickname(ctx, it.optString("nickname", "")) }
+    }
+    var nickDlg by remember { mutableStateOf(false) }
     var bindDlg by remember { mutableStateOf(false) }
     var pwDlg by remember { mutableStateOf(false) }
     var delDlg by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Row(
+            Modifier.fillMaxWidth().clickable { nickDlg = true }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(tr("昵称"), fontSize = 15.sp, modifier = Modifier.weight(1f))
+            val nick = Prefs.nickname(ctx)
+            Text(
+                nick.ifBlank { tr("还没起名字 · 点这里") },
+                fontSize = 13.sp,
+                color = if (nick.isBlank()) MaterialTheme.colorScheme.primary else GrayText
+            )
+        }
+        Hairline()
         InfoRow(tr("账号"), Prefs.accountEmail(ctx))
         Hairline()
         InfoRow(
@@ -480,6 +500,46 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
             modifier = Modifier.padding(horizontal = 8.dp)
         ) { Text(tr("注销账号（删除云端数据）"), color = GrayText, fontSize = 12.sp) }
         Spacer(Modifier.height(40.dp))
+    }
+
+    if (nickDlg) {
+        var draft by remember { mutableStateOf(Prefs.nickname(ctx)) }
+        var saving by remember { mutableStateOf(false) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { nickDlg = false },
+            title = { Text(tr("怎么称呼你？"), fontSize = 16.sp) },
+            text = {
+                Column {
+                    MiniField(draft, { if (it.length <= 20) draft = it },
+                        tr("最多 20 个字"), imeAction = androidx.compose.ui.text.input.ImeAction.Done)
+                    Text(
+                        tr("小鹿会这样叫你。留空就用账号显示。"),
+                        fontSize = 11.sp, color = GrayText,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !saving, onClick = {
+                    saving = true
+                    scope.launch {
+                        try {
+                            val r = Api.setNickname(ctx, draft.trim())
+                            Prefs.setNickname(ctx, r.optString("nickname", draft.trim()))
+                            vm.bumpSettings()
+                            onChanged()
+                            toast(ctx, tr("好的 🦌"))
+                            nickDlg = false
+                        } catch (e: Exception) {
+                            toast(ctx, e.message ?: tr("网络异常"))
+                        } finally { saving = false }
+                    }
+                }) { Text(tr("保存"), color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { nickDlg = false }) { Text(tr("取消"), color = GrayText) }
+            }
+        )
     }
 
     if (bindDlg) {

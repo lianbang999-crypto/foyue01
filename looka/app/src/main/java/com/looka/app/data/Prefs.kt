@@ -118,6 +118,12 @@ object Prefs {
     fun accountEmail(c: Context) = sp(c).getString("account_email", "")!!
     fun setAccountEmail(c: Context, v: String) = sp(c).edit().putString("account_email", v).apply()
 
+    /** 昵称（与自知录共用同一账号的 users.nickname）。空 = 未设置，界面回退显示账号。 */
+    fun nickname(c: Context) = sp(c).getString("nickname", "")!!
+    fun setNickname(c: Context, v: String) = sp(c).edit().putString("nickname", v).apply()
+    /** 界面上「怎么称呼这个用户」：有昵称用昵称，没有就用账号 */
+    fun displayName(c: Context) = nickname(c).ifBlank { accountEmail(c) }
+
     // ===== P5-1 设置上云：设置是同步实体（kind='settings'，uid 固定 'settings'）=====
     // 两端必须看到同一本日历 —— 周起始/农历/节假日/显示已完成 改一处、处处生效
     fun settingsDirty(c: Context) = sp(c).getBoolean("st_dirty", false)

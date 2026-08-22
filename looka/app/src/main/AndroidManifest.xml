@@ -18,6 +18,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 语音输入（§51）：Android 11+ 包可见性 —— 不声明就查不到系统语音识别应用，
+         resolveActivity 恒为 null，用户点麦克风只会看到「没有可用的语音输入」 -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".LookaApp"
         android:allowBackup="true"

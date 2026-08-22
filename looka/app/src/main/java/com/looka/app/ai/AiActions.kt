@@ -141,8 +141,8 @@ object AiActions {
 
 你的名字来自敦煌壁画《鹿王本生图》里的九色鹿 —— 那个故事讲的是善良与守信。"""
 
-    fun chatSystemPrompt(agenda: String): String = """
-$PERSONA
+    fun chatSystemPrompt(agenda: String, nickname: String = ""): String = """
+$PERSONA${if (nickname.isBlank()) "" else "\n用户的昵称是「$nickname」。偶尔这样称呼他，但别每句都叫，那样很生硬。"}
 当前时间：${nowLine()}
 日期参照（直接使用，不要自己加减）：${dateAnchors()}
 
