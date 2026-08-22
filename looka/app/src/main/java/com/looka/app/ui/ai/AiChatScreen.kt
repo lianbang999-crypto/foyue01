@@ -81,24 +81,6 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
-    // 语音输入（§51）：走系统语音识别，不需要录音权限，也不产生任何云端成本。
-    // 识别结果只填进输入框、不自动发送 —— 听错了用户能先改。
-    val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { res ->
-        val said = res.data
-            ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
-            ?.firstOrNull().orEmpty()
-        if (said.isNotBlank()) input = if (input.isBlank()) said else "$input $said"
-    }
-    fun startVoice() {
-        val i = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, tr("说给小鹿听 🦌"))
-        runCatching { voiceLauncher.launch(i) }
-            .onFailure { com.looka.app.ui.common.toast(ctx, tr("这台手机没有可用的语音输入")) }
-    }
 
     val itemCount = vm.chat.size + if (vm.aiBusy) 1 else 0
     LaunchedEffect(itemCount) {
@@ -270,12 +252,6 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            IconButton(
-                onClick = { startVoice() },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Text("🎙", fontSize = 19.sp)
-            }
             TextField(
                 value = input, onValueChange = { input = it },
                 placeholder = { Text(tr("和小鹿说点什么…"), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },

@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 20,
-  "versionName": "1.9.0",
+  "versionCode": 21,
+  "versionName": "1.9.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3693853,
-  "sha256": "ff9c6c7ab58eb3c48e923a32fe1394a67f87b74de9954790929345923f0ecdb3",
-  "changelog": "鹿角上线（每天自动到账·聊天扣1枚）· 小鹿会记住你的偏好 · 真流式回复 · 周视图大修 · 邀请好友各得100鹿角",
+  "size": 3693729,
+  "sha256": "470a1d6db0c2251561f881f47f5bf0976c1946d4ee615c6467c077cd779b0d48",
+  "changelog": "移除语音输入",
   "minSupported": 1
 }

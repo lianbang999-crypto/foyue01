@@ -1530,37 +1530,6 @@ async function boot() {
     $('#proGo').onclick = () => { closeModal(); openPay(); };
   };
 
-  // 语音输入（§51）：Web Speech API —— 浏览器原生，零成本，且带 interimResults
-  // 可以边说边出字（这才是"同步"的体验）。不支持的浏览器（Firefox）直接隐藏按钮。
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const btnVoice = $('#btnVoice');
-  if (SR && btnVoice) {
-    btnVoice.classList.remove('hidden');
-    let rec = null, listening = false, baseText = '';
-    btnVoice.onclick = () => {
-      if (listening) { rec && rec.stop(); return; }
-      rec = new SR();
-      rec.lang = (localStorage.getItem('lk_lang') || navigator.language || 'zh-CN').startsWith('zh') ? 'zh-CN' : 'en-US';
-      rec.interimResults = true;      // 边说边出字
-      rec.continuous = false;
-      baseText = $('#chatText').value.trim();
-      rec.onstart = () => { listening = true; btnVoice.textContent = '⏹'; btnVoice.style.color = '#E0504A'; };
-      rec.onresult = e => {
-        let txt = '';
-        for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
-        // 只填进输入框，不自动发送 —— 听错了用户能先改
-        $('#chatText').value = baseText ? baseText + ' ' + txt : txt;
-      };
-      rec.onerror = ev => {
-        listening = false; btnVoice.textContent = '🎙'; btnVoice.style.color = '';
-        if (ev.error === 'not-allowed') toast(t('麦克风被拒绝了，去浏览器设置里允许一下'));
-        else if (ev.error !== 'aborted' && ev.error !== 'no-speech') toast(t('语音识别出错了'));
-      };
-      rec.onend = () => { listening = false; btnVoice.textContent = '🎙'; btnVoice.style.color = ''; };
-      try { rec.start(); } catch (e) { toast(t('语音识别出错了')); }
-    };
-  }
-
   // G1/G2（§54）+ P4/P5（§55）：我的鹿角 —— 余额/明细/参考价/邀请码
   const mAntler = $('#mAntler');
   if (mAntler) mAntler.onclick = async () => {
