@@ -154,8 +154,6 @@ const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp'
 // 默认值与 App Prefs 一致：周一起始 / 农历跟随中文 / 显示已完成
 const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true, stampTitle: true };
 const stShowLunar = () => ST.showLunar == null ? isZh() : !!ST.showLunar;
-// §72 §6.1：印章上的日程名气泡（App 是设置的主人，网页跟随）
-const stShowStampTitle = () => ST.stampTitle !== false;
 const S = {
   token: localStorage.getItem('lk_token') || '',
   account: localStorage.getItem('lk_account') || '',
@@ -502,14 +500,10 @@ function renderCalendar(anchorDay) {
         ? `<img class="stamp-img" src="stamps/${st.assetId}.webp" alt="">`
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
+        // §75 M1/M4：月格里只有贴纸（标题气泡已删，对齐实机图42/45）；尺寸 0.42×Wd
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:47%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
-        // §6 复合对象：绑定日程的印章上方浮一枚灰色标题气泡（与 App 同构）
-        const ev = st.eventUid && stShowStampTitle()
-          ? (S.data.event.get(st.eventUid)?.p?.title || '') : '';
-        const bub = ev ? `<span class="stamp-bub" style="left:${(st.px * 100).toFixed(1)}%;` +
-          `top:${(st.py * 100).toFixed(1)}%">${esc(ev)}</span>` : '';
-        return bub + (st.assetId
+          `width:42%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+        return (st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
           : `<span style="${style};font-size:18px">${st.emoji}</span>`);
       }).join('');
@@ -573,9 +567,12 @@ function renderDayPanel(evs, tks, sts) {
   let html = '';
   evs.forEach((o, i) => {
     const c = catColor(o.categoryUid);
+    // §75 M2：绑定贴纸的日程，缩略图在标题左（与 App 同构）
+    const bst = sts.find(st => st.assetId && st.eventUid === o.uid);
+    const mini = bst ? `<img class="stamp-mini" src="stamps/${bst.assetId}.webp" alt="">` : '';
     html += `<div class="day-item" data-ev="${i}">
       <div class="bar" style="background:${c}"></div>
-      <div class="t"><div class="name">${esc(o.title)}${o.recurring ? ' <span style="color:var(--gray);font-size:11px">↻</span>' : ''}</div>
+      ${mini}<div class="t"><div class="name">${esc(o.title)}${o.recurring ? ' <span style="color:var(--gray);font-size:11px">↻</span>' : ''}</div>
       ${o.location ? `<div class="sub">${esc(o.location)}</div>` : ''}</div>
       <div class="time">${o.allDay ? '全天' : hm(o.startMin) + '<br>' + hm(o.endMin)}</div></div>`;
   });

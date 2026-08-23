@@ -101,7 +101,8 @@ fun StickerPicker(
         // ── 表情网格（10 枚/页，固定两行高度，翻页不跳动）
         HorizontalPager(
             state = pager,
-            modifier = Modifier.fillMaxWidth().height(188.dp)
+            // §75 C1a：188→120dp（Lifebear 实测网格 ≈119dp）—— 面板总高对齐 ≈238dp
+            modifier = Modifier.fillMaxWidth().height(120.dp)
         ) { page ->
             val items = pages.getOrElse(page) { emptyList() }
             Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp)) {
@@ -115,7 +116,7 @@ fun StickerPicker(
                             val i = r * 5 + c
                             val id = items.getOrNull(i)
                             if (id == null) {
-                                Spacer(Modifier.size(58.dp))
+                                Spacer(Modifier.width(58.dp))
                             } else {
                                 StickerCell(id, id == selected, previewSize, onDragCreate) { onSelect(id) }
                             }

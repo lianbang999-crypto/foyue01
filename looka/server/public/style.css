@@ -479,11 +479,5 @@ body, main, .pane{ background: var(--paper); }
 .tpl-chip .tpl-x { color: var(--gray, #999); font-size: 13px; padding: 0 2px; }
 .tpl-chip .tpl-x:hover { color: var(--red, #d33); }
 
-/* §72 §6：绑定日程的印章上方标题气泡（与 App 同构） */
-.stamp-bub {
-  position: absolute; transform: translate(-50%, -168%);
-  max-width: 92%; padding: 0 3px; border-radius: 4px;
-  background: #8A8F8E; color: #fff; font-size: 8px; line-height: 1.5;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  pointer-events: none; z-index: 2;
-}
+/* §75 M2：日详情事件行的贴纸缩略图（气泡已删，名字在列表里认） */
+.day-item .stamp-mini { width: 22px; height: 22px; flex: none; margin-right: 2px; }

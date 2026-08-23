@@ -127,10 +127,14 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
      */
     var calScrollReq by mutableStateOf<Long?>(null)
 
-    // N1（§71）：日历页创建面板（Lifebear 式底部停靠：日程/任务/表情）
+    // N1（§71）→ §75 C：贴纸 Composer 面板（三面模型中唯一留在月历上的面）
     var createPanel by mutableStateOf(false)
     // 表情连续盖章模式：非空 = 已选中贴纸，点月历日期直接贴
     var stampSel by mutableStateOf("")
+    // §75 C4：Composer 记住上次的面 —— ＋ 直接打开上次用的（0日程全屏/1任务全屏/2贴纸面板）
+    var composerMode by mutableIntStateOf(0)
+    // 编辑器初始模式（面板/＋转入全屏时指定，消费后归零）
+    var editorInitMode by mutableIntStateOf(0)
     // §72 §8：拖动印章时锁住日历滚动（Pointer ownership）
     var stampDragging by mutableStateOf(false)
     // §72 §11：创建面板高度 → 日历 viewport bottomInset（不压缩格子）
@@ -490,12 +494,15 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     // ================= 任务 / 笔记 / 日记 / 印章 =================
 
-    fun addTask(title: String, due: Long = -1L, memo: String = "", listUid: String = "list-default") =
+    fun addTask(title: String, due: Long = -1L, memo: String = "", listUid: String = "list-default",
+                starred: Boolean = false, done: Boolean = false) =
         viewModelScope.launch {
             if (title.isNotBlank()) {
                 val order = taskDao.maxSortOrder() + 1
+                // §75 T1：创建页左上 ○ / 右上 ☆（图47）—— 建时即可标完成/星标
                 taskDao.insert(Task(title = title.trim(), dueDay = due, memo = memo,
-                    listUid = listUid, sortOrder = order))
+                    listUid = listUid, sortOrder = order,
+                    starred = starred, done = done, doneAt = if (done) now() else -1L))
                 afterChange()
             }
         }

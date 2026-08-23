@@ -14,9 +14,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -89,13 +94,19 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     val isEdit = d.editingSeriesId >= 0
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var mode by rememberSaveable { mutableIntStateOf(0) }
+    // §75 C4：面板/＋可指定初始面（0日程/1任务），消费后归零
+    var mode by rememberSaveable { mutableIntStateOf(vm.editorInitMode.coerceIn(0, 1)) }
+    LaunchedEffect(Unit) { vm.editorInitMode = 0 }
     var scopeDlg by remember { mutableStateOf(false) }
 
     // 任务模式状态
     var taskTitle by rememberSaveable { mutableStateOf("") }
-    var taskDue by rememberSaveable { mutableLongStateOf(-1L) }
+    // §75 T1：任务面从 Composer 进入时预填选中日（图47：日期直接就是选的那天）
+    var taskDue by rememberSaveable { mutableLongStateOf(if (vm.editorInitMode == 1) vm.selectedDay else -1L) }
     var taskMemo by rememberSaveable { mutableStateOf("") }
+    var taskDone by rememberSaveable { mutableStateOf(false) }
+    var taskStarred by rememberSaveable { mutableStateOf(false) }
+    var taskListUid by rememberSaveable { mutableStateOf("list-default") }
     var taskDueDlg by remember { mutableStateOf(false) }
 
     // 印章模式状态（图片资产优先，emoji 兜底）
@@ -170,7 +181,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             when (mode) {
                 0 -> SaveButton(enabled = d.title.isNotBlank()) { doSaveEvent() }
                 1 -> SaveButton(enabled = taskTitle.isNotBlank()) {
-                    vm.addTask(taskTitle, taskDue, taskMemo)
+                    vm.addTask(taskTitle, taskDue, taskMemo, taskListUid,
+                        starred = taskStarred, done = taskDone)
                     toast(ctx, tr("已添加任务")); close()
                 }
                 2 -> SaveButton(enabled = stampEmoji.isNotBlank() || stampAsset.isNotBlank()) {
@@ -192,7 +204,11 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             when (mode) {
                 0 -> EventForm(vm, nav, d)
                 1 -> TaskForm(
+                    vm,
                     taskTitle, { taskTitle = it },
+                    taskDone, { taskDone = it },
+                    taskStarred, { taskStarred = it },
+                    taskListUid, { taskListUid = it },
                     taskDue, { taskDueDlg = true }, { taskDue = -1L },
                     taskMemo, { taskMemo = it }
                 )
@@ -216,9 +232,19 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ModeIcon(Icons.Outlined.CalendarMonth, tr("日程"), mode == 0) { mode = 0 }
-                ModeIcon(Icons.Outlined.TaskAlt, tr("任务"), mode == 1) { mode = 1 }
-                ModeIcon(Icons.Outlined.Mood, tr("表情"), mode == 2) { mode = 2 }
+                ModeIcon(Icons.Outlined.CalendarMonth, tr("日程"), mode == 0) { mode = 0; vm.composerMode = 0 }
+                ModeIcon(Icons.Outlined.TaskAlt, tr("任务"), mode == 1) { mode = 1; vm.composerMode = 1 }
+                // §75 C4（三面模型）：贴纸不是页内表单 —— 它必须让日历可见可点。
+                // 点表情 = 收起全屏页，回月历打开贴纸停靠面板
+                ModeIcon(Icons.Outlined.Mood, tr("表情"), false) {
+                    vm.composerMode = 2
+                    vm.draft = null
+                    vm.pendingStampBind = -1L
+                    vm.pendingStampAsset = ""
+                    vm.calView = 0
+                    vm.createPanel = true
+                    nav.popBackStack()
+                }
                 ModeIcon(Icons.Outlined.AutoAwesome, "AI", mode == 3) { mode = 3 }
             }
         }
@@ -757,18 +783,69 @@ fun ScopeDialog(title: String, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
 
 @Composable
 private fun TaskForm(
+    vm: LookaViewModel,
     title: String, onTitle: (String) -> Unit,
+    done: Boolean, onDone: (Boolean) -> Unit,
+    starred: Boolean, onStar: (Boolean) -> Unit,
+    listUid: String, onList: (String) -> Unit,
     due: Long, onPickDue: () -> Unit, onClearDue: () -> Unit,
     memo: String, onMemo: (String) -> Unit
 ) {
+    val lists by vm.taskLists.collectAsState()
+    var listMenu by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        TextField(
-            value = title, onValueChange = onTitle,
-            placeholder = { Text(tr("任务名"), fontSize = 18.sp, color = Color(0xFFB9BBB9)) },
-            textStyle = TextStyle(fontSize = 18.sp),
-            colors = clearFieldColors(), singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-        )
+        // §75 T1（图47）：○ 任务名 ☆ —— 左侧圆圈建时即可打勾，右侧星标
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (done) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                if (done) tr("取消完成") else tr("完成"),
+                tint = if (done) MaterialTheme.colorScheme.primary else Color(0xFFC0C3C0),
+                modifier = Modifier.padding(start = 14.dp).size(26.dp)
+                    .plainClick { onDone(!done) }
+            )
+            TextField(
+                value = title, onValueChange = onTitle,
+                placeholder = { Text(tr("任务名"), fontSize = 18.sp, color = Color(0xFFB9BBB9)) },
+                textStyle = TextStyle(fontSize = 18.sp),
+                colors = clearFieldColors(), singleLine = true,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                if (starred) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                tr("星标"),
+                tint = if (starred) Color(0xFFF2B23D) else Color(0xFFC0C3C0),
+                modifier = Modifier.padding(end = 14.dp).size(26.dp)
+                    .plainClick { onStar(!starred) }
+            )
+        }
+        Hairline()
+        // 清单（图47：マイリスト行）
+        Row(
+            Modifier.fillMaxWidth().plainClick { listMenu = true }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Outlined.Notes, null, tint = GrayText, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(14.dp))
+            val cur = lists.find { it.uid == listUid }
+            Box(
+                Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(com.looka.app.ui.common.parseHex(cur?.colorHex ?: "#5C6670"))
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(cur?.name ?: tr("默认清单"), fontSize = 15.sp, modifier = Modifier.weight(1f))
+            Box {
+                Icon(Icons.Default.ArrowDropDown, null, tint = GrayText)
+                DropdownMenu(expanded = listMenu, onDismissRequest = { listMenu = false }) {
+                    lists.forEach { l ->
+                        DropdownMenuItem(
+                            text = { Text(l.name, fontSize = 14.sp) },
+                            onClick = { onList(l.uid); listMenu = false }
+                        )
+                    }
+                }
+            }
+        }
         Hairline()
         Row(
             Modifier.fillMaxWidth().plainClick(onPickDue)

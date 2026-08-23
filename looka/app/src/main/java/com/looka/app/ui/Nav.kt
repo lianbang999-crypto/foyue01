@@ -231,16 +231,19 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
     Scaffold(
         containerColor = Color.White,
         bottomBar = {
-            LookaBottomBar(
+            // §75 C2（图48）：Composer 打开时全局底栏隐藏 —— 面板临时取代它
+            if (!vm.createPanel) LookaBottomBar(
                 tab = tab,
                 onTab = { tab = it },
                 onPlus = {
-                    // N1（§71 对齐 Lifebear）：月视图的 ＋ 弹底部创建面板（日历可见可点，贴纸能连续盖）；
-                    // 其余场景保持整页编辑器。AC-001/002：预填选中日期（无选中即今天）
-                    if (tab == 0 && vm.calView == 0) {
+                    // §75 C4（Composer 三面模型）：＋ 打开上次用的面 ——
+                    // 日程/任务 = 全屏页（底部保留模式切换器），贴纸 = 月历 + 停靠面板。
+                    // AC-001/002：预填选中日期（无选中即今天）
+                    if (vm.composerMode == 2 && tab == 0 && vm.calView == 0) {
                         vm.createPanel = true
                     } else {
                         vm.prepareCreateDraft(vm.selectedDay)
+                        vm.editorInitMode = if (vm.composerMode == 1) 1 else 0
                         nav.navigate("editor")
                     }
                 }

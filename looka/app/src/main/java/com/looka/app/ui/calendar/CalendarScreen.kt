@@ -40,6 +40,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -117,7 +118,6 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     val gridHit = remember { mutableStateOf<((androidx.compose.ui.geometry.Offset) -> Triple<Long, Float, Float>?)?>(null) }
     // §72 §4：从 Picker 拖出的 Ghost（assetId → 当前根坐标）
     var ghost by remember { mutableStateOf<Pair<String, androidx.compose.ui.geometry.Offset>?>(null) }
-    val showStampTitle = remember(vm.settingsVersion) { Prefs.stampTitle(ctx) }
 
     val catOrder = remember(cats) { cats.mapIndexed { i, c -> c.id to i }.toMap() }
     val visibleCatIds = remember(cats) { cats.filter { it.visible }.map { it.id }.toSet() }
@@ -161,10 +161,10 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     }
 
     Box(Modifier.fillMaxSize()) {
-    // §11：Picker 打开时不重算行高压缩月历，只把 viewport 底部让出来 —— 保持网格几何与空间记忆
+    // §75 C3：面板打开时几何完全不动 —— 旧版父层 padding 会让 rowH=maxHeight/6 直接缩水
+    // （实测 Lifebear 开面板前后行高 232px 不变，只被覆盖）。让出底部交给 LazyColumn contentPadding。
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-            .padding(bottom = if (vm.createPanel) vm.panelInset else androidx.compose.ui.unit.Dp(0f))
     ) {
         // 顶栏：大字年月（点击跳转）+ 今天 + 小鹿 AI + 视图菜单
         Row(
@@ -281,13 +281,10 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 onOpenSys = { sysDetail = it },
                 onStampTap = { st, pos -> stampMenu = st to pos },
                 boundOf = { st ->
-                    // §74 P0-5/6：必须走 collectAsState 的 series（响应式）。
-                    // 旧版读 vm.seriesAll.value —— 保存日程后 stamp 流先到、series 流后到，
-                    // remember(stampList) 把去重集卡在旧值：气泡不出、事件条不隐（"双重 Event"实锤根因）
-                    if (!showStampTitle || st.eventUid.isBlank()) null
-                    else series.find { it.uid == st.eventUid }
-                        ?.takeIf { it.title.isNotBlank() }
-                        ?.let { it.id to it.title }
+                    // §74 P0-5/6：必须走 collectAsState 的 series（响应式），不能读 .value 快照。
+                    // §75 M1 起仅用于月格去重（绑定日程不再出普通事件条），气泡已删，不再受设置开关控制
+                    if (st.eventUid.isBlank()) null
+                    else series.find { it.uid == st.eventUid }?.let { it.id to it.title }
                 },
                 onGridReady = { gridHit.value = it },
                 sheetContent = {
@@ -322,7 +319,7 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     ghost?.let { (assetId, pos) ->
         val cfgG = androidx.compose.ui.platform.LocalConfiguration.current
         val wd = cfgG.screenWidthDp / 7f
-        val visual = (wd * 0.47f).dp
+        val visual = (wd * 0.42f).dp
         val ring = (wd * 1.08f).dp
         val half = with(LocalDensity.current) { ring.toPx() / 2f }
         Box(
@@ -643,6 +640,10 @@ private fun MonthFull(
                     state = listState,
                     // §8：拖动印章时锁滚动，避免"想挪印章却把整月滚走"
                     userScrollEnabled = !vm.stampDragging,
+                    // §75 C3：面板打开只让出可滚动余量，格子几何不动（对齐实机：行高不变，被覆盖）
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        bottom = if (vm.createPanel) vm.panelInset else 0.dp
+                    ),
                     modifier = Modifier.fillMaxSize().onGloballyPositioned {
                         gridRoot = it.positionInRoot(); gridSize = it.size
                     }
@@ -896,7 +897,7 @@ private fun DayCellV2(
                 val cellWpx = constraints.maxWidth.toFloat()
                 val cellHpx = constraints.maxHeight.toFloat()
                 // §72 尺寸 Token（母档 §2.2，以列宽 Wd 为基准，禁止硬编码 px）
-                val visualDp = maxWidth * 0.47f    // StickerVisualSize 0.42–0.47 取上限
+                val visualDp = maxWidth * 0.42f    // §75 M4：三张实机图实测 0.41–0.43，取母档区间下沿
                 val ringDp = maxWidth * 1.08f      // StickerDragRing 1.05–1.12
                 val hitDp = maxWidth * 0.95f       // §3 视觉≠交互：命中远大于视觉（收在列宽内避免抢邻格）
                 val hitPx = with(LocalDensity.current) { hitDp.toPx() }
@@ -907,12 +908,13 @@ private fun DayCellV2(
                     var rootPos by remember(st.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                     val baseX = st.posX * cellWpx
                     val baseY = st.posY * cellHpx
-                    val bound = boundOf(st)?.second
+                    // §75 D1（拖动代理，用户描述的 Lifebear 手感）：拖动时原位贴纸留在原地（半透明），
+                    // 手指上跟一枚副本；松手确认落位后原位才消失（由 moveStamp 数据更新完成）
                     Box(
                         Modifier
                             .offset { androidx.compose.ui.unit.IntOffset(
-                                (baseX + dragOff.x - hitPx / 2f).toInt(),
-                                (baseY + dragOff.y - hitPx / 2f).toInt()) }
+                                (baseX - hitPx / 2f).toInt(),
+                                (baseY - hitPx / 2f).toInt()) }
                             .size(hitDp)
                             .zIndex(if (dragging) 30f else 3f)
                             .onGloballyPositioned {
@@ -947,29 +949,36 @@ private fun DayCellV2(
                             .plainClick { onStampTap(st, rootPos) },
                         contentAlignment = Alignment.Center
                     ) {
-                        if (dragging) Canvas(Modifier.size(ringDp)) {
-                            drawCircle(
-                                color = Color(0xFF3A3A3A),
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                    width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
-                            )
-                        }
+                        // §75 M1（图42/45 实锤，推翻 §72 §6 读图）：月格里只有贴纸 ——
+                        // 贴纸本身就是这条日程的视觉标识，不再浮标题气泡。
                         val bmp = if (st.assetId.isNotBlank()) StampAssets.bitmap(ctxSt, st.assetId) else null
-                        if (bmp != null) Image(bmp, null, modifier = Modifier.size(visualDp))
-                        else Text(st.emoji, fontSize = (visualDp.value * 0.7f).sp)
-                        // §6 复合对象：绑定日程后在印章上方浮一枚灰色标题气泡，随印章一起移动
-                        if (bound != null) Box(
+                        // 原位本体：拖动时半透明留守
+                        if (bmp != null) Image(
+                            bmp, null,
+                            modifier = Modifier.size(visualDp)
+                                .alpha(if (dragging) 0.35f else 1f)
+                        )
+                        else Text(
+                            st.emoji, fontSize = (visualDp.value * 0.7f).sp,
+                            modifier = Modifier.alpha(if (dragging) 0.35f else 1f)
+                        )
+                        // 拖动代理副本：跟手 + 虚线圈
+                        if (dragging) Box(
                             Modifier
-                                .align(Alignment.TopCenter)
-                                .offset(y = hitDp / 2f - visualDp * 0.78f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFF8A8F8E))
-                                .padding(horizontal = 3.dp, vertical = 1.dp)
+                                .matchParentSize()
+                                .offset { androidx.compose.ui.unit.IntOffset(
+                                    dragOff.x.toInt(), dragOff.y.toInt()) },
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                bound, fontSize = 8.sp, color = Color.White,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis
-                            )
+                            Canvas(Modifier.size(ringDp)) {
+                                drawCircle(
+                                    color = Color(0xFF3A3A3A),
+                                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                                        width = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+                                )
+                            }
+                            if (bmp != null) Image(bmp, null, modifier = Modifier.size(visualDp))
+                            else Text(st.emoji, fontSize = (visualDp.value * 0.7f).sp)
                         }
                     }
                 }
@@ -1095,6 +1104,18 @@ private fun DaySheet(
                                 .background(catColorMap[o.categoryId] ?: Color(0xFF9AA0A6))
                         )
                         Spacer(Modifier.width(12.dp))
+                        // §75 M2（图42）：绑定贴纸的日程，缩略图出现在标题左 —— 列表里靠它认贴纸
+                        val boundStamp = stampList.find { st ->
+                            st.assetId.isNotBlank() && st.eventUid.isNotBlank() &&
+                                vm.stampSeries(st)?.id == o.seriesId
+                        }
+                        if (boundStamp != null) {
+                            val sbmp = StampAssets.bitmap(ctx, boundStamp.assetId)
+                            if (sbmp != null) {
+                                Image(sbmp, null, modifier = Modifier.size(24.dp))
+                                Spacer(Modifier.width(6.dp))
+                            }
+                        }
                         Column(Modifier.weight(1f)) {
                             Text(
                                 o.title, fontSize = 15.sp,
@@ -1370,8 +1391,9 @@ private fun QuickAction(emoji: String, label: String, onClick: () -> Unit) {
 // ==================== N1（§71）创建面板：Lifebear 式底部停靠 ====================
 
 /**
- * 月视图 ＋ 弹出的停靠面板：顶部三模式图标（日程/任务/表情），日历在上方保持可见可点。
- * 表情模式 = 连续盖章：点选贴纸后点日历日期直接贴，面板不收起。
+ * §75 C：贴纸 Composer 面板（Lifebear 三面模型的第三面）。
+ * 日程/任务是全屏页（点模式图标即转入），只有贴纸留在月历上 —— 它必须让日历可见可点。
+ * 高度对齐实机 ≈238dp：模式行52 + 网格120 + 页点/包切换。全局底栏在面板打开时隐藏（C2）。
  */
 @Composable
 private fun CreatePanel(
@@ -1380,120 +1402,50 @@ private fun CreatePanel(
     onClose: () -> Unit,
     onDragCreate: ((String, androidx.compose.ui.geometry.Offset, Int) -> Unit)? = null
 ) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
     val pickerPreview = (cfg.screenWidthDp / 7f * 0.60f).dp
-    var mode by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
-    var evTitle by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
-    var taskTitle by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
-
     val densityP = LocalDensity.current
     Column(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .background(Color.White)
             .navigationBarsPadding()
-            .imePadding()
             // §11：把面板高度回报给日历，作为 viewport bottomInset（不压缩格子）
             .onGloballyPositioned { vm.panelInset = with(densityP) { it.size.height.toDp() } }
     ) {
-        // 顶部模式行（对齐 Lifebear：图标在面板顶部，选中浅灰圆）
+        // 模式行（图48：贴纸面选中态是浅灰圆；日程/任务一击转全屏）
         Row(
             Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PanelIcon(Icons.Outlined.Event, tr("日程"), mode == 0) { mode = 0; vm.stampSel = "" }
-            PanelIcon(Icons.Outlined.TaskAlt, tr("任务"), mode == 1) { mode = 1; vm.stampSel = "" }
-            PanelIcon(Icons.Outlined.Mood, tr("表情"), mode == 2) { mode = 2 }
+            PanelIcon(Icons.Outlined.Event, tr("日程"), false) {
+                vm.composerMode = 0
+                onClose()
+                vm.prepareCreateDraft(vm.selectedDay)
+                vm.editorInitMode = 0
+                nav.navigate("editor")
+            }
+            PanelIcon(Icons.Outlined.TaskAlt, tr("任务"), false) {
+                vm.composerMode = 1
+                onClose()
+                vm.prepareCreateDraft(vm.selectedDay)
+                vm.editorInitMode = 1
+                nav.navigate("editor")
+            }
+            PanelIcon(Icons.Outlined.Mood, tr("表情"), true) { }
             Spacer(Modifier.weight(1f))
             androidx.compose.material3.IconButton(onClick = onClose) {
                 androidx.compose.material3.Icon(Icons.Default.Close, tr("关闭"), tint = GrayText)
             }
         }
         Hairline()
-
-        // §73：三个模式内容区等高（以表情 tab 为基准）—— 切 tab 面板不跳变
-        Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.TopStart) {
-        when (mode) {
-            0 -> Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.TextField(
-                        value = evTitle, onValueChange = { evTitle = it },
-                        placeholder = { Text(tr("日程名"), fontSize = 16.sp, color = Color(0xFFB9BBB9)) },
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp),
-                        colors = com.looka.app.ui.common.clearFieldColors(),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    com.looka.app.ui.common.SaveButton(enabled = evTitle.isNotBlank()) {
-                        vm.prepareCreateDraft(vm.selectedDay)
-                        vm.draft?.let { d ->
-                            d.title = evTitle.trim()
-                            vm.saveCreate(d) { com.looka.app.ui.common.toast(ctx, tr("已保存")) }
-                        }
-                        vm.draft = null
-                        evTitle = ""
-                    }
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(Fmt.dateCn(vm.selectedDay), fontSize = 12.sp, color = GrayText)
-                    Text(tr("（点日历改日期）"), fontSize = 11.sp, color = Color(0xFFB9BBB9))
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        tr("详细设置"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.plainClick {
-                            vm.prepareCreateDraft(vm.selectedDay)
-                            vm.draft?.title = evTitle.trim()
-                            onClose()
-                            nav.navigate("editor")
-                        }.padding(6.dp)
-                    )
-                }
-            }
-            1 -> Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.TextField(
-                        value = taskTitle, onValueChange = { taskTitle = it },
-                        placeholder = { Text(tr("任务名"), fontSize = 16.sp, color = Color(0xFFB9BBB9)) },
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp),
-                        colors = com.looka.app.ui.common.clearFieldColors(),
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    com.looka.app.ui.common.SaveButton(enabled = taskTitle.isNotBlank()) {
-                        vm.addTask(taskTitle.trim(), vm.selectedDay, "")
-                        com.looka.app.ui.common.toast(ctx, tr("已添加任务"))
-                        taskTitle = ""
-                    }
-                }
-                Text(
-                    tr("截止 {0}", Fmt.dateCn(vm.selectedDay)),
-                    fontSize = 12.sp, color = GrayText,
-                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-                )
-            }
-            else -> Column {
-                Text(
-                    if (vm.stampSel.isBlank()) tr("选一枚贴纸")
-                    else tr("点日历上的日期，贴上去 ↑ 可以连续贴"),
-                    fontSize = 12.sp,
-                    color = if (vm.stampSel.isBlank()) GrayText else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-                com.looka.app.ui.common.StickerPicker(
-                    selected = vm.stampSel,
-                    onSelect = { vm.stampSel = if (vm.stampSel == it) "" else it },
-                    onDragCreate = onDragCreate,
-                    // §2.2/§11.1 双尺度：Picker 预览 0.60×Wd，比日历里的最终尺寸大，便于识别
-                    previewSize = pickerPreview
-                )
-                Spacer(Modifier.height(6.dp))
-            }
-        }
-        }
+        com.looka.app.ui.common.StickerPicker(
+            selected = vm.stampSel,
+            onSelect = { vm.stampSel = if (vm.stampSel == it) "" else it },
+            onDragCreate = onDragCreate,
+            // §2.2/§11.1 双尺度：Picker 预览 0.60×Wd，比日历里的最终尺寸大，便于识别
+            previewSize = pickerPreview
+        )
     }
 }
 
@@ -1538,11 +1490,12 @@ private fun StickerPopover(
         val screenW = with(density) { maxWidth.toPx() }
         val popWpx = with(density) { popW.toPx() }
         // Anchor 到印章上方；靠边时 clamp（§5.1「靠边时需要翻转或 clamp」）
+        // §75 M3：间隙 0.09→0.17×Wd（图45 实测）—— 菜单悬在贴纸上方，不压到贴纸
         val left = (anchor.x - popWpx / 2f).coerceIn(8f, (screenW - popWpx - 8f).coerceAtLeast(8f))
         val topPx = anchor.y - with(density) { (popH + caretH).toPx() } -
-            with(density) { (wd * 0.30f).toPx() }
+            with(density) { (wd * 0.38f).toPx() }
         val flipped = topPx < with(density) { 8.dp.toPx() }
-        val finalTop = if (flipped) anchor.y + with(density) { (wd * 0.30f).toPx() } else topPx
+        val finalTop = if (flipped) anchor.y + with(density) { (wd * 0.38f).toPx() } else topPx
 
         // 关闭层：透明、不压暗（§5.1 无全屏遮罩）
         Box(Modifier.fillMaxSize().plainClick(onDismiss))
