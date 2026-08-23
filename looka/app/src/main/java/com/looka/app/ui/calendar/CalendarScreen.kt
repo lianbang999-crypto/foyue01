@@ -114,6 +114,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     var sysDetail by remember { mutableStateOf<SysCal.SysEvent?>(null) }
     // §72 §5/§9：印章 Popover（锚点 = 印章在根坐标系的中心）
     var stampMenu by remember { mutableStateOf<Pair<Stamp, androidx.compose.ui.geometry.Offset>?>(null) }
+    // §76 F3：待确认删除的贴纸（second = 绑定日程标题，空则为纯装饰贴纸）
+    var delStampConfirm by remember { mutableStateOf<Pair<Stamp, String>?>(null) }
     // §72 §D：屏幕坐标 → (hostDate, u, v)，由月视图注册
     val gridHit = remember { mutableStateOf<((androidx.compose.ui.geometry.Offset) -> Triple<Long, Float, Float>?)?>(null) }
     // §72 §4：从 Picker 拖出的 Ghost（assetId → 当前根坐标）
@@ -160,7 +162,9 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         scope.launch { sheetState.hide() }
     }
 
-    Box(Modifier.fillMaxSize()) {
+    // §76 F1：本层原点（Scaffold padding 会把它推离窗口原点）—— Ghost 与 Popover 都要靠它换算
+    var rootOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    Box(Modifier.fillMaxSize().onGloballyPositioned { rootOrigin = it.positionInRoot() }) {
     // §75 C3：面板打开时几何完全不动 —— 旧版父层 padding 会让 rowH=maxHeight/6 直接缩水
     // （实测 Lifebear 开面板前后行高 232px 不变，只被覆盖）。让出底部交给 LazyColumn contentPadding。
     Column(
@@ -322,10 +326,12 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         val visual = (wd * 0.42f).dp
         val ring = (wd * 1.08f).dp
         val half = with(LocalDensity.current) { ring.toPx() / 2f }
+        // §76 F1：pos 是窗口坐标，本层在 Scaffold padding 之下 —— 同样要减去容器原点才跟手
         Box(
             Modifier
                 .offset { androidx.compose.ui.unit.IntOffset(
-                    (pos.x - half).toInt(), (pos.y - half).toInt()) }
+                    (pos.x - rootOrigin.x - half).toInt(),
+                    (pos.y - rootOrigin.y - half).toInt()) }
                 .size(ring)
                 .zIndex(70f),
             contentAlignment = Alignment.Center
@@ -352,8 +358,12 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
             onPrimary = {
                 stampMenu = null
                 if (boundSeries != null) {
-                    // §5 修正：已绑定应进这条日程，而不是再新建一条（旧实现的 bug）
-                    nav.navigate("detail/${boundSeries.id}/${st.day}")
+                    // §76 F2（图53）：「编辑」直接进全屏编辑页（不是只读详情），标题左带贴纸缩略图
+                    vm.pendingStampAsset = st.assetId
+                    scope.launch {
+                        if (!vm.prepareEditDraft(boundSeries.id, st.day)) vm.pendingStampAsset = ""
+                        else nav.navigate("editor")
+                    }
                 } else {
                     // §5.2：复用标准快速创建，印章与 hostDate 作为上下文带入
                     vm.prepareCreateDraft(st.day, allDay = true)
@@ -362,8 +372,21 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                     nav.navigate("editor")
                 }
             },
-            onDelete = { vm.deleteStamp(st.id); stampMenu = null },
+            // §76 F3（图52）：删除是复合删除 —— 先确认，再把贴纸与绑定日程一起删
+            onDelete = { delStampConfirm = st to (boundSeries?.title ?: ""); stampMenu = null },
             onDismiss = { stampMenu = null }
+        )
+    }
+
+    // §76 F3（图52「予定の削除」）：贴纸与绑定日程是一个复合对象，删就一起删，先问一句
+    delStampConfirm?.let { (st, boundTitle) ->
+        ConfirmDialog(
+            title = if (boundTitle.isNotBlank()) tr("删除这条日程？") else tr("删除这个贴纸？"),
+            text = if (boundTitle.isNotBlank())
+                tr("「{0}」和这个贴纸会一起删除。", boundTitle) else tr("贴纸会从这一天移除。"),
+            confirmText = tr("删除"),
+            onConfirm = { vm.deleteStampComposite(st.id); delStampConfirm = null },
+            onDismiss = { delStampConfirm = null }
         )
     }
 
@@ -1481,7 +1504,11 @@ private fun StickerPopover(
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+    // §76 F1：容器自身在窗口中的原点（Scaffold padding 会把它下推）
+    var containerOrigin by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        Modifier.fillMaxSize().onGloballyPositioned { containerOrigin = it.positionInRoot() }
+    ) {
         val density = LocalDensity.current
         val wd = maxWidth / 7f
         val popW = wd * 3.2f
@@ -1489,13 +1516,17 @@ private fun StickerPopover(
         val caretH = 5.dp
         val screenW = with(density) { maxWidth.toPx() }
         val popWpx = with(density) { popW.toPx() }
+        // §76 F1 根治：anchor 是**窗口坐标**（含状态栏），而本容器在 Scaffold padding 之下，
+        // 原点比窗口低一个状态栏高度 —— 旧版直接拿窗口坐标当容器内偏移，菜单整体下移压住贴纸。
+        // 减去容器自身原点换算到容器内坐标，与状态栏/插栏/底栏高度全部解耦。
+        val ax = anchor.x - containerOrigin.x
+        val ay = anchor.y - containerOrigin.y
         // Anchor 到印章上方；靠边时 clamp（§5.1「靠边时需要翻转或 clamp」）
-        // §75 M3：间隙 0.09→0.17×Wd（图45 实测）—— 菜单悬在贴纸上方，不压到贴纸
-        val left = (anchor.x - popWpx / 2f).coerceIn(8f, (screenW - popWpx - 8f).coerceAtLeast(8f))
-        val topPx = anchor.y - with(density) { (popH + caretH).toPx() } -
-            with(density) { (wd * 0.38f).toPx() }
+        val left = (ax - popWpx / 2f).coerceIn(8f, (screenW - popWpx - 8f).coerceAtLeast(8f))
+        val gapPx = with(density) { (wd * 0.38f).toPx() }
+        val topPx = ay - with(density) { (popH + caretH).toPx() } - gapPx
         val flipped = topPx < with(density) { 8.dp.toPx() }
-        val finalTop = if (flipped) anchor.y + with(density) { (wd * 0.38f).toPx() } else topPx
+        val finalTop = if (flipped) ay + gapPx else topPx
 
         // 关闭层：透明、不压暗（§5.1 无全屏遮罩）
         Box(Modifier.fillMaxSize().plainClick(onDismiss))

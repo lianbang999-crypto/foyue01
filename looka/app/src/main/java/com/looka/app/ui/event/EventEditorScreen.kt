@@ -339,7 +339,8 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
         Row(verticalAlignment = Alignment.CenterVertically) {
             // §74 P0-4（对齐 BEAR）：从贴纸「登记日程」进来时，贴纸缩略图出现在标题左侧 ——
             // 用户在给「这枚贴纸」登记日程，不是新建普通日程
-            if (vm.pendingStampBind >= 0 && vm.pendingStampAsset.isNotBlank()) {
+            // §76 F2：编辑已绑定日程时同样显示（图53 的 編集 页）—— 不再只限创建路径
+            if (vm.pendingStampAsset.isNotBlank()) {
                 val ctxStamp = LocalContext.current
                 val stBmp = androidx.compose.runtime.remember(vm.pendingStampAsset) {
                     com.looka.app.util.StampAssets.bitmap(ctxStamp, vm.pendingStampAsset)

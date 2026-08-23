@@ -229,6 +229,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         d.remindersTouched = true
         d.detailExpanded = true
         draft = d
+        // §76 F2：这条日程若绑着贴纸，编辑页标题左要出缩略图 —— 无论从哪个入口进来都一致
+        pendingStampBind = -1L
+        pendingStampAsset = stamps.value
+            .firstOrNull { it.eventUid == s.uid && it.assetId.isNotBlank() }?.assetId ?: ""
         return true
     }
 
@@ -266,6 +270,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         eventDao.deleteRemindersOf(orig.id)
         d.reminders.forEach { eventDao.insertReminder(it.copy(id = 0, seriesId = orig.id)) }
         if (delta != 0L) eventDao.deleteExceptionsOf(orig.id)
+        pendingStampAsset = ""   // §76 F2：编辑态缩略图用完即清，别残留到下一次新建
         afterChange()
         onDone()
     }
@@ -706,6 +711,23 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         stampDao.byId(id)?.let {
             stampDao.update(it.copy(deleted = true, dirty = true, updatedAt = now()))
         }
+        afterChange()
+    }
+
+    /**
+     * §76 F3（图52「予定の削除」）：绑定后贴纸与日程是一个复合对象，删就一起删。
+     * 旧版只删贴纸 —— 日程留在原地变成孤儿（用户实测「删了贴纸，嗯了又回复金色」）。
+     */
+    fun deleteStampComposite(id: Long) = viewModelScope.launch {
+        val st = stampDao.byId(id) ?: return@launch
+        if (st.eventUid.isNotBlank()) {
+            eventDao.seriesByUid(st.eventUid)?.takeIf { !it.deleted }?.let { se ->
+                eventDao.updateSeries(se.copy(deleted = true, dirty = true, updatedAt = now()))
+                eventDao.deleteRemindersOf(se.id)
+                eventDao.deleteExceptionsOf(se.id)
+            }
+        }
+        stampDao.update(st.copy(deleted = true, dirty = true, updatedAt = now()))
         afterChange()
     }
 

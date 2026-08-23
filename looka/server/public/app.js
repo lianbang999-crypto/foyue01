@@ -360,9 +360,9 @@ function modal(html) {
 }
 const closeModal = () => { $('#modalRoot').innerHTML = ''; };
 
-function confirmDlg(title, onOk, okText) {
-  const d = modal(`<h3>${esc(title)}</h3><div class="btns">
-    <button class="btn-ghost" id="cX">取消</button><button class="btn-danger" id="cOk">${okText || '删除'}</button></div>`);
+function confirmDlg(title, onOk, body, okText) {
+  const d = modal(`<h3>${esc(title)}</h3>${body ? `<p class="dlg-body">${esc(body)}</p>` : ''}<div class="btns">
+    <button class="btn-ghost" id="cX">${t('取消')}</button><button class="btn-danger" id="cOk">${okText || t('删除')}</button></div>`);
   d.querySelector('#cX').onclick = closeModal;
   d.querySelector('#cOk').onclick = () => { closeModal(); onOk(); };
 }
@@ -610,7 +610,15 @@ function renderDayPanel(evs, tks, sts) {
   $$('#dayItems [data-diary]').forEach(el => el.onclick = () => openDiaryModal(S.selDay));
   $$('#dayItems [data-stamp-del]').forEach(el => el.onclick = e => {
     e.stopPropagation();
-    confirmDlg('删除这个印章？', () => del('stamp', el.dataset.stampDel));
+    // §76 F3：绑定后贴纸与日程是一个复合对象 —— 删就一起删，否则留下孤儿日程（与 App 同构）
+    const stRec = S.data.stamp.get(el.dataset.stampDel);
+    const evUid = stRec?.p?.eventUid || '';
+    const evTitle = evUid ? (S.data.event.get(evUid)?.p?.title || '') : '';
+    confirmDlg(
+      evTitle ? t('删除这条日程？') : t('删除这个贴纸？'),
+      () => { if (evUid) del('event', evUid); del('stamp', el.dataset.stampDel); },
+      evTitle ? t('「{0}」和这个贴纸会一起删除。', evTitle) : t('贴纸会从这一天移除。')
+    );
   });
   $$('#dayItems [data-stamp-ev]').forEach(el => el.onclick = () => {
     const rec = S.data.event.get(el.dataset.stampEv);
@@ -855,7 +863,7 @@ function renderTodos() {
   $$('#todoList [data-s]').forEach(b => b.onclick = () => toggleStar(b.dataset.s));
   $$('#todoList [data-x]').forEach(b => b.onclick = () => confirmDlg('删除这个任务？', () => del('task', b.dataset.x)));
   const cd = $('#clearDone');
-  if (cd) cd.onclick = () => confirmDlg('清除全部已完成任务？', () => done.forEach(k => del('task', k.uid)), t('清除'));
+  if (cd) cd.onclick = () => confirmDlg('清除全部已完成任务？', () => done.forEach(k => del('task', k.uid)), null, t('清除'));
 }
 
 /* ---------------- 笔记 ---------------- */

@@ -481,3 +481,6 @@ body, main, .pane{ background: var(--paper); }
 
 /* §75 M2：日详情事件行的贴纸缩略图（气泡已删，名字在列表里认） */
 .day-item .stamp-mini { width: 22px; height: 22px; flex: none; margin-right: 2px; }
+
+/* §76 F3：确认框正文（复合删除要说清删了什么） */
+.dlg-body { font-size: 13px; color: var(--gray); margin: -4px 0 14px; line-height: 1.5; }
