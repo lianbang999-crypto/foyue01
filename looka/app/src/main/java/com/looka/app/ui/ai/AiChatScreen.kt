@@ -83,6 +83,18 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
+    // E3（§79 / AC LOOKA-107）：快捷指令只填意图，发送由用户明确触发（一次对话扣 1 鹿角，
+    // 四个 chip 挨得近，误触即扣钱）。chipAction 记住「这条 chip 要走的专用动作」——
+    // 周总结需要注入本地真实日程/任务/日记，不能退化成普通文本；用户一改文字就作废。
+    var chipAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val send = {
+        val v = input.trim()
+        val act = chipAction
+        if (!vm.aiBusy && (act != null || v.isNotEmpty())) {
+            input = ""; chipAction = null
+            if (act != null) act() else vm.sendChat(v)
+        }
+    }
 
     val itemCount = vm.chat.size + if (vm.aiBusy) 1 else 0
     LaunchedEffect(itemCount) {
@@ -233,10 +245,17 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
-            QuickChip(tr("今天安排")) { vm.sendChat(tr("今天有什么安排？")) }
-            QuickChip(tr("明天安排")) { vm.sendChat(tr("明天有什么安排？")) }
-            QuickChip(tr("本周总结")) { vm.sendWeeklySummary() }
-            QuickChip(tr("帮我规划明天")) { vm.sendChat(tr("根据我的日程和未完成任务，帮我把明天规划一下")) }
+            // 点 chip = 把话填进输入框（可再改），按发送才真正提交
+            QuickChip(tr("今天安排")) { input = tr("今天有什么安排？"); chipAction = null }
+            QuickChip(tr("明天安排")) { input = tr("明天有什么安排？"); chipAction = null }
+            QuickChip(tr("本周总结")) {
+                // 与 sendWeeklySummary 的 display 文案保持一致，输入框里看到什么、气泡里就是什么
+                input = tr("帮我总结一下本周 📋")
+                chipAction = { vm.sendWeeklySummary() }
+            }
+            QuickChip(tr("帮我规划明天")) {
+                input = tr("根据我的日程和未完成任务，帮我把明天规划一下"); chipAction = null
+            }
         }
         Hairline()
 
@@ -246,17 +265,15 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             verticalAlignment = Alignment.Bottom
         ) {
             TextField(
-                value = input, onValueChange = { input = it },
+                // 用户一动文字，chip 的专用动作就作废，退化成普通对话
+                value = input, onValueChange = { input = it; chipAction = null },
                 placeholder = { Text(tr("和小鹿说点什么…"), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
                 colors = clearFieldColors(),
                 maxLines = 4,
                 // F1：回车即发送（对齐网页端 chatText 的 Enter 行为）
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Send),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = {
-                    val v = input.trim()
-                    if (v.isNotEmpty() && !vm.aiBusy) { input = ""; vm.sendChat(v) }
-                }),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = { send() }),
                 modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(PanelBg)
             )
             Spacer(Modifier.width(8.dp))
@@ -271,12 +288,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                 label = "send"
             )
             IconButton(
-                onClick = {
-                    if (canSend) {
-                        vm.sendChat(input.trim())
-                        input = ""
-                    }
-                },
+                onClick = { if (canSend) send() },
                 interactionSource = sendPressed,
                 modifier = Modifier.size(44.dp)
                     .scale(sendScale)

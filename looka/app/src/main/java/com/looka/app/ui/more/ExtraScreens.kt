@@ -36,6 +36,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -521,6 +522,18 @@ private fun BackupRow(title: String, sub: String, onClick: () -> Unit) {
 fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     var tick by remember { mutableStateOf(0) }
+
+    // E1（§79 / AC LOOKA-105）：本页文案承诺「改完回到本页会自动刷新」，但 tick 此前从未被 ++ ——
+    // 四项检查进页面算一次就冻结，用户去系统设置开完权限回来仍是红叉，等于文案在骗人。
+    // 从系统设置返回 = 本页 ON_RESUME，此时重算全部检查项。
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) tick++
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
 
     val notifOk = remember(tick) {
         androidx.core.app.NotificationManagerCompat.from(ctx).areNotificationsEnabled()

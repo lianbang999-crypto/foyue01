@@ -1861,7 +1861,9 @@ async function boot() {
   const send = () => { const v = $('#chatText').value.trim(); if (v) { $('#chatText').value = ''; sendChat(v); } };
   $('#btnSend').onclick = send;
   $('#chatText').addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
-  $$('.chip').forEach(b => b.onclick = () => sendChat(b.dataset.q));
+  // E3（§79 / AC LOOKA-107，与 App 同步）：快捷指令只填意图，发送由用户明确触发 ——
+  // 一次对话扣 1 鹿角，chip 挨得近，误触即扣钱。
+  $$('.chip').forEach(b => b.onclick = () => { $('#chatText').value = b.dataset.q; $('#chatText').focus(); });
 
   // 周期同步
   setInterval(() => { if (S.token) sync().catch(() => { }); }, 60000);

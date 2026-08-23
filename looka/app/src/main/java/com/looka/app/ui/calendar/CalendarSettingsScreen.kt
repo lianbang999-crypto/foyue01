@@ -299,7 +299,9 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     )
 
     if (holidayDlg) AlertDialog(
-        onDismissRequest = { holidayDlg = false },
+        // E2（§79 / AC SET-102）：多选的取消必须无副作用。点遮罩外/返回键此前只关窗不回滚，
+        // 未提交的勾选会残留在页面级 holidayMask 里，设置行摘要显示一个没存盘的值。
+        onDismissRequest = { holidayMask = Prefs.holidayMask(ctx); holidayDlg = false },
         title = { Text(tr("休日星期"), fontSize = 17.sp) },
         text = {
             Column {
