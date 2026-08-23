@@ -116,6 +116,7 @@ object SyncEngine {
                     .put("showLunar", Prefs.showLunarRaw(app) ?: JSONObject.NULL)
                     .put("holidayMask", Prefs.holidayMask(app))
                     .put("showDoneTasks", Prefs.showDoneTasks(app))
+                    .put("stampTitle", Prefs.stampTitle(app))
                     // B1（§48）：主题上云 —— 用户花心思调的主题换手机不能丢
                     .put("themeIndex", Prefs.themeIndex(app))
                     .put("customColor", Prefs.customThemeColor(app))
@@ -252,6 +253,7 @@ object SyncEngine {
                         else sp0.putInt("show_lunar", if (o.optBoolean("showLunar")) 1 else 0)
                         sp0.putInt("holiday_mask", o.optInt("holidayMask", 1 shl 6))
                         sp0.putBoolean("show_done_tasks", o.optBoolean("showDoneTasks", true))
+                        sp0.putBoolean("stamp_title", o.optBoolean("stampTitle", true))
                         // B1：主题跟随云端（老客户端的载荷没有这两个键时保持本地值）
                         if (o.has("themeIndex")) sp0.putInt("theme_index", o.optInt("themeIndex", 0))
                         if (o.has("customColor")) sp0.putLong("custom_theme", o.optLong("customColor", 0xFF55B04BL))

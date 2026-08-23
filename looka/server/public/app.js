@@ -139,7 +139,7 @@ function pushThemeSettings(idx, hex) {
   if (applyingRemoteSettings || !S.token) return;
   const p = {
     weekStartMon: ST.weekStartMon, showLunar: ST.showLunar,
-    holidayMask: ST.holidayMask, showDoneTasks: ST.showDoneTasks,
+    holidayMask: ST.holidayMask, showDoneTasks: ST.showDoneTasks, stampTitle: ST.stampTitle,
     themeIndex: idx,
     customColor: hex ? parseInt('ff' + hex.slice(1), 16) : 0xFF55B04B,
     deerFacts: JSON.parse(localStorage.getItem('lk_deer_facts') || '[]')
@@ -152,8 +152,10 @@ function pushThemeSettings(idx, hex) {
 const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp', 'settings'];
 // P5-1 设置上云：App 是设置的主人，网页跟随（两端看同一本日历）。
 // 默认值与 App Prefs 一致：周一起始 / 农历跟随中文 / 显示已完成
-const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true };
+const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true, stampTitle: true };
 const stShowLunar = () => ST.showLunar == null ? isZh() : !!ST.showLunar;
+// §72 §6.1：印章上的日程名气泡（App 是设置的主人，网页跟随）
+const stShowStampTitle = () => ST.stampTitle !== false;
 const S = {
   token: localStorage.getItem('lk_token') || '',
   account: localStorage.getItem('lk_account') || '',
@@ -234,6 +236,7 @@ function applyRec(rec) {
       ST.showLunar = p.showLunar == null ? null : !!p.showLunar;
       ST.holidayMask = p.holidayMask ?? (1 << 6);
       ST.showDoneTasks = p.showDoneTasks !== false;
+      ST.stampTitle = p.stampTitle !== false;
       // D1：小鹿记事本随云
       if (Array.isArray(p.deerFacts)) localStorage.setItem('lk_deer_facts', JSON.stringify(p.deerFacts));
       // B1：主题随云（App 换了主题，网页跟着变；防回环见 pushThemeSettings）
@@ -487,7 +490,7 @@ function renderCalendar(anchorDay) {
       const rest = evs.length + tks.length - shown;
       if (rest > 0) lines += `<div class="ev-more">+${rest}</div>`;
       const lun = stShowLunar() ? lunarText(day) : '';
-      // Sticker Canvas v1（§68 二，§71 S3 尺寸对齐 BEAR：42%→50%）：posX>=0 的走画布层绝对定位，
+      // Sticker Canvas（§72 §2.2 尺寸 Token：StickerVisualSize 0.47×Wd）：posX>=0 走画布层绝对定位，
       // 其余沿用行内小图。网页 v1 只渲染不拖动（拖动在 App 端）。
       const inlineSts = sts.filter(st => !(st.px >= 0));
       const placedSts = sts.filter(st => st.px >= 0);
@@ -496,10 +499,15 @@ function renderCalendar(anchorDay) {
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
-        return st.assetId
+          `width:47%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+        // §6 复合对象：绑定日程的印章上方浮一枚灰色标题气泡（与 App 同构）
+        const ev = st.eventUid && stShowStampTitle()
+          ? (S.data.event.get(st.eventUid)?.p?.title || '') : '';
+        const bub = ev ? `<span class="stamp-bub" style="left:${(st.px * 100).toFixed(1)}%;` +
+          `top:${(st.py * 100).toFixed(1)}%">${esc(ev)}</span>` : '';
+        return bub + (st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
-          : `<span style="${style};font-size:18px">${st.emoji}</span>`;
+          : `<span style="${style};font-size:18px">${st.emoji}</span>`);
       }).join('');
       // 连续滚动下月界要看得见：每月 1 号带月份
       const numHtml = f.d === 1 ? `${f.m}月1` : f.d;

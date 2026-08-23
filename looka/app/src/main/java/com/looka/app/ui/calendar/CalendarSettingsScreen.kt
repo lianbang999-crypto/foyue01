@@ -62,6 +62,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     var weekStartMon by remember { mutableStateOf(Prefs.weekStartMonday(ctx)) }
     var holidayMask by remember { mutableIntStateOf(Prefs.holidayMask(ctx)) }
     var showDone by remember { mutableStateOf(Prefs.showDoneTasks(ctx)) }
+    var stampTitle by remember { mutableStateOf(Prefs.stampTitle(ctx)) }
     var defCat by remember { mutableStateOf(Prefs.defaultCategoryId(ctx)) }
     var defAllDay by remember { mutableStateOf(Prefs.defaultAllDay(ctx)) }
     var timedRem by remember { mutableIntStateOf(Prefs.defTimedReminderMin(ctx)) }
@@ -122,6 +123,11 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
             SwitchRow(tr("在日历显示已完成任务"), showDone) {
                 showDone = it; Prefs.setShowDoneTasks(ctx, it); vm.bumpSettings(); com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
+            }
+            Hairline()
+            // §72 §6.1（CAL-060）：绑定日程的印章旁边是否显示标题气泡
+            SwitchRow(tr("显示印章上的日程名"), stampTitle) {
+                stampTitle = it; Prefs.setStampTitle(ctx, it); vm.bumpSettings()
             }
             Hairline()
             SwitchRow(

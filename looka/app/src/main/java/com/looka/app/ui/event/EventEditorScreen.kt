@@ -111,6 +111,7 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
 
     fun reallyClose() {
         vm.draft = null
+        vm.pendingStampBind = -1L   // §9：EVENT_CREATE 取消 → 印章保持 Decorative，不回绑
         nav.popBackStack()
     }
 

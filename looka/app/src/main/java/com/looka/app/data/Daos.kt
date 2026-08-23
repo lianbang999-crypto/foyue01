@@ -258,6 +258,10 @@ interface StampDao {
     @Query("UPDATE stamp SET eventUid = '', dirty = 1, updatedAt = :now WHERE eventUid = :eventUid AND deleted = 0")
     suspend fun unbindEvent(eventUid: String, now: Long)
 
+    // §72 §5.2：Decorative → Event-bound（在快速创建页保存后回绑）
+    @Query("UPDATE stamp SET eventUid = :eventUid, dirty = 1, updatedAt = :now WHERE id = :id")
+    suspend fun bindEvent(id: Long, eventUid: String, now: Long)
+
     @Query("SELECT * FROM stamp WHERE deleted = 0")
     suspend fun listAll(): List<Stamp>
 
@@ -277,7 +281,7 @@ interface StampDao {
     suspend fun markAllDirty()
 
     @Insert
-    suspend fun insert(s: Stamp)
+    suspend fun insert(s: Stamp): Long
 
     @Update
     suspend fun update(s: Stamp)

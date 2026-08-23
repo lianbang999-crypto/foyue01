@@ -8,6 +8,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -36,8 +37,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +70,12 @@ import kotlinx.coroutines.launch
 fun StickerPicker(
     selected: String,
     onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** §72 §4：drag-to-instantiate —— 从素材区直接拖到日历创建实例（素材本身留在库里）。
+     *  回调携带根坐标系位置；null 表示本处不支持拖拽创建（如日程编辑页里的选择器）。 */
+    onDragCreate: ((assetId: String, rootPos: Offset, phase: Int) -> Unit)? = null,
+    /** §2.2 / §11.1：Picker Preview 0.55–0.65×Wd，比日历中的最终尺寸更大，便于识别 */
+    previewSize: androidx.compose.ui.unit.Dp = 42.dp
 ) {
     val ctx = LocalContext.current
     val packs = remember { StampAssets.packs(ctx) }
@@ -106,7 +117,7 @@ fun StickerPicker(
                             if (id == null) {
                                 Spacer(Modifier.size(58.dp))
                             } else {
-                                StickerCell(id, id == selected) { onSelect(id) }
+                                StickerCell(id, id == selected, previewSize, onDragCreate) { onSelect(id) }
                             }
                         }
                     }
@@ -193,7 +204,13 @@ fun StickerPicker(
 
 /** 单枚表情格：58dp 触摸区 + 44dp 图，选中放大并加浅底 */
 @Composable
-private fun StickerCell(assetId: String, selected: Boolean, onClick: () -> Unit) {
+private fun StickerCell(
+    assetId: String,
+    selected: Boolean,
+    previewSize: androidx.compose.ui.unit.Dp = 42.dp,
+    onDragCreate: ((String, Offset, Int) -> Unit)? = null,
+    onClick: () -> Unit
+) {
     val ctx = LocalContext.current
     val def = StampAssets.def(ctx, assetId)
     val bmp = StampAssets.bitmap(ctx, assetId)
@@ -201,19 +218,40 @@ private fun StickerCell(assetId: String, selected: Boolean, onClick: () -> Unit)
         if (selected) 1.12f else 1f,
         spring(dampingRatio = 0.45f, stiffness = 500f), label = "stickerScale"
     )
+    var cellRoot by remember { mutableStateOf(Offset.Zero) }
+    var dragPos by remember { mutableStateOf(Offset.Zero) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(58.dp).plainClick(onClick)
+        modifier = Modifier.width(58.dp)
+            .onGloballyPositioned { cellRoot = it.positionInRoot() }
+            .let { m ->
+                if (onDragCreate == null) m else m.pointerInput(assetId) {
+                    // §4：拖出即实例化；素材留在 Picker（AC-001）
+                    detectDragGestures(
+                        onDragStart = { off ->
+                            dragPos = cellRoot + off
+                            onDragCreate(assetId, dragPos, 0)
+                        },
+                        onDrag = { ch, amt ->
+                            ch.consume(); dragPos += amt
+                            onDragCreate(assetId, dragPos, 1)
+                        },
+                        onDragCancel = { onDragCreate(assetId, dragPos, 3) },
+                        onDragEnd = { onDragCreate(assetId, dragPos, 2) }
+                    )
+                }
+            }
+            .plainClick(onClick)
     ) {
         Box(
             Modifier
-                .size(50.dp)
+                .size(previewSize + 8.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
             contentAlignment = Alignment.Center
         ) {
             if (bmp != null) {
-                Image(bmp, def?.name(), modifier = Modifier.size(42.dp).scale(s))
+                Image(bmp, def?.name(), modifier = Modifier.size(previewSize).scale(s))
             } else {
                 Text("🦌", fontSize = 24.sp)
             }

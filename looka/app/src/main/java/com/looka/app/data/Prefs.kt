@@ -67,6 +67,10 @@ object Prefs {
     fun showDoneTasks(c: Context) = sp(c).getBoolean("show_done_tasks", true)
     fun setShowDoneTasks(c: Context, v: Boolean) { sp(c).edit().putBoolean("show_done_tasks", v).apply(); markSettingsDirty(c) }
 
+    // Sticker 模块 §6.1（CAL-060 列表项）：绑定日程的印章是否在旁边显示标题气泡
+    fun stampTitle(c: Context) = sp(c).getBoolean("stamp_title", true)
+    fun setStampTitle(c: Context, v: Boolean) { sp(c).edit().putBoolean("stamp_title", v).apply(); markSettingsDirty(c) }
+
     // ---- 新建默认值 ----
     fun defaultCategoryId(c: Context) = sp(c).getLong("def_category", 1L)
     fun setDefaultCategoryId(c: Context, v: Long) = sp(c).edit().putLong("def_category", v).apply()

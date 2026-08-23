@@ -131,6 +131,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var createPanel by mutableStateOf(false)
     // 表情连续盖章模式：非空 = 已选中贴纸，点月历日期直接贴
     var stampSel by mutableStateOf("")
+    // §72 §8：拖动印章时锁住日历滚动（Pointer ownership）
+    var stampDragging by mutableStateOf(false)
+    // §72 §11：创建面板高度 → 日历 viewport bottomInset（不压缩格子）
+    var panelInset by mutableStateOf(androidx.compose.ui.unit.Dp(0f))
     var settingsVersion by mutableIntStateOf(0)
     fun bumpSettings() { settingsVersion++ }
 
@@ -153,6 +157,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun prepareCreateDraft(day: Long, startMin: Int = -1, allDay: Boolean? = null) {
         val c = getApplication<Application>()
+        pendingStampBind = -1L      // §5.2：新草稿默认不回绑印章，由印章入口显式设置
         val d = EventDraft()
         d.startDay = day
         d.endDay = day
@@ -224,9 +229,17 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     // ================= 日程保存 / 删除 =================
 
+    /** §72 §5.2：从印章「登记日程」进来时待回绑的印章 id（保存后 Decorative → Event-bound） */
+    var pendingStampBind by mutableLongStateOf(-1L)
+
     fun saveCreate(d: EventDraft, onDone: () -> Unit) = viewModelScope.launch {
-        val id = eventDao.insertSeries(d.toSeries(uidOverride = newUid()))
+        val uid = newUid()
+        val id = eventDao.insertSeries(d.toSeries(uidOverride = uid))
         d.reminders.forEach { eventDao.insertReminder(it.copy(id = 0, seriesId = id)) }
+        if (pendingStampBind >= 0) {
+            stampDao.bindEvent(pendingStampBind, uid, now())
+            pendingStampBind = -1L
+        }
         afterChange()
         onDone()
     }
@@ -622,7 +635,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 贴印章（图片资产优先，emoji 兜底）；withEventTitle 非空时同时创建全天日程并绑定（规格 CAL-051） */
-    fun addStamp(emoji: String, day: Long, withEventTitle: String = "", assetId: String = "", onDone: () -> Unit = {}) =
+    fun addStamp(
+        emoji: String, day: Long, withEventTitle: String = "", assetId: String = "",
+        px: Float = 0.5f, py: Float = 0.62f, onDone: (Long) -> Unit = {}
+    ) =
         viewModelScope.launch {
             var eventUid = ""
             val c = getApplication<Application>()
@@ -638,11 +654,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 eventUid = uid
             }
             // Sticker Canvas v1：新贴的印章直接进入摆放态（格子中偏下），之后可长按拖动
-            stampDao.insert(Stamp(emoji = emoji, day = day, eventUid = eventUid, assetId = assetId,
-                posX = 0.5f, posY = 0.62f))
+            val newId = stampDao.insert(Stamp(emoji = emoji, day = day, eventUid = eventUid,
+                assetId = assetId, posX = px, posY = py))
             if (assetId.isNotBlank()) Prefs.pushRecentStamp(c, assetId)
             afterChange()
-            onDone()
+            onDone(newId)
         }
 
     /** Sticker Canvas v1：拖动落点写回。位置是实例状态（Place → Reposition 可反复）。 */
