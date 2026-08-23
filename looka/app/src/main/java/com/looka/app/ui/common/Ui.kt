@@ -213,6 +213,31 @@ fun SaveButton(text: String = tr("保存"), enabled: Boolean = true, onClick: ()
     ) { Text(text, fontSize = 14.sp) }
 }
 
+/**
+ * T9（§70）：区块级加载 —— 小鹿轻轻点头 + 一句话，替代裸转圈。
+ * 按钮内的小转圈保留不动（克制：行内反馈不需要品牌出场）。
+ */
+@Composable
+fun DeerLoading(text: String, modifier: Modifier = Modifier) {
+    val anim = androidx.compose.animation.core.rememberInfiniteTransition(label = "deerLoad")
+    val dy by anim.animateFloat(
+        initialValue = 0f, targetValue = -4f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(650),
+            androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "deerLoadDy"
+    )
+    Row(
+        modifier.padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.offset(y = dy.dp)) { DeerBadge(22.dp) }
+        Spacer(Modifier.width(8.dp))
+        Text(text, fontSize = 13.sp, color = GrayText)
+    }
+}
+
 /** 空状态小鹿（轻微上下浮动） */
 @Composable
 fun EmptyDeer(text: String, modifier: Modifier = Modifier, hint: String? = null) {

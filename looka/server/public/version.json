@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 25,
-  "versionName": "1.10.1",
+  "versionCode": 26,
+  "versionName": "1.11.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3661049,
-  "sha256": "11aca8be5afb7018137c5d8106b730fb44f3b214c345502540bd24d68fa69944",
-  "changelog": "更多页回归分组 · 小鹿AI入口修复 · 周视图对齐",
+  "size": 3661241,
+  "sha256": "6db661c4265c83269df8dc96ccecad77afb0e0f4c47af5f3b8deacca0c009c98",
+  "changelog": "印章可以拖着换日子了 · 回今天 · 长按全天区新建",
   "minSupported": 1
 }

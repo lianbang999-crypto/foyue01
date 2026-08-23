@@ -32,6 +32,21 @@ v.update(versionCode=$VC, versionName='$VN', size=$SIZE, sha256='$SHA', changelo
 json.dump(v, open('public/version.json','w'), ensure_ascii=False, indent=2)
 PYEOF
 
+# X2（§70）：静态资源版本盖章 —— 浏览器缓存旧 app.js 会让"已修复"的 bug 继续出现在用户面前
+python3 - <<PYEOF
+import re
+p = 'public/index.html'
+s = open(p).read()
+s = re.sub(r'(app\.js\?v=)[\w.]*', r'\g<1>$VC', s)
+s = re.sub(r'(style\.css\?v=)[\w.]*', r'\g<1>$VC', s)
+open(p, 'w').write(s)
+sw = 'public/sw.js'
+t = open(sw).read()
+t = re.sub(r"VER = 'looka-v[\w.]*'", "VER = 'looka-v$VC'", t)
+open(sw, 'w').write(t)
+print('  静态资源与 SW 已盖章 v$VC')
+PYEOF
+
 echo "▶ 部署 Worker（version.json 生效）..."
 npx wrangler deploy | tail -2
 echo "✅ v$VN ($VC) 已发布 — 用户端次日启动会收到更新提示"

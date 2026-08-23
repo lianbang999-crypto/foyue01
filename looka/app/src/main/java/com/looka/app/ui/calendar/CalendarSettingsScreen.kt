@@ -158,6 +158,9 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
                 else "${if (alldayRemDays == 0) "当天" else "${alldayRemDays}天前"} ${Fmt.hm(alldayRemTime)}"
             ) { alldayRemDlg = true }
             Hairline()
+            // CAL-062（§70）：模板独立入口 —— 常用日程存"是什么"，创建时 Context 给"何时"
+            NavRow(tr("日程模板")) { nav.navigate("templates") }
+            Hairline()
 
             SectionLabel(tr("任务提醒"))
             SwitchRow(
@@ -231,19 +234,67 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
 
-        if (fontDlg) RadioDialog(
-        title = tr("日程文字大小"),
-        options = listOf(0 to tr("大"), 1 to tr("中"), 2 to tr("小")),
-        selected = com.looka.app.data.Prefs.eventTextSize(ctx),
-        onSelect = { com.looka.app.data.Prefs.setEventTextSize(ctx, it); vm.bumpSettings() },
-        onDismiss = { fontDlg = false }
+    // E2（§70 图示代替文字）：字号三档所见即所得 —— 样例直接按月视图里的真实字号渲染
+    if (fontDlg) AlertDialog(
+        onDismissRequest = { fontDlg = false },
+        title = { Text(tr("日程文字大小"), fontSize = 17.sp) },
+        text = {
+            Column {
+                val cur = com.looka.app.data.Prefs.eventTextSize(ctx)
+                listOf(0 to tr("大"), 1 to tr("中"), 2 to tr("小")).forEach { (v, label) ->
+                    val fs = when (v) { 0 -> 11.5.sp; 1 -> 10.sp; else -> 8.sp }
+                    val pick = {
+                        com.looka.app.data.Prefs.setEventTextSize(ctx, v); vm.bumpSettings(); fontDlg = false
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().clickable { pick() },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.RadioButton(selected = cur == v, onClick = pick)
+                        Text(label, fontSize = 15.sp)
+                        Spacer(Modifier.width(14.dp))
+                        ColorDot(MaterialTheme.colorScheme.primary, 6.dp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr("晨跑 9:00"), fontSize = fs, color = GrayText)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = { fontDlg = false }) { Text(tr("取消"), color = GrayText) } },
+        containerColor = Color.White
     )
-    if (weekStartDlg) RadioDialog(
-        tr("一周开始日"),
-        options = listOf(true to tr("周一"), false to tr("周日")),
-        selected = weekStartMon,
-        onSelect = { weekStartMon = it; Prefs.setWeekStartMonday(ctx, it); vm.bumpSettings(); com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp) },
-        onDismiss = { weekStartDlg = false }
+    // E2（§70）：一周开始日 —— 每个选项直接给出整排周条预览
+    if (weekStartDlg) AlertDialog(
+        onDismissRequest = { weekStartDlg = false },
+        title = { Text(tr("一周开始日"), fontSize = 17.sp) },
+        text = {
+            Column {
+                listOf(true to tr("周一"), false to tr("周日")).forEach { (v, label) ->
+                    val pick = {
+                        weekStartMon = v; Prefs.setWeekStartMonday(ctx, v); vm.bumpSettings()
+                        com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
+                        weekStartDlg = false
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().clickable { pick() },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.RadioButton(selected = weekStartMon == v, onClick = pick)
+                        Text(label, fontSize = 15.sp)
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            (if (v) (1..7) else listOf(7, 1, 2, 3, 4, 5, 6))
+                                .joinToString("  ") { Fmt.week(it) },
+                            fontSize = 11.sp, color = GrayText
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = { weekStartDlg = false }) { Text(tr("取消"), color = GrayText) } },
+        containerColor = Color.White
     )
 
     if (holidayDlg) AlertDialog(
@@ -251,8 +302,9 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         title = { Text(tr("休日星期"), fontSize = 17.sp) },
         text = {
             Column {
-                Text(tr("休日日期在日历中以红色显示"), fontSize = 12.sp, color = GrayText)
+                // E2（§70）：不解释"会变红"—— 勾上的星期名当场变红，所见即所得
                 for (i in 0..6) {
+                    val on = (holidayMask shr i) and 1 == 1
                     Row(
                         Modifier.fillMaxWidth().clickable {
                             holidayMask = holidayMask xor (1 shl i)
@@ -260,10 +312,15 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = (holidayMask shr i) and 1 == 1,
+                            checked = on,
                             onCheckedChange = { holidayMask = holidayMask xor (1 shl i) }
                         )
-                        Text(weekNames[i], fontSize = 15.sp)
+                        Text(
+                            weekNames[i], fontSize = 15.sp,
+                            color = if (on) com.looka.app.ui.theme.HolidayRed else com.looka.app.ui.theme.Ink,
+                            fontWeight = if (on) androidx.compose.ui.text.font.FontWeight.Medium
+                                         else androidx.compose.ui.text.font.FontWeight.Normal
+                        )
                     }
                 }
             }

@@ -303,6 +303,13 @@ fun TimelineBody(
                     blocks = blocksByDay[d].orEmpty(),
                     catColorMap = catColorMap,
                     hourPx = hourPx,
+                    // W1（§70）：周视图泳道上限 2 —— 7 列里 3+ 泳道物理上放不下字；
+                    // 溢出折叠成 "+N" 徽章，点开切到当天日视图（列宽充足，泳道不限）
+                    laneCap = if (days.size > 1) 2 else Int.MAX_VALUE,
+                    onOverflowTap = {
+                        vm.selectedDay = d
+                        vm.calView = 2
+                    },
                     onOpen = { o -> nav.navigate("detail/${o.seriesId}/${o.occurrenceDay}") },
                     onOpenSys = onOpenSys,
                     onLongPressAt = { min ->
@@ -324,6 +331,8 @@ private fun DayTimelineColumn(
     blocks: List<TBlock>,
     catColorMap: Map<Long, Color>,
     hourPx: Float,
+    laneCap: Int = Int.MAX_VALUE,
+    onOverflowTap: () -> Unit = {},
     onOpen: (Occ) -> Unit,
     onOpenSys: (SysCal.SysEvent) -> Unit,
     onLongPressAt: (Int) -> Unit
@@ -354,8 +363,14 @@ private fun DayTimelineColumn(
             }
     ) {
         val colW = maxWidth
-        val lanes = remember(blocks) { layoutLanes(blocks) }
-        lanes.forEach { (b, lane, count, span) ->
+        val allLanes = remember(blocks) { layoutLanes(blocks) }
+        // W1（§70）：泳道超上限的块不渲染，折叠为 "+N" 徽章（见下）
+        val lanes = allLanes.filter { it.lane < laneCap }
+        val hiddenLanes = allLanes.filter { it.lane >= laneCap }
+        lanes.forEach { (b, lane, count0, span0) ->
+            // 上限生效后按有效泳道数重算宽度：4 道压 2 道时，前两道各占一半而不是 1/4
+            val count = minOf(count0, laneCap)
+            val span = minOf(span0, count - lane)
             val top = HOUR_DP * (b.startMin / 60f)
             val heightDp = HOUR_DP * ((b.endMin - b.startMin).coerceAtLeast(26) / 60f)
             val w = colW / count * span   // K1：孤立块向右占满，不再被长日程连坐
@@ -373,7 +388,8 @@ private fun DayTimelineColumn(
                         .plainClick { onOpen(o) }
                         .padding(horizontal = 4.dp, vertical = 3.dp)
                 ) {
-                    Column {
+                    // W3（§70）：块宽不足 20dp 时不画字 —— 省略号点阵比留白更乱
+                    if (w >= 20.dp) Column {
                         val fg = onColor(blockColor(catColorMap[o.categoryId]))
                         Text(
                             o.title, fontSize = 10.sp, color = fg, lineHeight = 12.sp,
@@ -404,7 +420,7 @@ private fun DayTimelineColumn(
                         .plainClick { onOpenSys(e) }
                         .padding(horizontal = 4.dp, vertical = 3.dp)
                 ) {
-                    Column {
+                    if (w >= 20.dp) Column {
                         Text(
                             e.title, fontSize = 10.sp, color = c, lineHeight = 12.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis
@@ -412,6 +428,33 @@ private fun DayTimelineColumn(
                         Text(Fmt.hm(e.startMin), fontSize = 8.sp, color = c.copy(alpha = 0.8f))
                     }
                 }
+            }
+        }
+        // W1/W2（§70）：被泳道上限折叠的块 → 按时间重叠聚组，一组一枚 "+N" 折角徽章
+        //（与月视图/全天区折角同语义）；点徽章切到当天日视图看全部
+        if (hiddenLanes.isNotEmpty()) {
+            val groups = remember(hiddenLanes) {
+                val sorted = hiddenLanes.sortedBy { it.b.startMin }
+                val gs = ArrayList<MutableList<LaneBox>>()
+                for (h in sorted) {
+                    val g = gs.lastOrNull()
+                    if (g != null && h.b.startMin < g.maxOf { it.b.endMin }) g.add(h)
+                    else gs.add(mutableListOf(h))
+                }
+                gs
+            }
+            groups.forEach { g ->
+                val top = HOUR_DP * (g.minOf { it.b.startMin } / 60f)
+                Text(
+                    "+${g.size}", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(y = top)
+                        .clip(RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp))
+                        .background(Color(0xFF6B7280))
+                        .plainClick(onOverflowTap)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                )
             }
         }
         // 当前时间：红线 + 左端圆点

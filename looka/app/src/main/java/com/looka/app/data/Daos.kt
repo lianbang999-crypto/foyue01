@@ -291,6 +291,10 @@ interface TemplateDao {
     @Insert
     suspend fun insert(t: Template)
 
+    // CAL-062（§70）：独立模板编辑页需要改已有模板，不再只能删了重建
+    @Query("UPDATE template SET title = :title, payload = :payload WHERE id = :id")
+    suspend fun update(id: Long, title: String, payload: String)
+
     @Query("DELETE FROM template WHERE id = :id")
     suspend fun delete(id: Long)
 }

@@ -462,3 +462,13 @@ body, main, .pane{ background: var(--paper); }
 .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
 .dim-invite { color: #B9BBB9; }
 .empty-hint { display: block; margin-top: 10px; color: var(--primary); font-size: 12px; font-weight: 500; }
+
+/* CAL-062（§70）：新建日程弹窗的模板 chips */
+.tpl-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.tpl-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 8px 4px 10px; font-size: 12px; color: var(--ink, #333);
+  background: var(--panel, #f4f5f4); border: none; border-radius: 999px; cursor: pointer;
+}
+.tpl-chip .tpl-x { color: var(--gray, #999); font-size: 13px; padding: 0 2px; }
+.tpl-chip .tpl-x:hover { color: var(--red, #d33); }

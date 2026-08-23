@@ -608,6 +608,11 @@ function renderDayPanel(evs, tks, sts) {
 }
 
 /* ---------------- 日程弹窗 ---------------- */
+/* CAL-062（§70）：网页模板 —— 本机存储（App 模板同为本机，对等）。
+   Template=这类事是什么；日期永远来自当前选中的那天（Context），所以模板不存日期。 */
+const tplList = () => { try { return JSON.parse(localStorage.getItem('lk_templates') || '[]'); } catch (e) { return []; } };
+const tplStore = l => { try { localStorage.setItem('lk_templates', JSON.stringify(l.slice(0, 30))); } catch (e) { } };
+
 function openEventModal(occ) {
   const isEdit = !!occ;
   const p = isEdit ? S.data.event.get(occ.uid)?.p : null;
@@ -621,9 +626,12 @@ function openEventModal(occ) {
   };
   const catOpts = cats().map(c =>
     `<option value="${c.uid}" ${c.uid === init.categoryUid ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
+  const tpls = isEdit ? [] : tplList();
   const d = modal(`
     <h3>${isEdit ? '编辑日程' : '新建日程'}</h3>
     ${isEdit && occ.recurring ? '<p style="font-size:12px;color:var(--gray);margin-bottom:8px">重复日程在网页端按整个系列修改；改单次请在 App 内操作</p>' : ''}
+    ${tpls.length ? `<div class="tpl-row">${tpls.map((tp, i) =>
+      `<button class="tpl-chip" data-i="${i}">${esc(tp.n)}<span class="tpl-x" data-x="${i}">×</span></button>`).join('')}</div>` : ''}
     <div class="frow"><input id="evTitle" placeholder="日程名" value="${esc(init.title)}"></div>
     <div class="check-line"><input type="checkbox" id="evAllDay" ${init.allDay ? 'checked' : ''}><label for="evAllDay">全天</label></div>
     <div class="frow-inline">
@@ -649,7 +657,8 @@ function openEventModal(occ) {
     <div class="frow"><textarea id="evMemo" rows="2" placeholder="${t('备注')}">${esc(init.memo)}</textarea></div>
     </div>
     <div class="btns">
-      ${isEdit ? '<button class="btn-ghost left" id="evDel" style="color:var(--red)">删除</button>' : ''}
+      ${isEdit ? '<button class="btn-ghost left" id="evDel" style="color:var(--red)">删除</button>'
+                : `<button class="btn-ghost left" id="evTplSave" style="color:var(--gray);font-size:13px">${t('存为模板')}</button>`}
       <button class="btn-ghost" id="evX">取消</button>
       <button class="btn-dark" id="evSave">保存</button>
     </div>`);
@@ -664,6 +673,41 @@ function openEventModal(occ) {
   };
   syncVis();
   d.querySelector('#evAllDay').onchange = syncVis;
+  // 模板：点 chip 带入字段（日期不动 —— Context 决定），× 删除，「存为模板」快照当前字段
+  d.querySelectorAll('.tpl-chip').forEach(chip => chip.onclick = e => {
+    if (e.target.classList.contains('tpl-x')) {
+      // 按打开时的快照名定位再删 —— 直接用 index 会在删过一个之后全部错位
+      const l = tplList();
+      const idx = l.findIndex(x => x.n === tpls[+chip.dataset.i]?.n);
+      if (idx >= 0) { l.splice(idx, 1); tplStore(l); }
+      chip.remove(); return;
+    }
+    const tp = tpls[+chip.dataset.i]?.p; if (!tp) return;
+    d.querySelector('#evTitle').value = tp.title || '';
+    d.querySelector('#evAllDay').checked = !!tp.allDay;
+    d.querySelector('#evStart').value = hm(tp.startMin ?? 540);
+    d.querySelector('#evEnd').value = hm(tp.endMin ?? 600);
+    d.querySelector('#evCat').value = tp.categoryUid || 'cat-default-1';
+    d.querySelector('#evLoc').value = tp.location || '';
+    d.querySelector('#evMemo').value = tp.memo || '';
+    syncVis();
+  });
+  const tplBtn = d.querySelector('#evTplSave');
+  if (tplBtn) tplBtn.onclick = () => {
+    const title = d.querySelector('#evTitle').value.trim();
+    if (!title) { toast(t('先填写日程名再保存模板')); return; }
+    const toMin0 = v => { const m = /^(\d{2}):(\d{2})$/.exec(v); return m ? +m[1] * 60 + +m[2] : 540; };
+    const l = tplList();
+    l.unshift({
+      n: title, p: {
+        title, allDay: d.querySelector('#evAllDay').checked,
+        startMin: toMin0(d.querySelector('#evStart').value), endMin: toMin0(d.querySelector('#evEnd').value),
+        categoryUid: d.querySelector('#evCat').value,
+        location: d.querySelector('#evLoc').value.trim(), memo: d.querySelector('#evMemo').value.trim()
+      }
+    });
+    tplStore(l); toast(t('已存为模板'));
+  };
   // P2-C2：渐进披露（与 App「显示详细设置」同一措辞）。编辑已填过的日程默认展开
   const advBox = d.querySelector('#evAdv'), advBtn = d.querySelector('#evAdvToggle');
   const hasAdv = isEdit && (init.location || init.memo || init.freq > 0 || (occ && occ.categoryUid && occ.categoryUid !== 'cat-default-1'));
@@ -1203,7 +1247,9 @@ async function sendChat(text) {
           if (delta) {
             full += delta;
             // T2：截断在代码块前 —— 动作 JSON 逐字冒出也不给用户看
-            liveBubble.textContent = full.split('```')[0].replace(/[`{]+$/, '');
+            // X1（§70）：流式路径也过内部 ID 清洗（v1.11.0 只清了最终渲染，打字过程仍会漏 [t1]）
+            liveBubble.textContent = full.split('```')[0].replace(/[`{]+$/, '')
+              .replace(/[（(]?\[[etn]\d+\][）)]?/g, '');
             liveDiv.scrollIntoView({ block: 'end' });
           }
         } catch (e) { }

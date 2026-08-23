@@ -151,7 +151,8 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         ) {
             Spacer(Modifier.weight(1f))
             if (aiBusy) {
-                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = MaterialTheme.colorScheme.primary)
+                // T9（§70）：AI 干活的等待态用小鹿出场，不用裸转圈
+                com.looka.app.ui.common.DeerLoading(tr("小鹿润色中…"))
                 Spacer(Modifier.width(10.dp))
             }
             OutlinedButton(

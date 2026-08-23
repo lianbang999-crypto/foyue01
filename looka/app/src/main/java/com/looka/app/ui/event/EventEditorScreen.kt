@@ -469,12 +469,12 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
 
     if (remSheet) ReminderSheet(d, onDismiss = { remSheet = false })
 
-    if (tplSheet) TemplateSheet(vm, d, onDismiss = { tplSheet = false })
+    if (tplSheet) TemplateSheet(vm, d, nav = nav, onDismiss = { tplSheet = false })
 }
 
 /** 日程模板列表：点选套用 / 保存当前 / 长按删除（规格 CAL-010 模板入口） */
 @Composable
-fun TemplateSheet(vm: LookaViewModel, d: EventDraft, onDismiss: () -> Unit) {
+fun TemplateSheet(vm: LookaViewModel, d: EventDraft, nav: NavHostController? = null, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val tpls by vm.templates.collectAsState()
     var delTpl by remember { mutableStateOf<Template?>(null) }
@@ -530,6 +530,11 @@ fun TemplateSheet(vm: LookaViewModel, d: EventDraft, onDismiss: () -> Unit) {
                     modifier = Modifier.padding(start = 20.dp)
                 )
             }
+            // CAL-062（§70）：与独立管理页互通
+            if (nav != null) TextButton(
+                onClick = { onDismiss(); nav.navigate("templates") },
+                modifier = Modifier.padding(horizontal = 12.dp)
+            ) { Text(tr("管理模板"), color = GrayText) }
         }
     }
 

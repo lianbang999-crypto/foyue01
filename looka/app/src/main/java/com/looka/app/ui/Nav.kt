@@ -111,6 +111,12 @@ fun LookaRoot() {
             )
         }
         composable("categories") { CategoryManageScreen(vm, nav) }
+        // CAL-062（§70）：模板独立入口与创建页
+        composable("templates") { com.looka.app.ui.event.TemplateManageScreen(vm, nav) }
+        composable(
+            "template/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { e -> com.looka.app.ui.event.TemplateEditorScreen(vm, nav, e.arguments!!.getLong("id")) }
         composable("calSettings") { CalendarSettingsScreen(vm, nav) }
         composable("search") { SearchScreen(vm, nav) }
         composable("aiChat") { AiChatScreen(vm, nav) }

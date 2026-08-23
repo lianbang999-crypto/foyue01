@@ -343,15 +343,15 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     // ================= 模板（规格 CAL-010 模板入口） =================
 
-    /** 把当前草稿存为模板（不含日期） */
-    fun saveTemplate(d: EventDraft) = viewModelScope.launch {
+    /** 模板字段快照（不含日期 —— 母档冻结：Template=这类事是什么，日期由 Context 给） */
+    private fun templatePayload(d: EventDraft): String {
         val catUid = categories.value.find { it.id == d.categoryId }?.uid ?: "cat-default-1"
         val rs = JSONArray()
         d.reminders.forEach {
             rs.put(JSONObject().put("m", it.minutesBefore).put("d", it.daysBefore)
                 .put("t", it.timeOfDayMin).put("on", it.enabled))
         }
-        val payload = JSONObject()
+        return JSONObject()
             .put("title", d.title.trim())
             .put("categoryUid", catUid)
             .put("allDay", d.allDay)
@@ -361,7 +361,32 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             .put("freq", d.freq).put("interval", d.interval).put("weekdays", d.weekdays)
             .put("monthlyByWeekday", d.monthlyByWeekday)
             .put("reminders", rs)
-        templateDao.insert(Template(title = d.title.trim().ifBlank { tr("未命名模板") }, payload = payload.toString()))
+            .toString()
+    }
+
+    /** 把当前草稿存为模板（不含日期） */
+    fun saveTemplate(d: EventDraft) = viewModelScope.launch {
+        templateDao.insert(Template(title = d.title.trim().ifBlank { tr("未命名模板") }, payload = templatePayload(d)))
+    }
+
+    /** CAL-062（§70）：独立模板编辑页的保存 —— id>0 更新，否则新建 */
+    fun upsertTemplate(id: Long, d: EventDraft, onDone: () -> Unit = {}) = viewModelScope.launch {
+        val title = d.title.trim().ifBlank { tr("未命名模板") }
+        if (id > 0) templateDao.update(id, title, templatePayload(d))
+        else templateDao.insert(Template(title = title, payload = templatePayload(d)))
+        onDone()
+    }
+
+    /** CAL-062（§70）：模板 → 编辑草稿（日期字段只是占位，编辑页不展示） */
+    fun templateDraft(t: Template?): EventDraft {
+        val c = getApplication<Application>()
+        val d = EventDraft()
+        d.startDay = Fmt.today(); d.endDay = d.startDay
+        d.startMin = 9 * 60; d.endMin = 10 * 60
+        d.categoryId = Prefs.defaultCategoryId(c)
+        if (t != null) applyTemplate(d, t)
+        d.remindersTouched = true
+        return d
     }
 
     /** 套用模板到草稿（保留当前日期） */
