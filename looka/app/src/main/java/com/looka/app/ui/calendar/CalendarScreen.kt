@@ -20,7 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.NotificationsNone
@@ -855,8 +857,9 @@ private fun DayCellV2(
             }
             for (t in taskList) {
                 if (shown >= budget) break
+                // §73：未完成=○ 完成=✓ —— 之前恒为✓，未完成的看着像已完成，还与日程难区分
                 Text(
-                    "✓${t.title}", fontSize = evFs,
+                    (if (t.done) "✓" else "○") + t.title, fontSize = evFs,
                     color = listColorMap[t.listUid] ?: GrayText,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = evLh,
                     textDecoration = if (t.done) TextDecoration.LineThrough else null,
@@ -1126,12 +1129,14 @@ private fun DaySheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(tr("任务"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))
+                        // §73：与待办页同款 —— 未完成圆圈 / 完成圆圈里打勾（旧版未完成用日历图标，像日程）
                         Icon(
-                            if (t.done) Icons.Default.Check else Icons.Outlined.Event,
-                            null,
+                            if (t.done) Icons.Default.CheckCircle
+                            else Icons.Default.RadioButtonUnchecked,
+                            if (t.done) tr("取消完成") else tr("完成"),
                             tint = if (t.done) MaterialTheme.colorScheme.primary
-                            else (listColorMap[t.listUid] ?: GrayText),
-                            modifier = Modifier.size(17.dp).plainClick { vm.toggleTask(t) }
+                            else (listColorMap[t.listUid] ?: Color(0xFFC0C3C0)),
+                            modifier = Modifier.size(18.dp).plainClick { vm.toggleTask(t) }
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
@@ -1391,6 +1396,8 @@ private fun CreatePanel(
         }
         Hairline()
 
+        // §73：三个模式内容区等高（以表情 tab 为基准）—— 切 tab 面板不跳变
+        Box(Modifier.fillMaxWidth().height(300.dp), contentAlignment = Alignment.TopStart) {
         when (mode) {
             0 -> Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1469,6 +1476,7 @@ private fun CreatePanel(
                 )
                 Spacer(Modifier.height(6.dp))
             }
+        }
         }
     }
 }

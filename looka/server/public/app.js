@@ -484,7 +484,8 @@ function renderCalendar(anchorDay) {
       }
       for (const k of tks) {
         if (shown >= CELL_MAX) break;
-        lines += `<div class="ev-line task">✓${esc(k.title)}</div>`;
+        // §73：未完成=○ 完成=✓（与安卓月格一致）
+        lines += `<div class="ev-line task">${k.done ? '✓' : '○'}${esc(k.title)}</div>`;
         shown++;
       }
       const rest = evs.length + tks.length - shown;
@@ -576,9 +577,11 @@ function renderDayPanel(evs, tks, sts) {
       <div class="time">${o.allDay ? '全天' : hm(o.startMin) + '<br>' + hm(o.endMin)}</div></div>`;
   });
   tks.forEach(k => {
+    // §73：圆圈打勾（同待办页 .ck 圆钮），不再用 ☐/☑ 方框
     html += `<div class="day-item" data-task="${k.uid}">
-      <div class="t"><div class="name" style="${k.done ? 'color:var(--gray);text-decoration:line-through' : ''}">${k.done ? '☑' : '☐'} ${esc(k.title)}</div></div>
-      <div class="time">任务</div></div>`;
+      <div class="t task-line"><span class="ck-mini${k.done ? ' on' : ''}">${k.done ? '✓' : ''}</span>
+      <div class="name" style="${k.done ? 'color:var(--gray);text-decoration:line-through' : ''}">${esc(k.title)}</div></div>
+      <div class="time">${t('任务')}</div></div>`;
   });
   // 日记：有没有都常驻一行（对齐 Lifebear 实机，空日子给一句邀请而不是什么都不显示）
   html += diary
