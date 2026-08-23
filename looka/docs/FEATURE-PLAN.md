@@ -7721,3 +7721,92 @@ N1 日记去表情排        N2 更多页体检          N4 待办分组顺序
 N5 待办删标题行        N6 笔记加搜索并置顶     N7 placeholder 写清可搜内容
 N8 小鹿进搜索行 + 撤笔记页重复 ＋              N9 🔴 中央 ＋ 按 tab 分流（真 bug）
 ```
+
+---
+
+## 七十八、§78 规划（2026-08-23 深夜）：v1.3 母档 —— 证据分层 + Looka 自审 + 四类合同
+
+新母档《Calendar UI/UX 规范 v1.3 · V012/V013/V014 + L001》（34.7k 字）。
+前 19 章是 v1.1 内容（§77 已吸收），**全新的是 §20–26**。
+
+### 一、这一版最大的不同：它审查了我们自己
+
+证据体系加了一级 **L = Looka 当前 Build**，并且明确 **B（Lifebear 实机）与 L 严格分层，
+L 不能反向证明 B**。L001 是一段 39.92s 的我们自己的录屏，覆盖 More/订阅/AI/主题/日历设置/
+提醒自检/备份/关于。
+
+它给我们的判语值得记下来：
+
+> 「Looka 的页面层级已经明显成熟 —— More 作管理层，复杂任务用 Full-page，Theme 用 Bottom Sheet，
+> About 用 Dialog，稳定偏好用 Inline Toggle；**下一步重点不是重画页面，而是把 AI 权限、Theme 提交、
+> 系统设置返回与深页恢复合同写死**。」
+
+也就是说：**结构过关了，缺的是合同**。这和前几轮「推翻重做」的性质完全不同。
+
+另外它自己纠了个错：上一版把 `0dff…` 当成 Looka，其实那是 Lifebear 的 Note/Diary 实机，
+现改登记为 V014 [B] —— 意味着**笔记清单结构从「我的推断」升级为 B 级事实**（§77 批 C 的依据变硬了）。
+
+### 二、🔴 查证：它点的 5 处，我们中了 4 处
+
+| L001 指出 | 实查结果 | 判定 |
+|---|---|---|
+| 多选设置必须显式提交 | 休日星期 Dialog 勾选**直接改 `holidayMask` 状态变量**，取消也回不去 | 🔴 中 |
+| Task 应有原生详情页 | 我们是 `TaskEditDialog`（AlertDialog），**没有原生详情** | 🔴 中 |
+| Theme 提交语义要冻结一种 | 选色即时 apply、无 Cancel —— 语义其实是统一的 | ✅ 合规 |
+| 深页返回恢复 More 滚动锚点 | `verticalScroll(rememberScrollState())` **未 remember 到导航层**，返回回页顶 | 🔴 中 |
+| 提醒自检从系统设置返回自动重查 | `ExtraScreens.kt` 里**无 ON_RESUME 监听** | 🔴 中 |
+
+**多选那条是真 bug**：文档 §21.2 说得很清楚 ——
+> 「Single-choice：一次 tap 已表达完整意图，优先 select-and-close；
+> **Multi-choice：单次 tap 只表达集合的一部分，必须有独立 commit，否则用户无法理解"我勾到第几项已经保存"**。」
+
+我们的休日星期是多选，勾选即改变量，点「取消」也已经改了 —— 用户勾了三个再后悔，回不去。
+
+### 三、v1.3 的四类新合同（我们都缺）
+
+**1. Settings = Preference Router（§21）** —— 按**决策成本**选容器，共七类：
+Inline Toggle（低风险 bool，点即存）· Single-choice Dialog（点即提交并关闭）·
+Multi-choice Dialog（**勾选只改 draft，OK 才提交**）· Visual-choice（要看效果再选）·
+Full-page Editor · Capability Gate（点到受限能力才解释）· Draft Editor（Save 是事务边界，
+dirty 时 X 要确认）。
+
+**2. Task 原生生命周期（§22，V013 B 级）** —— Task 不是 Event 的弱化版：
+详情页上完成圆圈和星标直接可切（无确认）· More 是**锚定菜单、无全屏遮罩**，收 Copy/Delete ·
+Delete 才进阻断 Dialog · **Copy = 生成预填新 Draft**（不是原地复制），取消照样走 dirty 确认。
+
+**3. Note/List 合同（§23，V014 B 级）** —— 五条要锁死：
+List 是持久对象不是 editor 内的字符串 · 改 List / 新建 List 期间 **Note draft 不能丢** ·
+**同一时刻只有 1 个 interactive modal，IME 只能有一个 owner**（Create List 打开时它是唯一文本焦点）·
+新建 List 后自动选中 · 保存 local-first 立即投影到当前 List。
+
+**4. Overlay Manager 硬规则（§25.1）** ——
+嵌套 Dialog 在工程上必须是 **suspend/replace 而不是两层都可响应** · top modal 是唯一 focus owner ·
+用户主动操作永远高于 AI/运营队列 · **Capability Gate（用户点了受限能力）与主动营销严格区分** ·
+任何阻断 Dialog 关闭后恢复原 scroll anchor / selection / draft。
+
+### 四、§77 计划的修订
+
+v1.3 不推翻 §77，但改了三处权重：
+
+- **批 C（笔记清单）优先级上调** —— 从「我看图推断」变成 V014 B 级事实，且文档给了完整状态机
+- **新增批 E：Preference Router + 四类合同** —— 这是 L001 直接点我们的，且多选那条是真 bug
+- **批 D（Overlay Manager）内容加厚** —— 多了 IME ownership 与 suspend/replace 两条硬规则
+
+修订后的顺序：
+
+```
+批 A  日记去表情 · 更多页体检 · 待办分组 · 搜索即页首 ×2 · 中央＋按 tab 分流   （已定，9 项）
+批 E  🔴 L001 自审四修：多选 Dialog 显式提交 · 深页返回恢复锚点 ·
+      提醒自检 ON_RESUME 重查 · Task 原生详情页（含 More 锚定菜单 + Copy 语义）
+批 B  父/子编辑器骨架（分类全页选择器 · 提醒两层 · 重复页 tab+摘要 · Pressed→Navigate）
+批 C  笔记 List 合同（清单实体 · 搜索 · ListChange/CreateList · draft 保全 · local-first）
+批 D  Overlay Manager（层级/队列/idle/频控 + top-modal ownership + IME owner）
+      字段级 Date Picker 两变体 · 键盘协调器
+```
+
+**为什么把 E 提到 B 前面**：E 里全是「已实现但合同没写死」的小修，改动面窄、风险低，
+且含一个真 bug（多选无法取消）；B 会动整个表单层。先把已有的东西修对，再动骨架。
+
+### 五、验收
+文档 §26 给了 25 条 AC（SET-101~104 / TSK-101~105 / NOTE-101~105 / OVL-101~103 /
+LOOKA-101~107），其中 LOOKA-101~107 七条是**直接针对我们的**，做完批 E 应逐条对照。
