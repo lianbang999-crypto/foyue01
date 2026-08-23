@@ -1,5 +1,5 @@
 /* Looka PWA Service Worker：只缓存应用外壳，API 永远走网络（避免旧缓存卡版本） */
-const VER = 'looka-v26';
+const VER = 'looka-v27';
 const SHELL = ['/', '/style.css', '/app.js', '/deer.svg', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 26,
-  "versionName": "1.11.0",
+  "versionCode": 27,
+  "versionName": "1.12.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3661241,
-  "sha256": "6db661c4265c83269df8dc96ccecad77afb0e0f4c47af5f3b8deacca0c009c98",
-  "changelog": "印章可以拖着换日子了 · 回今天 · 长按全天区新建",
+  "size": 3677921,
+  "sha256": "ef4a7d27453e5563144177f0932039dc7fe005d9912d793220f845c6ef5ae2c1",
+  "changelog": "模板系统上线：日历设置里可以建常用日程模板，创建时一键带入；周视图重叠日程更清爽（多的收进 +N，点开看当天）；等待动画和设置项小升级",
   "minSupported": 1
 }
