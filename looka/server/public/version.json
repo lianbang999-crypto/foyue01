@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 30,
-  "versionName": "1.14.1",
+  "versionCode": 31,
+  "versionName": "1.15.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
   "size": 3694573,
-  "sha256": "cbf1927a717f5b283e9d96bc2c22ee9b34bd3c2fabad10d658981f6d68410bf7",
-  "changelog": "任务标记全站统一：未完成是圆圈、完成是圆圈里打勾，一眼区分日程和任务；创建面板切换日程/任务/表情不再跳动",
+  "sha256": "af657396f77fb6c87e17822d5f4b57ec59f2f964dd3041653efc270741dacd7a",
+  "changelog": "贴纸放到哪天就是哪天：拖放定位、绑定日程、移动同步全面修正；给贴纸登记日程时贴纸出现在表单里；页面切换更干脆；完成的任务不再划删除线",
   "minSupported": 1
 }
