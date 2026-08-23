@@ -158,6 +158,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     fun prepareCreateDraft(day: Long, startMin: Int = -1, allDay: Boolean? = null) {
         val c = getApplication<Application>()
         pendingStampBind = -1L      // §5.2：新草稿默认不回绑印章，由印章入口显式设置
+        pendingStampAsset = ""
         val d = EventDraft()
         d.startDay = day
         d.endDay = day
@@ -231,6 +232,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     /** §72 §5.2：从印章「登记日程」进来时待回绑的印章 id（保存后 Decorative → Event-bound） */
     var pendingStampBind by mutableLongStateOf(-1L)
+    // §74 P0-4：登记日程时把贴纸带进表单（标题左侧缩略图）—— Context continuity，
+    // 用户的心智是「给这枚贴纸登记日程」，不是「新建一个普通日程」
+    var pendingStampAsset by mutableStateOf("")
 
     fun saveCreate(d: EventDraft, onDone: () -> Unit) = viewModelScope.launch {
         val uid = newUid()
@@ -239,6 +243,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         if (pendingStampBind >= 0) {
             stampDao.bindEvent(pendingStampBind, uid, now())
             pendingStampBind = -1L
+            pendingStampAsset = ""
+            // §74 P0-8：「贴纸→登记日程→保存」任务完成，Composer session 收束回正常日历
+            createPanel = false
+            stampSel = ""
         }
         afterChange()
         onDone()
@@ -663,12 +671,26 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Sticker Canvas v1：拖动落点写回。位置是实例状态（Place → Reposition 可反复）。 */
     fun moveStamp(id: Long, newDay: Long, px: Float, py: Float) = viewModelScope.launch {
-        stampDao.byId(id)?.let {
-            stampDao.update(it.copy(
+        stampDao.byId(id)?.let { st ->
+            stampDao.update(st.copy(
                 day = newDay,
                 posX = px.coerceIn(0f, 1f), posY = py.coerceIn(0f, 1f),
                 dirty = true, updatedAt = now()
             ))
+            // §74 P0-7：复合对象原子移动 —— 绑定日程随印章同 delta 平移。
+            // 旧版只挪印章：日历上原日期留下事件残影（详情页显示新日期是它信了 st.day 参数的假象，
+            // 后台其实没改）。BEAR 模型：Sticker 始终是 Sticker，Event 是附加语义，两者日期必须原子同步。
+            val delta = newDay - st.day
+            if (delta != 0L && st.eventUid.isNotBlank()) {
+                eventDao.seriesByUid(st.eventUid)?.takeIf { !it.deleted }?.let { se ->
+                    eventDao.updateSeries(se.copy(
+                        startDay = se.startDay + delta, endDay = se.endDay + delta,
+                        dirty = true, updatedAt = now()
+                    ))
+                    // 同 saveEditAll 规则：整体平移后旧的单次修改不再有意义
+                    eventDao.deleteExceptionsOf(se.id)
+                }
+            }
             afterChange()
         }
     }

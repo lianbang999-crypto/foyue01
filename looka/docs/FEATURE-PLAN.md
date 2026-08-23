@@ -7450,3 +7450,33 @@ W  网页同构：尺寸 0.47 · 标题气泡
 
 注：AI 拆子任务弹窗里的方形 Checkbox 是"多选要添加哪些"，不是完成态，不改。
 创建面板是安卓独有形态（网页 ＋ 走弹窗），等高仅安卓；任务标记双端同步。
+
+---
+
+## 七十四、v1.15.0 批（2026-08-23 午）：Sticker→Event 数据链路 8 个 P0（GPT 逐帧对照第二轮）
+
+外层拖动已达 75-85%，但「放下→绑定→保存→再移动」闭环只有 50-60%。本批只修 P0，不磨像素。
+
+### 根因诊断（代码实证）
+
+| P0 | 现象 | 真正根因 |
+|---|---|---|
+| 1 放下即消失 | Ghost 先撤、实例后到 | drop 时立即 ghost=null，addStamp 异步落库有帧隙；且命中错格时贴到了别处 |
+| 2 12/17 变 12/10（错一周）| 命中算式 | gridHit 用 rowHpx 浮点算式推行号，panel inset 引起网格重排时有陈旧窗口 → **改用 LazyColumn layoutInfo.visibleItemsInfo 真实几何查找**，从构造上消灭整类误差 |
+| 3 Popover 锚点漂 | 锚在落点，但实例在错格 | P0-2 修复后落点=实例中心，天然对齐 |
+| 4 创建页无贴纸 | 只后台记 pendingStampBind | 加 pendingStampAsset，标题左侧渲染缩略图；hostDate 本就取 st.day（12/10 是上游命中错）|
+| 5 保存后贴纸没了只剩灰块 | **boundOf 读 seriesAll.value（非响应式）+ remember(stampList) 缓存** | series 流晚于 stamp 流到达 → 去重集卡旧值：气泡不出、章不显语义 → 改用 collectAsState 的 series 派生，去掉 remember 陷阱 |
+| 6 双重 Event（黄块+灰块）| 同上一个 bug 的另一面 | 同 P0-5 修复；**网页月格根本没做去重** → 补 |
+| 7 移动后旧日期残影 | moveStamp 只挪贴纸不挪日程 | **详情页显示新日期是假象**（它信 st.day 参数）；改为原子移动：stamp.day 与绑定 series.startDay/endDay 同 delta 更新，delta≠0 清 exceptions（同 saveEditAll 规则）|
+| 8 收束与转场 | 保存后 Picker 还开着；页面切换是 crossfade | 绑定保存 → 收创建面板；NavHost 全局改水平 Push（280ms easeOut，无淡化叠影）|
+
+主动保留：点选连续盖章模式保存贴纸后面板不收（我们的产品路径，§72 已记录偏离）；
+收束只针对「贴纸→登记日程→保存」这条 BEAR 语义链。
+
+### 一并执行（用户明示）
+- B：任务完成不加删除线，打勾+灰字即可 —— 全站 6 处去删除线（月格/抽屉/搜索/待办/网页×2）
+
+### 顺延到下批（P1，先不动）
+编辑器藏模式切换排 · AI 移出第四对象 · Composer 取代底栏 · Picker 降高去文字 ·
+Popover 外观（黑字/细边/小圆角）· 创建页日期层级 · 品牌色退出 Chrome · 月格任务圆圈图标化 ·
+任务创建页○/☆ · 贴纸包＋入口 · 📷 · 撤销浮标

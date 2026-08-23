@@ -141,8 +141,7 @@ fun SearchScreen(vm: LookaViewModel, nav: NavHostController) {
                         Text(
                             t.title, fontSize = 15.sp,
                             color = if (t.done) GrayText else Ink,
-                            textDecoration = if (t.done) TextDecoration.LineThrough else null,
-                            modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis
+                                                        modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                         if (t.dueDay >= 0) {
                             Text(

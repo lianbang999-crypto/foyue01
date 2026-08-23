@@ -88,11 +88,20 @@ fun LookaRoot() {
     NavHost(
         nav,
         startDestination = "home",
-        // 轻量转场：右滑进入 / 淡出返回（规格 §12 低装饰原则）
-        enterTransition = { slideInHorizontally(tween(com.looka.app.ui.theme.Motion.ENTER)) { it / 5 } + fadeIn(tween(com.looka.app.ui.theme.Motion.ENTER)) },
-        exitTransition = { fadeOut(tween(com.looka.app.ui.theme.Motion.EXIT)) },
-        popEnterTransition = { fadeIn(tween(160)) },
-        popExitTransition = { slideOutHorizontally(tween(220)) { it / 5 } + fadeOut(tween(180)) }
+        // §74 P0-10（对齐 BEAR 实机逐帧）：Horizontal Push —— 新页整幅从右推入、
+        // 旧页向左退 1/5 制造纵深；全程无透明度（crossfade 的重叠淡影正是"廉价感"来源）
+        enterTransition = {
+            slideInHorizontally(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it }
+        },
+        exitTransition = {
+            slideOutHorizontally(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { -it / 5 }
+        },
+        popEnterTransition = {
+            slideInHorizontally(tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { -it / 5 }
+        },
+        popExitTransition = {
+            slideOutHorizontally(tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it }
+        }
     ) {
         composable("home") { HomeScreen(vm, nav) }
         composable("editor") { EventEditorScreen(vm, nav) }

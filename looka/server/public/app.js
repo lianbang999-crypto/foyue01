@@ -474,8 +474,11 @@ function renderCalendar(anchorDay) {
       let lines = '';
       let shown = 0;
       const CELL_MAX = 6;
+      // §74 P0-6：绑定印章的日程已由印章气泡表达，不再重复出普通事件行（App §6.1 同构，网页此前漏做）
+      const bubbleUids = new Set(sts.filter(st => st.px >= 0 && st.eventUid).map(st => st.eventUid));
       for (const o of evs) {
         if (shown >= CELL_MAX) break;
+        if (bubbleUids.has(o.uid)) continue;
         const c = catColor(o.categoryUid);
         lines += o.allDay
           ? `<div class="ev-line allday" style="background:${c};color:${onColorHex(c)}">${esc(o.title)}</div>`
@@ -580,7 +583,7 @@ function renderDayPanel(evs, tks, sts) {
     // §73：圆圈打勾（同待办页 .ck 圆钮），不再用 ☐/☑ 方框
     html += `<div class="day-item" data-task="${k.uid}">
       <div class="t task-line"><span class="ck-mini${k.done ? ' on' : ''}">${k.done ? '✓' : ''}</span>
-      <div class="name" style="${k.done ? 'color:var(--gray);text-decoration:line-through' : ''}">${esc(k.title)}</div></div>
+      <div class="name" style="${k.done ? 'color:var(--gray)' : ''}">${esc(k.title)}</div></div>
       <div class="time">${t('任务')}</div></div>`;
   });
   // 日记：有没有都常驻一行（对齐 Lifebear 实机，空日子给一句邀请而不是什么都不显示）

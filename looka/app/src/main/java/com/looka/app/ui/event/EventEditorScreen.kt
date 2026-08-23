@@ -112,6 +112,7 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     fun reallyClose() {
         vm.draft = null
         vm.pendingStampBind = -1L   // §9：EVENT_CREATE 取消 → 印章保持 Decorative，不回绑
+        vm.pendingStampAsset = ""
         nav.popBackStack()
     }
 
@@ -310,6 +311,18 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         // 标题（输入后即可保存 —— 最低输入成本）+ 模板入口（规格 CAL-010）
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // §74 P0-4（对齐 BEAR）：从贴纸「登记日程」进来时，贴纸缩略图出现在标题左侧 ——
+            // 用户在给「这枚贴纸」登记日程，不是新建普通日程
+            if (vm.pendingStampBind >= 0 && vm.pendingStampAsset.isNotBlank()) {
+                val ctxStamp = LocalContext.current
+                val stBmp = androidx.compose.runtime.remember(vm.pendingStampAsset) {
+                    com.looka.app.util.StampAssets.bitmap(ctxStamp, vm.pendingStampAsset)
+                }
+                if (stBmp != null) androidx.compose.foundation.Image(
+                    stBmp, null,
+                    modifier = Modifier.padding(start = 12.dp).size(30.dp)
+                )
+            }
             TextField(
                 value = d.title,
                 onValueChange = { d.title = it },

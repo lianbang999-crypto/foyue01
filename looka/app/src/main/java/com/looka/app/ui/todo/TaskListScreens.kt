@@ -566,8 +566,7 @@ fun TaskRowV2(
             Text(
                 t.title, fontSize = 15.sp,
                 color = if (t.done) GrayText else Ink,
-                textDecoration = if (t.done) TextDecoration.LineThrough else null,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (listName != null) {

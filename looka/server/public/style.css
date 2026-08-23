@@ -153,7 +153,8 @@ main { max-width: 860px; margin: 0 auto; }
 }
 .todo-item.done .ck { background: var(--primary); border-color: var(--primary); transform: scale(1.05); }
 .todo-item .tt { flex: 1; font-size: 14px; }
-.todo-item.done .tt { color: var(--gray); text-decoration: line-through; }
+/* §74 B：完成任务不划删除线（打勾+灰字即可，对齐 BEAR） */
+.todo-item.done .tt { color: var(--gray); }
 .todo-item .due { font-size: 11px; color: var(--gray); background: var(--panel); border-radius: 10px; padding: 2px 7px; }
 .todo-item .due.late { color: var(--red); }
 .todo-item .del { color: #C0C3C0; font-size: 15px; padding: 2px 6px; }

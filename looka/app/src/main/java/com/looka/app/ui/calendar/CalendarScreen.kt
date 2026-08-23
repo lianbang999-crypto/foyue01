@@ -281,8 +281,13 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 onOpenSys = { sysDetail = it },
                 onStampTap = { st, pos -> stampMenu = st to pos },
                 boundOf = { st ->
-                    if (!showStampTitle) null
-                    else vm.stampSeries(st)?.takeIf { it.title.isNotBlank() }?.let { it.id to it.title }
+                    // §74 P0-5/6：必须走 collectAsState 的 series（响应式）。
+                    // 旧版读 vm.seriesAll.value —— 保存日程后 stamp 流先到、series 流后到，
+                    // remember(stampList) 把去重集卡在旧值：气泡不出、事件条不隐（"双重 Event"实锤根因）
+                    if (!showStampTitle || st.eventUid.isBlank()) null
+                    else series.find { it.uid == st.eventUid }
+                        ?.takeIf { it.title.isNotBlank() }
+                        ?.let { it.id to it.title }
                 },
                 onGridReady = { gridHit.value = it },
                 sheetContent = {
@@ -356,6 +361,7 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                     // §5.2：复用标准快速创建，印章与 hostDate 作为上下文带入
                     vm.prepareCreateDraft(st.day, allDay = true)
                     vm.pendingStampBind = st.id
+                    vm.pendingStampAsset = st.assetId   // P0-4：贴纸缩略图进表单
                     nav.navigate("editor")
                 }
             },
@@ -383,17 +389,23 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                     0, 1 -> ghost = assetId to pos
                     2 -> {
                         // §4 Drop：命中日期格 → 落库；未命中 → 取消（AC-003）
-                        gridHit.value?.invoke(pos)?.let { (d, u, v) ->
+                        val hit = gridHit.value?.invoke(pos)
+                        if (hit == null) {
+                            ghost = null
+                        } else {
+                            val (d, u, v) = hit
                             vm.addStamp("🦌", d, assetId = assetId, px = u, py = v) { newId ->
+                                // §74 P0-1：Ghost 持留到实例真正落库并进入渲染流后再撤 ——
+                                // Drop 完成 ≠ 暂时隐藏 Sticker（旧版先撤 ghost 后落库，有一段"贴纸消失"的帧隙）
+                                ghost = null
                                 // §4.1 New Drop：首次放置后自动弹语义确认（AC-004）。
-                                // 锚点直接用落点 —— 印章此刻就在手指松开的位置
+                                // P0-3：命中修正后，落点即实例中心，caret 天然指向贴纸
                                 stampMenu = com.looka.app.data.Stamp(
                                     id = newId, emoji = "🦌", day = d,
                                     assetId = assetId, posX = u, posY = v
                                 ) to pos
                             }
                         }
-                        ghost = null
                     }
                     else -> ghost = null
                 }
@@ -601,24 +613,29 @@ private fun MonthFull(
                 var gridRoot by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                 var gridSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
                 val rowHpx = with(LocalDensity.current) { rowH.toPx() }
-                LaunchedEffect(gridRoot, gridSize, rowHpx, origin) {
+                LaunchedEffect(gridRoot, gridSize, origin) {
                     onGridReady { p ->
                         val rx = p.x - gridRoot.x
                         val ry = p.y - gridRoot.y
                         if (gridSize.width <= 0 || rx < 0f || ry < 0f ||
                             rx > gridSize.width || ry > gridSize.height) null
                         else {
-                            val colW = gridSize.width / 7f
-                            val col = (rx / colW).toInt().coerceIn(0, 6)
-                            val yAbs = ry + listState.firstVisibleItemScrollOffset
-                            val rowOff = kotlin.math.floor(yAbs / rowHpx).toInt()
-                            val wIdx = (listState.firstVisibleItemIndex + rowOff)
-                                .coerceIn(0, TOTAL_WEEKS - 1)
-                            Triple(
-                                origin + wIdx * 7L + col,
-                                ((rx - col * colW) / colW).coerceIn(0f, 1f),
-                                ((yAbs - rowOff * rowHpx) / rowHpx).coerceIn(0f, 1f)
-                            )
+                            // §74 P0-2：不再用 rowHpx 浮点算式反推行号（面板 inset 重排网格时
+                            // 存在陈旧窗口，实测把 12/17 算成 12/10 整整错一周）。
+                            // 改问 LazyColumn 本帧的真实布局 —— 指针落在哪个 item 的范围里就是哪一周，
+                            // 从构造上消灭取整/时序整类误差。
+                            val hit = listState.layoutInfo.visibleItemsInfo
+                                .firstOrNull { ry >= it.offset && ry < it.offset + it.size }
+                            if (hit == null) null
+                            else {
+                                val colW = gridSize.width / 7f
+                                val col = (rx / colW).toInt().coerceIn(0, 6)
+                                Triple(
+                                    origin + hit.index * 7L + col,
+                                    ((rx - col * colW) / colW).coerceIn(0f, 1f),
+                                    ((ry - hit.offset) / hit.size.toFloat()).coerceIn(0f, 1f)
+                                )
+                            }
                         }
                     }
                 }
@@ -836,10 +853,11 @@ private fun DayCellV2(
             val evFs = when (fsTier) { 0 -> 11.5.sp; 1 -> 10.sp; else -> 8.sp }
             val evLh = when (fsTier) { 0 -> 14.sp; 1 -> 12.sp; else -> 10.sp }
             var shown = 0
-            // §6.1：绑定印章的日程已由印章上的气泡表达，不再在格内重复出一条普通事件块
-            val bubbleSids = remember(stampList) {
-                stampList.filter { it.posX >= 0f }.mapNotNull { boundOf(it)?.first }.toSet()
-            }
+            // §6.1：绑定印章的日程已由印章上的气泡表达，不再在格内重复出一条普通事件块。
+            // §74 P0-6：不能 remember(stampList) —— 绑定关系还依赖 series 流，
+            // series 晚一拍到达时会卡住旧集合（气泡不出+事件条不隐）。每帧直算，量级个位数，零成本。
+            val bubbleSids = stampList.filter { it.posX >= 0f }
+                .mapNotNull { boundOf(it)?.first }.toSet()
             for (o in occList) {
                 if (shown >= budget) break
                 if (o.seriesId in bubbleSids) continue
@@ -862,8 +880,7 @@ private fun DayCellV2(
                     (if (t.done) "✓" else "○") + t.title, fontSize = evFs,
                     color = listColorMap[t.listUid] ?: GrayText,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = evLh,
-                    textDecoration = if (t.done) TextDecoration.LineThrough else null,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 1.dp)
                 )
                 shown++
             }
@@ -1142,8 +1159,7 @@ private fun DaySheet(
                         Text(
                             t.title, fontSize = 15.sp,
                             color = if (t.done) GrayText else Ink,
-                            textDecoration = if (t.done) TextDecoration.LineThrough else null,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                                                        maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }
                     Hairline(Modifier.padding(start = 18.dp))
