@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 28,
-  "versionName": "1.13.0",
+  "versionCode": 29,
+  "versionName": "1.14.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3678121,
-  "sha256": "a5d52dbbdf9e5d9c84bfcbd28ef040b93cb90ec246ed1ceea156fb3577a60864",
-  "changelog": "点＋直接在日历上创建：日程、任务快速填，贴纸选好点日历连续贴；周视图更紧凑清晰；小鹿搬到顶栏随手可聊；日历贴纸变大更好拖",
+  "size": 3694573,
+  "sha256": "46a3cad5d0a549c8d67c590eb35f561da4c139e577b99db44f1b66877e1dfe60",
+  "changelog": "印章大升级：不用再长按，按住就能拖（原来必须先长按才动，是拖不动的真原因）；贴纸可以从面板直接拖到日历；点印章弹出轻巧小菜单，绑了日程会显示名字并跟着一起走",
   "minSupported": 1
 }
