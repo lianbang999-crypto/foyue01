@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 29,
-  "versionName": "1.14.0",
+  "versionCode": 30,
+  "versionName": "1.14.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
   "size": 3694573,
-  "sha256": "46a3cad5d0a549c8d67c590eb35f561da4c139e577b99db44f1b66877e1dfe60",
-  "changelog": "印章大升级：不用再长按，按住就能拖（原来必须先长按才动，是拖不动的真原因）；贴纸可以从面板直接拖到日历；点印章弹出轻巧小菜单，绑了日程会显示名字并跟着一起走",
+  "sha256": "cbf1927a717f5b283e9d96bc2c22ee9b34bd3c2fabad10d658981f6d68410bf7",
+  "changelog": "任务标记全站统一：未完成是圆圈、完成是圆圈里打勾，一眼区分日程和任务；创建面板切换日程/任务/表情不再跳动",
   "minSupported": 1
 }
