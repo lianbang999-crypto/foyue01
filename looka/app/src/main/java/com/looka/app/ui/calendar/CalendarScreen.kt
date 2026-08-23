@@ -20,9 +20,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -133,10 +136,19 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
 
+    // N1（§71）：创建面板打开时，返回键先收面板；面板与日详情抽屉互斥
+    BackHandler(enabled = vm.createPanel) {
+        vm.createPanel = false; vm.stampSel = ""
+    }
+    LaunchedEffect(vm.createPanel) {
+        if (vm.createPanel) sheetState.hide()
+    }
+
     BackHandler(enabled = vm.calView == 0 && sheetOpen) {
         scope.launch { sheetState.hide() }
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // 顶栏：大字年月（点击跳转）+ 今天 + 小鹿 AI + 视图菜单
         Row(
@@ -183,12 +195,14 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                         .padding(horizontal = 6.dp)
                 )
             }
-            // 顶栏收敛（2026-08-21 对齐 Lifebear）：4 个图标 → 2 个。
-            // 日历图标（数字随视图变 31/7/1）收拢 跳转/搜索/显示设置；小鹿是我们的差异点，单独留在外面。
+            // §71 A：AI 顶栏入口恢复（用户 2026-08-23 拍板推翻 §60 R3——全站要有方便调出的位置）
+            IconButton(onClick = { nav.navigate("aiChat") }, modifier = Modifier.size(40.dp)) {
+                com.looka.app.ui.common.DeerBadge(24.dp)
+            }
+            // 顶栏收敛（2026-08-21 对齐 Lifebear）：日历图标（数字随视图变 31/7/1）收拢 跳转/搜索/显示设置
             IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
                 CalendarGlyph(when (vm.calView) { 0 -> "31"; 1 -> "7"; else -> "1" })
             }
-            // R3（§60 定案）：AI 是工具，不占顶栏 —— 入口在 ＋ 面板与更多页
                     }
 
         val occRangeStart: Long
@@ -275,6 +289,21 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             )
         }
+    }
+
+    // N1（§71 对齐 Lifebear b 图）：底部停靠创建面板 —— 日历可见可点，贴纸可连续盖章
+    androidx.compose.animation.AnimatedVisibility(
+        visible = vm.createPanel,
+        modifier = Modifier.align(Alignment.BottomCenter),
+        enter = androidx.compose.animation.slideInVertically(
+            tween(com.looka.app.ui.theme.Motion.ENTER)) { it } +
+            androidx.compose.animation.fadeIn(tween(com.looka.app.ui.theme.Motion.ENTER)),
+        exit = androidx.compose.animation.slideOutVertically(
+            tween(com.looka.app.ui.theme.Motion.EXIT)) { it } +
+            androidx.compose.animation.fadeOut(tween(com.looka.app.ui.theme.Motion.EXIT))
+    ) {
+        CreatePanel(vm, nav, onClose = { vm.createPanel = false; vm.stampSel = "" })
+    }
     }
 
     if (menuOpen) ViewMenuSheet(vm, nav, onJump = { jumpOpen = true }, onDismiss = { menuOpen = false })
@@ -498,9 +527,18 @@ private fun MonthFull(
                                     catColorMap = catColorMap,
                                     listColorMap = listColorMap,
                                     onSelect = {
-                                        vm.selectedDay = day
-                                        if (sheetState.currentValue == SheetValue.Hidden) {
-                                            scope.launch { sheetState.partialExpand() }
+                                        when {
+                                            // N1（§71）：贴纸模式 —— 点哪天贴哪天，连续盖章
+                                            vm.stampSel.isNotBlank() ->
+                                                vm.addStamp("🦌", day, assetId = vm.stampSel)
+                                            // 面板开着：改日期不弹抽屉（快建日期跟着选中走）
+                                            vm.createPanel -> vm.selectedDay = day
+                                            else -> {
+                                                vm.selectedDay = day
+                                                if (sheetState.currentValue == SheetValue.Hidden) {
+                                                    scope.launch { sheetState.partialExpand() }
+                                                }
+                                            }
                                         }
                                     },
                                     onLongPress = {
@@ -708,17 +746,19 @@ private fun DayCellV2(
             }
         }
 
-        // ── Sticker Canvas v1（§68 二，Lifebear 冻结规格）──────────────────
-        // 视觉主体 0.42×cellW；长按进入拖动态（虚线圈 ≈1.02×cellW，视觉≠交互框）；
+        // ── Sticker Canvas v1（§68 二 + §71 S 手感批）──────────────────
+        // 视觉主体 0.50×cellW（§71 用户对比 BEAR 拍板，原 0.42 偏小）；
+        // 长按进入拖动态（虚线圈 ≈1.02×cellW，视觉≠交互框）；
         // 落点 = 圈心命中哪格，day 就换到哪天（列/行偏移纯数学换算）。
         val placed = stampList.filter { it.posX >= 0f }
         if (placed.isNotEmpty()) {
             androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
                 val cellWpx = constraints.maxWidth.toFloat()
                 val cellHpx = constraints.maxHeight.toFloat()
-                val visualDp = maxWidth * 0.42f
+                val visualDp = maxWidth * 0.50f
                 val ringDp = maxWidth * 1.02f
                 val ctxSt = androidx.compose.ui.platform.LocalContext.current
+                val hapticSt = androidx.compose.ui.platform.LocalHapticFeedback.current
                 placed.forEach { st ->
                     var dragOff by remember(st.id) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
                     var dragging by remember(st.id) { mutableStateOf(false) }
@@ -727,13 +767,18 @@ private fun DayCellV2(
                     Box(
                         Modifier
                             .offset { androidx.compose.ui.unit.IntOffset(
-                                (baseX + dragOff.x - cellWpx * 0.21f).toInt(),
-                                (baseY + dragOff.y - cellWpx * 0.21f).toInt()) }
+                                (baseX + dragOff.x - cellWpx * 0.25f).toInt(),
+                                (baseY + dragOff.y - cellWpx * 0.25f).toInt()) }
                             .size(visualDp)
                             .zIndex(if (dragging) 30f else 3f)
                             .pointerInput(st.id) {
                                 detectDragGesturesAfterLongPress(
-                                    onDragStart = { dragging = true },
+                                    onDragStart = {
+                                        // §71 S2："不灵敏"多半是长按判定到达时没有确认反馈 —— 给一下震动
+                                        hapticSt.performHapticFeedback(
+                                            androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        dragging = true
+                                    },
                                     onDrag = { change, amt -> change.consume(); dragOff += amt },
                                     onDragCancel = { dragging = false; dragOff = androidx.compose.ui.geometry.Offset.Zero },
                                     onDragEnd = {
@@ -1155,5 +1200,136 @@ private fun QuickAction(emoji: String, label: String, onClick: () -> Unit) {
     ) {
         Text(emoji, fontSize = 20.sp)
         Text(label, fontSize = 10.5.sp, color = GrayText)
+    }
+}
+
+// ==================== N1（§71）创建面板：Lifebear 式底部停靠 ====================
+
+/**
+ * 月视图 ＋ 弹出的停靠面板：顶部三模式图标（日程/任务/表情），日历在上方保持可见可点。
+ * 表情模式 = 连续盖章：点选贴纸后点日历日期直接贴，面板不收起。
+ */
+@Composable
+private fun CreatePanel(vm: LookaViewModel, nav: NavHostController, onClose: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var mode by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+    var evTitle by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    var taskTitle by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .background(Color.White)
+            .navigationBarsPadding()
+            .imePadding()
+    ) {
+        // 顶部模式行（对齐 Lifebear：图标在面板顶部，选中浅灰圆）
+        Row(
+            Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PanelIcon(Icons.Outlined.Event, tr("日程"), mode == 0) { mode = 0; vm.stampSel = "" }
+            PanelIcon(Icons.Outlined.TaskAlt, tr("任务"), mode == 1) { mode = 1; vm.stampSel = "" }
+            PanelIcon(Icons.Outlined.Mood, tr("表情"), mode == 2) { mode = 2 }
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.IconButton(onClick = onClose) {
+                androidx.compose.material3.Icon(Icons.Default.Close, tr("关闭"), tint = GrayText)
+            }
+        }
+        Hairline()
+
+        when (mode) {
+            0 -> Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.TextField(
+                        value = evTitle, onValueChange = { evTitle = it },
+                        placeholder = { Text(tr("日程名"), fontSize = 16.sp, color = Color(0xFFB9BBB9)) },
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp),
+                        colors = com.looka.app.ui.common.clearFieldColors(),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    com.looka.app.ui.common.SaveButton(enabled = evTitle.isNotBlank()) {
+                        vm.prepareCreateDraft(vm.selectedDay)
+                        vm.draft?.let { d ->
+                            d.title = evTitle.trim()
+                            vm.saveCreate(d) { com.looka.app.ui.common.toast(ctx, tr("已保存")) }
+                        }
+                        vm.draft = null
+                        evTitle = ""
+                    }
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 4.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(Fmt.dateCn(vm.selectedDay), fontSize = 12.sp, color = GrayText)
+                    Text(tr("（点日历改日期）"), fontSize = 11.sp, color = Color(0xFFB9BBB9))
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        tr("详细设置"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.plainClick {
+                            vm.prepareCreateDraft(vm.selectedDay)
+                            vm.draft?.title = evTitle.trim()
+                            onClose()
+                            nav.navigate("editor")
+                        }.padding(6.dp)
+                    )
+                }
+            }
+            1 -> Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.TextField(
+                        value = taskTitle, onValueChange = { taskTitle = it },
+                        placeholder = { Text(tr("任务名"), fontSize = 16.sp, color = Color(0xFFB9BBB9)) },
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp),
+                        colors = com.looka.app.ui.common.clearFieldColors(),
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    com.looka.app.ui.common.SaveButton(enabled = taskTitle.isNotBlank()) {
+                        vm.addTask(taskTitle.trim(), vm.selectedDay, "")
+                        com.looka.app.ui.common.toast(ctx, tr("已添加任务"))
+                        taskTitle = ""
+                    }
+                }
+                Text(
+                    tr("截止 {0}", Fmt.dateCn(vm.selectedDay)),
+                    fontSize = 12.sp, color = GrayText,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                )
+            }
+            else -> Column {
+                Text(
+                    if (vm.stampSel.isBlank()) tr("选一枚贴纸")
+                    else tr("点日历上的日期，贴上去 ↑ 可以连续贴"),
+                    fontSize = 12.sp,
+                    color = if (vm.stampSel.isBlank()) GrayText else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                com.looka.app.ui.common.StickerPicker(
+                    selected = vm.stampSel,
+                    onSelect = { vm.stampSel = if (vm.stampSel == it) "" else it }
+                )
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PanelIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String, selected: Boolean, onClick: () -> Unit
+) {
+    Box(
+        Modifier.padding(horizontal = 4.dp).size(38.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(if (selected) com.looka.app.ui.theme.PanelBg else Color.Transparent)
+            .plainClick(onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        androidx.compose.material3.Icon(icon, label, tint = if (selected) Ink else GrayText,
+            modifier = Modifier.size(22.dp))
     }
 }

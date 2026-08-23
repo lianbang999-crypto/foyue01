@@ -487,7 +487,7 @@ function renderCalendar(anchorDay) {
       const rest = evs.length + tks.length - shown;
       if (rest > 0) lines += `<div class="ev-more">+${rest}</div>`;
       const lun = stShowLunar() ? lunarText(day) : '';
-      // Sticker Canvas v1（§68 二）：posX>=0 的走画布层绝对定位（视觉主体 42% 列宽），
+      // Sticker Canvas v1（§68 二，§71 S3 尺寸对齐 BEAR：42%→50%）：posX>=0 的走画布层绝对定位，
       // 其余沿用行内小图。网页 v1 只渲染不拖动（拖动在 App 端）。
       const inlineSts = sts.filter(st => !(st.px >= 0));
       const placedSts = sts.filter(st => st.px >= 0);
@@ -496,7 +496,7 @@ function renderCalendar(anchorDay) {
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:42%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+          `width:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
         return st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
           : `<span style="${style};font-size:18px">${st.emoji}</span>`;

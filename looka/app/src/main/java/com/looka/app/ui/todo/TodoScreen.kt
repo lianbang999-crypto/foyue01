@@ -76,10 +76,15 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
-            Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().height(52.dp).padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(tr("待办"), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            // §71 A：AI 全站入口（用户拍板）
+            androidx.compose.material3.IconButton(onClick = { nav.navigate("aiChat") }) {
+                com.looka.app.ui.common.DeerBadge(24.dp)
+            }
         }
         Hairline()
 

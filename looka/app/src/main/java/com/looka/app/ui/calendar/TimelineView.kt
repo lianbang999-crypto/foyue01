@@ -82,6 +82,9 @@ fun TimelineBody(
 ) {
     val today = Fmt.today()
     val todayTint = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+    // W4（§71）：周视图是压缩形态，不是日视图摆 7 列 —— 时间栏极窄、小时纯数字（对齐 Lifebear 实机）
+    val compact = days.size > 1
+    val gutter = if (compact) 24.dp else GUTTER
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val showLunar = remember(vm.settingsVersion, com.looka.app.util.I18n.lang) {
         com.looka.app.data.Prefs.showLunarRaw(ctx) ?: com.looka.app.util.I18n.isZh()
@@ -110,8 +113,8 @@ fun TimelineBody(
     Column(Modifier.fillMaxSize()) {
         // 周视图日期头
         if (days.size > 1) {
-            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Spacer(Modifier.width(GUTTER))
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                Spacer(Modifier.width(gutter))
                 days.forEach { d ->
                     val dt = Fmt.d(d)
                     val sel = d == vm.selectedDay
@@ -169,10 +172,10 @@ fun TimelineBody(
             Hairline()
         }
 
-        // 全天区（Looka 实底块 / 系统日历描边块）
-        Row(Modifier.fillMaxWidth().heightIn(min = 30.dp, max = 84.dp)) {
-            Box(Modifier.width(GUTTER).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                Text(tr("全天"), fontSize = 9.sp, color = GrayText)
+        // 全天区（Looka 实底块 / 系统日历描边块）；周视图收紧为一行起（W4）
+        Row(Modifier.fillMaxWidth().heightIn(min = if (compact) 20.dp else 30.dp, max = 84.dp)) {
+            Box(Modifier.width(gutter).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                Text(tr("全天"), fontSize = if (compact) 8.sp else 9.sp, color = GrayText)
             }
             days.forEach { d ->
                 Column(
@@ -282,14 +285,15 @@ fun TimelineBody(
                 .fillMaxWidth()
                 .verticalScroll(scroll)
         ) {
-            // 小时标签（数字贴在整点线旁）
-            Column(Modifier.width(GUTTER).height(HOUR_DP * 24)) {
+            // 小时标签：日视图 "07:00"；周视图纯数字 "0-23"（W4 压缩形态，时间栏让宽度给 7 列）
+            Column(Modifier.width(gutter).height(HOUR_DP * 24)) {
                 for (h in 0 until 24) {
                     Box(Modifier.height(HOUR_DP).fillMaxWidth()) {
                         Text(
-                            "%02d:00".format(h), fontSize = 9.sp, color = GrayText,
+                            if (compact) "$h" else "%02d:00".format(h),
+                            fontSize = if (compact) 8.5.sp else 9.sp, color = GrayText,
                             textAlign = TextAlign.End,
-                            modifier = Modifier.fillMaxWidth().padding(end = 6.dp)
+                            modifier = Modifier.fillMaxWidth().padding(end = if (compact) 4.dp else 6.dp)
                         )
                     }
                 }

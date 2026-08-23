@@ -226,9 +226,14 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
                 tab = tab,
                 onTab = { tab = it },
                 onPlus = {
-                    // AC-001/002：预填选中日期（无选中即今天）
-                    vm.prepareCreateDraft(vm.selectedDay)
-                    nav.navigate("editor")
+                    // N1（§71 对齐 Lifebear）：月视图的 ＋ 弹底部创建面板（日历可见可点，贴纸能连续盖）；
+                    // 其余场景保持整页编辑器。AC-001/002：预填选中日期（无选中即今天）
+                    if (tab == 0 && vm.calView == 0) {
+                        vm.createPanel = true
+                    } else {
+                        vm.prepareCreateDraft(vm.selectedDay)
+                        nav.navigate("editor")
+                    }
                 }
             )
         }

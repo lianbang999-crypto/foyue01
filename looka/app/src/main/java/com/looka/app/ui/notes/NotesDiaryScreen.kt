@@ -62,6 +62,10 @@ fun NotesDiaryScreen(vm: LookaViewModel, nav: NavHostController) {
             Spacer(Modifier.width(24.dp))
             SegTab(tr("日记"), seg == 1) { seg = 1 }
             Spacer(Modifier.weight(1f))
+            // §71 A：AI 全站入口（用户拍板）
+            IconButton(onClick = { nav.navigate("aiChat") }) {
+                com.looka.app.ui.common.DeerBadge(24.dp)
+            }
             IconButton(onClick = {
                 if (seg == 0) nav.navigate("note/-1")
                 else nav.navigate("diary/${Fmt.today()}")

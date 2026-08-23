@@ -126,6 +126,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
      * 得显式请求滚动到某天，月视图消费后置回 null。
      */
     var calScrollReq by mutableStateOf<Long?>(null)
+
+    // N1（§71）：日历页创建面板（Lifebear 式底部停靠：日程/任务/表情）
+    var createPanel by mutableStateOf(false)
+    // 表情连续盖章模式：非空 = 已选中贴纸，点月历日期直接贴
+    var stampSel by mutableStateOf("")
     var settingsVersion by mutableIntStateOf(0)
     fun bumpSettings() { settingsVersion++ }
 
