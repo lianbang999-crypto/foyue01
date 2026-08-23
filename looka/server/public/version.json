@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 27,
-  "versionName": "1.12.0",
+  "versionCode": 28,
+  "versionName": "1.13.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3677921,
-  "sha256": "ef4a7d27453e5563144177f0932039dc7fe005d9912d793220f845c6ef5ae2c1",
-  "changelog": "模板系统上线：日历设置里可以建常用日程模板，创建时一键带入；周视图重叠日程更清爽（多的收进 +N，点开看当天）；等待动画和设置项小升级",
+  "size": 3678121,
+  "sha256": "a5d52dbbdf9e5d9c84bfcbd28ef040b93cb90ec246ed1ceea156fb3577a60864",
+  "changelog": "点＋直接在日历上创建：日程、任务快速填，贴纸选好点日历连续贴；周视图更紧凑清晰；小鹿搬到顶栏随手可聊；日历贴纸变大更好拖",
   "minSupported": 1
 }
