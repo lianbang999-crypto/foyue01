@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 32,
-  "versionName": "1.16.0",
+  "versionCode": 33,
+  "versionName": "1.16.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3694585,
-  "sha256": "c45d753b965548b757d90bc3f2810fbd92ac33745195cc9cfa131e65db117ac5",
-  "changelog": "创建全新三面式：日程、任务是完整页面，贴纸盘更轻更矮、日历不再被压扁；任务创建可直接打勾和星标；贴纸恢复了它该有的样子——月历上只有贴纸本身；拖动时原位保留，落定才移走",
+  "size": 3694769,
+  "sha256": "7027449bb63ee5803b54240f8c3853c6d19fc74a1bc7d03df2687d03ce93fe8b",
+  "changelog": "贴纸菜单不再压住贴纸；给贴纸登记的日程点编辑直接进完整页面，贴纸就在标题旁；删除贴纸会连同它的日程一起删，删前会问一句",
   "minSupported": 1
 }
