@@ -869,3 +869,20 @@ Kotlin 编译通过；网页端要等下次 `release.sh` 才会刷 `?v=`（脚�
 默认值与文案一致，`LookaViewModel.kt:745` / `DiaryEditScreen.kt:161` 真生效）· LOOKA-106 关于弹窗。
 
 **挂账 P1（§79 四）**：AI 入口命名易混 · 关于 Dialog 升全页的触发条件 · 次级灰字对比度审查。
+
+## P35 · §80 AI 上游债清理（2026-08-24）
+
+`premium_fail` 自 §53 下线 premium 分支后再无人发送，四处监控却都在查它 ——
+Qwen 真挂了后台不响、看板恒显 0。真实埋点是 `ai_fail`。详见 FEATURE-PLAN §80。
+
+| | 项 | 状态 |
+|---|---|---|
+| G1 | 🔴 非流式 502 补发 `ai_fail`（此前只有流式路径发，非流式失败静默） | [~] |
+| G2 | 🔴 每日自检告警改查 `ai_fail`（这条告警从 §53 起就是哑的） | [~] |
+| G3 | 健康接口 `premium_fail_24h` → `ai_fail_24h` | [~] |
+| G4 | 后台 `foyue-admin` worker + 前端同步改（含 KIND_CN 加 `ai_fail`） | [~] |
+| G5 | §0 加更正框：线上是 Qwen，GPT 实测表只证明「Worker 出口能连通」 | [~] |
+| G6 | ⏸ **待拍板**：工作区未接线的 `aiProviders()/aiRequest()` —— 删 / Qwen主+OR兜底 / OR主（§80 四，我倾向 B） | [ ] |
+
+**验证**：两个 worker `node --check` 通过。G1~G4 要等部署后看后台「AI 上游失败」是否开始有数
+（现在应为 0 或 —，不再是假的"健康"）。

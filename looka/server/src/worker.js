@@ -152,9 +152,68 @@ async function planOf(env, userId) {
  */
 function pickText(data) {
   const msg = data?.choices?.[0]?.message || {};
-  let t = String(msg.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-  if (!t) t = String(msg.reasoning_content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  const textOf = value => Array.isArray(value)
+    ? value.map(part => typeof part === 'string' ? part : String(part?.text || '')).join(' ')
+    : String(value || '');
+  let t = textOf(msg.content).replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  // OpenRouter 的推理模型可能使用 reasoning，硅基流动/Qwen 常用 reasoning_content。
+  if (!t) t = textOf(msg.reasoning_content || msg.reasoning)
+    .replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   return t;
+}
+
+/**
+ * AI 上游顺序：OpenRouter Ox Alpha → 硅基流动备用池。
+ * Key 只从 Worker Secret 读取，永不下发到客户端；没有配置的上游自动跳过。
+ */
+function aiProviders(env) {
+  const providers = [];
+  if (env.OPENROUTER_KEY) {
+    providers.push({
+      name: 'openrouter',
+      base: env.OPENROUTER_BASE || 'https://openrouter.ai/api/v1',
+      key: env.OPENROUTER_KEY,
+      models: [env.OPENROUTER_MODEL || 'stealth/ox-alpha'],
+      headers: {
+        'HTTP-Referer': 'https://looka.foyue.org',
+        'X-Title': 'Looka'
+      }
+    });
+  }
+  if (env.SILICONFLOW_KEY) {
+    providers.push({
+      name: 'siliconflow',
+      base: env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1',
+      key: env.SILICONFLOW_KEY,
+      models: [
+        env.CHAT_MODEL || 'Qwen/Qwen3.5-35B-A3B',
+        env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3.5-9B'
+      ],
+      headers: {}
+    });
+  }
+  return providers;
+}
+
+function aiRequest(provider, model, payload, timeoutMs) {
+  const body = {
+    model, messages: payload.messages, temperature: payload.temperature,
+    max_tokens: 2048, ...(payload.stream ? { stream: true } : {})
+  };
+  // 仅硅基流动需要这个供应商专属参数；OpenRouter/Ox 不发送它。
+  if (provider.name === 'siliconflow') body.enable_thinking = false;
+  return fetch(`${provider.base.replace(/\/$/, '')}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${provider.key}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)',
+      ...provider.headers
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs)
+  });
 }
 
 // ---------- 鹿角（算力券）----------
@@ -1085,7 +1144,11 @@ async function route(request, env, ctx) {
         await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
       }
     }
-    if (!ok) return json({ error: lastMsg + '（稍后再试）' }, 502);
+    if (!ok) {
+      // §80：非流式此前不发 ai_fail，上游挂了只有流式路径能被监控看见
+      ctx.waitUntil(track(env, 'looka', 'ai_fail', user.id, request, { err: String(lastMsg).slice(0, 60) }));
+      return json({ error: lastMsg + '（稍后再试）' }, 502);
+    }
     // 成功才扣（保底模式不扣）
     const after = fallbackMode ? bal
       : (await antlerSpend(env, user.id, plan, need, 'chat', null)) || bal;
@@ -1290,11 +1353,13 @@ async function route(request, env, ctx) {
   if (p === '/api/admin/health' && m === 'POST') {
     const b = await body();
     if (!env.ADMIN_KEY || String(b.key || '') !== env.ADMIN_KEY) return json({ error: '无权限' }, 403);
-    // P2-E5：24 小时内高级模型失败次数（从埋点事件表查）
-    let premiumFail24h = -1;
+    // P2-E5：24 小时内 AI 上游失败次数（从埋点事件表查）
+    // §80：原先查的是 premium_fail —— 那个分支 §53 M6 已下线、再没有任何地方发这个事件，
+    // 于是这里永远是 0，看板上像"健康"，其实是"这东西没了"。真实埋点是 ai_fail。
+    let aiFail24h = -1;
     try {
-      premiumFail24h = (await env.STATS.prepare(
-        "SELECT COUNT(*) n FROM events WHERE site='looka' AND kind='premium_fail' AND ts > ?1"
+      aiFail24h = (await env.STATS.prepare(
+        "SELECT COUNT(*) n FROM events WHERE site='looka' AND kind='ai_fail' AND ts > ?1"
       ).bind(Date.now() - 24 * 3600_000).first())?.n ?? -1;
     } catch (_) { }
     const [aiMonth, crashes24h, users, antlerOut] = await Promise.all([
@@ -1309,7 +1374,7 @@ async function route(request, env, ctx) {
       crashes_24h: crashes24h?.c || 0,
       active_sessions_users: users?.c || 0,
       antler_spent_24h: antlerOut?.s || 0,
-      premium_fail_24h: premiumFail24h
+      ai_fail_24h: aiFail24h
     });
   }
 
@@ -1378,13 +1443,14 @@ async function dailyAlert(env) {
     const unclaimed = await env.DB.prepare('SELECT COUNT(*) c FROM pay_orders WHERE user_id IS NULL').first();
     if ((unclaimed?.c || 0) > 0) alerts.push(`🔴 有 ${unclaimed.c} 笔付款订单未归属到账号，请到 foyue.org/admin → 订阅 处理`);
     if (env.STATS) {
-      // ② 高级模型失败率 > 10%
+      // ② AI 上游失败率 > 10%（§80：原先盯 premium_fail —— 已下线分支，永远为 0，
+      //    等于这条告警从 §53 起就是哑的：Qwen 真挂了也不会响）
       const [pf, ai] = await Promise.all([
-        env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='premium_fail' AND ts>?1").bind(Date.now() - 86400000).first(),
+        env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='ai_fail' AND ts>?1").bind(Date.now() - 86400000).first(),
         env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='ai_chat' AND ts>?1").bind(Date.now() - 86400000).first()
       ]);
       if ((ai?.c || 0) >= 10 && (pf?.c || 0) / ai.c > 0.1) {
-        alerts.push(`高级模型 24 小时失败 ${pf.c}/${ai.c} 次（>10%），查 Cloudflare 日志「premium fail」`);
+        alerts.push(`AI 上游 24 小时失败 ${pf.c}/${ai.c} 次（>10%），查 Cloudflare 日志「stream fail」`);
       }
       // ③ 注册归零（昨日 >5 而今日 0，可能注册链路挂了）
       const y = await env.STATS.prepare(

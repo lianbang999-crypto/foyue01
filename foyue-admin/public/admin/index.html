@@ -93,14 +93,14 @@ const day = ms => ms ? new Date(ms).toLocaleDateString('zh-CN') : '—';
 // 账号脱敏：后台自己人看也不必满屏明文
 const maskAcc = a => a.length > 7 ? a.slice(0, 3) + '***' + a.slice(-4) : a;
 
-const KIND_CN = { register:'新注册', login:'登录', app_open:'活跃', apk_download:'APK下载', pay:'新付费', ai_chat:'AI调用', crash:'崩溃', landing_view:'落地页', page_view:'页面访问', order_create:'下单', premium_fail:'高级模型失败', afdian_hook:'爱发电推送', kofi_hook:'Ko-fi推送', play:'播放', download:'下载' };
+const KIND_CN = { register:'新注册', login:'登录', app_open:'活跃', apk_download:'APK下载', pay:'新付费', ai_chat:'AI调用', crash:'崩溃', landing_view:'落地页', page_view:'页面访问', order_create:'下单', ai_fail:'AI上游失败', afdian_hook:'爱发电推送', kofi_hook:'Ko-fi推送', play:'播放', download:'下载' };
 
 const views = {
   async overview() {
     const d = await api('overview');
     $('#attention').textContent = d.attention.unclaimed_orders > 0 ? `⚠️ 未认领订单 ${d.attention.unclaimed_orders} 笔` : '';
     const rows = Object.keys(KIND_CN).map(k =>
-      `<tr><td>${KIND_CN[k]}</td><td class="num">${d.today[k]}</td><td class="num">${d.yest[k]}</td><td class="num">${d.d7[k]}</td></tr>`).join('');
+      `<tr><td>${KIND_CN[k]}</td><td class="num">${d.today[k] ?? '—'}</td><td class="num">${d.yest[k] ?? '—'}</td><td class="num">${d.d7[k] ?? '—'}</td></tr>`).join('');
     const f = d.funnel30;
     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
     return `
@@ -153,9 +153,9 @@ const views = {
   async health() {
     const d = await api('health');
     const cv = d.crash_by_ver.map(c => `<tr><td>${c.ver}</td><td class="num">${c.c}</td></tr>`).join('');
-    const failRate = d.ai_chat_24h ? (d.premium_fail_24h / d.ai_chat_24h * 100).toFixed(1) + '%' : '—';
+    const failRate = d.ai_chat_24h ? (d.ai_fail_24h / d.ai_chat_24h * 100).toFixed(1) + '%' : '—';
     return `<div class="card"><h2>24 小时</h2>
-      <p>AI 调用 <b>${d.ai_chat_24h}</b> · 高级模型失败 <b class="${d.premium_fail_24h > 20 ? 'warn' : ''}">${d.premium_fail_24h}</b>（失败率 ${failRate}）
+      <p>AI 调用 <b>${d.ai_chat_24h}</b> · AI 上游失败 <b class="${d.ai_fail_24h > 20 ? 'warn' : ''}">${d.ai_fail_24h}</b>（失败率 ${failRate}）
       · 崩溃 <b class="${d.crashes_24h > 5 ? 'warn' : ''}">${d.crashes_24h}</b></p>
       ${cv ? `<h2>崩溃按版本</h2><table><tr><th>版本</th><th>次数</th></tr>${cv}</table>` : ''}</div>`;
   },

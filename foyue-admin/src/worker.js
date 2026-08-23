@@ -153,13 +153,14 @@ async function listSubs(env) {
 async function health(env) {
   const day = Date.now() - DAY_MS;
   const [pfail, aiOk, crashes, topCrash] = await Promise.all([
-    env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='premium_fail' AND ts>?1").bind(day).first(),
+    // §80：premium_fail 分支已下线且无人再发，这里永远 0 —— 换成真实埋点 ai_fail
+    env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='ai_fail' AND ts>?1").bind(day).first(),
     env.STATS.prepare("SELECT COUNT(*) c FROM events WHERE kind='ai_chat' AND ts>?1").bind(day).first(),
     env.LOOKA.prepare('SELECT COUNT(*) c FROM crashes WHERE created_at>?1').bind(day).first(),
     env.LOOKA.prepare('SELECT ver, COUNT(*) c FROM crashes WHERE created_at>?1 GROUP BY ver ORDER BY c DESC LIMIT 5').bind(day).all()
   ]);
   return {
-    premium_fail_24h: pfail?.c || 0, ai_chat_24h: aiOk?.c || 0,
+    ai_fail_24h: pfail?.c || 0, ai_chat_24h: aiOk?.c || 0,
     crashes_24h: crashes?.c || 0, crash_by_ver: topCrash.results || []
   };
 }
