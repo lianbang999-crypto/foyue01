@@ -177,6 +177,12 @@ data class NoteList(
     val deleted: Boolean = false
 )
 
+/**
+ * §101：笔记清单的统一灰。Lifebear 的笔记清单**没有颜色**（实机 13 图：一律灰色文档图标），
+ * 与 ToDo 清单是两种心智。这里给个具名常量，免得 "#5C6670" 散落在各处。
+ */
+const val NOTE_LIST_GREY = "#5C6670"
+
 /** 默认笔记清单 uid：与 task 的 list-default 对称，不可删 */
 const val NOTE_LIST_DEFAULT = "nlist-default"
 

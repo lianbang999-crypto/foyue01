@@ -1,6 +1,5 @@
 package com.looka.app.ui.notes
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -21,25 +19,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.looka.app.data.LIST_PALETTE
+import com.looka.app.data.NOTE_LIST_GREY
 import com.looka.app.data.NoteList
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.Hairline
-import com.looka.app.ui.common.onColor
 import com.looka.app.ui.common.parseHex
-import com.looka.app.ui.common.plainClick
 import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
@@ -97,9 +92,12 @@ fun NoteListChangeDialog(
 }
 
 /**
- * CREATE_LIST：本层是唯一 IME owner（自动聚焦文本框）。
- * V014 Create List commit —— Save 先落持久 List 再回调；**失败（空名/重名）不关闭**，
- * 让用户就地改，而不是把输入吞掉再让他重来。
+ * 编辑页里的「新建清单」。
+ *
+ * §101：**色盘已拆**。这里原本有一整块 48 色选择，而「笔记页 → 新建清单」那条没有 ——
+ * 同一件事两条路径长得不一样，用户正是看到这里能选色才提的。
+ * 对齐 Lifebear：笔记清单**无颜色**，统一灰色文档图标。
+ * 保留的是这条路径独有的两件事：**重名/空名报错** 与 **返回新建的 uid**（建完要选中它）。
  */
 @Composable
 fun NoteListCreateDialog(
@@ -108,7 +106,6 @@ fun NoteListCreateDialog(
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var color by remember { mutableStateOf(LIST_PALETTE[30]) }
     var err by remember { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -127,34 +124,12 @@ fun NoteListCreateDialog(
                     modifier = Modifier.fillMaxWidth().focusRequester(focus)
                 )
                 err?.let { Text(it, fontSize = 12.sp, color = com.looka.app.ui.theme.HolidayRed) }
-                Spacer(Modifier.width(0.dp))
-                Column(Modifier.padding(top = 10.dp)) {
-                    LIST_PALETTE.chunked(8).forEach { rowColors ->
-                        Row {
-                            rowColors.forEach { hex ->
-                                val c = parseHex(hex)
-                                androidx.compose.foundation.layout.Box(
-                                    Modifier.padding(2.dp).size(26.dp).clip(CircleShape)
-                                        .background(c).plainClick { color = hex },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (hex == color) {
-                                        Icon(
-                                            Icons.Default.Check, null, tint = onColor(c),
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    vm.addNoteList(name, color) { uid ->
+                    vm.addNoteList(name, NOTE_LIST_GREY) { uid ->
                         if (uid == null) err = tr("名字空着或重名了")
                         else onCreated(uid)
                     }

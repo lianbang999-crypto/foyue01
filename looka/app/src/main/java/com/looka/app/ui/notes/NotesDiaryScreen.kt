@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.looka.app.data.NOTE_LIST_GREY
 import com.looka.app.data.MOOD_EMOJIS
 import com.looka.app.ui.common.listRowGestures
 import com.looka.app.ui.common.EmptyDeer
@@ -186,14 +187,11 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
                     .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // §100：图标跟随清单颜色 —— 加了色盘却还画成死灰，等于白选
+                // §101：图标统一灰色，不随清单颜色 —— 实机就是这样（笔记清单无颜色）
                 Icon(
                     if (l.uid == com.looka.app.data.NOTE_LIST_DEFAULT)
                         Icons.Outlined.Inbox else Icons.Outlined.Description,
-                    null,
-                    tint = if (l.uid == com.looka.app.data.NOTE_LIST_DEFAULT) GrayText
-                           else com.looka.app.ui.common.parseHex(l.colorHex),
-                    modifier = Modifier.size(24.dp)
+                    null, tint = GrayText, modifier = Modifier.size(24.dp)
                 )
                 // 文字左缘 72dp = 16(边距) + 24(图标) + 32(间隔)
                 Spacer(Modifier.width(32.dp))
@@ -221,7 +219,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
 
     if (createDlg) NoteListNameDialog(
         title = tr("新建清单"), initial = "", confirmLabel = tr("保存"),
-        onConfirm = { n, c -> vm.addNoteList(n, c); createDlg = false },
+        onConfirm = { n -> vm.addNoteList(n, NOTE_LIST_GREY); createDlg = false },
         onDismiss = { createDlg = false }
     )
 }
@@ -262,62 +260,33 @@ fun NoteRow(
 }
 
 /**
- * 新建 / 重命名清单：标题 + 输入框 + 色盘 + 取消/确定；**空名时确定置灰**（实机图 81）。
+ * 新建 / 重命名清单：标题 + 输入框 + 取消/确定；**空名时确定置灰**（实机图 81）。
  *
- * §100：**加上颜色选择**（用户要求）。
+ * §101：**撤回 §100 加的色盘**，改回对齐 Lifebear —— §96 查过 13 张实机图，
+ * 笔记清单统一灰色文档图标、**没有颜色**（有颜色的是 ToDo 清单，两者是不同心智）。
  *
- * ⚠️ 这是**主动偏离 Lifebear**：§96 查过 13 张实机图，笔记清单统一灰色文档图标、
- * **没有颜色**（有颜色的是 ToDo 清单）。这里按用户要求加上，不是对齐结果。
- * 色盘与待办清单共用同一套 48 色（§97 已按实机采样校准），不另起一套。
+ * §100 之所以加，是因为发现「笔记页建清单」没颜色、而「编辑页里建清单」有颜色 ——
+ * **真正的毛病是两条路径不一致**，不是缺颜色。现在两边都去掉，三条路径统一。
  */
 @Composable
 fun NoteListNameDialog(
     title: String, initial: String, confirmLabel: String,
-    initialColor: String = com.looka.app.data.LIST_PALETTE[30],
-    onConfirm: (String, String) -> Unit, onDismiss: () -> Unit
+    onConfirm: (String) -> Unit, onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
-    var color by remember { mutableStateOf(initialColor) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = 17.sp) },
         text = {
-            Column {
-                androidx.compose.material3.OutlinedTextField(
-                    value = name, onValueChange = { name = it },
-                    placeholder = { Text(tr("清单名")) }, singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(12.dp))
-                Column(
-                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())
-                ) {
-                    com.looka.app.data.LIST_PALETTE.chunked(6).forEach { rowColors ->
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
-                        ) {
-                            rowColors.forEach { hex ->
-                                Box(
-                                    Modifier.size(30.dp)
-                                        .clip(androidx.compose.foundation.shape.CircleShape)
-                                        .background(com.looka.app.ui.common.parseHex(hex))
-                                        .border(
-                                            width = if (color == hex) 2.5.dp else 0.8.dp,
-                                            color = if (color == hex) Ink else Color(0x22000000),
-                                            shape = androidx.compose.foundation.shape.CircleShape
-                                        )
-                                        .plainClick { color = hex }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            androidx.compose.material3.OutlinedTextField(
+                value = name, onValueChange = { name = it },
+                placeholder = { Text(tr("清单名")) }, singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), color) },
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
                 enabled = name.isNotBlank()
             ) { Text(confirmLabel) }
         },

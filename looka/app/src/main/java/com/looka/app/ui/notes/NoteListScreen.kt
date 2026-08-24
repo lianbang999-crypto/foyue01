@@ -138,8 +138,7 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
 
     if (renameDlg) NoteListNameDialog(
         title = tr("编辑清单"), initial = list.name, confirmLabel = tr("保存"),
-        initialColor = list.colorHex,
-        onConfirm = { n, c -> vm.renameNoteList(list, n, c); renameDlg = false },
+        onConfirm = { n -> vm.renameNoteList(list, n, list.colorHex); renameDlg = false },
         onDismiss = { renameDlg = false }
     )
 
