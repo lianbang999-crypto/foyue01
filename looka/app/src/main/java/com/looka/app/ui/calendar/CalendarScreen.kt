@@ -323,7 +323,10 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     ghost?.let { (assetId, pos) ->
         val cfgG = androidx.compose.ui.platform.LocalConfiguration.current
         val wd = cfgG.screenWidthDp / 7f
-        val visual = (wd * 0.42f).dp
+        // §89 U1：0.42 是母档的**视觉主体**目标，但我们的素材是 256 画布装 218 主体（安全区，
+    // 实测三套 84.8–85.9%）。把 0.42 套在画布上，视觉只剩 0.358×Wd —— 比实机 0.43 小 17%。
+    // 画布 0.50 × 0.8516 = 0.426 视觉，与实机对齐，也在母档 0.36–0.46 区间中段。
+    val visual = (wd * 0.50f).dp
         val ring = (wd * 1.08f).dp
         val half = with(LocalDensity.current) { ring.toPx() / 2f }
         // §76 F1：pos 是窗口坐标，本层在 Scaffold padding 之下 —— 同样要减去容器原点才跟手
@@ -920,7 +923,8 @@ private fun DayCellV2(
                 val cellWpx = constraints.maxWidth.toFloat()
                 val cellHpx = constraints.maxHeight.toFloat()
                 // §72 尺寸 Token（母档 §2.2，以列宽 Wd 为基准，禁止硬编码 px）
-                val visualDp = maxWidth * 0.42f    // §75 M4：三张实机图实测 0.41–0.43，取母档区间下沿
+                // §89 U1：同上 —— 0.42 曾被误施于画布；素材含 15% 安全区，改 0.50 才得视觉 0.426
+    val visualDp = maxWidth * 0.50f
                 val ringDp = maxWidth * 1.08f      // StickerDragRing 1.05–1.12
                 val hitDp = maxWidth * 0.95f       // §3 视觉≠交互：命中远大于视觉（收在列宽内避免抢邻格）
                 val hitPx = with(LocalDensity.current) { hitDp.toPx() }
@@ -1512,7 +1516,7 @@ private fun StickerPopover(
         val density = LocalDensity.current
         val wd = maxWidth / 7f
         val popW = wd * 3.2f
-        val popH = wd * 0.62f
+        val popH = wd * 0.48f     // §89 U2：实机 78/162.3 = 0.48×Wd（原 0.62 高了 29%）
         val caretH = 5.dp
         val screenW = with(density) { maxWidth.toPx() }
         val popWpx = with(density) { popW.toPx() }
@@ -1531,18 +1535,28 @@ private fun StickerPopover(
         // 关闭层：透明、不压暗（§5.1 无全屏遮罩）
         Box(Modifier.fillMaxSize().plainClick(onDismiss))
 
+        // §89 U5（真 bug 修复）：caret 此前写死 padding(start = w)，永远在 popover 左侧 12% 处 ——
+        // 贴纸在中间时箭头指偏，靠边被 clamp 后更是指向一个与贴纸无关的位置。
+        // 正确做法：按锚点在 popover 内的相对位置放 caret，两端各留一个圆角的余量。
+        val caretW = wd * 0.26f
+        val caretWpx = with(density) { caretW.toPx() }
+        val caretPadPx = (ax - left - caretWpx / 2f)
+            .coerceIn(8f, (popWpx - caretWpx - 8f).coerceAtLeast(8f))
+        val caretPad = with(density) { caretPadPx.toDp() }
+
         Column(
             Modifier
                 .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), finalTop.toInt()) }
                 .zIndex(60f)
         ) {
-            if (flipped) Caret(up = true, w = wd * 0.26f, h = caretH)
+            if (flipped) Caret(up = true, w = caretW, h = caretH, startPad = caretPad)
             Row(
                 Modifier
                     .width(popW).height(popH)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color.White)
-                    .border(0.8.dp, Color(0xFFDCDFDC), RoundedCornerShape(6.dp)),
+                    // §89 U3：实机是**深色细描边**成形（无阴影）；原 #DCDFDC 太浅几乎看不见
+                    .border(1.2.dp, Ink, RoundedCornerShape(6.dp)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.weight(1f).fillMaxHeight().plainClick(onPrimary),
@@ -1552,27 +1566,34 @@ private fun StickerPopover(
                         fontSize = 13.sp, color = Ink
                     )
                 }
-                Box(Modifier.width(0.8.dp).fillMaxHeight().background(Color(0xFFDCDFDC)))
+                Box(Modifier.width(1.dp).fillMaxHeight().background(Ink))
                 Box(Modifier.weight(1f).fillMaxHeight().plainClick(onDelete),
                     contentAlignment = Alignment.Center) {
-                    Text(tr("删除"), fontSize = 13.sp, color = HolidayRed)
+                    // §89 U4：实机「削除」是黑字，与「编集」同色 —— 危险语义由后面的确认框承担
+                    Text(tr("删除"), fontSize = 13.sp, color = Ink)
                 }
             }
-            if (!flipped) Caret(up = false, w = wd * 0.26f, h = caretH)
+            if (!flipped) Caret(up = false, w = caretW, h = caretH, startPad = caretPad)
         }
     }
 }
 
 /** Popover 指示小三角（§5.1 caret） */
 @Composable
-private fun Caret(up: Boolean, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp) {
-    Canvas(Modifier.padding(start = w).size(w, h)) {
+private fun Caret(
+    up: Boolean,
+    w: androidx.compose.ui.unit.Dp,
+    h: androidx.compose.ui.unit.Dp,
+    startPad: androidx.compose.ui.unit.Dp
+) {
+    Canvas(Modifier.padding(start = startPad).size(w, h)) {
         val p = Path().apply {
             if (up) { moveTo(size.width / 2f, 0f); lineTo(size.width, size.height); lineTo(0f, size.height) }
             else { moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2f, size.height) }
             close()
         }
         drawPath(p, Color.White)
-        drawPath(p, Color(0xFFDCDFDC), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.4f))
+        // §89 U3：描边与外框同色同粗
+        drawPath(p, Ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
     }
 }

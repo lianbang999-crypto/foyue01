@@ -500,9 +500,11 @@ function renderCalendar(anchorDay) {
         ? `<img class="stamp-img" src="stamps/${st.assetId}.webp" alt="">`
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
-        // §75 M1/M4：月格里只有贴纸（标题气泡已删，对齐实机图42/45）；尺寸 0.42×Wd
+        // §89 U1（与 App 同步）：0.42 是母档的**视觉主体**目标，素材含 15% 安全区
+        //（256 画布装 218 主体），套在画布上视觉只剩 0.358×Wd，比实机 0.43 小 17%。
+        // 画布 50% × 0.8516 = 0.426 视觉，与实机对齐。
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:42%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+          `width:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
         return (st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
           : `<span style="${style};font-size:18px">${st.emoji}</span>`);
