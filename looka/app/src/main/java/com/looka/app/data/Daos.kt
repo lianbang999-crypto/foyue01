@@ -190,6 +190,36 @@ interface TaskDao {
 }
 
 @Dao
+interface NoteListDao {
+    @Query("SELECT * FROM note_list WHERE deleted = 0 ORDER BY sortOrder, id")
+    fun all(): Flow<List<NoteList>>
+
+    @Query("SELECT COUNT(*) FROM note_list")
+    suspend fun count(): Int
+
+    @Query("SELECT * FROM note_list WHERE uid = :uid")
+    suspend fun byUid(uid: String): NoteList?
+
+    @Query("SELECT * FROM note_list WHERE deleted = 0")
+    suspend fun listAll(): List<NoteList>
+
+    @Query("SELECT * FROM note_list WHERE dirty = 1")
+    suspend fun dirtyList(): List<NoteList>
+
+    @Query("DELETE FROM note_list WHERE uid = :uid")
+    suspend fun hardDeleteByUid(uid: String)
+
+    @Query("UPDATE note_list SET dirty = 1")
+    suspend fun markAllDirty()
+
+    @Insert
+    suspend fun insert(l: NoteList): Long
+
+    @Update
+    suspend fun update(l: NoteList)
+}
+
+@Dao
 interface NoteDao {
     @Query("SELECT * FROM note WHERE deleted = 0 ORDER BY updatedAt DESC")
     fun all(): Flow<List<Note>>
@@ -208,6 +238,9 @@ interface NoteDao {
 
     @Query("DELETE FROM note WHERE uid = :uid")
     suspend fun hardDeleteByUid(uid: String)
+
+    @Query("UPDATE note SET listUid = :to, dirty = 1, updatedAt = :ts WHERE listUid = :from")
+    suspend fun reassignList(from: String, to: String, ts: Long)
 
     @Query("UPDATE note SET dirty = 1")
     suspend fun markAllDirty()

@@ -8225,3 +8225,46 @@ V013：「Copy ≠ Duplicate immediately —— 用原 Task 生成预填的新 D
 ### 四、批内顺序
 
 B4（一个 modifier，全局吃到反馈）→ B1 → B2 → B5 → 编译/i18n/文档回勾。
+
+---
+
+## 八十六、§86 规划（2026-08-24）：批 C —— 笔记清单合同（V014 B 级）
+
+§77 N3 认定的「真结构缺口」：待办有清单、笔记没有 —— 同一个 App 两套心智。
+v1.3 §23 把 Note/List 从推导升级为 **V014 B 级事实**，并给了完整状态机与 9 条实现合同。
+
+### 一、v1.3 §23.2 合同逐条对表
+
+| 域 | V014 [B] | 我们现在（实查） | 处置 |
+|---|---|---|---|
+| List 是持久对象 | 新建 List 持续出现在后续选择器里 | **没有 List 实体**（`Note` 只有 title/content/uid） | C1 建 `NoteList` + `note.listUid` |
+| Dialog layering | 同一时刻 1 个 interactive modal；Create List 是唯一 IME owner | 笔记页无任何 selector | C2 ListChange → CreateList 用 **suspend/replace**（不叠两层） |
+| Parent draft | selector/create 完成后 title/body draft 必须还在 | — | C2：Dialog 只改局部 state，不重建编辑器 |
+| Create List commit | Save 先建持久 List 再回选择器；**由 Note 发起则自动选中**；失败 Dialog 不关 | — | C3 |
+| Save projection | local-first 立即投影到当前 List | 已是 local-first（Room→Flow，同步后台）✓ | 沿用 |
+| Dirty close | pristine 直接关；dirty 走统一 DiscardDialog | **现在是「返回即静默保存」**（`NoteEditScreen:71` saveAndBack） | C4 见下 |
+| Empty state | 空态按当前 List 作用域 | 全局空态 | C5 |
+| Scalability | >6–8 项 selector 可滚动，Create 行常驻 | — | C2 内建 |
+
+### 二、⚠️ C4 主动偏离：不改「返回即保存」
+
+V014 要求 dirty 关闭走 DiscardDialog。但我们笔记的**现行契约是「返回即静默保存」**
+（`NoteEditScreen.kt:71`），且有防抖草稿兜底。改成「返回要问丢不丢」会让老用户**丢掉已有肌肉记忆**，
+属于用体验换保真度。
+
+**决定：保留静默保存，不引入 DiscardDialog。** 记录在案，非疏漏。
+（Lifebear 的 Note 有明确 Save 按钮所以需要 discard 语义；我们两条路都有，且默认更宽容。）
+
+### 三、批 C 条目
+
+| | 内容 |
+|---|---|
+| C1 | `NoteList` 实体 + `note.listUid` + Room v6→v7 迁移 + DAO + 默认清单 `nlist-default` |
+| C2 | 笔记页清单 chips（横滑，选中高亮，末尾 ＋ 建清单）+ 按清单过滤 |
+| C3 | 笔记编辑页「清单」行 → ListChange 弹窗 → CreateList（suspend/replace，新建后自动选中，失败不关） |
+| C5 | 空态按当前清单作用域说话 |
+| C6 | 同步：新增 `notelist` kind（App SyncEngine / worker `KINDS` / 网页 `KINDS`），note payload 带 `listUid` |
+| C7 | 网页端同步实现（chips + 编辑弹窗的清单选择 + 建清单） |
+
+**顺序**：C1 数据层 → C6 同步 → C2/C3/C5 App UI → C7 网页 → 编译/i18n/回勾。
+数据层先行是因为迁移写错要用户重装，必须最先验。

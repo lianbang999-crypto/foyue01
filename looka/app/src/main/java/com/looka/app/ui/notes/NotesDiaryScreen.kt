@@ -3,6 +3,7 @@ package com.looka.app.ui.notes
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -99,6 +101,8 @@ fun NotesDiaryScreen(vm: LookaViewModel, nav: NavHostController) {
             Spacer(Modifier.width(24.dp))
             SegTab(tr("日记"), seg == 1) { vm.notesSeg = 1 }
         }
+        // §86 C2（V014 [B]）：List 是笔记的原生容器 —— chips 横滑、选中高亮、末尾 ＋ 建清单
+        if (seg == 0) NoteListChips(vm)
         Hairline()
         if (seg == 0) NotesList(vm, nav, q.trim()) else DiaryList(vm, nav, q.trim())
     }
@@ -123,16 +127,63 @@ private fun SegTab(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
+private fun NoteListChips(vm: LookaViewModel) {
+    val lists by vm.noteLists.collectAsState()
+    val notes by vm.notes.collectAsState()
+    var createDlg by remember { mutableStateOf(false) }
+    // 首次进入惰性建默认清单（迁移里不建：uid 约定归 VM 管）
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.ensureNoteListDefault() }
+
+    Row(
+        Modifier.fillMaxWidth()
+            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
+            .padding(horizontal = 12.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Chip(tr("全部"), vm.noteListSel.isEmpty()) { vm.noteListSel = "" }
+        lists.forEach { l ->
+            val n = notes.count { it.listUid == l.uid }
+            Chip(l.name + if (n > 0) "  $n" else "", vm.noteListSel == l.uid) { vm.noteListSel = l.uid }
+        }
+        Chip("＋", false) { createDlg = true }
+    }
+    if (createDlg) NoteListCreateDialog(
+        vm,
+        onCreated = { uid -> vm.noteListSel = uid; createDlg = false },
+        onDismiss = { createDlg = false }
+    )
+}
+
+@Composable
+private fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.padding(end = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (on) Ink else PanelBg)
+            .plainClick(onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(label, fontSize = 12.sp, color = if (on) Color.White else Ink)
+    }
+}
+
+@Composable
 private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
     val all by vm.notes.collectAsState()
-    // §77 N6：搜索命中标题或正文
-    val notes = if (q.isBlank()) all else all.filter {
+    val lists by vm.noteLists.collectAsState()
+    // §86 C2：先按当前清单收窄，再按搜索命中标题或正文（§77 N6）
+    val scoped = if (vm.noteListSel.isEmpty()) all else all.filter { it.listUid == vm.noteListSel }
+    val notes = if (q.isBlank()) scoped else scoped.filter {
         it.title.contains(q, true) || it.content.contains(q, true)
     }
     if (notes.isEmpty()) {
-        if (q.isNotBlank()) EmptyDeer(tr("没找到「{0}」", q), hint = tr("换个词试试"))
-        // §77 N8：＋ 已从顶栏撤掉，空态指向底部中央 ＋
-        else EmptyDeer(tr("还没有笔记"), hint = tr("点下面中间的 ＋ 写第一条"))
+        // §86 C5：空态按当前作用域说话，别在筛了清单之后说「还没有笔记」
+        val curName = lists.find { it.uid == vm.noteListSel }?.name
+        when {
+            q.isNotBlank() -> EmptyDeer(tr("没找到「{0}」", q), hint = tr("换个词试试"))
+            curName != null -> EmptyDeer(tr("「{0}」里还没有笔记", curName), hint = tr("点下面中间的 ＋ 写第一条"))
+            else -> EmptyDeer(tr("还没有笔记"), hint = tr("点下面中间的 ＋ 写第一条"))
+        }
         return
     }
     val fmt = SimpleDateFormat(tr("M月d日 HH:mm"), Locale.CHINA)

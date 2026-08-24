@@ -157,12 +157,33 @@ val LIST_PALETTE = listOf(
     "#DE4BE2", "#CB00D8", "#9F0058", "#C10080", "#F05FBE", "#F689CD"
 )
 
+/**
+ * 笔记清单（§86 C1，V014 [B]）：List 是**持久对象**，不是编辑器里的临时字符串。
+ * 与 TaskList 分立 —— 笔记和待办是两种心智，共用一张表会让"购物清单"同时冒充两边的容器。
+ */
+@Entity(tableName = "note_list", indices = [Index(value = ["uid"])])
+data class NoteList(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val colorHex: String = "#5C6670",
+    val sortOrder: Int = 0,
+    val deletable: Boolean = true,
+    val uid: String = newUid(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val dirty: Boolean = true,
+    val deleted: Boolean = false
+)
+
+/** 默认笔记清单 uid：与 task 的 list-default 对称，不可删 */
+const val NOTE_LIST_DEFAULT = "nlist-default"
+
 /** 笔记 */
-@Entity(tableName = "note", indices = [Index(value = ["uid"])])
+@Entity(tableName = "note", indices = [Index(value = ["uid"]), Index(value = ["listUid"])])
 data class Note(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String = "",
     val content: String = "",
+    val listUid: String = NOTE_LIST_DEFAULT,
     val updatedAt: Long = System.currentTimeMillis(),
     val uid: String = newUid(),
     val dirty: Boolean = true,

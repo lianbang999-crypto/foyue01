@@ -6,7 +6,7 @@
 //            AI 对话不限次（分钟/日限速）、崩溃收集、CORS、Cron 清理、R2 APK 分发。
 
 const PBKDF2_ITER = 100000;
-const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp', 'settings'];  // P5-1：设置也是同步实体
+const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings'];  // §86：notelist = 笔记清单  // P5-1：设置也是同步实体
 const SYNC_PAGE = 1000;            // 同步单页上限（配 has_more/next_since 游标）
 const enc = new TextEncoder();
 

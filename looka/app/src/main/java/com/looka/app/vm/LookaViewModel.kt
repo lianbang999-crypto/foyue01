@@ -20,6 +20,8 @@ import com.looka.app.data.EventSeries
 import com.looka.app.data.FREQ_NONE
 import com.looka.app.data.MOOD_EMOJIS
 import com.looka.app.data.Note
+import com.looka.app.data.NoteList
+import com.looka.app.data.NOTE_LIST_DEFAULT
 import com.looka.app.data.Occ
 import com.looka.app.data.Prefs
 import com.looka.app.data.RecurrenceEngine
@@ -98,6 +100,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     private val categoryDao = db.categoryDao()
     private val eventDao = db.eventDao()
     private val taskDao = db.taskDao()
+    private val noteListDao = db.noteListDao()
     private val noteDao = db.noteDao()
     private val diaryDao = db.diaryDao()
     private val stampDao = db.stampDao()
@@ -109,6 +112,8 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     val exceptionsAll = eventDao.allExceptions().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val tasks = taskDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val notes = noteDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    // §86 C1：笔记清单（V014 [B] —— List 是持久对象）
+    val noteLists = noteListDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val diaries = diaryDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val stamps = stampDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val templates = templateDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -138,6 +143,8 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     // §77 N9：笔记页当前子 tab（0 笔记 / 1 日记）。提到 VM 是因为中央 ＋ 要按它分流 ——
     // 留在 NotesDiaryScreen 里的话 Nav 拿不到，＋ 就只能一律建日程（那正是 N9 那个 bug）。
     var notesSeg by mutableIntStateOf(0)
+    // §86 C2：笔记页当前清单筛选（"" = 全部）。放 VM 是因为「新建笔记」要继承它作为默认归属
+    var noteListSel by mutableStateOf("")
     // §72 §8：拖动印章时锁住日历滚动（Pointer ownership）
     var stampDragging by mutableStateOf(false)
     // §72 §11：创建面板高度 → 日历 viewport bottomInset（不压缩格子）
@@ -615,16 +622,65 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun note(id: Long) = noteDao.byId(id)
 
-    fun saveNote(id: Long, title: String, content: String, onDone: () -> Unit = {}) = viewModelScope.launch {
+    fun saveNote(
+        id: Long, title: String, content: String,
+        listUid: String = NOTE_LIST_DEFAULT, onDone: () -> Unit = {}
+    ) = viewModelScope.launch {
         if (title.isBlank() && content.isBlank()) {
             onDone(); return@launch
         }
-        if (id < 0) noteDao.insert(Note(title = title.trim(), content = content))
+        ensureNoteListDefault()
+        if (id < 0) noteDao.insert(Note(title = title.trim(), content = content, listUid = listUid))
         else noteDao.byId(id)?.let {
-            noteDao.update(it.copy(title = title.trim(), content = content, updatedAt = now(), dirty = true))
+            noteDao.update(it.copy(
+                title = title.trim(), content = content, listUid = listUid,
+                updatedAt = now(), dirty = true
+            ))
         }
         afterChange()
         onDone()
+    }
+
+    // ── §86 C1/C3：笔记清单 ──────────────────────────────────────
+    /** 惰性建默认清单：不可删，uid 固定，跨端天然合并（同 task 的 list-default 套路） */
+    suspend fun ensureNoteListDefault() {
+        if (noteListDao.byUid(NOTE_LIST_DEFAULT) == null) {
+            noteListDao.insert(
+                NoteList(
+                    name = tr("我的笔记"), colorHex = "#5C6670",
+                    sortOrder = 0, deletable = false, uid = NOTE_LIST_DEFAULT
+                )
+            )
+        }
+    }
+
+    /**
+     * V014「Create List commit」：先落持久 List 再回调 —— 回调里带回 uid 供发起方自动选中；
+     * 失败（重名/空名）返回 null，调用方据此**不关闭 Dialog**。
+     */
+    fun addNoteList(name: String, colorHex: String, onDone: (String?) -> Unit = {}) = viewModelScope.launch {
+        val n = name.trim()
+        if (n.isBlank()) { onDone(null); return@launch }
+        if (noteLists.value.any { it.name == n }) { onDone(null); return@launch }
+        val order = (noteLists.value.maxOfOrNull { it.sortOrder } ?: 0) + 1
+        val l = NoteList(name = n, colorHex = colorHex, sortOrder = order)
+        noteListDao.insert(l)
+        afterChange()
+        onDone(l.uid)
+    }
+
+    fun renameNoteList(l: NoteList, name: String, colorHex: String) = viewModelScope.launch {
+        noteListDao.update(l.copy(name = name.trim(), colorHex = colorHex, dirty = true, updatedAt = now()))
+        afterChange()
+    }
+
+    /** 删清单不删笔记：里面的笔记迁回默认清单（与 deleteTaskList 同语义） */
+    fun deleteNoteList(l: NoteList) = viewModelScope.launch {
+        if (!l.deletable) return@launch
+        ensureNoteListDefault()
+        noteDao.reassignList(l.uid, NOTE_LIST_DEFAULT, now())
+        noteListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
+        afterChange()
     }
 
     fun deleteNote(id: Long, onDone: () -> Unit = {}) = viewModelScope.launch {

@@ -9,6 +9,8 @@ import com.looka.app.data.Diary
 import com.looka.app.data.EventException
 import com.looka.app.data.EventSeries
 import com.looka.app.data.Note
+import com.looka.app.data.NOTE_LIST_DEFAULT
+import com.looka.app.data.NoteList
 import com.looka.app.data.Prefs
 import com.looka.app.data.Reminder
 import com.looka.app.data.Stamp
@@ -153,9 +155,16 @@ object SyncEngine {
                     .put("doneAt", t.doneAt).put("labels", t.labels)
                     .put("sortOrder", t.sortOrder)))
         }
+        for (l in db.noteListDao().dirtyList()) {
+            arr.put(rec("notelist", l.uid, l.updatedAt, l.deleted,
+                if (l.deleted) null else JSONObject()
+                    .put("name", l.name).put("color", l.colorHex).put("sort", l.sortOrder)
+                    .put("deletable", l.deletable)))
+        }
         for (n in db.noteDao().dirtyList()) {
             arr.put(rec("note", n.uid, n.updatedAt, n.deleted,
-                if (n.deleted) null else JSONObject().put("title", n.title).put("content", n.content)))
+                if (n.deleted) null else JSONObject().put("title", n.title).put("content", n.content)
+                    .put("listUid", n.listUid)))
         }
         for (d in db.diaryDao().dirtyList()) {
             arr.put(rec("diary", d.uid, d.updatedAt, d.deleted,
@@ -227,6 +236,7 @@ object SyncEngine {
                 when (it.optString("kind")) {
                     "category" -> 0
                     "tasklist" -> 1
+                    "notelist" -> 1
                     else -> 2
                 }
             }
@@ -421,6 +431,32 @@ object SyncEngine {
                     }
                 }
 
+                "notelist" -> {
+                    val ex = db.noteListDao().byUid(uid)
+                    if (del) {
+                        if (ex != null && ex.deletable) db.noteListDao().hardDeleteByUid(uid)
+                    } else if (ex == null) {
+                        db.noteListDao().insert(
+                            NoteList(
+                                name = o.optString("name", tr("笔记")),
+                                colorHex = o.optString("color", "#5C6670"),
+                                sortOrder = o.optInt("sort"),
+                                deletable = o.optBoolean("deletable", true),
+                                uid = uid, updatedAt = up, dirty = false
+                            )
+                        )
+                    } else if (up > ex.updatedAt) {
+                        db.noteListDao().update(
+                            ex.copy(
+                                name = o.optString("name", ex.name),
+                                colorHex = o.optString("color", ex.colorHex),
+                                sortOrder = o.optInt("sort", ex.sortOrder),
+                                updatedAt = up, dirty = false, deleted = false
+                            )
+                        )
+                    }
+                }
+
                 "note" -> {
                     val ex = db.noteDao().byUid(uid)
                     if (del) {
@@ -429,6 +465,7 @@ object SyncEngine {
                         db.noteDao().insert(
                             Note(
                                 title = o.optString("title"), content = o.optString("content"),
+                                listUid = o.optString("listUid", NOTE_LIST_DEFAULT),
                                 updatedAt = up, uid = uid, dirty = false
                             )
                         )
@@ -438,6 +475,7 @@ object SyncEngine {
                             ex.copy(
                                 title = o.optString("title", ex.title),
                                 content = o.optString("content", ex.content),
+                                listUid = o.optString("listUid", ex.listUid),
                                 updatedAt = up, dirty = false, deleted = false
                             )
                         )
@@ -531,6 +569,12 @@ object SyncEngine {
                     if (del) db.taskDao().hardDeleteByUid(uid)
                     else db.taskDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.taskDao().update(it.copy(dirty = false))
+                    }
+                }
+                "notelist" -> {
+                    if (del) db.noteListDao().hardDeleteByUid(uid)
+                    else db.noteListDao().byUid(uid)?.let {
+                        if (it.dirty && it.updatedAt == up) db.noteListDao().update(it.copy(dirty = false))
                     }
                 }
                 "note" -> {

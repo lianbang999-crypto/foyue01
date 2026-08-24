@@ -8,10 +8,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         Category::class, EventSeries::class, EventException::class, Reminder::class,
-        TaskList::class, Task::class, Note::class, Diary::class, Stamp::class,
+        TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -19,6 +19,7 @@ abstract class LookaDb : RoomDatabase() {
     abstract fun eventDao(): EventDao
     abstract fun taskListDao(): TaskListDao
     abstract fun taskDao(): TaskDao
+    abstract fun noteListDao(): NoteListDao
     abstract fun noteDao(): NoteDao
     abstract fun diaryDao(): DiaryDao
     abstract fun stampDao(): StampDao
@@ -57,6 +58,27 @@ abstract class LookaDb : RoomDatabase() {
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE reminder ADD COLUMN alarm INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /**
+         * v6 → v7（§86 C1，笔记清单）：note_list 表 + note.listUid。
+         * 存量笔记全部落到默认清单 —— 用户升级后一条不丢、一条不乱跑。
+         * 默认清单本身由 LookaViewModel.ensureNoteListDefault() 惰性建（迁移里建会绕过同步 uid 约定）。
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS note_list (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, " +
+                        "colorHex TEXT NOT NULL DEFAULT '#5C6670', sortOrder INTEGER NOT NULL DEFAULT 0, " +
+                        "deletable INTEGER NOT NULL DEFAULT 1, uid TEXT NOT NULL, " +
+                        "updatedAt INTEGER NOT NULL, dirty INTEGER NOT NULL DEFAULT 1, " +
+                        "deleted INTEGER NOT NULL DEFAULT 0)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_note_list_uid ON note_list(uid)")
+                db.execSQL("ALTER TABLE note ADD COLUMN listUid TEXT NOT NULL DEFAULT 'nlist-default'")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_note_listUid ON note(listUid)")
             }
         }
 

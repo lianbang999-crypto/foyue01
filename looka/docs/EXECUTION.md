@@ -937,3 +937,19 @@ Qwen 真挂了后台不响、看板恒显 0。真实埋点是 `ai_fail`。详见
 **挂账（§15 ②）**：网页 B1/B2/B5 仍是弹窗表单，commit 语义一致、形态差异下批跟。
 **挂账（批内）**：模板编辑器（TemplateScreens）用屏幕局部 draft，接不上读 `vm.draft` 的全页选择器，
 本批继续用旧 Sheet —— 要跟上得先把模板 draft 提升到 VM，另开条目。
+
+## P39 · §86 批 C 笔记清单合同（V014 B 级，2026-08-24）
+
+| | 项 | 状态 |
+|---|---|---|
+| C1 | `NoteList` 实体 + `note.listUid` + **Room v6→v7 迁移**（注册在 `LookaApp.kt`）+ `NoteListDao` + 惰性默认清单 `nlist-default`（不可删）。删清单不删笔记：`reassignList` 迁回默认。**迁移已逐列比对 Room 生成的 DDL**（列名/类型/NOT NULL/索引名 `index_note_list_uid`、`index_note_listUid` 全对上） | [~] |
+| C6 | `notelist` kind 三端就位（SyncEngine push/pull/ack + worker `KINDS` + 网页 `KINDS`）；note payload 带 `listUid`；拉取排序里 notelist 与 tasklist 同级先落地（笔记引用它） | [~] |
+| C2 | 清单 chips 双端：横滑、选中高亮、带条数、末尾 ＋ 建清单；先按清单收窄再按搜索过滤 | [~] |
+| C3 | 编辑页清单行 → `NoteListChangeDialog` → `NoteListCreateDialog`：**suspend/replace**（开创建层时收起选择层，取消再放回）· 创建层是唯一 IME owner（FocusRequester 自动聚焦）· 建好自动选中 · **空名/重名不关弹窗**就地报错 · 全程不碰 title/body draft。网页用 select + prompt（形态差异见挂账） | [~] |
+| C5 | 空态分三态：搜索无果 / 「某清单」里还没有笔记 / 全局还没有笔记。双端 | [~] |
+| C7 | 网页：`noteChips` + `curNoteList` 收窄 + 新建即选中 + 编辑弹窗清单 select + `ensureNoteListDefault`（同 uid `nlist-default`，跨端天然合并） | [~] |
+| C4 | ⚠️ **主动偏离**：不引入 DiscardDialog，保留「返回即静默保存」——理由见 §86 二 | [x] |
+
+**🔴 真机必验（迁移）**：这批动了 Room schema（v6→v7）。**装旧版 → 写几条笔记 → 覆盖安装新版**，
+确认笔记一条不少且都在「我的笔记」里。迁移写错的后果是用户要卸载重装，编译通过不代表迁移对。
+**挂账**：网页建清单用的是 `prompt()`，没有配色选择；App 侧有 48 色板。下批统一。

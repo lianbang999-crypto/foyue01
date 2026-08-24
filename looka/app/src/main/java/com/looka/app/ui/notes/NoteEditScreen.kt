@@ -2,6 +2,7 @@ package com.looka.app.ui.notes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,10 +21,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -32,6 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.ui.common.ConfirmDialog
+import com.looka.app.ui.common.ColorDot
+import com.looka.app.ui.common.parseHex
+import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
 import com.looka.app.ui.common.SaveButton
@@ -48,12 +55,19 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var delDlg by remember { mutableStateOf(false) }
+    // §86 C3：清单归属。新建时继承笔记页当前筛选（"全部" → 默认清单）
+    var listUid by remember { mutableStateOf(vm.noteListSel.ifEmpty { com.looka.app.data.NOTE_LIST_DEFAULT }) }
+    var listDlg by remember { mutableStateOf(false) }
+    var createDlg by remember { mutableStateOf(false) }
+    val lists by vm.noteLists.collectAsState()
 
     val draftKey = "note_$id"
     LaunchedEffect(id) {
+        vm.ensureNoteListDefault()
         if (id >= 0) vm.note(id)?.let {
             title = it.title
             content = it.content
+            listUid = it.listUid
         }
         // E2：进程被杀后回来，恢复没保存成的内容（正常保存路径会清掉草稿，走不到这里）
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
@@ -69,7 +83,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
     }
 
     fun saveAndBack() {
-        vm.saveNote(id, title, content) { }
+        vm.saveNote(id, title, content, listUid) { }
         com.looka.app.data.Prefs.clearDraft(ctx, draftKey)
         nav.popBackStack()
     }
@@ -85,7 +99,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
                 }
             }
             SaveButton(enabled = title.isNotBlank() || content.isNotBlank()) {
-                vm.saveNote(id, title, content) { toast(ctx, tr("已保存")) }
+                vm.saveNote(id, title, content, listUid) { toast(ctx, tr("已保存")) }
                 com.looka.app.data.Prefs.clearDraft(ctx, draftKey)
                 nav.popBackStack()
             }
@@ -99,6 +113,26 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
         )
         Hairline()
+        // §86 C3：清单行 —— 摘要 + 点开选择层（V014：List 是原生容器，不是编辑器里的字符串）
+        Row(
+            Modifier.fillMaxWidth().rowClick { listDlg = true }
+                .padding(horizontal = 16.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(tr("清单"), fontSize = 13.sp, color = GrayText)
+            Spacer(Modifier.width(14.dp))
+            ColorDot(parseHex(lists.find { it.uid == listUid }?.colorHex ?: "#5C6670"), 10.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                lists.find { it.uid == listUid }?.name ?: tr("我的笔记"),
+                fontSize = 14.sp, modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Default.ChevronRight, null,
+                tint = Color(0xFFC9CCC9), modifier = Modifier.size(18.dp)
+            )
+        }
+        Hairline()
         TextField(
             value = content, onValueChange = { content = it },
             placeholder = { Text(tr("开始写…"), fontSize = 15.sp, color = Color(0xFFB9BBB9)) },
@@ -107,6 +141,21 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
             modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)
         )
     }
+
+    // §86 C3（V014 Dialog layering）：ListChange 与 CreateList 是 **suspend/replace**，
+    // 不叠成两层可响应的 modal —— 打开创建层时把选择层收起，取消再放回来。
+    if (listDlg) NoteListChangeDialog(
+        lists = lists, current = listUid,
+        onPick = { listUid = it; listDlg = false },
+        onCreate = { listDlg = false; createDlg = true },
+        onDismiss = { listDlg = false }
+    )
+    if (createDlg) NoteListCreateDialog(
+        vm,
+        // V014 Create List commit：由笔记发起 → 建好自动选中，直接回编辑器
+        onCreated = { uid -> listUid = uid; createDlg = false },
+        onDismiss = { createDlg = false; listDlg = true }
+    )
 
     if (delDlg) ConfirmDialog(
         title = tr("删除这条笔记？"),

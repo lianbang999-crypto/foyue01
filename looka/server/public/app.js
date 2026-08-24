@@ -149,7 +149,7 @@ function pushThemeSettings(idx, hex) {
 }
 
 /* ---------------- 状态与存储 ---------------- */
-const KINDS = ['category', 'tasklist', 'event', 'task', 'note', 'diary', 'stamp', 'settings'];
+const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings'];
 // P5-1 设置上云：App 是设置的主人，网页跟随（两端看同一本日历）。
 // 默认值与 App Prefs 一致：周一起始 / 农历跟随中文 / 显示已完成
 const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true, stampTitle: true };
@@ -810,6 +810,18 @@ function ensureDefaultList() {
     put('tasklist', 'list-default', { name: '我的清单', color: '#5C6670', sort: 0, archived: false, deletable: false });
   }
 }
+
+/* §86 C7：笔记清单（与 App 的 nlist-default 同 uid，跨端天然合并） */
+let curNoteList = '';   // '' = 全部
+function ensureNoteListDefault() {
+  if (!S.data.notelist.has('nlist-default')) {
+    put('notelist', 'nlist-default', { name: '我的笔记', color: '#5C6670', sort: 0, deletable: false });
+  }
+}
+function noteLists() {
+  return [...S.data.notelist.values()].filter(r => !r.deleted)
+    .sort((a, b) => (a.p.sort || 0) - (b.p.sort || 0));
+}
 function renderTodos() {
   ensureDefaultList();
   const lists = taskLists().filter(l => !l.archived);
@@ -868,25 +880,55 @@ function renderTodos() {
 
 /* ---------------- 笔记 ---------------- */
 function renderNotes() {
-  // §77 N6：搜索命中标题或正文（与 App 同口径）
+  ensureNoteListDefault();
+  // §86 C2：先按当前清单收窄，再按搜索命中（§77 N6，与 App 同口径）
   const q = ($('#noteSearch')?.value || '').trim().toLowerCase();
-  const all = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
+  const every = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
+  const lists = noteLists();
+  const all = curNoteList ? every.filter(r => (r.p.listUid || 'nlist-default') === curNoteList) : every;
   const list = q ? all.filter(r =>
     (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q)) : all;
+  const counts = {};
+  every.forEach(r => { const k = r.p.listUid || 'nlist-default'; counts[k] = (counts[k] || 0) + 1; });
+  $('#noteChips').innerHTML =
+    `<button class="lchip ${curNoteList === '' ? 'on' : ''}" data-nl="">${t('全部')}</button>` +
+    lists.map(l => `<button class="lchip ${curNoteList === l.uid ? 'on' : ''}" data-nl="${l.uid}">
+      <span class="dot" style="background:${l.p.color || '#5C6670'}"></span>${esc(l.p.name)}${counts[l.uid] ? ' ' + counts[l.uid] : ''}</button>`).join('') +
+    `<button class="lchip add" data-nl="__new">＋</button>`;
+  $$('#noteChips .lchip').forEach(b => b.onclick = () => {
+    if (b.dataset.nl === '__new') {
+      const name = (prompt(t('清单名（如：灵感 / 会议）')) || '').trim();
+      if (!name) return;
+      if (noteLists().some(l => l.p.name === name)) { toast(t('名字空着或重名了')); return; }
+      const uid = uuid();
+      put('notelist', uid, { name, color: LK_PALETTE[(6 + noteLists().length * 7) % 48], sort: noteLists().length + 1, deletable: true });
+      curNoteList = uid;   // 新建即选中（V014 Create List commit）
+      renderNotes();
+      return;
+    }
+    curNoteList = b.dataset.nl; renderNotes();
+  });
   $('#noteList').innerHTML = list.length ? list.map(r => `
     <div class="note-item" data-n="${r.uid}">
       <div class="nt">${esc(r.p.title || '无标题')}</div>
       ${r.p.content ? `<div class="np">${esc(r.p.content.replace(/\n/g, ' '))}</div>` : ''}
       <div class="nd">${new Date(r.updated_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
     </div>`).join('')
-    : `<div class="empty-deer"><img src="deer.svg" alt="">${q ? '没找到「' + esc(q) + '」' : '还没有笔记'}</div>`;
+    : `<div class="empty-deer"><img src="deer.svg" alt="">${
+        q ? '没找到「' + esc(q) + '」'
+          : (curNoteList ? '「' + esc(lists.find(l => l.uid === curNoteList)?.p.name || '') + '」里还没有笔记' : '还没有笔记')
+      }</div>`;
   $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
 }
 function openNoteModal(uid) {
+  ensureNoteListDefault();
   const r = uid ? S.data.note.get(uid) : null;
   const d = modal(`
     <h3>${r ? '编辑笔记' : '新建笔记'}</h3>
-    <div class="frow"><input id="nTitle" placeholder="标题" value="${esc(r?.p.title || '')}"></div>
+    <div class="frow"><input id="nTitle" placeholder="${t('标题')}" value="${esc(r?.p.title || '')}"></div>
+    <!-- §86 C3：清单归属；新建时继承当前筛选（"全部" → 默认清单） -->
+    <div class="frow"><select id="nList">${noteLists().map(l =>
+      `<option value="${l.uid}" ${(r?.p.listUid || curNoteList || 'nlist-default') === l.uid ? 'selected' : ''}>${esc(l.p.name)}</option>`).join('')}</select></div>
     <div class="frow"><textarea id="nContent" rows="8" placeholder="开始写…">${esc(r?.p.content || '')}</textarea></div>
     <div class="btns">
       ${r ? '<button class="btn-ghost left" id="nDel" style="color:var(--red)">删除</button>' : ''}
@@ -898,7 +940,7 @@ function openNoteModal(uid) {
     const title = d.querySelector('#nTitle').value.trim();
     const content = d.querySelector('#nContent').value;
     if (!title && !content.trim()) { closeModal(); return; }
-    put('note', uid || uuid(), { title, content });
+    put('note', uid || uuid(), { title, content, listUid: d.querySelector('#nList').value });
     closeModal(); toast('已保存');
   };
   if (r) d.querySelector('#nDel').onclick = () => { closeModal(); confirmDlg('删除这条笔记？', () => del('note', uid)); };
