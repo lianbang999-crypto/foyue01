@@ -285,7 +285,7 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
                 items(ts, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
                         TaskRowV2(
                             t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
                             onToggle = { vm.toggleTask(t) },
@@ -341,7 +341,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                 items(overdue, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
                         TaskRowV2(
                             t, listName = listMap[t.listUid]?.name,
                             listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
@@ -374,7 +374,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                     items(ts, key = { it.uid }) { t ->
                         // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                         Box(Modifier.animateItem()) {
-                            SwipeDeleteBackdrop(Modifier.matchParentSize())
+                            SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
                             TaskRowV2(
                                 t, listName = listMap[t.listUid]?.name,
                                 listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
@@ -456,7 +456,7 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
                 items(ts, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
                         TaskRowV2(
                             t, listName = listMap[t.listUid]?.name,
                             listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),

@@ -347,6 +347,10 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             }) { Text(tr("确定")) }
         },
         dismissButton = {
+            // §100：一键回到「只有周日」—— 万一又被设成全红，不用一个个取消
+            TextButton(onClick = { tmpMask = Prefs.HOLIDAY_MASK_DEFAULT }) {
+                Text(tr("恢复默认"), color = GrayText)
+            }
             TextButton(onClick = { holidayDlg = false }) { Text(tr("取消"), color = GrayText) }
         },
         containerColor = Color.White

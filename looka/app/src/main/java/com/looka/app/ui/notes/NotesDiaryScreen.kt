@@ -2,6 +2,8 @@ package com.looka.app.ui.notes
 
 import androidx.compose.material3.MaterialTheme
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -168,7 +170,9 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
         items(reorder.order.toList(), key = { it }) { luid ->
             val l = byUid[luid] ?: return@items
             Box(Modifier.animateItem()) {
-            com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
+            com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) {
+                if (l.deletable) vm.deleteNoteList(l)
+            }
             Row(
                 Modifier.fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
@@ -182,10 +186,14 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
                     .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // §100：图标跟随清单颜色 —— 加了色盘却还画成死灰，等于白选
                 Icon(
                     if (l.uid == com.looka.app.data.NOTE_LIST_DEFAULT)
                         Icons.Outlined.Inbox else Icons.Outlined.Description,
-                    null, tint = GrayText, modifier = Modifier.size(24.dp)
+                    null,
+                    tint = if (l.uid == com.looka.app.data.NOTE_LIST_DEFAULT) GrayText
+                           else com.looka.app.ui.common.parseHex(l.colorHex),
+                    modifier = Modifier.size(24.dp)
                 )
                 // 文字左缘 72dp = 16(边距) + 24(图标) + 32(间隔)
                 Spacer(Modifier.width(32.dp))
@@ -213,7 +221,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
 
     if (createDlg) NoteListNameDialog(
         title = tr("新建清单"), initial = "", confirmLabel = tr("保存"),
-        onConfirm = { n -> vm.addNoteList(n, "#5C6670"); createDlg = false },
+        onConfirm = { n, c -> vm.addNoteList(n, c); createDlg = false },
         onDismiss = { createDlg = false }
     )
 }
@@ -253,26 +261,63 @@ fun NoteRow(
     Hairline()   // 实机是**通栏**（左右缩进均为 0）
 }
 
-/** 新建 / 重命名清单：标题 + 下划线输入框 + 取消/确定；**空名时确定置灰**（实机图 81） */
+/**
+ * 新建 / 重命名清单：标题 + 输入框 + 色盘 + 取消/确定；**空名时确定置灰**（实机图 81）。
+ *
+ * §100：**加上颜色选择**（用户要求）。
+ *
+ * ⚠️ 这是**主动偏离 Lifebear**：§96 查过 13 张实机图，笔记清单统一灰色文档图标、
+ * **没有颜色**（有颜色的是 ToDo 清单）。这里按用户要求加上，不是对齐结果。
+ * 色盘与待办清单共用同一套 48 色（§97 已按实机采样校准），不另起一套。
+ */
 @Composable
 fun NoteListNameDialog(
     title: String, initial: String, confirmLabel: String,
-    onConfirm: (String) -> Unit, onDismiss: () -> Unit
+    initialColor: String = com.looka.app.data.LIST_PALETTE[30],
+    onConfirm: (String, String) -> Unit, onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
+    var color by remember { mutableStateOf(initialColor) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, fontSize = 17.sp) },
         text = {
-            androidx.compose.material3.OutlinedTextField(
-                value = name, onValueChange = { name = it },
-                placeholder = { Text(tr("清单名")) }, singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column {
+                androidx.compose.material3.OutlinedTextField(
+                    value = name, onValueChange = { name = it },
+                    placeholder = { Text(tr("清单名")) }, singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
+                Column(
+                    Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    com.looka.app.data.LIST_PALETTE.chunked(6).forEach { rowColors ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
+                        ) {
+                            rowColors.forEach { hex ->
+                                Box(
+                                    Modifier.size(30.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(com.looka.app.ui.common.parseHex(hex))
+                                        .border(
+                                            width = if (color == hex) 2.5.dp else 0.8.dp,
+                                            color = if (color == hex) Ink else Color(0x22000000),
+                                            shape = androidx.compose.foundation.shape.CircleShape
+                                        )
+                                        .plainClick { color = hex }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         confirmButton = {
             androidx.compose.material3.TextButton(
-                onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
+                onClick = { if (name.isNotBlank()) onConfirm(name.trim(), color) },
                 enabled = name.isNotBlank()
             ) { Text(confirmLabel) }
         },
@@ -340,7 +385,9 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                 // §99 I6：日记**只给左滑删除**，不做手动排序 —— 天然按日期倒序，
                 // 手动打乱反而找不到（用户拍板）
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) {
+                    vm.deleteDiaryEntity(d)
+                }
                 Row(
                     Modifier.fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)

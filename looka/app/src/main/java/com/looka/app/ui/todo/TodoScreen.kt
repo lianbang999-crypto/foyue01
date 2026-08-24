@@ -149,7 +149,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             items(reorder.order.toList(), key = { it }) { luid ->
                 val l = byUid[luid] ?: return@items
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) { if (l.deletable) vm.deleteTaskList(l) }
                 Row(
                     Modifier
                         .fillMaxWidth()

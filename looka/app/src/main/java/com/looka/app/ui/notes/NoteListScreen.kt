@@ -118,7 +118,7 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                 items(reorder.order.toList(), key = { it }) { nuid ->
                     val n = byUid[nuid] ?: return@items
                     androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                        com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteNoteEntity(n) }
                         NoteRow(
                             n,
                             modifier = Modifier
@@ -137,8 +137,9 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     }
 
     if (renameDlg) NoteListNameDialog(
-        title = tr("重命名清单"), initial = list.name, confirmLabel = tr("重命名"),
-        onConfirm = { n -> vm.renameNoteList(list, n, list.colorHex); renameDlg = false },
+        title = tr("编辑清单"), initial = list.name, confirmLabel = tr("保存"),
+        initialColor = list.colorHex,
+        onConfirm = { n, c -> vm.renameNoteList(list, n, c); renameDlg = false },
         onDismiss = { renameDlg = false }
     )
 
