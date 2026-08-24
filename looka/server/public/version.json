@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 33,
-  "versionName": "1.16.1",
+  "versionCode": 34,
+  "versionName": "1.17.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3694769,
-  "sha256": "7027449bb63ee5803b54240f8c3853c6d19fc74a1bc7d03df2687d03ce93fe8b",
-  "changelog": "贴纸菜单不再压住贴纸；给贴纸登记的日程点编辑直接进完整页面，贴纸就在标题旁；删除贴纸会连同它的日程一起删，删前会问一句",
+  "size": 3712097,
+  "sha256": "dbe40cc8b6113f91a690d3fd0b51803082cb0f8637004a7c2211e83da45b8c99",
+  "changelog": "笔记能分清单了；任务有了自己的详情页，完成和星标点一下就好；日程的分类和提醒改成整页选择，选完自动返回；日记不再一进来就问心情",
   "minSupported": 1
 }
