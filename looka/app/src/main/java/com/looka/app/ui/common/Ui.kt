@@ -189,6 +189,23 @@ fun parseHex(hex: String): Color = try {
     Color(0xFF9AA0A6)
 }
 
+/**
+ * §99 I1：**幂等返回** —— 白屏根治。
+ *
+ * 删掉当前页对应的实体后，页面会同时走两条退出路径：
+ *   ① 确认按钮里直接 `nav.popBackStack()`
+ *   ② 实体从数据流里消失 → `if (x == null)` 守卫里的 `LaunchedEffect` 再 `popBackStack()` 一次
+ *
+ * 退出动画期间旧页面仍在组合中，两条都会执行 —— 于是**多弹了一层**，
+ * 连承载底部 tab 的宿主一起弹掉，NavHost 空了 → **整屏白**（实机图 85：只剩状态栏）。
+ *
+ * `previousBackStackEntry == null` 表示已经退到栈底，此时再弹就是弹过头。
+ * 这里统一拦掉，比在每个页面加"已退出"标志位可靠 —— 它对**所有**重复来源都成立。
+ */
+fun safeBack(nav: androidx.navigation.NavHostController) {
+    if (nav.previousBackStackEntry != null) nav.popBackStack()
+}
+
 /** 星期文字强调色：休日红 / 周六蓝 / null 默认（规格 CAL-060 休日星期） */
 fun weekdayTint(dowIso: Int, holidayMask: Int): Color? = when {
     (holidayMask shr (dowIso - 1)) and 1 == 1 -> HolidayRed

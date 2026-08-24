@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.data.Prefs
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.EmptyDeer
 import com.looka.app.ui.common.LookaTopBar
@@ -68,23 +69,19 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     val all by vm.notes.collectAsState()
     val list = lists.find { it.uid == uid }
     if (list == null) {
-        LaunchedEffect(uid) { nav.popBackStack() }
+        LaunchedEffect(uid) { safeBack(nav) }
         return
     }
 
     var menu by remember { mutableStateOf(false) }
     var renameDlg by remember { mutableStateOf(false) }
-    var sortDlg by remember { mutableStateOf(false) }
     var delDlg by remember { mutableStateOf(false) }
-    var sort by remember { mutableIntStateOf(Prefs.noteSort(ctx)) }
 
-    val notes = remember(all, uid, sort) {
-        val inList = all.filter { it.listUid == uid }
-        when (sort) {
-            0 -> inList.sortedByDescending { it.updatedAt }            // 更新日
-            2 -> inList.sortedBy { it.title.ifBlank { "￿" } }     // 笔记名（无标题排最后）
-            else -> inList.sortedByDescending { it.createdAt }         // 创建日（默认，同实机）
-        }
+    // §99 I3：**排序菜单已删**（用户拍板）。顺序改由 sortOrder 决定 —— 长按拖拽手动排。
+    // 代价写明：因此失去「按更新日 / 按笔记名」排序，那是实机图 76 有、我们主动放弃的一档。
+    val notes = remember(all, uid) {
+        all.filter { it.listUid == uid }
+            .sortedWith(compareBy({ it.sortOrder }, { -it.updatedAt }))
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
@@ -99,7 +96,6 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                 // 实机 ⋮ 只有「編集 / 並び替え」两项，锚定右上、无遮罩
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
                     DropdownMenuItem(text = { Text(tr("编辑")) }, onClick = { menu = false; renameDlg = true })
-                    DropdownMenuItem(text = { Text(tr("排序")) }, onClick = { menu = false; sortDlg = true })
                     // 实机这里没有删除项（13 张图里未见）。我们保留 —— 建了清单却删不掉是死路。
                     // 这是有意多出的一项，不是没对齐。
                     if (list.deletable) DropdownMenuItem(
@@ -128,50 +124,12 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         onDismiss = { renameDlg = false }
     )
 
-    if (sortDlg) SortDialog(
-        current = sort,
-        onApply = { sort = it; Prefs.setNoteSort(ctx, it); sortDlg = false },
-        onDismiss = { sortDlg = false }
-    )
 
     if (delDlg) ConfirmDialog(
         title = tr("删除清单「{0}」？", list.name),
         text = tr("清单里的笔记会移入默认清单，不会丢"),
-        onConfirm = { delDlg = false; vm.deleteNoteList(list); nav.popBackStack() },
+        onConfirm = { delDlg = false; vm.deleteNoteList(list); safeBack(nav) },
         onDismiss = { delDlg = false }
     )
 }
 
-/**
- * 排序对话框（实机图 76）：radio 三档 + `取消` / `应用`。
- * 注意与待办的「並び替え」**不是一回事** —— 待办那个是整页拖拽排序，这个是选排序规则。
- * 默认选中「创建日」，与实机一致。
- */
-@Composable
-private fun SortDialog(current: Int, onApply: (Int) -> Unit, onDismiss: () -> Unit) {
-    var sel by remember { mutableIntStateOf(current) }
-    val labels = listOf(tr("更新日"), tr("创建日"), tr("笔记名"))
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(tr("排序"), fontSize = 17.sp) },
-        text = {
-            Column {
-                labels.forEachIndexed { i, label ->
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .selectable(selected = sel == i, onClick = { sel = i })
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = sel == i, onClick = { sel = i })
-                        Spacer(Modifier.width(8.dp))
-                        Text(label, fontSize = 15.sp)
-                    }
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = { onApply(sel) }) { Text(tr("应用")) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) } },
-        containerColor = Color.White
-    )
-}

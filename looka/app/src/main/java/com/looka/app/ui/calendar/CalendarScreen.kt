@@ -342,8 +342,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     // 画布 0.50 × 0.8516 = 0.426 视觉，与实机对齐，也在母档 0.36–0.46 区间中段。
     // §97 G7：素材平均填充率实测 **78.7%**（§89 写的 84.8~85.9% 只取了最满的几张，
     // 04_sad 才 61.7%）。实机视觉 41.3%×Wd → 持平需 canvas 0.525；
-    // 用户要求再大一点，取 0.58（视觉 45.6%，**比实机大约 +10%**，是要求不是对齐）。
-    val visual = (wd * 0.58f).dp
+    // §99 I2：用户定 **0.618**（视觉 48.6%，比实机 41.3% **大约 +18%**）—— 是要求不是对齐。
+    val visual = (wd * 0.618f).dp
         val ring = (wd * 1.08f).dp
         val half = with(LocalDensity.current) { ring.toPx() / 2f }
         // §76 F1：pos 是窗口坐标，本层在 Scaffold padding 之下 —— 同样要减去容器原点才跟手
@@ -948,7 +948,7 @@ private fun DayCellV2(
                 val cellHpx = constraints.maxHeight.toFloat()
                 // §72 尺寸 Token（母档 §2.2，以列宽 Wd 为基准，禁止硬编码 px）
                 // §89 U1：同上 —— 0.42 曾被误施于画布；素材含 15% 安全区，改 0.50 才得视觉 0.426
-    val visualDp = maxWidth * 0.58f   // §97 G7：同上
+    val visualDp = maxWidth * 0.618f   // §97 G7：同上
                 val ringDp = maxWidth * 1.08f      // StickerDragRing 1.05–1.12
                 val hitDp = maxWidth * 0.95f       // §3 视觉≠交互：命中远大于视觉（收在列宽内避免抢邻格）
                 val hitPx = with(LocalDensity.current) { hitDp.toPx() }

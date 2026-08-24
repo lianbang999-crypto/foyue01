@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -92,6 +92,18 @@ abstract class LookaDb : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE note ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("UPDATE note SET createdAt = updatedAt")
+            }
+        }
+
+        /**
+         * v8 → v9（§99 I4）：笔记加手动顺序。
+         * 回填用 **-updatedAt** —— 新笔记 sortOrder 更小、排在前面，
+         * 与迁移前"按更新时间倒序"的观感一致；全填 0 会让所有旧笔记乱成一团。
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE note ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE note SET sortOrder = -updatedAt")
             }
         }
 

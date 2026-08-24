@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.parseHex
@@ -165,7 +166,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
         title = tr("删除这条笔记？"),
         onConfirm = {
             delDlg = false
-            vm.deleteNote(id) { nav.popBackStack() }
+            vm.deleteNote(id) { safeBack(nav) }
         },
         onDismiss = { delDlg = false }
     )

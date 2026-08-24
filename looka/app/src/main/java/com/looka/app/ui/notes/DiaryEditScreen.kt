@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.data.MOOD_EMOJIS
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
@@ -235,7 +236,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         title = tr("删除这天的日记？"),
         onConfirm = {
             delDlg = false
-            vm.deleteDiary(day) { nav.popBackStack() }
+            vm.deleteDiary(day) { safeBack(nav) }
         },
         onDismiss = { delDlg = false }
     )

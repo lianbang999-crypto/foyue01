@@ -37,6 +37,7 @@ import com.looka.app.data.FREQ_MONTHLY
 import com.looka.app.data.FREQ_NONE
 import com.looka.app.data.FREQ_WEEKLY
 import com.looka.app.data.RecurrenceEngine
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
 import com.looka.app.ui.common.NavRow
@@ -58,7 +59,7 @@ import com.looka.app.util.tr
 fun RecurrenceEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     val d = vm.draft
     if (d == null) {
-        LaunchedEffect(Unit) { nav.popBackStack() }
+        LaunchedEffect(Unit) { safeBack(nav) }
         return
     }
     var untilDlg by remember { mutableStateOf(false) }

@@ -62,7 +62,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
@@ -76,6 +75,10 @@ import androidx.navigation.NavHostController
 import com.looka.app.data.LIST_PALETTE
 import com.looka.app.data.Task
 import com.looka.app.data.TaskList
+import com.looka.app.ui.common.SwipeDeleteBackdrop
+import com.looka.app.ui.common.rememberReorderState
+import com.looka.app.ui.common.listRowGestures
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.EmptyDeer
@@ -109,7 +112,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     val tasks by vm.tasks.collectAsState()
     val list = lists.find { it.uid == uid }
     if (list == null) {
-        LaunchedEffect(uid) { nav.popBackStack() }
+        LaunchedEffect(uid) { safeBack(nav) }
         return
     }
     // 手动顺序（sortOrder），支持长按拖拽重排
@@ -185,54 +188,37 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             }
         }
 
-        // 拖拽重排状态：draggingUid + 视觉位移；松手写回 sortOrder
-        var draggingUid by remember { mutableStateOf<String?>(null) }
-        var dragOffset by remember { mutableStateOf(0f) }
-        val localOrder = remember { mutableStateListOf<String>() }
-        LaunchedEffect(open) {
-            if (draggingUid == null) {
-                localOrder.clear(); localOrder.addAll(open.map { it.uid })
-            }
-        }
+        // §99 I5：拖拽状态改用**共享**的 rememberReorderState —— 原来这里各写一遍，
+        // 现在与笔记/清单等所有列表同一份实现（用户要求：不要有重复和冲突）
+        val reorder = rememberReorderState(open.map { it.uid })
+        val localOrder = reorder.order
         val byUid = remember(open) { open.associateBy { it.uid } }
         val rowHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 56.dp.toPx() }
 
         LazyColumn(Modifier.weight(1f)) {
             items(localOrder.toList(), key = { it }) { tuid ->
                 val t = byUid[tuid] ?: return@items
-                val isDragging = draggingUid == tuid
-                TaskRowV2(
-                    t,
-                    modifier = Modifier
-                        .animateItem()
-                        .graphicsLayer {
-                            translationY = if (isDragging) dragOffset else 0f
-                            shadowElevation = if (isDragging) 12f else 0f
-                        }
-                        .zIndexFix(if (isDragging) 1f else 0f)
-                        .reorderDrag(tuid,
-                            onStart = { draggingUid = tuid; dragOffset = 0f },
-                            onDelta = { dy ->
-                                dragOffset += dy
-                                val from = localOrder.indexOf(tuid)
-                                val shift = (dragOffset / rowHeightPx).toInt()
-                                val to = (from + shift).coerceIn(0, localOrder.size - 1)
-                                if (to != from) {
-                                    localOrder.removeAt(from)
-                                    localOrder.add(to, tuid)
-                                    dragOffset -= (to - from) * rowHeightPx
-                                }
-                            },
-                            onEnd = {
-                                draggingUid = null; dragOffset = 0f
-                                vm.reorderTasks(localOrder.toList())
-                            }),
-                    listName = null, listColor = parseHex(list.colorHex),
-                    onToggle = { vm.toggleTask(t) },
-                    onStar = { vm.setTaskStar(t, !t.starred) },
-                    onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
-                ,
-                        onDelete = { vm.deleteTask(t) })
+                // 左滑露出的红底衬在行下面一层
+                androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                    SwipeDeleteBackdrop(
+                        Modifier.matchParentSize()
+                    )
+                    TaskRowV2(
+                        t,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.background)
+                            .zIndexFix(if (reorder.draggingUid == tuid) 1f else 0f)
+                            .listRowGestures(
+                                uid = tuid, state = reorder, rowHeightPx = rowHeightPx,
+                                onReorder = { order -> vm.reorderTasks(order) },
+                                onDelete = { vm.deleteTask(t) }
+                            ),
+                        listName = null, listColor = parseHex(list.colorHex),
+                        onToggle = { vm.toggleTask(t) },
+                        onStar = { vm.setTaskStar(t, !t.starred) },
+                        onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
+                    )
+                }
             }
             if (open.isEmpty()) {
                 item { EmptyDeer(tr("清单空空的"), hint = tr("在上方输入框写下第一条 ↑")) }
@@ -259,7 +245,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         onConfirm = {
             delList = false
             vm.deleteTaskList(list)
-            nav.popBackStack()
+            safeBack(nav)
         },
         onDismiss = { delList = false }
     )
@@ -850,23 +836,7 @@ fun ListEditDialog(
 /** zIndex 简封装（拖拽行浮在最上层） */
 private fun Modifier.zIndexFix(z: Float): Modifier = this.then(androidx.compose.ui.Modifier.zIndex(z))
 
-/** 长按拖拽重排手势 */
-private fun Modifier.reorderDrag(
-    key: Any?,
-    onStart: () -> Unit,
-    onDelta: (Float) -> Unit,
-    onEnd: () -> Unit
-): Modifier = this.pointerInput(key) {
-    detectDragGesturesAfterLongPress(
-        onDragStart = { onStart() },
-        onDrag = { change, amount ->
-            change.consume()
-            onDelta(amount.y)
-        },
-        onDragEnd = { onEnd() },
-        onDragCancel = { onEnd() }
-    )
-}
+// §99 I5：原来的 private Modifier.reorderDrag 已删 —— 与 ListGestures.listRowGestures 重复
 
 /** E1：删除后 5 秒可撤销的浮条 —— 解决"手滑删错"这个最恐慌的场景 */
 @Composable

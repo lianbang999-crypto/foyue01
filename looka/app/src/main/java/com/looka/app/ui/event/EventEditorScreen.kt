@@ -56,6 +56,7 @@ import com.looka.app.data.RecurrenceEngine
 import com.looka.app.data.Reminder
 import com.looka.app.data.STAMP_EMOJIS
 import com.looka.app.data.Template
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.Hairline
@@ -89,7 +90,7 @@ import kotlinx.coroutines.launch
 fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     val d = vm.draft
     if (d == null) {
-        LaunchedEffect(Unit) { nav.popBackStack() }
+        LaunchedEffect(Unit) { safeBack(nav) }
         return
     }
     val isEdit = d.editingSeriesId >= 0

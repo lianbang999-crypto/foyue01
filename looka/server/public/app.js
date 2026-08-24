@@ -540,9 +540,9 @@ function renderCalendar(anchorDay) {
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
         // §97 G7（与 App 同步）：素材平均填充率实测 **78.7%**（§89 写的 85% 只取了最满的几张）。
-        // 实机视觉 41.3%×Wd → 持平需画布 52.5%；用户要求再大一点，取 58%（视觉 45.6%，比实机 +10%）。
+        // 实机视觉 41.3%×Wd → 持平需画布 52.5%；§99 I2：用户定 61.8%（视觉 48.6%，比实机 +18%）。
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:58%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+          `width:61.8%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
         return (st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
           : `<span style="${style};font-size:18px">${st.emoji}</span>`);

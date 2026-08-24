@@ -189,6 +189,8 @@ data class Note(
     val listUid: String = NOTE_LIST_DEFAULT,
     /** §93 E3：清单页「排序」的默认档是**创建日**，只有 updatedAt 排不出来 */
     val createdAt: Long = System.currentTimeMillis(),
+    /** §99 I4：手动顺序（长按拖拽）。排序菜单已删，顺序只由用户自己拖出来 */
+    val sortOrder: Long = 0,
     val updatedAt: Long = System.currentTimeMillis(),
     val uid: String = newUid(),
     val dirty: Boolean = true,

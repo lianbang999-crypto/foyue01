@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.Hairline
@@ -69,7 +70,7 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
     val t = tasks.find { it.id == taskId }
     if (t == null) {
         // 被删 / 同步端移除：安静退回，不弹错误
-        LaunchedEffect(Unit) { nav.popBackStack() }
+        LaunchedEffect(Unit) { safeBack(nav) }
         return
     }
     val list = lists.find { it.uid == t.listUid }
@@ -185,7 +186,7 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
     if (delDlg) ConfirmDialog(
         title = tr("删除这个任务？"),
         text = t.title,
-        onConfirm = { delDlg = false; vm.deleteTask(t); nav.popBackStack() },
+        onConfirm = { delDlg = false; vm.deleteTask(t); safeBack(nav) },
         onDismiss = { delDlg = false }
     )
 }
