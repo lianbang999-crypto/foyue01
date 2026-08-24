@@ -115,7 +115,9 @@ main { max-width: 860px; margin: 0 auto; }
   align-items: center; justify-content: center; font-size: 11px; margin: 1px auto 1px;
 }
 .day-num-wrap { text-align: center; }
-.day-cell.today .day-num { background: var(--primary); color: #fff; font-weight: 700; }
+/* §97 G2：「今天」两端统一黑底白字。此前网页用 var(--primary) —— 选了红/粉主题时
+   这一格就是个红色圆块，容易被当成「日期变红了」。实机也是深色方块，不随主题变。 */
+.day-cell.today .day-num { background: var(--ink); color: #fff; font-weight: 700; }
 .day-cell.sel .day-num { background: var(--ink); color: #fff; font-weight: 700; }
 .day-num.hol { color: var(--red); }
 .day-num.sat { color: var(--sat); }

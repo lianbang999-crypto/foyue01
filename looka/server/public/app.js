@@ -501,7 +501,10 @@ function renderCalendar(anchorDay) {
       const wd = dow(day);
       const cls = ['day-cell', f.m % 2 === 0 ? 'm-even' : '', day === t ? 'today' : '',
         day === S.selDay ? 'sel' : '', f.d === 1 ? 'm1' : ''].join(' ');
-      const numCls = ['day-num', wd === 7 ? 'hol' : '', wd === 6 ? 'sat' : ''].join(' ');
+      // §97 G1：读 ST.holidayMask，不再写死周日 —— 此前 App 里改了「休日星期」网页完全不跟，
+      // 掩码在同步里传来传去却从没参与渲染。周六蓝是掩码之外的固定规则（同 App weekdayTint）。
+      const isHol = ((ST.holidayMask >> (wd - 1)) & 1) === 1;
+      const numCls = ['day-num', isHol ? 'hol' : '', (!isHol && wd === 6) ? 'sat' : ''].join(' ');
       const evs = byDay[day] || [];
       const tks = tasksByDay[day] || [];
       const sts = stampsByDay[day] || [];
@@ -536,11 +539,10 @@ function renderCalendar(anchorDay) {
         ? `<img class="stamp-img" src="stamps/${st.assetId}.webp" alt="">`
         : `<span>${st.emoji}</span>`).join('');
       const canvasHtml = placedSts.map(st => {
-        // §89 U1（与 App 同步）：0.42 是母档的**视觉主体**目标，素材含 15% 安全区
-        //（256 画布装 218 主体），套在画布上视觉只剩 0.358×Wd，比实机 0.43 小 17%。
-        // 画布 50% × 0.8516 = 0.426 视觉，与实机对齐。
+        // §97 G7（与 App 同步）：素材平均填充率实测 **78.7%**（§89 写的 85% 只取了最满的几张）。
+        // 实机视觉 41.3%×Wd → 持平需画布 52.5%；用户要求再大一点，取 58%（视觉 45.6%，比实机 +10%）。
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+          `width:58%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
         return (st.assetId
           ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
           : `<span style="${style};font-size:18px">${st.emoji}</span>`);

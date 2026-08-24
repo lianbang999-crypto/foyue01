@@ -326,7 +326,10 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         // §89 U1：0.42 是母档的**视觉主体**目标，但我们的素材是 256 画布装 218 主体（安全区，
     // 实测三套 84.8–85.9%）。把 0.42 套在画布上，视觉只剩 0.358×Wd —— 比实机 0.43 小 17%。
     // 画布 0.50 × 0.8516 = 0.426 视觉，与实机对齐，也在母档 0.36–0.46 区间中段。
-    val visual = (wd * 0.50f).dp
+    // §97 G7：素材平均填充率实测 **78.7%**（§89 写的 84.8~85.9% 只取了最满的几张，
+    // 04_sad 才 61.7%）。实机视觉 41.3%×Wd → 持平需 canvas 0.525；
+    // 用户要求再大一点，取 0.58（视觉 45.6%，**比实机大约 +10%**，是要求不是对齐）。
+    val visual = (wd * 0.58f).dp
         val ring = (wd * 1.08f).dp
         val half = with(LocalDensity.current) { ring.toPx() / 2f }
         // §76 F1：pos 是窗口坐标，本层在 Scaffold padding 之下 —— 同样要减去容器原点才跟手
@@ -924,7 +927,7 @@ private fun DayCellV2(
                 val cellHpx = constraints.maxHeight.toFloat()
                 // §72 尺寸 Token（母档 §2.2，以列宽 Wd 为基准，禁止硬编码 px）
                 // §89 U1：同上 —— 0.42 曾被误施于画布；素材含 15% 安全区，改 0.50 才得视觉 0.426
-    val visualDp = maxWidth * 0.50f
+    val visualDp = maxWidth * 0.58f   // §97 G7：同上
                 val ringDp = maxWidth * 1.08f      // StickerDragRing 1.05–1.12
                 val hitDp = maxWidth * 0.95f       // §3 视觉≠交互：命中远大于视觉（收在列宽内避免抢邻格）
                 val hitPx = with(LocalDensity.current) { hitDp.toPx() }
@@ -1516,8 +1519,11 @@ private fun StickerPopover(
         val density = LocalDensity.current
         val wd = maxWidth / 7f
         val popW = wd * 3.2f
-        val popH = wd * 0.48f     // §89 U2：实机 78/162.3 = 0.48×Wd（原 0.62 高了 29%）
-        val caretH = 5.dp
+        // §97 G3：**撤回 §89 U2**。那条写的「实机 78px」是错的 —— 本图在 x=340/380/420/780/810
+        // 五个位置竖扫，上下描边一致落在 y=1153 / y=1250，实测 **100px = 0.616×Wd**。
+        // 也就是说原来的 0.62 本来就对，我把它改矮了 22%。
+        val popH = wd * 0.616f
+        val caretH = 6.3.dp   // §97 G4：实测 20px = 6.3dp
         val screenW = with(density) { maxWidth.toPx() }
         val popWpx = with(density) { popW.toPx() }
         // §76 F1 根治：anchor 是**窗口坐标**（含状态栏），而本容器在 Scaffold padding 之下，
@@ -1538,7 +1544,8 @@ private fun StickerPopover(
         // §89 U5（真 bug 修复）：caret 此前写死 padding(start = w)，永远在 popover 左侧 12% 处 ——
         // 贴纸在中间时箭头指偏，靠边被 clamp 后更是指向一个与贴纸无关的位置。
         // 正确做法：按锚点在 popover 内的相对位置放 caret，两端各留一个圆角的余量。
-        val caretW = wd * 0.26f
+        // §97 G4：实测 caret 底边 ≈20px = 0.123×Wd —— 原来的 0.26 宽了整整一倍
+        val caretW = wd * 0.123f
         val caretWpx = with(density) { caretW.toPx() }
         val caretPadPx = (ax - left - caretWpx / 2f)
             .coerceIn(8f, (popWpx - caretWpx - 8f).coerceAtLeast(8f))
@@ -1553,24 +1560,30 @@ private fun StickerPopover(
             Row(
                 Modifier
                     .width(popW).height(popH)
-                    .clip(RoundedCornerShape(6.dp))
+                    // §97 G6：圆角实测 ≈15px = 4.8dp；描边实测 3px = 1.0dp
+                    .clip(RoundedCornerShape(5.dp))
                     .background(Color.White)
                     // §89 U3：实机是**深色细描边**成形（无阴影）；原 #DCDFDC 太浅几乎看不见
-                    .border(1.2.dp, Ink, RoundedCornerShape(6.dp)),
+                    .border(1.dp, Ink, RoundedCornerShape(5.dp)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.weight(1f).fillMaxHeight().plainClick(onPrimary),
                     contentAlignment = Alignment.Center) {
                     Text(
                         if (bound) tr("编辑") else tr("登记日程"),
-                        fontSize = 13.sp, color = Ink
+                        fontSize = 11.5.sp, color = Ink   // §97 G6：实测字高 11.1dp
                     )
                 }
-                Box(Modifier.width(1.dp).fillMaxHeight().background(Ink))
+                // §97 G5：中缝实测是**短浅灰线**（y 1174–1235 = 62% 高，最暗值 191），
+                // 不是通高黑线 —— 通高黑线会把一个轻量菜单切成两个按钮，重得多
+                Box(
+                    Modifier.width(1.dp).fillMaxHeight(0.62f)
+                        .background(Color(0xFFBFBFBF))
+                )
                 Box(Modifier.weight(1f).fillMaxHeight().plainClick(onDelete),
                     contentAlignment = Alignment.Center) {
                     // §89 U4：实机「削除」是黑字，与「编集」同色 —— 危险语义由后面的确认框承担
-                    Text(tr("删除"), fontSize = 13.sp, color = Ink)
+                    Text(tr("删除"), fontSize = 11.5.sp, color = Ink)
                 }
             }
             if (!flipped) Caret(up = false, w = caretW, h = caretH, startPad = caretPad)
