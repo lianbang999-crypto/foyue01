@@ -927,8 +927,9 @@ function openDiaryModal(day) {
   let mood = r?.p.mood ?? 2;
   const d = modal(`
     <h3>${dateCn(day)} 的日记</h3>
+    <div class="frow"><textarea id="dContent" rows="8" placeholder="${t('今天过得怎么样？')}">${esc(r?.p.content || '')}</textarea></div>
+    <!-- §77 N1：心情移到正文之后 —— 别一开口就问「你今天心情如何」，先让人写 -->
     <div class="mood-row">${MOODS.map((e, i) => `<button class="mood ${i === mood ? 'on' : ''}" data-m="${i}">${e}</button>`).join('')}</div>
-    <div class="frow"><textarea id="dContent" rows="8" placeholder="今天过得怎么样？">${esc(r?.p.content || '')}</textarea></div>
     <div class="btns">
       ${r ? '<button class="btn-ghost left" id="dDel" style="color:var(--red)">删除</button>' : ''}
       <button class="btn-ghost" id="dX">取消</button>

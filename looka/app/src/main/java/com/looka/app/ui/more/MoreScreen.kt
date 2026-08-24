@@ -170,8 +170,10 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
 
             SectionLabel(tr("数据"))
-            NavRow(tr("搜索"), icon = Icons.Outlined.Search) { nav.navigate("search") }
-            Hairline()
+            // §77 N2（减法）：撤掉这里的「搜索」行 —— 搜索是内容操作，不是产品设置，
+            // 放在「数据」组本身就是归类错误（母档 §24.1：More 只承载产品/设置/个性化/数据管理）。
+            // 删前已查全部可达路径：日历页 CalendarScreen:1362 与待办页页首 TodoScreen:89 仍在，
+            // 删后剩 2 条，不会重演 §67 那次「AI 入口被合理删除两次直到删没」。
             NavRow(tr("备份与维护"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
             Hairline()
 

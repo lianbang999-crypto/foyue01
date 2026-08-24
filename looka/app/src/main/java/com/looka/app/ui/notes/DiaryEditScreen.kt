@@ -40,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -114,27 +115,6 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             Spacer(Modifier.width(8.dp))
         }
 
-        // 今日心情
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            MOOD_EMOJIS.forEachIndexed { i, e ->
-                Box(
-                    Modifier.size(42.dp).clip(CircleShape)
-                        .background(if (mood == i) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                        .border(
-                            width = if (mood == i) 1.5.dp else 0.dp,
-                            color = if (mood == i) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            shape = CircleShape
-                        )
-                        .plainClick { mood = i },
-                    contentAlignment = Alignment.Center
-                ) { Text(e, fontSize = 22.sp) }
-            }
-        }
-        Hairline()
-
         TextField(
             value = content, onValueChange = { content = it },
             placeholder = { Text(tr("今天过得怎么样？"), fontSize = 15.sp, color = Color(0xFFB9BBB9)) },
@@ -143,6 +123,27 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp)
                 .verticalScroll(rememberScrollState())
         )
+
+        // §77 N1：心情从顶部整行大圆圈挪到底部一行小图标。
+        // 原来一进页面先横着五个 42dp 圆圈，等于开口就问「你今天心情如何」——
+        // 与「安静等待用户先写」相悖。现在写完了顺手点一下，不点也能存。
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            MOOD_EMOJIS.forEachIndexed { i, e ->
+                Box(
+                    Modifier.size(30.dp).clip(CircleShape)
+                        .background(if (mood == i) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
+                        .plainClick { mood = i },
+                    contentAlignment = Alignment.Center
+                ) {
+                    // 未选中的心情压暗，不与正文抢注意力
+                    Text(e, fontSize = 17.sp, modifier = Modifier.alpha(if (mood == i) 1f else 0.4f))
+                }
+                Spacer(Modifier.width(2.dp))
+            }
+        }
 
         // AI 润色栏
         Row(

@@ -51,8 +51,8 @@ import com.looka.app.vm.LookaViewModel
 import com.looka.app.util.tr
 
 /**
- * ToDo 中枢页（对齐 Lifebear ToDo 结构）：
- * 清单（带色/计数）→ 星标 / 未来7天 → 已完成任务 / 已完成清单
+ * ToDo 中枢页（对齐 Lifebear ToDo 结构，§77 N4/N5 调序后）：
+ * 搜索（页首）→ 星标 / 未来7天 → 清单（带色/计数）→ 已完成任务 / 已完成清单
  */
 @Composable
 fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
@@ -75,12 +75,26 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // §77 N5：删掉「待办」标题行，搜索条上提为页首（Lifebear 用搜索框当页首，不写标题）。
+        // 小鹿沿用 N8 的手法收进搜索行右端 —— 同一行，零额外高度。
         Row(
-            Modifier.fillMaxWidth().height(52.dp).padding(start = 16.dp, end = 4.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(tr("待办"), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(PanelBg)
+                    .plainClick { nav.navigate("search") }
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                // §77 N7：placeholder 写清能搜到什么
+                Text(tr("搜索任务名、备注"), fontSize = 14.sp, color = Color(0xFFB9BBB9))
+            }
             // §71 A：AI 全站入口（用户拍板）
             androidx.compose.material3.IconButton(onClick = { nav.navigate("aiChat") }) {
                 com.looka.app.ui.common.DeerBadge(24.dp)
@@ -89,23 +103,20 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
         Hairline()
 
         LazyColumn {
-            // 搜索条（跳全局搜索）
+            // §77 N4：顺序对齐 Lifebear —— 星标/未来7天 在清单之前
+            //（Lifebear：搜索 → マイリスト/星付き/次の7日間 → リスト → ラベル → 完了済み。
+            //  ラベル 是标签体系，我们还没有，见 P4-8）
             item {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(PanelBg)
-                        .plainClick { nav.navigate("search") }
-                        .padding(horizontal = 12.dp, vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(tr("搜索任务…"), fontSize = 13.sp, color = Color(0xFFB9BBB9))
+                HubRow(Icons.Filled.Star, Color(0xFFF2B23D), tr("星标"), "$starredCount") {
+                    nav.navigate("starred")
                 }
             }
+            item {
+                HubRow(Icons.Outlined.Event, Ink, tr("未来 7 天"), "$next7Count") {
+                    nav.navigate("next7")
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
 
             // 清单
             items(active, key = { it.uid }) { l ->
@@ -143,17 +154,6 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                 Hairline()
             }
 
-            item { Spacer(Modifier.height(8.dp)) }
-            item {
-                HubRow(Icons.Filled.Star, Color(0xFFF2B23D), tr("星标"), "$starredCount") {
-                    nav.navigate("starred")
-                }
-            }
-            item {
-                HubRow(Icons.Outlined.Event, Ink, tr("未来 7 天"), "$next7Count") {
-                    nav.navigate("next7")
-                }
-            }
             item { Spacer(Modifier.height(8.dp)) }
             item {
                 HubRow(Icons.Outlined.CheckCircle, GrayText, tr("已完成任务"), null) {
