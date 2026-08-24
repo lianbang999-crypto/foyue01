@@ -298,25 +298,29 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         containerColor = Color.White
     )
 
-    if (holidayDlg) AlertDialog(
-        // E2（§79 / AC SET-102）：多选的取消必须无副作用。点遮罩外/返回键此前只关窗不回滚，
-        // 未提交的勾选会残留在页面级 holidayMask 里，设置行摘要显示一个没存盘的值。
-        onDismissRequest = { holidayMask = Prefs.holidayMask(ctx); holidayDlg = false },
+    if (holidayDlg) {
+    // §88 S2（AC SET-102 完整版）：多选必须「勾选只改 dialog draft」。
+    // §79 只补了取消回滚，但勾选仍直接写页面级 holidayMask —— Dialog 开着时
+    // 背后设置行的摘要就跟着变了，用户会以为已经保存。现在用局部 tmpMask 当草稿，
+    // 只有「确定」才写回页面态与 Prefs；取消/点外面/返回键一律零副作用。
+    var tmpMask by remember(holidayDlg) { mutableIntStateOf(holidayMask) }
+    AlertDialog(
+        onDismissRequest = { holidayDlg = false },
         title = { Text(tr("休日星期"), fontSize = 17.sp) },
         text = {
             Column {
                 // E2（§70）：不解释"会变红"—— 勾上的星期名当场变红，所见即所得
                 for (i in 0..6) {
-                    val on = (holidayMask shr i) and 1 == 1
+                    val on = (tmpMask shr i) and 1 == 1
                     Row(
                         Modifier.fillMaxWidth().clickable {
-                            holidayMask = holidayMask xor (1 shl i)
+                            tmpMask = tmpMask xor (1 shl i)
                         },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
                             checked = on,
-                            onCheckedChange = { holidayMask = holidayMask xor (1 shl i) }
+                            onCheckedChange = { tmpMask = tmpMask xor (1 shl i) }
                         )
                         Text(
                             weekNames[i], fontSize = 15.sp,
@@ -330,16 +334,17 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
         },
         confirmButton = {
             TextButton(onClick = {
-                Prefs.setHolidayMask(ctx, holidayMask); vm.bumpSettings(); holidayDlg = false; com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
+                holidayMask = tmpMask          // 只有这里把 draft 提交到页面态
+                Prefs.setHolidayMask(ctx, tmpMask); vm.bumpSettings(); holidayDlg = false
+                com.looka.app.net.SyncEngine.kick(ctx.applicationContext as com.looka.app.LookaApp)
             }) { Text(tr("确定")) }
         },
         dismissButton = {
-            TextButton(onClick = {
-                holidayMask = Prefs.holidayMask(ctx); holidayDlg = false
-            }) { Text(tr("取消"), color = GrayText) }
+            TextButton(onClick = { holidayDlg = false }) { Text(tr("取消"), color = GrayText) }
         },
         containerColor = Color.White
     )
+    }
 
     if (defCatDlg) RadioDialog(
         tr("默认分类"),

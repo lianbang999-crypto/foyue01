@@ -133,6 +133,7 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
     var endTimeDlg by remember { mutableStateOf(false) }
     var catSheet by remember { mutableStateOf(false) }
     var remSheet by remember { mutableStateOf(false) }
+    var discardDlg by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -142,7 +143,12 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
             Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { nav.popBackStack() }) { Icon(Icons.Default.Close, tr("关闭"), tint = Ink) }
+            // §88 S1（V012 [B]）：模板是「有明确 Save 的创建页」= Draft Editor，
+            // X 不能直接吞掉半篇输入。Event 编辑器早有这道守卫（F3），模板漏了。
+            IconButton(onClick = {
+                val dirty = d.title.isNotBlank() || d.memo.isNotBlank() || d.location.isNotBlank()
+                if (dirty) discardDlg = true else nav.popBackStack()
+            }) { Icon(Icons.Default.Close, tr("关闭"), tint = Ink) }
             Text(
                 if (isEdit) tr("编辑模板") else tr("新建模板"),
                 fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
@@ -291,4 +297,17 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
     )
 
     if (remSheet) ReminderSheet(d, onDismiss = { remSheet = false })
+
+    if (discardDlg) com.looka.app.ui.common.ConfirmDialog(
+        title = tr("放弃这个模板？"),
+        text = tr("已填的内容不会保存"),
+        confirmText = tr("放弃"),
+        onConfirm = { discardDlg = false; nav.popBackStack() },
+        onDismiss = { discardDlg = false }
+    )
+    // 系统返回键与 X 同一语义 —— 否则绕过守卫还是会丢
+    androidx.activity.compose.BackHandler(enabled = true) {
+        val dirty = d.title.isNotBlank() || d.memo.isNotBlank() || d.location.isNotBlank()
+        if (dirty) discardDlg = true else nav.popBackStack()
+    }
 }
