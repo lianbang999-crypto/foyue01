@@ -236,15 +236,32 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
                 tab = tab,
                 onTab = { tab = it },
                 onPlus = {
-                    // §75 C4（Composer 三面模型）：＋ 打开上次用的面 ——
-                    // 日程/任务 = 全屏页（底部保留模式切换器），贴纸 = 月历 + 停靠面板。
-                    // AC-001/002：预填选中日期（无选中即今天）
-                    if (vm.composerMode == 2 && tab == 0 && vm.calView == 0) {
-                        vm.createPanel = true
-                    } else {
-                        vm.prepareCreateDraft(vm.selectedDay)
-                        vm.editorInitMode = if (vm.composerMode == 1) 1 else 0
-                        nav.navigate("editor")
+                    // §77 N9（真 bug 修复）：中央 ＋ 是 Context Composer，必须按所在 tab 分流。
+                    // 此前只分「贴纸面板 / 其它」，站在笔记页按 ＋ 弹出来的是新建日程 ——
+                    // 违背 v1.1 母档 P9「其他模块读取各自 Context」。
+                    when (tab) {
+                        // 待办页：直接建任务，不看上次用的是哪个面
+                        1 -> {
+                            vm.prepareCreateDraft(vm.selectedDay)
+                            vm.editorInitMode = 1
+                            nav.navigate("editor")
+                        }
+                        // 笔记页：笔记 tab 建笔记，日记 tab 建今天的日记
+                        2 -> {
+                            if (vm.notesSeg == 1) nav.navigate("diary/${com.looka.app.util.Fmt.today()}")
+                            else nav.navigate("note/-1")
+                        }
+                        // 日历页与更多页：维持 §75 C4 的 Composer 三面（＋ 打开上次用的面，
+                        // 日程/任务 = 全屏页，贴纸 = 月历 + 停靠面板；预填选中日期）
+                        else -> {
+                            if (vm.composerMode == 2 && tab == 0 && vm.calView == 0) {
+                                vm.createPanel = true
+                            } else {
+                                vm.prepareCreateDraft(vm.selectedDay)
+                                vm.editorInitMode = if (vm.composerMode == 1) 1 else 0
+                                nav.navigate("editor")
+                            }
+                        }
                     }
                 }
             )

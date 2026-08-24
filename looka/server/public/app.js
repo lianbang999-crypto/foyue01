@@ -868,14 +868,18 @@ function renderTodos() {
 
 /* ---------------- 笔记 ---------------- */
 function renderNotes() {
-  const list = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
+  // §77 N6：搜索命中标题或正文（与 App 同口径）
+  const q = ($('#noteSearch')?.value || '').trim().toLowerCase();
+  const all = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
+  const list = q ? all.filter(r =>
+    (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q)) : all;
   $('#noteList').innerHTML = list.length ? list.map(r => `
     <div class="note-item" data-n="${r.uid}">
       <div class="nt">${esc(r.p.title || '无标题')}</div>
       ${r.p.content ? `<div class="np">${esc(r.p.content.replace(/\n/g, ' '))}</div>` : ''}
       <div class="nd">${new Date(r.updated_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
     </div>`).join('')
-    : `<div class="empty-deer"><img src="deer.svg" alt="">还没有笔记</div>`;
+    : `<div class="empty-deer"><img src="deer.svg" alt="">${q ? '没找到「' + esc(q) + '」' : '还没有笔记'}</div>`;
   $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
 }
 function openNoteModal(uid) {
@@ -902,7 +906,10 @@ function openNoteModal(uid) {
 
 /* ---------------- 日记 ---------------- */
 function renderDiary() {
-  const list = [...S.data.diary.values()].sort((a, b) => (b.p.day || 0) - (a.p.day || 0));
+  // §77 N6：日记只有正文可搜（心情是图标不是文字）
+  const q = ($('#diarySearch')?.value || '').trim().toLowerCase();
+  const all = [...S.data.diary.values()].sort((a, b) => (b.p.day || 0) - (a.p.day || 0));
+  const list = q ? all.filter(r => (r.p.content || '').toLowerCase().includes(q)) : all;
   $('#diaryList').innerHTML = list.length ? list.map(r => `
     <div class="diary-item" data-d="${r.p.day}">
       <span class="mood">${MOODS[r.p.mood ?? 2]}</span>
@@ -911,7 +918,7 @@ function renderDiary() {
         <div class="np" style="color:var(--gray);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((r.p.content || '').replace(/\n/g, ' '))}</div>
       </div>
     </div>`).join('')
-    : `<div class="empty-deer"><img src="deer.svg" alt="">一天一页，从今天开始记录吧</div>`;
+    : `<div class="empty-deer"><img src="deer.svg" alt="">${q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}</div>`;
   $$('#diaryList [data-d]').forEach(el => el.onclick = () => openDiaryModal(+el.dataset.d));
 }
 function openDiaryModal(day) {
@@ -1366,6 +1373,10 @@ async function boot() {
   // 底栏按钮内含 SVG 图标，只能翻译里面的 <span>；直接写 textContent 会把图标一起抹掉
   $$('.bottombar .tab span').forEach(el => el.textContent = t(el.textContent.trim()));
   $('#todoInput').placeholder = t('搜索任务…') === '搜索任务…' ? '添加任务…' : t('添加任务…');
+  // §77 N7：搜索 placeholder 直接写清能搜什么；§81：AI 生成内容显式标识
+  $('#noteSearch').placeholder = t('搜索笔记名、正文');
+  $('#diarySearch').placeholder = t('搜索日记正文');
+  $('.ai-notice').textContent = t('以下内容由 AI 生成，请自行核对');
   document.documentElement.lang = resolveLang();
 
   // 语言切换
@@ -1578,8 +1589,9 @@ async function boot() {
   // 中央加号：按当前所在页新建对应的东西（与 App 一致）
   $('#bbPlus').onclick = () => {
     if (S.tab === 'todo') { const i = $('#todoInput'); i && i.focus(); }
-    else if (S.tab === 'note') $('#btnAddNote').click();
-    else if (S.tab === 'diary') $('#btnAddDiary').click();
+    // §77 N8：顶栏的 ＋/写今天 已撤，这里直接调函数，不再 click 一个不存在的按钮
+    else if (S.tab === 'note') openNoteModal(null);
+    else if (S.tab === 'diary') openDiaryModal(todayEpoch());
     else openEventModal(null);
   };
 
@@ -1843,8 +1855,10 @@ async function boot() {
   $('#todoInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
 
   // 笔记 / 日记
-  $('#btnAddNote').onclick = () => openNoteModal(null);
-  $('#btnAddDiary').onclick = () => openDiaryModal(todayEpoch());
+  // §77 N6：搜索即时过滤（笔记 / 日记）
+  $('#noteSearch').oninput = () => renderNotes();
+  $('#diarySearch').oninput = () => renderDiary();
+
 
   // AI
   // 模型档位（与 App 同构：标准不限次 / 高级 GPT）

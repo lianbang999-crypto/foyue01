@@ -135,6 +135,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var composerMode by mutableIntStateOf(0)
     // 编辑器初始模式（面板/＋转入全屏时指定，消费后归零）
     var editorInitMode by mutableIntStateOf(0)
+    // §77 N9：笔记页当前子 tab（0 笔记 / 1 日记）。提到 VM 是因为中央 ＋ 要按它分流 ——
+    // 留在 NotesDiaryScreen 里的话 Nav 拿不到，＋ 就只能一律建日程（那正是 N9 那个 bug）。
+    var notesSeg by mutableIntStateOf(0)
     // §72 §8：拖动印章时锁住日历滚动（Pointer ownership）
     var stampDragging by mutableStateOf(false)
     // §72 §11：创建面板高度 → 日历 viewport bottomInset（不压缩格子）
