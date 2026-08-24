@@ -316,6 +316,13 @@ private fun RowScope.ModeIcon(icon: ImageVector, label: String, selected: Boolea
 
 @Composable
 private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft) {
+
+    // §87 D2：字段级层的统一开法 —— 先结束 composition 收键盘，再开层
+    val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
+    val kbCtl = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val kbAware: (() -> Unit) -> (() -> Unit) = { open ->
+        { focusMgr.clearFocus(force = true); kbCtl?.hide(); open() }
+    }
     val cats by vm.categories.collectAsState()
     var startDateDlg by remember { mutableStateOf(false) }
     var endDateDlg by remember { mutableStateOf(false) }
@@ -483,15 +490,16 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
         Spacer(Modifier.height(32.dp))
     }
 
+    // §87 D3：起止日是**字段级层**，顶部标明正在编辑哪一个（V011 §8.2）
     if (startDateDlg) LookaDatePicker(d.startDay, onPick = { day ->
         val delta = day - d.startDay
         d.startDay = day
         d.endDay += delta
-    }, onDismiss = { startDateDlg = false })
+    }, onDismiss = { startDateDlg = false }, fieldLabel = tr("开始日期"))
 
     if (endDateDlg) LookaDatePicker(d.endDay, onPick = { day ->
         d.endDay = maxOf(day, d.startDay)
-    }, onDismiss = { endDateDlg = false })
+    }, onDismiss = { endDateDlg = false }, fieldLabel = tr("结束日期"))
 
     if (startTimeDlg) LookaTimePicker(d.startMin, onPick = { m ->
         d.startMin = m

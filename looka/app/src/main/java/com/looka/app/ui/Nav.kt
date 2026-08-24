@@ -171,10 +171,15 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
 
     // 逾期任务次日转移询问（每天最多一次，避免任务凑数堆积）
+    // §87 D1：这是全项目**唯一**的系统主动弹层，必须守 §13「等页面稳定 + 用户静止」——
+    // 此前它在 LaunchedEffect(Unit) 里无条件弹：用户可能正开着创建面板或日详情抽屉，
+    // 一个跟当下动作无关的询问直接盖上去。现在只在日历 tab 且没有别的层开着时才弹；
+    // 条件不满足就整天不再弹（硬规则「不补弹」——补弹比不弹更烦人）。
     var carryCount by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         val today = com.looka.app.util.Fmt.today()
-        if (com.looka.app.data.Prefs.carryPromptDay(ctx) != today) {
+        val quiet = tab == 0 && !vm.createPanel
+        if (quiet && com.looka.app.data.Prefs.carryPromptDay(ctx) != today) {
             com.looka.app.data.Prefs.setCarryPromptDay(ctx, today)
             val n = vm.overdueCount()
             if (n > 0) carryCount = n

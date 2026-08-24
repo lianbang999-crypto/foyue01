@@ -61,23 +61,46 @@ import java.time.YearMonth
  * 自绘月历选择器（替代 Material3 DatePicker —— 那套圆角胶囊与 Looka 的白底细线语言不搭）。
  * 视觉与主月视图同源：今天=黑方块、选中=主题色圆、休日红、农历小字。
  */
+/**
+ * §87 D3b：月格面板主体 —— Dialog 变体与内联展开变体共用这一份。
+ * 抽出来之前它内联在 LookaDatePicker 的 text 槽里，内联展开只能复制一份，
+ * 两份很快就会长歪（这类"看起来一样其实不一样"的重复是后患）。
+ *
+ * 它自己不决定"何时提交"：`sel` 由调用方持有，Dialog 变体点确定才回填，
+ * 内联变体点一下就回填 —— 两种 commit 语义都由外层定。
+ */
 @Composable
-fun LookaDatePicker(initialDay: Long, onPick: (Long) -> Unit, onDismiss: () -> Unit) {
+fun LookaMonthPanel(
+    sel: Long,
+    onSelect: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    fieldLabel: String? = null
+) {
     val ctx = LocalContext.current
-    var sel by remember { mutableLongStateOf(initialDay) }
-    var ym by remember { mutableStateOf(YearMonth.from(Fmt.d(initialDay))) }
+    var ym by remember(sel) { mutableStateOf(YearMonth.from(Fmt.d(sel))) }
     var dir by remember { mutableStateOf(1) }
     val weekStartMon = remember { Prefs.weekStartMonday(ctx) }
     val holidayMask = remember { Prefs.holidayMask(ctx) }
     val showLunar = remember { Prefs.showLunarRaw(ctx) ?: I18n.isZh() }
     val today = Fmt.today()
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color.White,
-        title = null,
-        text = {
-            Column(Modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth()) {
+                // §87 D3：字段级层的「当前编辑对象」提示 —— 弹层盖住父页时，
+                // 用户仍要知道自己在改的是「开始」还是「结束」
+                if (fieldLabel != null) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(fieldLabel, fontSize = 12.sp, color = GrayText)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            Fmt.dateFull(sel), fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold, color = Ink
+                        )
+                    }
+                    Hairline(Modifier.padding(bottom = 6.dp))
+                }
                 // 头部：‹ 2026年8月 ›
                 Row(
                     Modifier.fillMaxWidth().padding(bottom = 4.dp),
@@ -156,7 +179,7 @@ fun LookaDatePicker(initialDay: Long, onPick: (Long) -> Unit, onDismiss: () -> U
                                                     RoundedCornerShape(8.dp)
                                                 ) else Modifier
                                             )
-                                            .plainClick { sel = day },
+                                            .plainClick { onSelect(day) },
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         verticalArrangement = Arrangement.Center
                                     ) {
@@ -209,7 +232,7 @@ fun LookaDatePicker(initialDay: Long, onPick: (Long) -> Unit, onDismiss: () -> U
                                     .padding(end = 6.dp)
                                     .clip(RoundedCornerShape(13.dp))
                                     .background(if (sel == d0) Ink else PanelBg)
-                                    .plainClick { sel = d0; ym = YearMonth.from(Fmt.d(d0)) }
+                                    .plainClick { onSelect(d0); ym = YearMonth.from(Fmt.d(d0)) }
                                     .padding(horizontal = 12.dp, vertical = 5.dp)
                             ) {
                                 Text(label, fontSize = 11.sp, color = if (sel == d0) Color.White else Ink)
@@ -217,7 +240,25 @@ fun LookaDatePicker(initialDay: Long, onPick: (Long) -> Unit, onDismiss: () -> U
                         }
                 }
             }
-        },
+    }
+
+/**
+ * 通用日期选择器（Dialog 变体）：确定才提交。
+ * fieldLabel 非空 = §87 D3 字段级层，顶部标明正在编辑哪个字段（V011 §8.2）。
+ */
+@Composable
+fun LookaDatePicker(
+    initialDay: Long,
+    onPick: (Long) -> Unit,
+    onDismiss: () -> Unit,
+    fieldLabel: String? = null
+) {
+    var sel by remember { mutableLongStateOf(initialDay) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Color.White,
+        title = null,
+        text = { LookaMonthPanel(sel = sel, onSelect = { sel = it }, fieldLabel = fieldLabel) },
         confirmButton = {
             TextButton(onClick = { onPick(sel); onDismiss() }) {
                 Text(tr("确定"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)

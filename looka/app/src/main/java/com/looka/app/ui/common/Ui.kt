@@ -427,6 +427,26 @@ fun Modifier.plainClick(onClick: () -> Unit): Modifier = this.clickable(
 )
 
 /**
+ * §87 D2：开「字段级层」（日期/时间 Picker 等）之前先把键盘收掉。
+ *
+ * V011 §8.3：键盘退场与 Picker 入场如果同时启动，两个 ~300ms 动画会串成 ~600ms 空窗，
+ * 期间用户既看不到键盘也看不到 Picker。正确顺序是**先结束输入 composition，再开层**。
+ * 此前全项目没有任何键盘协调 —— 标题输入着直接点日期行，键盘和 Dialog 互相抢空间。
+ *
+ * 用法：`val openPicker = keyboardAwareOpen { startDateDlg = true }`，把它接到行的 onClick。
+ */
+@Composable
+fun keyboardAwareOpen(open: () -> Unit): () -> Unit {
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    val kb = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    return {
+        focus.clearFocus(force = true)
+        kb?.hide()
+        open()
+    }
+}
+
+/**
  * §85 B4：行级按压反馈 —— V011 §6.1「整行浅灰 pressed 先于转场，不位移不放大」。
  * 用于会导航/打开编辑器的整行（NavRow/清单行/任务行/笔记行/表单行）；
  * 日历格、贴纸、chip、心情圆这类自带选中态的元素继续用 plainClick。

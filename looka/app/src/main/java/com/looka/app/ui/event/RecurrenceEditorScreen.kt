@@ -38,7 +38,6 @@ import com.looka.app.data.FREQ_NONE
 import com.looka.app.data.FREQ_WEEKLY
 import com.looka.app.data.RecurrenceEngine
 import com.looka.app.ui.common.Hairline
-import com.looka.app.ui.common.LookaDatePicker
 import com.looka.app.ui.common.LookaTopBar
 import com.looka.app.ui.common.NavRow
 import com.looka.app.ui.common.Stepper
@@ -181,24 +180,38 @@ fun RecurrenceEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             }
 
             // 结束日（CAL-REC-006）
+            // §87 D3b（V011 §8.1 [B]）：这里用**内联展开**而不是弹层 ——
+            // 结束日和上面的频率 tab、间隔属于同一个编辑上下文，弹个 Dialog 盖住它们
+            // 等于把用户刚设的规则藏起来，让他没法边看边调。
             NavRow(
                 tr("结束日"),
                 value = if (d.untilDay >= 0) Fmt.dateCn(d.untilDay) else tr("未设置")
-            ) { untilDlg = true }
-            if (d.untilDay >= 0) {
-                TextButton(
-                    onClick = { d.untilDay = -1L },
-                    modifier = Modifier.padding(start = 8.dp)
-                ) { Text(tr("清除结束日"), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp) }
+            ) { untilDlg = !untilDlg }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = untilDlg,
+                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+            ) {
+                Column {
+                    com.looka.app.ui.common.LookaMonthPanel(
+                        sel = if (d.untilDay >= 0) d.untilDay else d.startDay + 30,
+                        // 内联变体：点一下即回填（同上下文可见，不需要二次确认）
+                        onSelect = { d.untilDay = maxOf(it, d.startDay) },
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                    Row(Modifier.padding(start = 8.dp, bottom = 4.dp)) {
+                        TextButton(onClick = { d.untilDay = -1L; untilDlg = false }) {
+                            Text(tr("未设置"), color = GrayText, fontSize = 13.sp)
+                        }
+                        TextButton(onClick = { untilDlg = false }) {
+                            Text(tr("收起"), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                        }
+                    }
+                }
             }
             Hairline()
         }
         Spacer(Modifier.weight(1f))
     }
 
-    if (untilDlg) LookaDatePicker(
-        initialDay = if (d.untilDay >= 0) d.untilDay else d.startDay + 30,
-        onPick = { d.untilDay = maxOf(it, d.startDay) },
-        onDismiss = { untilDlg = false }
-    )
 }
