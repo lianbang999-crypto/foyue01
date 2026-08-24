@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.data.Prefs
+import com.looka.app.ui.common.listRowGestures
 import com.looka.app.ui.common.safeBack
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.EmptyDeer
@@ -109,9 +110,26 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         if (notes.isEmpty()) {
             EmptyDeer(tr("「{0}」里还没有笔记", list.name), hint = tr("点右上角 ＋ 写第一条"))
         } else {
+            // §99 I6：统一手势 —— 长按拖排序（写回 Note.sortOrder）/ 左滑删除
+            val reorder = com.looka.app.ui.common.rememberReorderState(notes.map { it.uid })
+            val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 76.dp.toPx() }
+            val byUid = remember(notes) { notes.associateBy { it.uid } }
             LazyColumn {
-                items(notes, key = { it.id }) { n ->
-                    NoteRow(n) { nav.navigate("note/${n.id}") }
+                items(reorder.order.toList(), key = { it }) { nuid ->
+                    val n = byUid[nuid] ?: return@items
+                    androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                        com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        NoteRow(
+                            n,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
+                                .listRowGestures(
+                                    uid = nuid, state = reorder, rowHeightPx = rowPx,
+                                    onReorder = { order -> vm.reorderNotes(order) },
+                                    onDelete = { vm.deleteNoteEntity(n) }
+                                )
+                        ) { nav.navigate("note/${n.id}") }
+                    }
                 }
                 item { Spacer(Modifier.height(40.dp)) }
             }

@@ -492,20 +492,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         afterChange()
     }
 
-    fun moveCategory(c: Category, up: Boolean) = viewModelScope.launch {
-        val list = categories.value.sortedWith(compareBy({ it.sortOrder }, { it.id }))
-        val i = list.indexOfFirst { it.id == c.id }
-        if (i < 0) return@launch
-        val j = if (up) i - 1 else i + 1
-        if (j !in list.indices) return@launch
-        val reordered = list.toMutableList()
-        reordered[i] = list[j]
-        reordered[j] = list[i]
-        reordered.forEachIndexed { idx, cat ->
-            if (cat.sortOrder != idx) categoryDao.update(cat.copy(sortOrder = idx, dirty = true, updatedAt = now()))
-        }
-        afterChange()
-    }
+    // §99 I6：moveCategory（上移/下移）已删 —— 排序改长按拖拽，走 reorderCategories
 
     // ================= 任务 / 笔记 / 日记 / 印章 =================
 
@@ -523,6 +510,33 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         }
 
     /** 拖拽重排（三批）：把清单内可见顺序整体写回 sortOrder */
+    fun reorderCategories(orderedUids: List<String>) = viewModelScope.launch {
+        val t = now()
+        orderedUids.forEachIndexed { i, uid ->
+            categoryDao.byUid(uid)?.let { categoryDao.update(it.copy(sortOrder = i, dirty = true, updatedAt = t)) }
+        }
+        afterChange()
+    }
+
+    /** §99 I6：手动顺序统一写法 —— 序号 ×10 留空隙，插队时不用整表重排 */
+    fun reorderNoteLists(orderedUids: List<String>) = viewModelScope.launch {
+        val t = now()
+        orderedUids.forEachIndexed { i, uid -> noteListDao.setSortOrder(uid, (i + 1) * 10, t) }
+        afterChange()
+    }
+
+    fun reorderTaskLists(orderedUids: List<String>) = viewModelScope.launch {
+        val t = now()
+        orderedUids.forEachIndexed { i, uid -> taskListDao.setSortOrder(uid, (i + 1) * 10, t) }
+        afterChange()
+    }
+
+    fun reorderNotes(orderedUids: List<String>) = viewModelScope.launch {
+        val t = now()
+        orderedUids.forEachIndexed { i, uid -> noteDao.setSortOrder(uid, (i + 1).toLong() * 10, t) }
+        afterChange()
+    }
+
     fun reorderTasks(orderedUids: List<String>) = viewModelScope.launch {
         val t = now()
         orderedUids.forEachIndexed { i, uid ->
@@ -570,31 +584,44 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         afterChange()
     }
 
-    /** E1 撤销（2026-08-21）：删除本来就是软删（deleted=1 同步墓碑），撤销 = 改回来，白捡的 */
-    var undoTask by androidx.compose.runtime.mutableStateOf<Task?>(null)
+    // ===== §99 I7：**全局撤销** =====
+    // 原来只有任务有撤销、而且撤销条只挂在清单详情页一处（审计 BUG-TL-009）。
+    // 左滑删除铺开之后这条必须先补：划一下东西没了却找不到撤销入口，比不给手势还糟。
+    // 这里做成「删什么都能撤」的通用账本：谁删谁提供 restore 闭包。
+    class UndoItem(val label: String, val restore: suspend () -> Unit)
+
+    var undo by androidx.compose.runtime.mutableStateOf<UndoItem?>(null)
         private set
     private var undoJob: kotlinx.coroutines.Job? = null
 
-    fun deleteTask(t: Task) = viewModelScope.launch {
-        taskDao.update(t.copy(deleted = true, dirty = true, updatedAt = now()))
-        afterChange()
-        undoTask = t
-        undoJob?.cancel()
-        undoJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(5000)
-            undoTask = null
+    /** 软删 + 挂 5 秒撤销。delete/restore 都由调用方给，VM 只负责账本与计时 */
+    private fun softDelete(label: String, delete: suspend () -> Unit, restore: suspend () -> Unit) {
+        viewModelScope.launch {
+            delete()
+            afterChange()
+            undo = UndoItem(label, restore)
+            undoJob?.cancel()
+            undoJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(5000)
+                undo = null
+            }
         }
     }
 
-    fun undoDeleteTask() = viewModelScope.launch {
-        val t = undoTask ?: return@launch
-        undoTask = null; undoJob?.cancel()
-        // §97 TL-002：用 upsert 不用 update —— 静默同步 2.5 秒就会把墓碑发上去，
-        // 服务端确认后本地行已被物理删除；此时 @Update 影响 0 行，撤销静默失效。
-        // 新的 updatedAt 大于墓碑版本，下一轮同步会把「恢复」推给其它设备。
-        taskDao.upsert(t.copy(deleted = false, dirty = true, updatedAt = now()))
+    fun doUndo() = viewModelScope.launch {
+        val u = undo ?: return@launch
+        undo = null; undoJob?.cancel()
+        u.restore()
         afterChange()
     }
+
+    fun deleteTask(t: Task) = softDelete(
+        t.title.take(12),
+        delete = { taskDao.update(t.copy(deleted = true, dirty = true, updatedAt = now())) },
+        // §97 TL-002：用 upsert 不用 update —— 静默同步 2.5 秒就会把墓碑发上去，
+        // 服务端确认后本地行已被物理删除；此时 @Update 影响 0 行，撤销静默失效。
+        restore = { taskDao.upsert(t.copy(deleted = false, dirty = true, updatedAt = now())) }
+    )
 
     fun clearDoneTasks() = viewModelScope.launch {
         taskDao.clearDone(now())
@@ -616,11 +643,23 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 删除清单：任务移入默认清单，清单打墓碑 */
-    fun deleteTaskList(l: TaskList) = viewModelScope.launch {
-        if (!l.deletable) return@launch
-        taskDao.reassignList(l.uid, "list-default", now())
-        taskListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
-        afterChange()
+    fun deleteTaskList(l: TaskList) {
+        if (!l.deletable) return
+        var moved: List<String> = emptyList()
+        softDelete(
+            l.name.take(12),
+            delete = {
+                moved = taskDao.listAll().filter { it.listUid == l.uid }.map { it.uid }
+                taskDao.reassignList(l.uid, "list-default", now())
+                taskListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
+            },
+            restore = {
+                taskListDao.upsert(l.copy(deleted = false, dirty = true, updatedAt = now()))
+                moved.forEach { u ->
+                    taskDao.byUid(u)?.let { taskDao.update(it.copy(listUid = l.uid, dirty = true, updatedAt = now())) }
+                }
+            }
+        )
     }
 
     suspend fun note(id: Long) = noteDao.byId(id)
@@ -678,21 +717,39 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** 删清单不删笔记：里面的笔记迁回默认清单（与 deleteTaskList 同语义） */
-    fun deleteNoteList(l: NoteList) = viewModelScope.launch {
-        if (!l.deletable) return@launch
-        ensureNoteListDefault()
-        noteDao.reassignList(l.uid, NOTE_LIST_DEFAULT, now())
-        noteListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
-        afterChange()
+    fun deleteNoteList(l: NoteList) {
+        if (!l.deletable) return
+        // 迁移过去的笔记原来归谁，撤销时要还回去 —— 只记 uid，不整份快照
+        var moved: List<String> = emptyList()
+        softDelete(
+            l.name.take(12),
+            delete = {
+                ensureNoteListDefault()
+                moved = noteDao.listAll().filter { it.listUid == l.uid }.map { it.uid }
+                noteDao.reassignList(l.uid, NOTE_LIST_DEFAULT, now())
+                noteListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
+            },
+            restore = {
+                noteListDao.upsert(l.copy(deleted = false, dirty = true, updatedAt = now()))
+                moved.forEach { u ->
+                    noteDao.byUid(u)?.let { noteDao.update(it.copy(listUid = l.uid, dirty = true, updatedAt = now())) }
+                }
+            }
+        )
     }
 
     fun deleteNote(id: Long, onDone: () -> Unit = {}) = viewModelScope.launch {
-        noteDao.byId(id)?.let {
-            noteDao.update(it.copy(deleted = true, dirty = true, updatedAt = now()))
-        }
-        afterChange()
+        val n = noteDao.byId(id) ?: return@launch
+        deleteNoteEntity(n)
         onDone()
     }
+
+    /** §99 I7：左滑删除走这条 —— 与详情页删除共用同一撤销账本 */
+    fun deleteNoteEntity(n: Note) = softDelete(
+        n.title.ifBlank { n.content.take(12) }.take(12),
+        delete = { noteDao.update(n.copy(deleted = true, dirty = true, updatedAt = now())) },
+        restore = { noteDao.upsert(n.copy(deleted = false, dirty = true, updatedAt = now())) }
+    )
 
     suspend fun diaryOf(day: Long) = diaryDao.byDay(day)
 
@@ -709,12 +766,17 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteDiary(day: Long, onDone: () -> Unit = {}) = viewModelScope.launch {
-        diaryDao.byDay(day)?.let {
-            diaryDao.update(it.copy(deleted = true, dirty = true, updatedAt = now()))
-        }
-        afterChange()
+        val d = diaryDao.byDay(day) ?: return@launch
+        deleteDiaryEntity(d)
         onDone()
     }
+
+    /** §99 I7：左滑删除走这条 —— 与编辑页删除共用同一撤销账本 */
+    fun deleteDiaryEntity(d: Diary) = softDelete(
+        Fmt.dateFull(d.day),
+        delete = { diaryDao.update(d.copy(deleted = true, dirty = true, updatedAt = now())) },
+        restore = { diaryDao.upsert(d.copy(deleted = false, dirty = true, updatedAt = now())) }
+    )
 
     /** 贴印章（图片资产优先，emoji 兜底）；withEventTitle 非空时同时创建全天日程并绑定（规格 CAL-051） */
     fun addStamp(

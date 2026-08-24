@@ -84,6 +84,8 @@ fun LookaRoot() {
     val vm: LookaViewModel = viewModel()
     val nav = rememberNavController()
 
+    // §99 I7：撤销条罩在整个 NavHost 之上 —— 任何页面删除都看得见同一条
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     NavHost(
         nav,
         startDestination = "home",
@@ -165,6 +167,9 @@ fun LookaRoot() {
             "diary/{day}",
             arguments = listOf(navArgument("day") { type = NavType.LongType })
         ) { e -> DiaryEditScreen(vm, nav, e.arguments!!.getLong("day")) }
+    }
+        // §99 I7：撤销条罩在 NavHost 之上，**任何页面**删除都看得见同一条
+        com.looka.app.ui.common.UndoHost(vm)
     }
 }
 

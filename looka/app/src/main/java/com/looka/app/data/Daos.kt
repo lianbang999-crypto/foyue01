@@ -138,6 +138,14 @@ interface TaskListDao {
 
     @Update
     suspend fun update(l: TaskList)
+    /** §99 I7：撤销专用 —— 行可能已被同步确认后物理删除，@Update 影响 0 行且不插回 */
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun upsert(x: TaskList)
+
+    /** §99 I6：长按拖拽写回手动顺序 */
+    @Query("UPDATE task_list SET sortOrder = :order, dirty = 1, updatedAt = :now WHERE uid = :uid")
+    suspend fun setSortOrder(uid: String, order: Int, now: Long)
+
 }
 
 @Dao
@@ -225,6 +233,14 @@ interface NoteListDao {
 
     @Update
     suspend fun update(l: NoteList)
+    /** §99 I7：撤销专用 —— 行可能已被同步确认后物理删除，@Update 影响 0 行且不插回 */
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun upsert(x: NoteList)
+
+    /** §99 I6：长按拖拽写回手动顺序 */
+    @Query("UPDATE note_list SET sortOrder = :order, dirty = 1, updatedAt = :now WHERE uid = :uid")
+    suspend fun setSortOrder(uid: String, order: Int, now: Long)
+
 }
 
 @Dao
@@ -258,6 +274,14 @@ interface NoteDao {
 
     @Update
     suspend fun update(n: Note)
+    /** §99 I7：撤销专用 —— 行可能已被同步确认后物理删除，@Update 影响 0 行且不插回 */
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun upsert(x: Note)
+
+    /** §99 I6：长按拖拽写回手动顺序 */
+    @Query("UPDATE note SET sortOrder = :order, dirty = 1, updatedAt = :now WHERE uid = :uid")
+    suspend fun setSortOrder(uid: String, order: Long, now: Long)
+
 }
 
 @Dao

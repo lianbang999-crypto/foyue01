@@ -22,8 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -49,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.data.LIST_PALETTE
 import com.looka.app.data.Category
+import com.looka.app.ui.common.listRowGestures
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.Hairline
@@ -77,10 +76,25 @@ fun CategoryManageScreen(vm: LookaViewModel, nav: NavHostController) {
                 Text(tr("新建颜色"), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
             }
         }
+        // §99 I6：**上移/下移两个按钮删掉**，改长按拖拽（用户拍板：排序按钮全部删除）。
+        // 行尾那个删除图标也删了 —— 删除统一走左滑。
+        val reorder = com.looka.app.ui.common.rememberReorderState(cats.map { it.uid })
+        val byUid = remember(cats) { cats.associateBy { it.uid } }
+        val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
         LazyColumn {
-            items(cats, key = { it.id }) { c ->
+            items(reorder.order.toList(), key = { it }) { cuid ->
+                val c = byUid[cuid] ?: return@items
+                androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+                    Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .listRowGestures(
+                            uid = cuid, state = reorder, rowHeightPx = rowPx,
+                            onReorder = { order -> vm.reorderCategories(order) },
+                            onDelete = if (c.deletable) ({ delCat = c }) else null
+                        )
+                        .padding(start = 16.dp, end = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ColorDot(parseHex(c.colorHex), 14.dp)
@@ -91,31 +105,19 @@ fun CategoryManageScreen(vm: LookaViewModel, nav: NavHostController) {
                         modifier = Modifier.weight(1f).plainClick { editCat = c }
                             .padding(vertical = 14.dp)
                     )
-                    IconButton(onClick = { vm.moveCategory(c, true) }, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Default.KeyboardArrowUp, tr("上移"), tint = GrayText, modifier = Modifier.size(20.dp))
-                    }
-                    IconButton(onClick = { vm.moveCategory(c, false) }, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, tr("下移"), tint = GrayText, modifier = Modifier.size(20.dp))
-                    }
                     // 显隐（AC-014：隐藏后日历不显示该分类日程）
                     Switch(
                         checked = c.visible,
                         onCheckedChange = { vm.updateCategory(c.copy(visible = it)) },
                         colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
                     )
-                    if (c.deletable) {
-                        IconButton(onClick = { delCat = c }, modifier = Modifier.size(40.dp)) {
-                            Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
-                        }
-                    } else {
-                        Spacer(Modifier.width(40.dp))
-                    }
+                }
                 }
                 Hairline()
             }
             item {
                 Text(
-                    tr("· 点击名称可改名换色\n· 排序影响日历中同类日程的显示次序\n· 隐藏后该分类日程不在日历显示\n· 删除分类时，其日程自动归入「未分类」"),
+                    tr("· 点击名称可改名换色\n· 长按可拖动排序 · 左滑删除\n· 隐藏后该分类日程不在日历显示\n· 删除分类时，其日程自动归入「未分类」"),
                     fontSize = 11.sp, color = GrayText, lineHeight = 18.sp,
                     modifier = Modifier.padding(16.dp)
                 )

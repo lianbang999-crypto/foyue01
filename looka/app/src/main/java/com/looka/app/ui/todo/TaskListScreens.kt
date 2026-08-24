@@ -207,7 +207,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                         t,
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.background)
-                            .zIndexFix(if (reorder.draggingUid == tuid) 1f else 0f)
+                            .zIndex(if (reorder.draggingUid == tuid) 1f else 0f)
                             .listRowGestures(
                                 uid = tuid, state = reorder, rowHeightPx = rowHeightPx,
                                 onReorder = { order -> vm.reorderTasks(order) },
@@ -249,7 +249,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         },
         onDismiss = { delList = false }
     )
-    UndoBar(vm)
     }
 }
 
@@ -284,13 +283,22 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
                     }
                 }
                 items(ts, key = { it.uid }) { t ->
-                    TaskRowV2(
-                        t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
-                        onToggle = { vm.toggleTask(t) },
-                        onStar = { vm.setTaskStar(t, !t.starred) },
-                        onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
-                    ,
-                        onDelete = { vm.deleteTask(t) })
+                    // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
+                    Box(Modifier.animateItem()) {
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        TaskRowV2(
+                            t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
+                            , modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
+                                .listRowGestures(
+                                    uid = t.uid, state = null, rowHeightPx = 0f,
+                                    onReorder = null, onDelete = { vm.deleteTask(t) }
+                                )
+                        )
+                    }
                 }
             }
             if (groups.isEmpty()) {
@@ -331,14 +339,23 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                     )
                 }
                 items(overdue, key = { it.uid }) { t ->
-                    TaskRowV2(
-                        t, listName = listMap[t.listUid]?.name,
-                        listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
-                        onToggle = { vm.toggleTask(t) },
-                        onStar = { vm.setTaskStar(t, !t.starred) },
-                        onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
-                    ,
-                        onDelete = { vm.deleteTask(t) })
+                    // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
+                    Box(Modifier.animateItem()) {
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        TaskRowV2(
+                            t, listName = listMap[t.listUid]?.name,
+                            listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
+                            , modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
+                                .listRowGestures(
+                                    uid = t.uid, state = null, rowHeightPx = 0f,
+                                    onReorder = null, onDelete = { vm.deleteTask(t) }
+                                )
+                        )
+                    }
                 }
             }
             byDay.forEach { (d, ts) ->
@@ -355,14 +372,23 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                         )
                     }
                     items(ts, key = { it.uid }) { t ->
-                        TaskRowV2(
-                            t, listName = listMap[t.listUid]?.name,
-                            listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
-                            onToggle = { vm.toggleTask(t) },
-                            onStar = { vm.setTaskStar(t, !t.starred) },
-                            onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
-                        ,
-                        onDelete = { vm.deleteTask(t) })
+                        // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
+                        Box(Modifier.animateItem()) {
+                            SwipeDeleteBackdrop(Modifier.matchParentSize())
+                            TaskRowV2(
+                                t, listName = listMap[t.listUid]?.name,
+                                listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                                onToggle = { vm.toggleTask(t) },
+                                onStar = { vm.setTaskStar(t, !t.starred) },
+                                onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
+                                , modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.background)
+                                    .listRowGestures(
+                                        uid = t.uid, state = null, rowHeightPx = 0f,
+                                        onReorder = null, onDelete = { vm.deleteTask(t) }
+                                    )
+                            )
+                        }
                     }
                 }
             }
@@ -428,14 +454,23 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
                     )
                 }
                 items(ts, key = { it.uid }) { t ->
-                    TaskRowV2(
-                        t, listName = listMap[t.listUid]?.name,
-                        listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
-                        onToggle = { vm.toggleTask(t) },
-                        onStar = { vm.setTaskStar(t, !t.starred) },
-                        onClick = { }
-                    ,
-                        onDelete = { vm.deleteTask(t) })
+                    // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
+                    Box(Modifier.animateItem()) {
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        TaskRowV2(
+                            t, listName = listMap[t.listUid]?.name,
+                            listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { nav.navigate("task/${t.id}") }   // §99：已完成任务此前点不开详情（审计 BUG-TL-008）
+                            , modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
+                                .listRowGestures(
+                                    uid = t.uid, state = null, rowHeightPx = 0f,
+                                    onReorder = null, onDelete = { vm.deleteTask(t) }
+                                )
+                        )
+                    }
                 }
             }
             if (groups.isEmpty()) {
@@ -505,8 +540,9 @@ fun TaskRowV2(
     listColor: Color,
     onToggle: () -> Unit,
     onStar: () -> Unit,
-    onClick: () -> Unit,
-    onDelete: (() -> Unit)? = null   // F5：长按删除（配合 5 秒撤销条，误触也不怕）
+    onClick: () -> Unit
+    // §99 I6：原来这里有个 onDelete 参数，注释写着"长按删除"，**函数体从没用过它**
+    //（审计 BUG-TL-008）。删除现在由 listRowGestures 的左滑统一提供，参数去掉。
 ) {
     val scale = remember { Animatable(1f) }
     var firstDraw by remember { mutableStateOf(true) }
@@ -833,33 +869,5 @@ fun ListEditDialog(
 }
 
 
-/** zIndex 简封装（拖拽行浮在最上层） */
-private fun Modifier.zIndexFix(z: Float): Modifier = this.then(androidx.compose.ui.Modifier.zIndex(z))
-
-// §99 I5：原来的 private Modifier.reorderDrag 已删 —— 与 ListGestures.listRowGestures 重复
-
-/** E1：删除后 5 秒可撤销的浮条 —— 解决"手滑删错"这个最恐慌的场景 */
-@Composable
-fun UndoBar(vm: LookaViewModel) {
-    val t = vm.undoTask ?: return
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        Row(
-            Modifier.padding(bottom = 18.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Ink)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                tr("已删除「{0}」", t.title.take(10)),
-                fontSize = 13.sp, color = Color.White
-            )
-            Spacer(Modifier.width(14.dp))
-            Text(
-                tr("撤销"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF9FD39A),
-                modifier = Modifier.plainClick { vm.undoDeleteTask() }
-            )
-        }
-    }
-}
+// §99 I7：UndoBar 已搬到 ui/common/UndoHost.kt 并挂在应用级 —— 原来只挂这一页，
+// 别处删除看不到撤销入口（审计 BUG-TL-009）。

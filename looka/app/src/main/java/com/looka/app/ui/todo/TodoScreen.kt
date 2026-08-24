@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import com.looka.app.ui.common.listRowGestures
 import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.parseHex
@@ -74,6 +75,9 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     val starredCount = remember(tasks, activeUids) {
         tasks.count { !it.done && it.starred && it.listUid in activeUids }
     }
+    val reorder = com.looka.app.ui.common.rememberReorderState(active.map { it.uid })
+    val byUid = remember(active) { active.associateBy { it.uid } }
+    val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
     val today = Fmt.today()
     val next7Count = remember(tasks, activeUids) {
         tasks.count { !it.done && it.dueDay in 0..(today + 7) && it.listUid in activeUids }
@@ -141,11 +145,20 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             item { Spacer(Modifier.height(8.dp)) }
 
-            // 清单
-            items(active, key = { it.uid }) { l ->
+            // 清单（§99 I6：长按拖排序 / 左滑删除，与全站同一套手势）
+            items(reorder.order.toList(), key = { it }) { luid ->
+                val l = byUid[luid] ?: return@items
+                androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .listRowGestures(
+                            uid = luid, state = reorder, rowHeightPx = rowPx,
+                            onReorder = { order -> vm.reorderTaskLists(order) },
+                            onDelete = if (l.deletable) ({ vm.deleteTaskList(l) }) else null
+                        )
                         .rowClick { nav.navigate("list/${l.uid}") }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -159,6 +172,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                         Icons.Default.ChevronRight, null,
                         tint = Color(0xFFC9CCC9), modifier = Modifier.size(20.dp)
                     )
+                }
                 }
                 Hairline(Modifier.padding(start = 16.dp))
             }

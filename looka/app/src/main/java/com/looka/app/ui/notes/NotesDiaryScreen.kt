@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.looka.app.data.MOOD_EMOJIS
+import com.looka.app.ui.common.listRowGestures
 import com.looka.app.ui.common.EmptyDeer
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.clearFieldColors
@@ -159,10 +160,25 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
     }
 
     val countByList = remember(all) { all.groupingBy { it.listUid }.eachCount() }
+    // §99 I6：清单列表也套统一手势 —— 长按拖排序 / 左滑删除
+    val reorder = com.looka.app.ui.common.rememberReorderState(lists.map { it.uid })
+    val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
+    val byUid = remember(lists) { lists.associateBy { it.uid } }
     LazyColumn {
-        items(lists, key = { it.uid }) { l ->
+        items(reorder.order.toList(), key = { it }) { luid ->
+            val l = byUid[luid] ?: return@items
+            Box(Modifier.animateItem()) {
+            com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
             Row(
-                Modifier.fillMaxWidth().rowClick { nav.navigate("noteList/${l.uid}") }
+                Modifier.fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .listRowGestures(
+                        uid = luid, state = reorder, rowHeightPx = rowPx,
+                        onReorder = { order -> vm.reorderNoteLists(order) },
+                        // 默认清单不可删 —— 传 null 就没有左滑
+                        onDelete = if (l.deletable) ({ vm.deleteNoteList(l) }) else null
+                    )
+                    .rowClick { nav.navigate("noteList/${l.uid}") }
                     .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -177,6 +193,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val c = countByList[l.uid] ?: 0
                 if (c > 0) Text("$c", fontSize = 14.sp, color = GrayText)
+            }
             }
             // 实机行间无 hairline（实测纯白）—— 这里也不画
         }
@@ -203,10 +220,15 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
 
 /** 笔记条目：实机顺序是 **日期 / 标题 / 正文**（日期在最上），全部左缘 16dp，条目下通栏 hairline */
 @Composable
-fun NoteRow(n: com.looka.app.data.Note, listName: String? = null, onClick: () -> Unit) {
+fun NoteRow(
+    n: com.looka.app.data.Note,
+    listName: String? = null,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     val fmt = remember { SimpleDateFormat("M/d", Locale.getDefault()) }
     Column(
-        Modifier.fillMaxWidth().rowClick(onClick)
+        modifier.fillMaxWidth().rowClick(onClick)
             .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -315,8 +337,18 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
             }
             itemsIndexed(items, key = { _, d -> d.id }) { idx, d ->
                 val dt = Fmt.d(d.day)
+                // §99 I6：日记**只给左滑删除**，不做手动排序 —— 天然按日期倒序，
+                // 手动打乱反而找不到（用户拍板）
+                androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
-                    Modifier.fillMaxWidth().rowClick { nav.navigate("diary/${d.day}") }
+                    Modifier.fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .listRowGestures(
+                            uid = "diary-${d.day}", state = null, rowHeightPx = 0f,
+                            onReorder = null, onDelete = { vm.deleteDiaryEntity(d) }
+                        )
+                        .rowClick { nav.navigate("diary/${d.day}") }
                         // §93 E7：条目间距放宽。实测同月相邻 pitch ≈119dp、条目本体才 41dp ——
                         // 那多半是给照片缩略图预留的（Lifebear 日记支持插图）。我们暂无照片，
                         // 照抄 119dp 会显得空，取 80dp。**这是取舍不是复刻。**
@@ -334,6 +366,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                         maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
                     // §93 E6：撤掉右侧心情 emoji —— 实机日记列表**不显示任何心情**，那是我自创的
+                }
                 }
                 // §93 E7：分隔线只在**同月相邻**两条之间；左缩进 72dp、**右到边缘**。
                 // 跨月不画（靠月标题上方的空白分隔）
