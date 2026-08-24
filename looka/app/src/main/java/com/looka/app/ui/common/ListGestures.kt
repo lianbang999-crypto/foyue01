@@ -186,3 +186,36 @@ fun SwipeDeleteBackdrop(modifier: Modifier = Modifier, onDelete: (() -> Unit)? =
         }
     }
 }
+
+/**
+ * §102：**快照式列表** —— 页内操作不让条目当场消失。
+ *
+ * 症状：新建任务后点前面的圆圈，任务**立刻从列表里不见了**，看着就像被删了。
+ * 实际是 `filter { !it.done }` 响应式重算，勾完就不满足条件。取消星标在星标页同理。
+ *
+ * Lifebear 不是这样：§96.2 拿图 78/79 对照过 —— 同一时刻取消星标、标完成，
+ * 条目**都还留在页面上**，只是变个样子。进页面时快照一次，页内操作不改变行的存在。
+ * 这条我在 §96 记过"建议对齐"，一直没做，就是这次的根因。
+ *
+ * 规则：
+ *  - 进页面时以 `visible` 为准建快照
+ *  - 页内新出现的（新建）**追加**进来
+ *  - 因为改状态而不再满足筛选的（打勾/取消星标）**留着**
+ *  - **真被删掉的**（从 `alive` 里消失）才移除 —— 否则左滑删完还赖着不走
+ *
+ * @param visible 当前"按规则该显示"的 uid 列表
+ * @param alive   仍然存在（未删除）的全部 uid —— 用来区分「改了状态」和「真删了」
+ */
+@Composable
+fun rememberSnapshotOrder(visible: List<String>, alive: Set<String>): List<String> {
+    val shown = remember { mutableStateListOf<String>() }
+    LaunchedEffect(visible, alive) {
+        // 先剔除真的没了的
+        shown.retainAll { it in alive }
+        // 再把新出现的按 visible 的顺序补进来
+        visible.forEachIndexed { i, uid ->
+            if (uid !in shown) shown.add(i.coerceAtMost(shown.size), uid)
+        }
+    }
+    return shown
+}

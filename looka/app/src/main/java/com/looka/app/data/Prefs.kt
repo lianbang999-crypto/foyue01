@@ -60,25 +60,20 @@ object Prefs {
     fun setWeekStartMonday(c: Context, v: Boolean) { sp(c).edit().putBoolean("week_start_mon", v).apply(); markSettingsDirty(c) }
 
     /** 休日星期位掩码 bit0=周一…bit6=周日，休日以红色强调 */
-    const val HOLIDAY_MASK_DEFAULT = 1 shl 6      // 只有周日（同 Lifebear 实机）
+    const val HOLIDAY_MASK_DEFAULT = 1 shl 6      // 只有周日（同 Lifebear 实机默认）
 
     /**
-     * 读取时**消毒**。实机出现过整月日期全红、星期头七个也全红 ——
-     * 那只有一种可能：掩码七位全开。能写它的路径我都查过了（默认值 / 设置对话框 /
-     * 同步下行 / 备份），**没找到会写成全开的代码**，真正的写入源至今不明。
+     * §102：**撤回 §101 的「消毒」**。
      *
-     * 但不管谁写的，「七天全是休日」是个**退化状态**：红色不再区分任何东西，
-     * 用户只看到一屏红字还不知道为什么。这种值当损坏处理，回默认。负数同理（-1 每位都命中）。
+     * 我当时看到用户整月全红，查不出写入源，就断定「七位全开 = 损坏」，读取时自动改回默认。
+     * 事实是：用户自己在日历设置里把周一到周日**全设成了休息日**。那不是 bug，是他要的。
+     * 我那段代码会在他升级后**直接推翻他的设置** —— 这比原来的现象糟得多。
      *
-     * 代价写明：真想把七天全设成休日的人，这里会把它改回周日。那个诉求本身不成立
-     * （全红等于没标），先保证用户不会卡在一屏红字里。
+     * 教训写在这里：查不出原因时，不要把「我理解不了的状态」当成「损坏的状态」。
+     * 用户想让整周都是休息日，那是他的日历。
      */
-    fun holidayMask(c: Context): Int {
-        val v = sp(c).getInt("holiday_mask", HOLIDAY_MASK_DEFAULT)
-        if (v < 0 || (v and 0x7F) == 0x7F) return HOLIDAY_MASK_DEFAULT
-        return v and 0x7F
-    }
-    fun setHolidayMask(c: Context, v: Int) { sp(c).edit().putInt("holiday_mask", v and 0x7F).apply(); markSettingsDirty(c) }
+    fun holidayMask(c: Context) = sp(c).getInt("holiday_mask", HOLIDAY_MASK_DEFAULT)
+    fun setHolidayMask(c: Context, v: Int) { sp(c).edit().putInt("holiday_mask", v).apply(); markSettingsDirty(c) }
 
     /** 已完成任务是否显示在日历 */
     fun showDoneTasks(c: Context) = sp(c).getBoolean("show_done_tasks", true)

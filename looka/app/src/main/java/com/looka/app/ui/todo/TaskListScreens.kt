@@ -116,10 +116,16 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         return
     }
     // 手动顺序（sortOrder），支持长按拖拽重排
-    val open = remember(tasks, uid) {
+    val shouldShow = remember(tasks, uid) {
         tasks.filter { !it.done && it.listUid == uid }
             .sortedWith(compareBy({ it.sortOrder }, { it.id }))
     }
+    // §102：**快照式** —— 打勾后条目不当场消失（否则看着像被删了，正是用户反馈的那条）。
+    // 真被删掉的才移除；离开页面再进来会重新快照，勾掉的自然就归到「已完成」了。
+    val aliveUids = remember(tasks, uid) { tasks.filter { it.listUid == uid }.map { it.uid }.toSet() }
+    val shownUids = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow.map { it.uid }, aliveUids)
+    val allByUid = remember(tasks) { tasks.associateBy { it.uid } }
+    val open = remember(shownUids, allByUid) { shownUids.mapNotNull { allByUid[it] } }
     var input by remember { mutableStateOf("") }
     var editList by remember { mutableStateOf(false) }
     var delList by remember { mutableStateOf(false) }
@@ -259,9 +265,14 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
     val lists by vm.taskLists.collectAsState()
     val tasks by vm.tasks.collectAsState()
     val listMap = remember(lists) { lists.associateBy { it.uid } }
-    val groups = remember(tasks, lists) {
+    // §102：快照式（§96.2 实机图 78/79 已证：取消星标、标完成，条目都还留在页上）
+    val shouldShow = remember(tasks) { tasks.filter { !it.done && it.starred }.map { it.uid } }
+    val alive = remember(tasks) { tasks.map { it.uid }.toSet() }
+    val shown = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow, alive)
+    val byUid = remember(tasks) { tasks.associateBy { it.uid } }
+    val groups = remember(shown, byUid, lists) {
         val order = lists.mapIndexed { i, l -> l.uid to i }.toMap()
-        tasks.filter { !it.done && it.starred }
+        shown.mapNotNull { byUid[it] }
             .groupBy { it.listUid }
             .toList()
             .sortedBy { order[it.first] ?: 99 }
@@ -318,13 +329,23 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
     val listMap = remember(lists) { lists.associateBy { it.uid } }
     val today = Fmt.today()
 
-    val overdue = remember(tasks) {
-        tasks.filter { !it.done && it.dueDay in 0 until today }.sortedBy { it.dueDay }
+    // §102：快照式 —— 同星标页，打勾不让条目当场消失
+    val shouldShow = remember(tasks, today) {
+        tasks.filter { !it.done && (it.dueDay in 0 until today || it.dueDay in today..(today + 7)) }
+            .map { it.uid }
     }
-    val byDay = remember(tasks) {
+    val alive = remember(tasks) { tasks.map { it.uid }.toSet() }
+    val shown = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow, alive).toSet()
+    val byUid = remember(tasks) { tasks.associateBy { it.uid } }
+    val inView = remember(shown, byUid) { shown.mapNotNull { byUid[it] } }
+
+    val overdue = remember(inView, today) {
+        inView.filter { it.dueDay in 0 until today }.sortedBy { it.dueDay }
+    }
+    val byDay = remember(inView, today) {
         (0..7).map { off ->
             val d = today + off
-            d to tasks.filter { !it.done && it.dueDay == d }
+            d to inView.filter { it.dueDay == d }
         }
     }
 
@@ -574,10 +595,13 @@ fun TaskRowV2(
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
+            // §102：快照式之后，勾掉的行会**留在原地**，所以必须一眼看出它已完成 ——
+            // 圆圈变实心勾（上面 Icon 已处理）+ 标题转灰。
+            // 不加删除线：母档 B 项定过「打勾+灰字即可，全站去删除线」。
             Text(
                 t.title, fontSize = 15.sp,
                 color = if (t.done) GrayText else Ink,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (listName != null) {
