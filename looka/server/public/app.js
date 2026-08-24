@@ -85,14 +85,14 @@ const THEMES = [
 // 自创主题（与 App 同步，2026-08-21）：主色掺 90% 白做浅底、掺 55% 黑做深字
 // 2026-08-21 对齐 Lifebear：48 色贴纸盘（与 App LIST_PALETTE 同源，色相环螺旋、高饱和）
 const LK_PALETTE = [
-  '#000000','#FBFDFC','#7B6359','#AB958A','#EEB19F','#EE958F',
-  '#E67289','#E13C5E','#D10021','#920011','#5F000B','#A44702',
-  '#DE6A03','#ED8F1D','#F7C212','#F6DC31','#DFED38','#C0E30D',
-  '#99B218','#2E822D','#57B652','#59DF86','#17C192','#0EA66D',
-  '#046963','#0E9199','#14B2BD','#5ED3DA','#90DDF7','#53C8E9',
-  '#1E86C3','#062389','#2947A1','#425BBF','#697EDB','#80A5EC',
-  '#ADA1EB','#8272D5','#6A42D7','#4F18B4','#8500C0','#B852E6',
-  '#DE4BE2','#CB00D8','#9F0058','#C10080','#F05FBE','#F689CD'
+  '#000000', '#FFFFFF', '#81665B', '#AD978A', '#F5B79E', '#F69D8D',
+  '#F08090', '#ED4E60', '#E50922', '#9F0012', '#6C000D', '#B14B00',
+  '#EE7001', '#F7941F', '#FFBE0C', '#FFD42D', '#E2E033', '#C2D308',
+  '#9AA616', '#2B772F', '#50A955', '#55CC8A', '#0EAE96', '#009470',
+  '#005F65', '#0585A0', '#09A4C2', '#59C8DC', '#8BD7F9', '#4EBEEC',
+  '#1880C7', '#032890', '#244CAB', '#435EC9', '#6A82E6', '#80A6EF',
+  '#AFA7F0', '#877BDD', '#6F4EE3', '#5426BC', '#8F16C9', '#C864EB',
+  '#EE64EB', '#DF16E0', '#AF005D', '#D41485', '#FE74C2', '#FD98D0',
 ];
 // 色块上的文字颜色：亮底黑字、深底白字（盘里有大量黄绿青亮色，写死白字会隐形）
 function onColorHex(hex) {
@@ -204,25 +204,53 @@ async function api(path, body, method) {
 let syncTimer = 0;
 function scheduleSync() { clearTimeout(syncTimer); syncTimer = setTimeout(() => sync().catch(() => { }), 1200); }
 
+const PUSH_CHUNK = 500;   // §97 TL-001：必须 ≤ 服务端 PUSH_MAX
+
 async function sync() {
   if (!S.token) return;
+  // §97 TL-001：原来 splice(0) 把整个队列一次性发出去，服务端只处理前 500 条，
+  // 剩下的静默消失 —— 而 catch 只在**抛异常**时回填，200 响应里的截断根本不触发回填。
+  // 现在按块发，每块拿到 push_accepted 回执才算数，没确认的一律留在队列里。
   const push = S.dirty.splice(0); saveDirty();
+  let sent = 0;
   try {
     // 分页游标：只随 next_since 前进（修复 >1000 条丢数据）
     let since = +(localStorage.getItem(sinceKey()) || 0);
-    let body = push.map(x => ({ kind: x.kind, uid: x.uid, updated_at: x.updated_at, deleted: x.deleted, payload: x.p ? JSON.stringify(x.p) : '' }));
-    for (let page = 0; page < 20; page++) {
-      const r = await api('/api/sync', { since, push: body });
-      body = [];
+    // §97 TL-006：复合游标 —— 只用毫秒会在同毫秒批的分页边界吞记录
+    let sinceKind = localStorage.getItem(sinceKey() + '_k') || '';
+    let sinceUid = localStorage.getItem(sinceKey() + '_u') || '';
+    for (let page = 0; page < 60; page++) {
+      const chunk = push.slice(sent, sent + PUSH_CHUNK).map(x => ({
+        kind: x.kind, uid: x.uid, updated_at: x.updated_at,
+        deleted: x.deleted, payload: x.p ? JSON.stringify(x.p) : ''
+      }));
+      const r = await api('/api/sync', { since, since_kind: sinceKind, since_uid: sinceUid, push: chunk });
       (r.apply || []).forEach(applyRec);
+      if (chunk.length) {
+        // 老服务端没有 push_accepted 时按整块算（与旧行为一致）
+        const acc = Math.max(0, Math.min(chunk.length,
+          r.push_accepted === undefined ? chunk.length : +r.push_accepted));
+        sent += acc;
+        if (acc === 0) break;   // 一条没收，再发也一样，剩下的下次同步
+      }
       const next = +(r.next_since || since);
-      if (next > since) { since = next; localStorage.setItem(sinceKey(), since); }
-      if (!r.has_more) break;
+      const nk = r.next_kind === undefined ? sinceKind : String(r.next_kind);
+      const nu = r.next_uid === undefined ? sinceUid : String(r.next_uid);
+      if (next > since || nk !== sinceKind || nu !== sinceUid) {
+        since = next; sinceKind = nk; sinceUid = nu;
+        localStorage.setItem(sinceKey(), since);
+        localStorage.setItem(sinceKey() + '_k', sinceKind);
+        localStorage.setItem(sinceKey() + '_u', sinceUid);
+      }
+      if (sent >= push.length && !r.has_more) break;
     }
+    // 没被服务端确认的尾巴放回队列，下次再发
+    if (sent < push.length) { S.dirty = push.slice(sent).concat(S.dirty); saveDirty(); }
     ensureDefaultCategories();
     saveCache(); renderAll();
   } catch (e) {
-    S.dirty = push.concat(S.dirty); saveDirty();
+    // 只回填**未确认**的部分 —— 已确认的再发一遍是无谓的重复上行
+    S.dirty = push.slice(sent).concat(S.dirty); saveDirty();
     throw e;
   }
 }

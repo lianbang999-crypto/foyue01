@@ -194,6 +194,14 @@ object Prefs {
     fun lastPullMs(c: Context) = sp(c).getLong("last_pull_ms", 0L)
     fun setLastPullMs(c: Context, v: Long) = sp(c).edit().putLong("last_pull_ms", v).apply()
 
+    // §97 TL-006：复合游标的另两段。老版本升级上来时为空 ——
+    // 空值会让服务端把同毫秒的记录**重发**一遍（幂等，安全方向），不会漏。
+    fun lastPullKind(c: Context): String = sp(c).getString("last_pull_kind", "") ?: ""
+    fun lastPullUid(c: Context): String = sp(c).getString("last_pull_uid", "") ?: ""
+    fun setLastPull(c: Context, ms: Long, kind: String, uid: String) = sp(c).edit()
+        .putLong("last_pull_ms", ms).putString("last_pull_kind", kind)
+        .putString("last_pull_uid", uid).apply()
+
     // ---- 应用更新（五批） ----
     /** 最近自动检查更新的日期（每天至多一次） */
     fun updateCheckDay(c: Context) = sp(c).getLong("update_check_day", 0L)

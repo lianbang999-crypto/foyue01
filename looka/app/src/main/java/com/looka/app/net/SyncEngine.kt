@@ -35,6 +35,9 @@ import java.util.Locale
  */
 object SyncEngine {
 
+    /** §97 TL-001：单次上行块大小，必须 ≤ 服务端 PUSH_MAX(500) */
+    private const val PUSH_CHUNK = 500
+
     var syncing by mutableStateOf(false)
         private set
     var lastMsg by mutableStateOf("")
@@ -68,29 +71,57 @@ object SyncEngine {
         if (syncing) return tr("同步进行中")
         syncing = true
         try {
-            var push = buildPush(app)
+            // §97 TL-001：**整批脏记录不再一次性发出去当成功**。
+            // 原来的写法是「组全量 → 发一次 → confirmPush(全量)」，而服务端只处理前 500 条 ——
+            // 第 501 条起被静默丢弃，本地却已清脏、墓碑还被物理删掉，数据无声消失。
+            // 现在按 PUSH_CHUNK 切块，**每块拿到服务端 push_accepted 回执才清那一块的脏**。
+            val pending = buildPush(app)
             // 分页拉取（S1 修复）：游标只随 next_since 前进，绝不跳到 server_time
             var since = Prefs.lastPullMs(app)
+            // §97 TL-006：复合游标的另两段，续同毫秒批用
+            var sinceKind = Prefs.lastPullKind(app)
+            var sinceUid = Prefs.lastPullUid(app)
+            var sent = 0                    // pending 里已确认的条数
             var pages = 0
-            while (pages < 20) {
-                val resp = Api.sync(app, push, since)
-                applyRecords(app, resp.optJSONArray("apply") ?: JSONArray())
-                if (push.length() > 0) {
-                    confirmPush(app, push)
-                    push = JSONArray()   // 上行只发一次，后续纯拉取
+            while (pages < 60) {
+                // 本轮要发的一块（≤ PUSH_CHUNK）；发完了就纯拉取
+                val chunk = JSONArray()
+                var i = sent
+                while (i < pending.length() && chunk.length() < PUSH_CHUNK) {
+                    chunk.put(pending.get(i)); i++
                 }
+                val resp = Api.sync(app, chunk, since, sinceKind, sinceUid)
+                applyRecords(app, resp.optJSONArray("apply") ?: JSONArray())
+
+                if (chunk.length() > 0) {
+                    // 服务端说看了前 n 条就只确认前 n 条；老服务端没这个字段时按整块算
+                    val acc = resp.optInt("push_accepted", chunk.length()).coerceIn(0, chunk.length())
+                    if (acc > 0) {
+                        val done = JSONArray()
+                        for (k in 0 until acc) done.put(chunk.get(k))
+                        confirmPush(app, done)
+                        sent += acc
+                    }
+                    // 一条都没被接收 → 再发也是同样结果，停下，脏记录留着下次同步
+                    if (acc == 0) break
+                }
+
                 val next = resp.optLong("next_since", since)
+                val nextKind = resp.optString("next_kind", sinceKind)
+                val nextUid = resp.optString("next_uid", sinceUid)
                 // P2-A6：同步顺路捎回的订阅状态 —— 高频免费刷新通道
                 if (resp.has("plan")) {
                     com.looka.app.data.PlanState.apply(
                         app, resp.optString("plan", "free"), resp.optLong("plan_expiry", 0L))
                 }
-                if (next > since) {
-                    since = next
-                    Prefs.setLastPullMs(app, since)
+                // 三元组任一段前进就落盘游标（同毫秒批靠 kind/uid 往前走）
+                if (next > since || nextKind != sinceKind || nextUid != sinceUid) {
+                    since = next; sinceKind = nextKind; sinceUid = nextUid
+                    Prefs.setLastPull(app, since, sinceKind, sinceUid)
                 }
                 pages++
-                if (!resp.optBoolean("has_more", false)) break
+                // 上行没发完就继续循环；发完了再看服务端还有没有下行
+                if (sent >= pending.length() && !resp.optBoolean("has_more", false)) break
             }
             lastMsg = tr("上次同步 {0}",
                 SimpleDateFormat(if (com.looka.app.util.I18n.isZh()) tr("M月d日 HH:mm") else "MMM d HH:mm",
@@ -545,52 +576,83 @@ object SyncEngine {
                 "settings" -> Prefs.setSettingsDirty(app, false)
 
                 "category" -> {
-                    if (del) db.categoryDao().hardDeleteByUid(uid)
+                    if (del) db.categoryDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.categoryDao().hardDeleteByUid(uid)
+                    }
                     else db.categoryDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.categoryDao().update(it.copy(dirty = false))
                     }
                 }
                 "tasklist" -> {
-                    if (del) db.taskListDao().hardDeleteByUid(uid)
+                    if (del) db.taskListDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.taskListDao().hardDeleteByUid(uid)
+                    }
                     else db.taskListDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.taskListDao().update(it.copy(dirty = false))
                     }
                 }
                 "event" -> {
                     if (del) db.eventDao().seriesByUid(uid)?.let {
-                        db.eventDao().deleteRemindersOf(it.id)
-                        db.eventDao().deleteExceptionsOf(it.id)
-                        db.eventDao().hardDeleteSeries(it.id)
+                        // §97 TL-002：同上 —— 旧墓碑的回执不许删掉已被撤销/改动的行
+                        if (it.deleted && it.updatedAt == up) {
+                            db.eventDao().deleteRemindersOf(it.id)
+                            db.eventDao().deleteExceptionsOf(it.id)
+                            db.eventDao().hardDeleteSeries(it.id)
+                        }
                     } else db.eventDao().seriesByUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.eventDao().updateSeries(it.copy(dirty = false))
                     }
                 }
                 "task" -> {
-                    if (del) db.taskDao().hardDeleteByUid(uid)
+                    if (del) db.taskDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.taskDao().hardDeleteByUid(uid)
+                    }
                     else db.taskDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.taskDao().update(it.copy(dirty = false))
                     }
                 }
                 "notelist" -> {
-                    if (del) db.noteListDao().hardDeleteByUid(uid)
+                    if (del) db.noteListDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.noteListDao().hardDeleteByUid(uid)
+                    }
                     else db.noteListDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.noteListDao().update(it.copy(dirty = false))
                     }
                 }
                 "note" -> {
-                    if (del) db.noteDao().hardDeleteByUid(uid)
+                    if (del) db.noteDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.noteDao().hardDeleteByUid(uid)
+                    }
                     else db.noteDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.noteDao().update(it.copy(dirty = false))
                     }
                 }
                 "diary" -> {
-                    if (del) db.diaryDao().hardDeleteByUid(uid)
+                    if (del) db.diaryDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.diaryDao().hardDeleteByUid(uid)
+                    }
                     else db.diaryDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.diaryDao().update(it.copy(dirty = false))
                     }
                 }
                 "stamp" -> {
-                    if (del) db.stampDao().hardDeleteByUid(uid)
+                    if (del) db.stampDao().byUid(uid)?.let {
+                        // §97 TL-002：只有本地行仍是**这个墓碑版本**才物理删除。
+                        // 撤销会把 deleted 改回 false 并抬高 updatedAt —— 那条不能被旧墓碑的回执删掉。
+                        if (it.deleted && it.updatedAt == up) db.stampDao().hardDeleteByUid(uid)
+                    }
                     else db.stampDao().byUid(uid)?.let {
                         if (it.dirty && it.updatedAt == up) db.stampDao().update(it.copy(dirty = false))
                     }

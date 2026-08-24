@@ -589,7 +589,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     fun undoDeleteTask() = viewModelScope.launch {
         val t = undoTask ?: return@launch
         undoTask = null; undoJob?.cancel()
-        taskDao.update(t.copy(deleted = false, dirty = true, updatedAt = now()))
+        // §97 TL-002：用 upsert 不用 update —— 静默同步 2.5 秒就会把墓碑发上去，
+        // 服务端确认后本地行已被物理删除；此时 @Update 影响 0 行，撤销静默失效。
+        // 新的 updatedAt 大于墓碑版本，下一轮同步会把「恢复」推给其它设备。
+        taskDao.upsert(t.copy(deleted = false, dirty = true, updatedAt = now()))
         afterChange()
     }
 

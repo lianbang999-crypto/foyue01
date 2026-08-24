@@ -87,8 +87,13 @@ object Api {
         call(c, "/api/pay/claim", JSONObject().put("order_no", orderNo))
 
     /** 双向同步：push 本地脏记录，拉回 since 之后的服务端记录 */
-    suspend fun sync(c: Context, push: JSONArray, since: Long): JSONObject =
-        call(c, "/api/sync", JSONObject().put("push", push).put("since", since))
+    /** §97 TL-006：游标是 (since, kind, uid) 三元组 —— 只用毫秒会在同毫秒批的分页边界吞记录 */
+    suspend fun sync(
+        c: Context, push: JSONArray, since: Long,
+        sinceKind: String = "", sinceUid: String = ""
+    ): JSONObject =
+        call(c, "/api/sync", JSONObject().put("push", push).put("since", since)
+            .put("since_kind", sinceKind).put("since_uid", sinceUid))
 
     /**
      * AI 代理（服务端持 Key）。

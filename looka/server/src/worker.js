@@ -8,6 +8,7 @@
 const PBKDF2_ITER = 100000;
 const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings'];  // §86：notelist = 笔记清单  // P5-1：设置也是同步实体
 const SYNC_PAGE = 1000;            // 同步单页上限（配 has_more/next_since 游标）
+const PUSH_MAX = 500;              // §97 TL-001：单次上行上限；超出部分**回报给客户端**，不静默丢
 const enc = new TextEncoder();
 
 const ALLOWED_ORIGINS = new Set(['https://looka.foyue.org']);
@@ -926,7 +927,15 @@ async function route(request, env, ctx) {
   if (p === '/api/sync' && m === 'POST') {
     const b = await body();
     const since = Number(b.since || 0);
-    const push = Array.isArray(b.push) ? b.push.slice(0, 500) : [];
+    // §97 TL-006：复合游标。只用 updated_at 时，第 N 条与第 N+1 条同毫秒会让后者
+    // 永远不满足 `> since` 而被跳过 —— 批量清除、清单迁移都会造出同毫秒批。
+    // 客户端不传 kind/uid 时退化成 ''，此时同毫秒记录会被**重发**（幂等，安全方向）。
+    const sinceKind = String(b.since_kind || '');
+    const sinceUid = String(b.since_uid || '');
+    // §97 TL-001：**不再静默 slice**。仍然限流，但把「我实际看了前几条」回给客户端，
+    // 客户端只对这几条清脏，剩下的留在队列里下一批再发。
+    const pushAll = Array.isArray(b.push) ? b.push : [];
+    const push = pushAll.slice(0, PUSH_MAX);
 
     for (const r of push) {
       const kind = String(r.kind || '');
@@ -956,18 +965,29 @@ async function route(request, env, ctx) {
       })());
     }
 
+    // §97 TL-006：(updated_at, kind, uid) 三元组严格递增，排序与游标同序，边界不再吞记录
     const rows = await env.DB.prepare(
       `SELECT kind, uid, updated_at, deleted, payload FROM items
-       WHERE user_id = ?1 AND updated_at > ?2 ORDER BY updated_at LIMIT ${SYNC_PAGE + 1}`
-    ).bind(user.id, since).all();
+       WHERE user_id = ?1 AND (
+               updated_at > ?2
+            OR (updated_at = ?2 AND (kind > ?3 OR (kind = ?3 AND uid > ?4)))
+             )
+       ORDER BY updated_at, kind, uid LIMIT ${SYNC_PAGE + 1}`
+    ).bind(user.id, since, sinceKind, sinceUid).all();
     let list = rows.results || [];
     const hasMore = list.length > SYNC_PAGE;
     if (hasMore) list = list.slice(0, SYNC_PAGE);
-    const nextSince = list.length ? list[list.length - 1].updated_at : since;
+    const tail = list.length ? list[list.length - 1] : null;
+    const nextSince = tail ? tail.updated_at : since;
     const pl = await planOf(env, user.id);   // P2-A6：顺路捎回订阅状态，客户端落盘
     return json({
       ok: true, apply: list,
       has_more: hasMore, next_since: nextSince,
+      // 新客户端回传这两个，才能精确续上同毫秒批；老客户端不传 → 同毫秒重发（幂等）
+      next_kind: tail ? tail.kind : sinceKind,
+      next_uid: tail ? tail.uid : sinceUid,
+      // §97 TL-001：本次实际处理了上行数组的前 N 条；客户端只许对这 N 条清脏
+      push_accepted: push.length, push_total: pushAll.length,
       server_time: Date.now(),
       plan: pl.plan, plan_expiry: pl.expiresAt
     });

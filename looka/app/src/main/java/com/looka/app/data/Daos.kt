@@ -176,6 +176,14 @@ interface TaskDao {
     @Query("DELETE FROM task WHERE uid = :uid")
     suspend fun hardDeleteByUid(uid: String)
 
+    /**
+     * §97 TL-002：撤销专用。原来撤销走 @Update —— 行若已被同步确认后物理删除，
+     * UPDATE 影响 0 行且**不会插回**，用户在 UI 允许的 5 秒内点撤销却什么也没发生。
+     * REPLACE 语义保证「还在就更新、没了就插回」。
+     */
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun upsert(t: Task)
+
     @Query("UPDATE task SET dirty = 1")
     suspend fun markAllDirty()
 
