@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,116 +61,108 @@ import java.util.Date
 import java.util.Locale
 import com.looka.app.util.tr
 
-/** 笔记·日记 Tab（Lifebear 底部第四格 Note&Diary 的对应物） */
+/**
+ * 笔记·日记 Tab（Lifebear ノート&日記 的对应物）
+ *
+ * §90 N1：撤掉此前那排清单 chips —— 那是我照搬待办页自创的，Lifebear 的笔记列表页
+ * 没有清单横排（V014 实机：切清单在**编辑页**顶部的 chip 下拉里做）。清单功能保留，形态改回。
+ * §90 S1/S2/S3：搜索框按实机重做 —— 静置态是入口，点开进整页搜索态。
+ */
 @Composable
 fun NotesDiaryScreen(vm: LookaViewModel, nav: NavHostController) {
     // §77 N9：seg 提到 VM —— 中央 ＋ 要按它决定建笔记还是建日记
     val seg = vm.notesSeg
     var q by rememberSaveable { mutableStateOf("") }
+    // §90 S3：搜索是**两态**的（实机图 73/75）—— 静置态只是入口，点开才进搜索模式
+    var searching by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // §77 N6/N8：搜索框即页首（不再有标题行），小鹿收进搜索行右端 —— 同一行，零额外高度。
-        // §77 N8：顶栏那个 ＋ 撤掉，新建统一交给中央 ＋（Lifebear 也只有中央一个入口）。
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = q, onValueChange = { q = it },
-                // §77 N7：placeholder 代替说明文字，直接写清能搜到什么
-                placeholder = {
-                    Text(
-                        if (seg == 0) tr("搜索笔记名、正文") else tr("搜索日记正文"),
-                        fontSize = 14.sp, color = Color(0xFFB9BBB9)
+        if (searching) {
+            // ── 激活态：顶栏变「← + 裸输入框」，无底色、无圆角（实机图 73/75）──
+            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+            androidx.compose.runtime.LaunchedEffect(Unit) { focus.requestFocus() }
+            androidx.activity.compose.BackHandler(enabled = true) { searching = false; q = "" }
+            Row(
+                Modifier.fillMaxWidth().height(52.dp).padding(start = 4.dp, end = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { searching = false; q = "" }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        tr("返回"), tint = Ink
                     )
-                },
-                leadingIcon = {
+                }
+                TextField(
+                    value = q, onValueChange = { q = it },
+                    // 激活态的 placeholder 才写全能搜什么（实机：ノート名、本文 / タスク名、メモなど）
+                    placeholder = {
+                        Text(
+                            if (seg == 0) tr("笔记名、正文") else tr("日记正文"),
+                            fontSize = 16.sp, color = Color(0xFFB9BBB9)
+                        )
+                    },
+                    textStyle = TextStyle(fontSize = 16.sp),
+                    singleLine = true,
+                    colors = clearFieldColors(),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                    ),
+                    modifier = Modifier.weight(1f).focusRequester(focus)
+                )
+            }
+            Hairline()
+        } else {
+            // ── 静置态：灰底小圆角入口（实机 38dp 高 / 4dp 圆角），小鹿在同一行右端 ──
+            Row(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    Modifier.weight(1f).height(38.dp)
+                        .clip(RoundedCornerShape(4.dp)).background(PanelBg)
+                        .rowClick { searching = true }
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
-                },
-                singleLine = true,
-                colors = clearFieldColors(),
-                // §90 S1/R1：实机测量 —— 高 121px÷3.156 = 38dp，圆角 13px ≈ 4dp（小圆角矩形，
-                // 不是胶囊）。此前的 44dp 高 + 22dp 胶囊是我自创的。
-                modifier = Modifier.weight(1f).height(38.dp)
-                    .clip(RoundedCornerShape(4.dp)).background(PanelBg)
-            )
-            // §71 A：AI 全站入口（用户拍板）—— 从独立顶栏挪到搜索行右端
-            IconButton(onClick = { nav.navigate("aiChat") }) {
-                com.looka.app.ui.common.DeerBadge(24.dp)
+                    Spacer(Modifier.width(8.dp))
+                    // §90 S1：静置态实机只写「本文」两个字，不写长句
+                    Text(tr("正文"), fontSize = 14.sp, color = Color(0xFFB9BBB9))
+                }
+                // §71 A：AI 全站入口（用户拍板）
+                IconButton(onClick = { nav.navigate("aiChat") }) {
+                    com.looka.app.ui.common.DeerBadge(24.dp)
+                }
             }
         }
-        // §77 N6：tab 移到搜索框下方（对齐 Lifebear 图5 的层序）
-        Row(
-            Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SegTab(tr("笔记"), seg == 0) { vm.notesSeg = 0 }
-            Spacer(Modifier.width(24.dp))
-            SegTab(tr("日记"), seg == 1) { vm.notesSeg = 1 }
+        // §90 S2：tab 两个**等宽平分**，选中 = 黑粗体 + **整宽粗下划线**（实机图 71）
+        Row(Modifier.fillMaxWidth().height(44.dp)) {
+            SegTab(tr("笔记"), seg == 0, Modifier.weight(1f)) { vm.notesSeg = 0 }
+            SegTab(tr("日记"), seg == 1, Modifier.weight(1f)) { vm.notesSeg = 1 }
         }
-        // §86 C2（V014 [B]）：List 是笔记的原生容器 —— chips 横滑、选中高亮、末尾 ＋ 建清单
-        if (seg == 0) NoteListChips(vm)
         Hairline()
-        if (seg == 0) NotesList(vm, nav, q.trim()) else DiaryList(vm, nav, q.trim())
+        if (seg == 0) NotesList(vm, nav, q.trim()) else DiaryList(vm, nav, q.trim(), searching)
     }
 }
 
 @Composable
-private fun SegTab(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SegTab(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(
-        Modifier.plainClick(onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier.fillMaxHeight().plainClick(onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Bottom
     ) {
         Text(
-            label, fontSize = 16.sp,
+            label, fontSize = 15.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = if (selected) Ink else GrayText
+            color = if (selected) Ink else GrayText,
+            modifier = Modifier.weight(1f).wrapContentHeight()
         )
+        // 整宽粗下划线（此前是 22dp 短横 —— 自创的）
         Box(
-            Modifier.padding(top = 3.dp).width(22.dp).height(2.dp)
+            Modifier.fillMaxWidth().height(3.dp)
                 .background(if (selected) Ink else Color.Transparent)
         )
-    }
-}
-
-@Composable
-private fun NoteListChips(vm: LookaViewModel) {
-    val lists by vm.noteLists.collectAsState()
-    val notes by vm.notes.collectAsState()
-    var createDlg by remember { mutableStateOf(false) }
-    // 首次进入惰性建默认清单（迁移里不建：uid 约定归 VM 管）
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.ensureNoteListDefault() }
-
-    Row(
-        Modifier.fillMaxWidth()
-            .horizontalScroll(androidx.compose.foundation.rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Chip(tr("全部"), vm.noteListSel.isEmpty()) { vm.noteListSel = "" }
-        lists.forEach { l ->
-            val n = notes.count { it.listUid == l.uid }
-            Chip(l.name + if (n > 0) "  $n" else "", vm.noteListSel == l.uid) { vm.noteListSel = l.uid }
-        }
-        Chip("＋", false) { createDlg = true }
-    }
-    if (createDlg) NoteListCreateDialog(
-        vm,
-        onCreated = { uid -> vm.noteListSel = uid; createDlg = false },
-        onDismiss = { createDlg = false }
-    )
-}
-
-@Composable
-private fun Chip(label: String, on: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.padding(end = 6.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (on) Ink else PanelBg)
-            .plainClick(onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(label, fontSize = 12.sp, color = if (on) Color.White else Ink)
     }
 }
 
@@ -213,15 +210,33 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
 }
 
 @Composable
-private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String) {
+private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, searching: Boolean) {
     val all by vm.diaries.collectAsState()
     // §77 N6：日记只有正文可搜（心情是图标不是文字）
     val diaries = if (q.isBlank()) all else all.filter { it.content.contains(q, true) }
     val today = Fmt.today()
     // 搜索态下不插「写今天的日记」那一行 —— 它不是搜索结果
-    val hasToday = q.isNotBlank() || all.any { it.day == today }
+    val hasToday = searching || all.any { it.day == today }
+
+    // §90 N3（实机图 71）：按月分组 —— 灰色月份小标题 + 每条「大号日期数字 / 星期」竖排在左，
+    // 标题在右。此前是「心情 emoji + 日期 + 正文摘要」的紧凑行，那是我们自己的排法。
+    val grouped = remember(diaries) {
+        diaries.groupBy { Fmt.d(it.day).let { dt -> dt.year * 100 + dt.monthValue } }
+            .toList().sortedByDescending { it.first }
+    }
 
     LazyColumn {
+        if (searching && q.isBlank()) {
+            item {
+                Text(
+                    tr("输入关键词，搜索日记正文"),
+                    fontSize = 13.sp, color = GrayText,
+                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+            return@LazyColumn
+        }
         if (!hasToday) {
             item {
                 Row(
@@ -236,23 +251,42 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String) {
                 Hairline()
             }
         }
-        items(diaries, key = { it.id }) { d ->
-            Row(
-                Modifier.fillMaxWidth().rowClick { nav.navigate("diary/${d.day}") }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(MOOD_EMOJIS[d.mood.coerceIn(0, 4)], fontSize = 22.sp)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(Fmt.dateFull(d.day), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        d.content.replace("\n", " "), fontSize = 13.sp, color = GrayText,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis
-                    )
-                }
+        grouped.forEach { (ym, items) ->
+            item(key = "m$ym") {
+                Text(
+                    tr("{0}年{1}月", ym / 100, ym % 100),
+                    fontSize = 13.sp, color = GrayText,
+                    modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 6.dp)
+                )
             }
-            Hairline()
+            items(items, key = { it.id }) { d ->
+                val dt = Fmt.d(d.day)
+                Row(
+                    Modifier.fillMaxWidth().rowClick { nav.navigate("diary/${d.day}") }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // 左：大号日期 + 星期（竖排）
+                    Column(
+                        Modifier.width(56.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("${dt.dayOfMonth}", fontSize = 26.sp, fontWeight = FontWeight.Medium, color = Ink)
+                        Text(Fmt.week(dt.dayOfWeek.value), fontSize = 11.sp, color = GrayText)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            d.content.replace("\n", " ").ifBlank { tr("（无正文）") },
+                            fontSize = 15.sp, color = Ink,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    // 心情保留为右侧识别符（列表页的心情是识别符，不是输入门槛 —— §77 N1）
+                    Text(MOOD_EMOJIS[d.mood.coerceIn(0, 4)], fontSize = 18.sp)
+                }
+                Hairline(Modifier.padding(start = 86.dp))
+            }
         }
         if (diaries.isEmpty()) {
             item {

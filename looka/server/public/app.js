@@ -895,29 +895,13 @@ function renderNotes() {
   const q = ($('#noteSearch')?.value || '').trim().toLowerCase();
   const every = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
   const lists = noteLists();
-  const all = curNoteList ? every.filter(r => (r.p.listUid || 'nlist-default') === curNoteList) : every;
+  const all = every;   // §90 N1：列表页不再按 chips 收窄
   const list = q ? all.filter(r =>
     (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q)) : all;
   const counts = {};
   every.forEach(r => { const k = r.p.listUid || 'nlist-default'; counts[k] = (counts[k] || 0) + 1; });
-  $('#noteChips').innerHTML =
-    `<button class="lchip ${curNoteList === '' ? 'on' : ''}" data-nl="">${t('全部')}</button>` +
-    lists.map(l => `<button class="lchip ${curNoteList === l.uid ? 'on' : ''}" data-nl="${l.uid}">
-      <span class="dot" style="background:${l.p.color || '#5C6670'}"></span>${esc(l.p.name)}${counts[l.uid] ? ' ' + counts[l.uid] : ''}</button>`).join('') +
-    `<button class="lchip add" data-nl="__new">＋</button>`;
-  $$('#noteChips .lchip').forEach(b => b.onclick = () => {
-    if (b.dataset.nl === '__new') {
-      const name = (prompt(t('清单名（如：灵感 / 会议）')) || '').trim();
-      if (!name) return;
-      if (noteLists().some(l => l.p.name === name)) { toast(t('名字空着或重名了')); return; }
-      const uid = uuid();
-      put('notelist', uid, { name, color: LK_PALETTE[(6 + noteLists().length * 7) % 48], sort: noteLists().length + 1, deletable: true });
-      curNoteList = uid;   // 新建即选中（V014 Create List commit）
-      renderNotes();
-      return;
-    }
-    curNoteList = b.dataset.nl; renderNotes();
-  });
+  // §90 N1（与 App 同步）：撤掉清单 chips 横排 —— 那是照搬待办页自创的形态，
+  // Lifebear 笔记列表页没有清单横排，切清单在**编辑弹窗**里做。清单数据与筛选能力保留。
   $('#noteList').innerHTML = list.length ? list.map(r => `
     <div class="note-item" data-n="${r.uid}">
       <div class="nt">${esc(r.p.title || '无标题')}</div>
@@ -1427,8 +1411,8 @@ async function boot() {
   $$('.bottombar .tab span').forEach(el => el.textContent = t(el.textContent.trim()));
   $('#todoInput').placeholder = t('搜索任务…') === '搜索任务…' ? '添加任务…' : t('添加任务…');
   // §77 N7：搜索 placeholder 直接写清能搜什么；§81：AI 生成内容显式标识
-  $('#noteSearch').placeholder = t('搜索笔记名、正文');
-  $('#diarySearch').placeholder = t('搜索日记正文');
+  $('#noteSearch').placeholder = t('正文');
+  $('#diarySearch').placeholder = t('正文');
   $('.ai-notice').textContent = t('以下内容由 AI 生成，请自行核对');
   document.documentElement.lang = resolveLang();
 
