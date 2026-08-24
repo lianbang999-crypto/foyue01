@@ -106,6 +106,15 @@ fun LookaRoot() {
         composable("home") { HomeScreen(vm, nav) }
         composable("editor") { EventEditorScreen(vm, nav) }
         composable("recur") { RecurrenceEditorScreen(vm, nav) }
+        // §85 批 B：父/子编辑器的全页子编辑器（分类 select-and-return · 提醒两层）
+        composable("catPick") { com.looka.app.ui.event.CategoryPickScreen(vm, nav) }
+        composable("reminders") { com.looka.app.ui.event.ReminderListScreen(vm, nav) }
+        composable("reminderNew") { com.looka.app.ui.event.ReminderCreateScreen(vm, nav) }
+        // §85 B5（V013 [B]）：Task 原生详情页
+        composable(
+            "task/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { e -> com.looka.app.ui.todo.TaskDetailScreen(vm, nav, e.arguments!!.getLong("id")) }
         composable(
             "detail/{sid}/{occ}",
             arguments = listOf(

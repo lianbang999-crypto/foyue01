@@ -8192,3 +8192,36 @@ cron 对账（`afdianReconcile`）捞回来开通的。配好之后至今没有�
 
 这不是故障 —— cron 兜底最慢 5 分钟，用户体感差别不大。但记一笔：下一笔真实订单进来时，
 去 `events` 看有没有 `afdian_hook`，那才算 webhook 真的通了。
+
+---
+
+## 八十五、§85 规划（2026-08-24）：批 B —— 父/子编辑器骨架 + Task 原生详情页
+
+§77 定的批 B（B1–B4）加上 §78/§79 挪进来的 Task 原生详情页（B5）。开工前逐项查了现状 ——
+**B3 已经存在，§77 写计划时没查代码**，这条不重做。
+
+### 一、逐条对表（规格 | 现状代码实证 | 处置）
+
+| | v1.1/v1.3 规格 | 现状（实查） | 处置 |
+|---|---|---|---|
+| B1 分类 | 全页 push 选择器：色点+名称+勾，**点新项即 select-and-return，无确认钮**（V011 7.1 [B]） | `CategoryPickerSheet` 是 ModalBottomSheet（`EventEditorScreen.kt:722`） | 改全页路由 `catPick`，删旧 Sheet |
+| B2 提醒 | **两层**：List 管理器（右侧启停，＋进创建）→ Create 全页（X/标题/黑 Save，快捷规则 radio）（V011 7.2/7.3 [B]） | `ReminderSheet` 底部弹层 + RadioDialog 两步加条目（`:615-716`）；**数据层 1:N 已支持**（`d.reminders` 是列表）✓ | 改 `reminders` + `reminderNew` 两个全页，删旧 Sheet |
+| B3 重复 | 频率 tab + 顶部实时摘要 | **已存在**：摘要（`RecurrenceEditorScreen.kt:72`）、tab（`:80`）、间隔、按周/按月、结束日全有 | 不重做。偏离记录：间隔用 Stepper 不用数字键盘（C 级选择，防非法值，REC-001 的本地校验由控件天然保证） |
+| B4 Pressed→Navigate | 0–80ms 整行浅灰 pressed，**反馈先于转场**（§6.1） | `plainClick` 是 `indication = null`（`Ui.kt`）——**全项目行级零按压反馈** | 新增 `rowClick`（按压浅灰底），NavRow/编辑器行/待办行/笔记行换用 |
+| B5 Task 详情 | 原生详情页：完成圆/星标**直接切换无确认**；More 是**锚定菜单无遮罩**收 Copy/Delete；**Copy = 预填新 Draft 非原地复制**；Delete 进阻断确认（V013 [B]） | 只有 `TaskEditDialog`（AlertDialog，`TaskListScreens.kt:599`），5 处行点击直接进编辑弹窗 | 新建 `TaskDetailScreen` + 路由 `task/{id}`；行点击改进详情；编辑仍用现有 Dialog |
+
+### 二、Copy 语义的实现选择
+
+V013：「Copy ≠ Duplicate immediately —— 用原 Task 生成预填的新 Draft」。直接 `vm.addTask()` 是
+原地复制，违背合同。做法：`TaskEditDialog` 加 `isNew` 参数 —— 预填字段、隐藏删除钮、
+保存走 `addTask`（新 uid）、取消零残留。对话框本身就是 draft 边界。
+
+### 三、双端
+
+- B4 网页给行加 `:active` 按压态（CSS 一行）。
+- B1/B2/B5 网页仍是弹窗表单 —— **挂账 §15 ②**：网页的表单形态是 modal 体系，全页 push
+  不是一行能改的；commit 语义（draft/save 边界）两端已一致，形态差异后续批次跟。
+
+### 四、批内顺序
+
+B4（一个 modifier，全局吃到反馈）→ B1 → B2 → B5 → 编译/i18n/文档回勾。

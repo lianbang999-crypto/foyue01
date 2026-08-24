@@ -86,6 +86,7 @@ import com.looka.app.ui.common.clearFieldColors
 import com.looka.app.ui.common.onColor
 import com.looka.app.ui.common.parseHex
 import com.looka.app.ui.common.plainClick
+import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.common.toast
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.HolidayRed
@@ -117,7 +118,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             .sortedWith(compareBy({ it.sortOrder }, { it.id }))
     }
     var input by remember { mutableStateOf("") }
-    var editTask by remember { mutableStateOf<Task?>(null) }
     var editList by remember { mutableStateOf(false) }
     var delList by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
@@ -230,7 +230,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                     listName = null, listColor = parseHex(list.colorHex),
                     onToggle = { vm.toggleTask(t) },
                     onStar = { vm.setTaskStar(t, !t.starred) },
-                    onClick = { editTask = t }
+                    onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
                 ,
                         onDelete = { vm.deleteTask(t) })
             }
@@ -248,9 +248,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
         }
     }
 
-    editTask?.let { t ->
-        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
-    }
     if (editList) ListEditDialog(
         existing = list,
         onSave = { n, c -> vm.updateTaskList(list.copy(name = n, colorHex = c)); editList = false },
@@ -276,7 +273,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
 fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
     val lists by vm.taskLists.collectAsState()
     val tasks by vm.tasks.collectAsState()
-    var editTask by remember { mutableStateOf<Task?>(null) }
     val listMap = remember(lists) { lists.associateBy { it.uid } }
     val groups = remember(tasks, lists) {
         val order = lists.mapIndexed { i, l -> l.uid to i }.toMap()
@@ -306,7 +302,7 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
                         t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
                         onToggle = { vm.toggleTask(t) },
                         onStar = { vm.setTaskStar(t, !t.starred) },
-                        onClick = { editTask = t }
+                        onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
                     ,
                         onDelete = { vm.deleteTask(t) })
                 }
@@ -317,9 +313,6 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
             item { Spacer(Modifier.height(40.dp)) }
         }
     }
-    editTask?.let { t ->
-        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
-    }
 }
 
 // ==================== 未来 7 天 ====================
@@ -328,7 +321,6 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
 fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
     val lists by vm.taskLists.collectAsState()
     val tasks by vm.tasks.collectAsState()
-    var editTask by remember { mutableStateOf<Task?>(null) }
     val listMap = remember(lists) { lists.associateBy { it.uid } }
     val today = Fmt.today()
 
@@ -358,7 +350,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                         listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
                         onToggle = { vm.toggleTask(t) },
                         onStar = { vm.setTaskStar(t, !t.starred) },
-                        onClick = { editTask = t }
+                        onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
                     ,
                         onDelete = { vm.deleteTask(t) })
                 }
@@ -382,7 +374,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                             listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
                             onToggle = { vm.toggleTask(t) },
                             onStar = { vm.setTaskStar(t, !t.starred) },
-                            onClick = { editTask = t }
+                            onClick = { nav.navigate("task/${t.id}") }   // §85 B5：行点击进原生详情
                         ,
                         onDelete = { vm.deleteTask(t) })
                     }
@@ -393,9 +385,6 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
             }
             item { Spacer(Modifier.height(40.dp)) }
         }
-    }
-    editTask?.let { t ->
-        TaskEditDialog(vm, t, lists.filter { !it.archived }, onDismiss = { editTask = null })
     }
 }
 
@@ -549,7 +538,7 @@ fun TaskRowV2(
     Row(
         modifier
             .fillMaxWidth()
-            .plainClick(onClick)
+            .rowClick(onClick)   // §85 B4：任务行按压反馈先于进详情页
             .padding(start = 16.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -600,6 +589,9 @@ fun TaskEditDialog(
     vm: LookaViewModel,
     t: Task,
     lists: List<TaskList>,
+    // §85 B5：isNew = 「复制」语义 —— t 是预填的新对象（id=0），保存走 addTask 生成新任务，
+    // 取消零残留；原任务从头到尾不被触碰（V013「Copy ≠ Duplicate immediately」）
+    isNew: Boolean = false,
     onDismiss: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -617,7 +609,7 @@ fun TaskEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("编辑任务"), fontSize = 17.sp) },
+        title = { Text(if (isNew) tr("新建任务") else tr("编辑任务"), fontSize = 17.sp) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
@@ -760,12 +752,13 @@ fun TaskEditDialog(
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { vm.deleteTask(t); onDismiss() }) {
+                if (!isNew) TextButton(onClick = { vm.deleteTask(t); onDismiss() }) {
                     Text(tr("删除"), color = HolidayRed)
                 }
                 TextButton(
                     onClick = {
-                        vm.updateTask(
+                        if (isNew) vm.addTask(title.trim(), due, memo.trim(), listUid, starred = t.starred)
+                        else vm.updateTask(
                             t.copy(title = title.trim(), dueDay = due, memo = memo.trim(), listUid = listUid)
                         )
                         onDismiss()

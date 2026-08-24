@@ -923,3 +923,17 @@ Qwen 真挂了后台不响、看板恒显 0。真实埋点是 `ai_fail`。详见
 理由是可达路径不同 —— App 侧删后仍有日历页（`CalendarScreen.kt:1362`）与待办页页首
 （`TodoScreen.kt:89`）两条路；网页侧 `#mSearch` 是全局搜索的**唯一**入口，删掉等于删功能。
 这条偏离是刻意的，不是漏做；网页要跟进的话得先给日历/待办页补搜索入口（另开条目）。
+
+## P38 · §85 批 B（父/子编辑器骨架 + Task 详情，2026-08-24）
+
+| | 项 | 状态 |
+|---|---|---|
+| B4 | `rowClick` 落地：NavRow（全站导航行）/HubRow/待办清单行/任务行/笔记·日记行/编辑器分类行/搜索条；网页 `.more-row/.note-item/.diary-item/.todo-item/.lchip/.chip:active` | [~] |
+| B1 | 分类全页 select-and-return（`catPick`）上线；`CategoryPickerSheet` **保留**给模板编辑器（其 draft 是屏幕局部的，见挂账） | [~] |
+| B2 | 提醒两层全页上线：`reminders`（启停/删除/闹钟式，＋进创建）+ `reminderNew`（X 取消 · 深色 Save · 快捷 radio · 全天另有提醒时刻）。`ReminderSheet` 保留给模板编辑器 | [~] |
+| B3 | ✅ 已存在（§77 未查现状就列了）：tab+摘要+间隔+结束日全有。偏离记录：Stepper 代数字键盘（C 级，防非法值） | [x] |
+| B5 | `TaskDetailScreen` 上线：完成圆/星标直切无确认 · More=DropdownMenu 锚定无遮罩（复制/删除）· Copy=`TaskEditDialog(isNew)` 预填新对象 id=0，保存才 addTask · Delete 二次确认。4 处行点击改进详情（第 5 处是已完成页，行为不变）；3 处死状态清理 | [~] |
+
+**挂账（§15 ②）**：网页 B1/B2/B5 仍是弹窗表单，commit 语义一致、形态差异下批跟。
+**挂账（批内）**：模板编辑器（TemplateScreens）用屏幕局部 draft，接不上读 `vm.draft` 的全页选择器，
+本批继续用旧 Sheet —— 要跟上得先把模板 draft 提升到 VM，另开条目。

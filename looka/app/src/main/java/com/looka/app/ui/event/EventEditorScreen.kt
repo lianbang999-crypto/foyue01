@@ -68,6 +68,7 @@ import com.looka.app.ui.common.StickerPicker
 import com.looka.app.ui.common.clearFieldColors
 import com.looka.app.ui.common.parseHex
 import com.looka.app.ui.common.plainClick
+import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.common.toast
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.HolidayRed
@@ -320,8 +321,6 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
     var endDateDlg by remember { mutableStateOf(false) }
     var startTimeDlg by remember { mutableStateOf(false) }
     var endTimeDlg by remember { mutableStateOf(false) }
-    var catSheet by remember { mutableStateOf(false) }
-    var remSheet by remember { mutableStateOf(false) }
     var tplSheet by remember { mutableStateOf(false) }
 
     // 节奏（2026-08-21 对齐 Lifebear 实机录屏）：进来光标就在标题上、键盘已经起来。
@@ -396,7 +395,8 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
         // 分类（颜色即分类 CAL-040）
         val cat = cats.find { it.id == d.categoryId }
         Row(
-            Modifier.fillMaxWidth().plainClick { catSheet = true }
+            // §85 B1：分类改全页 select-and-return；rowClick = B4 按压反馈先于转场
+            Modifier.fillMaxWidth().rowClick { nav.navigate("catPick") }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -435,7 +435,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 tr("提醒"), icon = Icons.Outlined.Notifications,
                 value = if (d.reminders.isEmpty()) tr("无")
                 else d.reminders.joinToString("、") { Fmt.reminderText(d.allDay, it) }
-            ) { remSheet = true }
+            ) { nav.navigate("reminders") }   // §85 B2：List 管理器 + Create 全页
             Hairline()
 
             // 重复
@@ -502,13 +502,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
         d.endMin = m
     }, onDismiss = { endTimeDlg = false })
 
-    if (catSheet) CategoryPickerSheet(
-        vm, nav, current = d.categoryId,
-        onPick = { d.categoryId = it; catSheet = false },
-        onDismiss = { catSheet = false }
-    )
 
-    if (remSheet) ReminderSheet(d, onDismiss = { remSheet = false })
 
     if (tplSheet) TemplateSheet(vm, d, nav = nav, onDismiss = { tplSheet = false })
 }

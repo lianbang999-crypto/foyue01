@@ -491,3 +491,7 @@ body, main, .pane{ background: var(--paper); }
 
 /* §76 F3：确认框正文（复合删除要说清删了什么） */
 .dlg-body { font-size: 13px; color: var(--gray); margin: -4px 0 14px; line-height: 1.5; }
+
+/* §85 B4（与 App rowClick 同步）：行级按压反馈 —— 浅灰、不位移 */
+.more-row:active, .note-item:active, .diary-item:active, .todo-item:active,
+.lchip:active, .chip:active { background: #EDEFED; }

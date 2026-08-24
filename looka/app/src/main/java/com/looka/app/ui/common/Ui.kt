@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -119,7 +120,7 @@ fun NavRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .rowClick(onClick)   // §85 B4：整行浅灰按压（V011 §6.1），替换水波纹
             .heightIn(min = 52.dp)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -424,6 +425,20 @@ fun Modifier.plainClick(onClick: () -> Unit): Modifier = this.clickable(
     interactionSource = remember { MutableInteractionSource() },
     onClick = onClick
 )
+
+/**
+ * §85 B4：行级按压反馈 —— V011 §6.1「整行浅灰 pressed 先于转场，不位移不放大」。
+ * 用于会导航/打开编辑器的整行（NavRow/清单行/任务行/笔记行/表单行）；
+ * 日历格、贴纸、chip、心情圆这类自带选中态的元素继续用 plainClick。
+ */
+@Composable
+fun Modifier.rowClick(onClick: () -> Unit): Modifier {
+    val src = remember { MutableInteractionSource() }
+    val pressed by src.collectIsPressedAsState()
+    return this
+        .background(if (pressed) Color(0x0F1B1B1F) else Color.Transparent)
+        .clickable(indication = null, interactionSource = src, onClick = onClick)
+}
 
 /** 无边框透明输入框样式（规格 §12：表单以分隔线组织、边框极少） */
 @Composable

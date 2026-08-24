@@ -43,6 +43,7 @@ import com.looka.app.ui.common.EmptyDeer
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.clearFieldColors
 import com.looka.app.ui.common.plainClick
+import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
 import com.looka.app.ui.theme.PanelBg
@@ -138,7 +139,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
     LazyColumn {
         items(notes, key = { it.id }) { n ->
             Column(
-                Modifier.fillMaxWidth().plainClick { nav.navigate("note/${n.id}") }
+                Modifier.fillMaxWidth().rowClick { nav.navigate("note/${n.id}") }
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 Text(
@@ -171,7 +172,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String) {
         if (!hasToday) {
             item {
                 Row(
-                    Modifier.fillMaxWidth().plainClick { nav.navigate("diary/$today") }
+                    Modifier.fillMaxWidth().rowClick { nav.navigate("diary/$today") }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -184,7 +185,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String) {
         }
         items(diaries, key = { it.id }) { d ->
             Row(
-                Modifier.fillMaxWidth().plainClick { nav.navigate("diary/${d.day}") }
+                Modifier.fillMaxWidth().rowClick { nav.navigate("diary/${d.day}") }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

@@ -43,6 +43,7 @@ import com.looka.app.ui.common.ColorDot
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.parseHex
 import com.looka.app.ui.common.plainClick
+import com.looka.app.ui.common.rowClick
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
 import com.looka.app.ui.theme.PanelBg
@@ -86,7 +87,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                     .weight(1f)
                     .clip(RoundedCornerShape(22.dp))
                     .background(PanelBg)
-                    .plainClick { nav.navigate("search") }
+                    .rowClick { nav.navigate("search") }
                     .padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -123,7 +124,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .plainClick { nav.navigate("list/${l.uid}") }
+                        .rowClick { nav.navigate("list/${l.uid}") }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -143,7 +144,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .plainClick { createDlg = true }
+                        .rowClick { createDlg = true }
                         .padding(horizontal = 16.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -188,7 +189,7 @@ private fun HubRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .plainClick(onClick)
+            .rowClick(onClick)   // §85 B4
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
