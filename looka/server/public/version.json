@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 34,
-  "versionName": "1.17.0",
+  "versionCode": 35,
+  "versionName": "1.18.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3712097,
-  "sha256": "dbe40cc8b6113f91a690d3fd0b51803082cb0f8637004a7c2211e83da45b8c99",
-  "changelog": "笔记能分清单了；任务有了自己的详情页，完成和星标点一下就好；日程的分类和提醒改成整页选择，选完自动返回；日记不再一进来就问心情",
+  "size": 3728965,
+  "sha256": "78864ce0b409d78194a28951fc1f34f9e12d180f7dccecb8c4a331386f3d4748",
+  "changelog": "笔记按清单分开放了，点清单进去看里面的笔记，还能改名和换排序方式；日记按月份列出来，左边一个大日期；同步不会再悄悄丢数据；删除后 5 秒内点撤销，这回是真能撤回来",
   "minSupported": 1
 }
