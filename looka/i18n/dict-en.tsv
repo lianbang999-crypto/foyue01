@@ -945,3 +945,15 @@ AI 不限次（改回每天 10 次）· 生成新主题 / 表情包	Unlimited AI
 笔记名、正文	Note title, text
 输入关键词，搜索日记正文	Type a keyword to search diary text
 （无正文）	(no text)
+更新日	Date modified
+创建日	Date created
+笔记名	Note title
+排序	Sort
+应用	Apply
+重命名	Rename
+重命名清单	Rename list
+新建笔记	New note
+点右上角 ＋ 写第一条	Tap ＋ at top right to write the first one
+清单里的笔记会移入默认清单，不会丢	Notes in this list move to the default list — nothing is lost
+没找到	No match for
+里还没有笔记	has no notes yet

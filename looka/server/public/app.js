@@ -919,29 +919,110 @@ function renderTodos() {
 /* ---------------- 笔记 ---------------- */
 function renderNotes() {
   ensureNoteListDefault();
-  // §86 C2：先按当前清单收窄，再按搜索命中（§77 N6，与 App 同口径）
   const q = ($('#noteSearch')?.value || '').trim().toLowerCase();
-  const every = [...S.data.note.values()].sort((a, b) => b.updated_at - a.updated_at);
+  const every = [...S.data.note.values()];
   const lists = noteLists();
-  const all = every;   // §90 N1：列表页不再按 chips 收窄
-  const list = q ? all.filter(r =>
-    (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q)) : all;
+  const bar = $('#noteListBar');
+
+  // ── 搜索态：跨清单，直接出命中的笔记（与 App 同口径）──
+  if (q) {
+    if (bar) bar.classList.add('hidden');
+    const hit = every.filter(r =>
+      (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q))
+      .sort((a, b) => b.updated_at - a.updated_at);
+    $('#noteList').innerHTML = hit.length ? hit.map(r => noteRowHtml(r, lists)).join('')
+      : `<div class="empty-deer"><img src="deer.svg" alt="">${t('没找到')}「${esc(q)}」</div>`;
+    $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
+    return;
+  }
+
+  // ── 清单二级视图（§98 E2）──
+  if (curNoteList) {
+    const l = lists.find(x => x.uid === curNoteList);
+    if (!l) { curNoteList = ''; renderNotes(); return; }
+    if (bar) { bar.classList.remove('hidden'); $('#nlTitle').textContent = l.p.name; }
+    const inList = every.filter(r => (r.p.listUid || 'nlist-default') === curNoteList);
+    const sorted = noteSortApply(inList);
+    $('#noteList').innerHTML = sorted.length ? sorted.map(r => noteRowHtml(r, null)).join('')
+      : `<div class="empty-deer"><img src="deer.svg" alt="">「${esc(l.p.name)}」${t('里还没有笔记')}</div>`;
+    $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
+    return;
+  }
+
+  // ── tab 级：**清单列表**，不是笔记列表（实机图 82/85）──
+  // §90 我撤掉自创的 chips 是对的，但接着做成「显示全部笔记」落点错了：
+  // Lifebear 的笔记是两级的（清单 → 笔记）。这是信息架构差异，不是样式差异。
+  if (bar) bar.classList.add('hidden');
   const counts = {};
   every.forEach(r => { const k = r.p.listUid || 'nlist-default'; counts[k] = (counts[k] || 0) + 1; });
-  // §90 N1（与 App 同步）：撤掉清单 chips 横排 —— 那是照搬待办页自创的形态，
-  // Lifebear 笔记列表页没有清单横排，切清单在**编辑弹窗**里做。清单数据与筛选能力保留。
-  $('#noteList').innerHTML = list.length ? list.map(r => `
-    <div class="note-item" data-n="${r.uid}">
-      <div class="nt">${esc(r.p.title || '无标题')}</div>
-      ${r.p.content ? `<div class="np">${esc(r.p.content.replace(/\n/g, ' '))}</div>` : ''}
-      <div class="nd">${new Date(r.updated_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
-    </div>`).join('')
-    : `<div class="empty-deer"><img src="deer.svg" alt="">${
-        q ? '没找到「' + esc(q) + '」'
-          : (curNoteList ? '「' + esc(lists.find(l => l.uid === curNoteList)?.p.name || '') + '」里还没有笔记' : '还没有笔记')
-      }</div>`;
-  $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
+  $('#noteList').innerHTML = lists.map(l => `
+    <div class="nl-row" data-l="${l.uid}">
+      <span class="nl-ico">${l.uid === 'nlist-default' ? '🗂' : '📄'}</span>
+      <span class="nl-name">${esc(l.p.name)}</span>
+      ${counts[l.uid] ? `<span class="nl-count">${counts[l.uid]}</span>` : ''}
+    </div>`).join('') + `
+    <div class="nl-row" data-l="__new"><span class="nl-ico">＋</span><span class="nl-name">${t('新建清单')}</span></div>`;
+  $$('#noteList [data-l]').forEach(el => el.onclick = () => {
+    if (el.dataset.l === '__new') return newNoteListDlg();
+    curNoteList = el.dataset.l; renderNotes();
+  });
 }
+
+/** 笔记条目：实机顺序是 **日期 / 标题 / 正文**（日期在最上） */
+function noteRowHtml(r, lists) {
+  const d = new Date(r.updated_at);
+  const ln = lists ? (lists.find(l => l.uid === (r.p.listUid || 'nlist-default'))?.p.name || '') : '';
+  return `<div class="note-item" data-n="${r.uid}">
+      <div class="nd">${d.getMonth() + 1}/${d.getDate()}${ln ? ' · ' + esc(ln) : ''}</div>
+      <div class="nt">${esc(r.p.title || t('无标题'))}</div>
+      ${r.p.content ? `<div class="np">${esc(r.p.content.replace(/\n/g, ' '))}</div>` : ''}
+    </div>`;
+}
+
+/** §98 E3：排序档 0 更新日 / 1 创建日（默认，同实机）/ 2 笔记名 */
+function noteSortMode() { return +(localStorage.getItem('lk_note_sort') ?? 1); }
+function noteSortApply(arr) {
+  const m = noteSortMode();
+  if (m === 0) return arr.slice().sort((a, b) => b.updated_at - a.updated_at);
+  if (m === 2) return arr.slice().sort((a, b) =>
+    (a.p.title || '\uffff').localeCompare(b.p.title || '\uffff', 'zh'));
+  return arr.slice().sort((a, b) => (b.p.createdAt || b.updated_at) - (a.p.createdAt || a.updated_at));
+}
+
+/** 新建清单：**空名时保存置灰**（实机图 81） */
+function newNoteListDlg(existing) {
+  const d = modal(`
+    <h3>${existing ? t('重命名清单') : t('新建清单')}</h3>
+    <div class="frow"><input id="nlName" placeholder="${t('清单名')}" value="${esc(existing?.p.name || '')}"></div>
+    <div class="btns"><button class="btn-ghost" id="nlX">${t('取消')}</button>
+      <button class="btn-dark" id="nlOk" disabled>${existing ? t('重命名') : t('保存')}</button></div>`);
+  const inp = d.querySelector('#nlName'), ok = d.querySelector('#nlOk');
+  const sync = () => { ok.disabled = !inp.value.trim(); };
+  inp.oninput = sync; sync(); inp.focus();
+  d.querySelector('#nlX').onclick = closeModal;
+  ok.onclick = () => {
+    const n = inp.value.trim(); if (!n) return;
+    if (existing) put('notelist', existing.uid, { ...existing.p, name: n });
+    else put('notelist', uuid(), { name: n, color: '#5C6670', sort: noteLists().length + 1 });
+    closeModal(); renderNotes();
+  };
+}
+
+/** 排序对话框（实机图 76）：radio 三档 + 取消 / 应用 */
+function noteSortDlg() {
+  const cur = noteSortMode();
+  const opts = [t('更新日'), t('创建日'), t('笔记名')];
+  const d = modal(`<h3>${t('排序')}</h3>` + opts.map((o, i) =>
+    `<label class="frow radio"><input type="radio" name="nsort" value="${i}" ${i === cur ? 'checked' : ''}> ${o}</label>`).join('') +
+    `<div class="btns"><button class="btn-ghost" id="nsX">${t('取消')}</button>
+       <button class="btn-dark" id="nsOk">${t('应用')}</button></div>`);
+  d.querySelector('#nsX').onclick = closeModal;
+  d.querySelector('#nsOk').onclick = () => {
+    const v = d.querySelector('input[name=nsort]:checked')?.value ?? '1';
+    localStorage.setItem('lk_note_sort', v); closeModal(); renderNotes();
+  };
+}
+
 function openNoteModal(uid) {
   ensureNoteListDefault();
   const r = uid ? S.data.note.get(uid) : null;
@@ -974,15 +1055,31 @@ function renderDiary() {
   const q = ($('#diarySearch')?.value || '').trim().toLowerCase();
   const all = [...S.data.diary.values()].sort((a, b) => (b.p.day || 0) - (a.p.day || 0));
   const list = q ? all.filter(r => (r.p.content || '').toLowerCase().includes(q)) : all;
-  $('#diaryList').innerHTML = list.length ? list.map(r => `
-    <div class="diary-item" data-d="${r.p.day}">
-      <span class="mood">${MOODS[r.p.mood ?? 2]}</span>
-      <div class="t" style="flex:1;min-width:0">
-        <div class="nt" style="font-weight:600">${dateCn(r.p.day)}</div>
-        <div class="np" style="color:var(--gray);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((r.p.content || '').replace(/\n/g, ' '))}</div>
-      </div>
-    </div>`).join('')
-    : `<div class="empty-deer"><img src="deer.svg" alt="">${q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}</div>`;
+  if (!list.length) {
+    $('#diaryList').innerHTML = `<div class="empty-deer"><img src="deer.svg" alt="">${
+      q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}</div>`;
+    return;
+  }
+  // §98 E7：按月分组 —— 灰色月标题 + 左侧大号日期/星期，正文左缘 72px
+  // §98 E6：**不显示心情** —— 实机日记列表没有任何心情图标，那是我们自创的
+  const WK = ['日', '一', '二', '三', '四', '五', '六'];
+  let html = '', curYm = '';
+  list.forEach((r, idx) => {
+    const dt = new Date((r.p.day || 0) * 86400000);
+    const ym = dt.getUTCFullYear() + '年' + (dt.getUTCMonth() + 1) + '月';
+    if (ym !== curYm) { html += `<div class="dg-month">${ym}</div>`; curYm = ym; }
+    const next = list[idx + 1];
+    const nextDt = next ? new Date((next.p.day || 0) * 86400000) : null;
+    const sameMonthNext = nextDt && nextDt.getUTCFullYear() === dt.getUTCFullYear()
+      && nextDt.getUTCMonth() === dt.getUTCMonth();
+    html += `<div class="diary-item" data-d="${r.p.day}">
+      <div class="dg-date"><b>${dt.getUTCDate()}</b><span>周${WK[dt.getUTCDay()]}</span></div>
+      <div class="dg-body">${esc((r.p.content || '').replace(/\n/g, ' ')) || t('（无正文）')}</div>
+    </div>`;
+    // 分隔线只在**同月相邻**两条之间；跨月不画（靠月标题上方的空白分隔）
+    if (sameMonthNext) html += `<div class="dg-sep"></div>`;
+  });
+  $('#diaryList').innerHTML = html;
   $$('#diaryList [data-d]').forEach(el => el.onclick = () => openDiaryModal(+el.dataset.d));
 }
 function openDiaryModal(day) {
@@ -1439,7 +1536,7 @@ async function boot() {
   $$('.bottombar .tab span').forEach(el => el.textContent = t(el.textContent.trim()));
   $('#todoInput').placeholder = t('搜索任务…') === '搜索任务…' ? '添加任务…' : t('添加任务…');
   // §77 N7：搜索 placeholder 直接写清能搜什么；§81：AI 生成内容显式标识
-  $('#noteSearch').placeholder = t('正文');
+  $('#noteSearch').placeholder = t('笔记名、正文');
   $('#diarySearch').placeholder = t('正文');
   $('.ai-notice').textContent = t('以下内容由 AI 生成，请自行核对');
   document.documentElement.lang = resolveLang();
@@ -1924,6 +2021,14 @@ async function boot() {
   // 笔记 / 日记
   // §77 N6：搜索即时过滤（笔记 / 日记）
   $('#noteSearch').oninput = () => renderNotes();
+  // §98 E2/E3：清单二级视图的返回 / 新建笔记 / 重命名 / 排序
+  $('#nlBack').onclick = () => { curNoteList = ''; renderNotes(); };
+  $('#nlAdd').onclick = () => openNoteModal(null);
+  $('#nlRename').onclick = () => {
+    const l = noteLists().find(x => x.uid === curNoteList);
+    if (l) newNoteListDlg(l);
+  };
+  $('#nlSort').onclick = () => noteSortDlg();
   $('#diarySearch').oninput = () => renderDiary();
 
 

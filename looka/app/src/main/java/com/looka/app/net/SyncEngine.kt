@@ -195,7 +195,8 @@ object SyncEngine {
         for (n in db.noteDao().dirtyList()) {
             arr.put(rec("note", n.uid, n.updatedAt, n.deleted,
                 if (n.deleted) null else JSONObject().put("title", n.title).put("content", n.content)
-                    .put("listUid", n.listUid)))
+                    // §98 E3：createdAt 必须上云 —— 不带的话换设备后「按创建日排序」会全乱
+                    .put("listUid", n.listUid).put("createdAt", n.createdAt)))
         }
         for (d in db.diaryDao().dirtyList()) {
             arr.put(rec("diary", d.uid, d.updatedAt, d.deleted,
@@ -497,6 +498,8 @@ object SyncEngine {
                             Note(
                                 title = o.optString("title"), content = o.optString("content"),
                                 listUid = o.optString("listUid", NOTE_LIST_DEFAULT),
+                                // 老端推上来的记录没有 createdAt → 退回 updatedAt，保持单调不乱序
+                                createdAt = o.optLong("createdAt", up),
                                 updatedAt = up, uid = uid, dirty = false
                             )
                         )
@@ -507,6 +510,7 @@ object SyncEngine {
                                 title = o.optString("title", ex.title),
                                 content = o.optString("content", ex.content),
                                 listUid = o.optString("listUid", ex.listUid),
+                                createdAt = o.optLong("createdAt", ex.createdAt),
                                 updatedAt = up, dirty = false, deleted = false
                             )
                         )

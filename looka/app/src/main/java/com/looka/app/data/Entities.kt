@@ -187,6 +187,8 @@ data class Note(
     val title: String = "",
     val content: String = "",
     val listUid: String = NOTE_LIST_DEFAULT,
+    /** §98 E3：清单页「排序」的默认档是**创建日**，只有 updatedAt 排不出来 */
+    val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
     val uid: String = newUid(),
     val dirty: Boolean = true,

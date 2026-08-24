@@ -153,6 +153,11 @@ fun LookaRoot() {
         composable("next7") { Next7Screen(vm, nav) }
         composable("doneTasks") { DoneTasksScreen(vm, nav) }
         composable("doneLists") { DoneListsScreen(vm, nav) }
+        // §98 E2：笔记两级结构 —— ノート tab 给清单，这里是清单里的笔记
+        composable(
+            "noteList/{uid}",
+            arguments = listOf(navArgument("uid") { type = NavType.StringType })
+        ) { e -> com.looka.app.ui.notes.NoteListScreen(vm, nav, e.arguments!!.getString("uid")!!) }
         composable(
             "note/{id}",
             arguments = listOf(navArgument("id") { type = NavType.LongType })

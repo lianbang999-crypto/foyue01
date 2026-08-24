@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -79,6 +79,19 @@ abstract class LookaDb : RoomDatabase() {
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_note_list_uid ON note_list(uid)")
                 db.execSQL("ALTER TABLE note ADD COLUMN listUid TEXT NOT NULL DEFAULT 'nlist-default'")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_note_listUid ON note(listUid)")
+            }
+        }
+
+        /**
+         * v7 → v8（§98 E3）：note.createdAt —— 清单页「排序」要按**创建日**排（实机默认就是它）。
+         * 此前只有 updatedAt，一改笔记就会跳位置，排不出「先写的在前」。
+         * 存量笔记回填 updatedAt：不精确（改过的会偏晚），但**单调且不乱序**，
+         * 比全填 0 让所有旧笔记挤在一起强。新笔记从此记真实创建时刻。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE note ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("UPDATE note SET createdAt = updatedAt")
             }
         }
 

@@ -154,7 +154,16 @@
     <!-- 笔记 -->
     <section id="tab-note" class="pane hidden">
       <!-- §77 N6/N7/N8：搜索框即页首（撤掉标题行与重复的 ＋，新建交给底部中央 ＋） -->
-      <div class="pane-search"><input id="noteSearch" type="search" placeholder="正文"></div>
+      <!-- §98 E5：placeholder 两个 tab 不同 —— 笔记「笔记名、正文」/ 日记「正文」 -->
+      <div class="pane-search"><input id="noteSearch" type="search" placeholder="笔记名、正文"></div>
+      <!-- §98 E2：清单二级视图的返回栏；tab 级（清单列表）时隐藏 -->
+      <div id="noteListBar" class="nl-bar hidden">
+        <button id="nlBack" class="nl-back" aria-label="返回">←</button>
+        <span id="nlTitle" class="nl-title"></span>
+        <button id="nlAdd" class="nl-act" aria-label="新建笔记">＋</button>
+        <button id="nlRename" class="nl-act" aria-label="重命名">编辑</button>
+        <button id="nlSort" class="nl-act" aria-label="排序">排序</button>
+      </div>
       <div id="noteList"></div>
     </section>
 

@@ -191,6 +191,13 @@ object Prefs {
     fun antler(c: Context) = sp(c).getInt("antler", -1)
     fun setAntler(c: Context, v: Int) = sp(c).edit().putInt("antler", v).apply()
 
+    /**
+     * §98 E3：笔记排序档 —— 0 更新日 / 1 创建日 / 2 笔记名。
+     * 默认 1（创建日），与实机「並び替え」对话框的默认选中一致。
+     */
+    fun noteSort(c: Context) = sp(c).getInt("note_sort", 1)
+    fun setNoteSort(c: Context, v: Int) = sp(c).edit().putInt("note_sort", v).apply()
+
     fun lastPullMs(c: Context) = sp(c).getLong("last_pull_ms", 0L)
     fun setLastPullMs(c: Context, v: Long) = sp(c).edit().putLong("last_pull_ms", v).apply()
 
