@@ -114,6 +114,14 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             }
         }
 
+        // §81：《AI 生成合成内容标识办法》(2025-09-01 施行) 要求的显式标识 —— 生成内容的
+        // 交互界面须在显著位置提示。放在顶栏正下方，首屏必见，但保持一行小字不打扰。
+        Text(
+            tr("以下内容由 AI 生成，请自行核对"),
+            fontSize = 11.sp, color = GrayText,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+        )
+
         // §53 M1：档位已下线（单模型 Qwen）。自带 Key / 未登录时仍要说明状态。
         when {
             Prefs.apiKey(ctx).isNotBlank() -> Text(

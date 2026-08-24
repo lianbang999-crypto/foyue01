@@ -162,60 +162,6 @@ function pickText(data) {
   return t;
 }
 
-/**
- * AI 上游顺序：OpenRouter Ox Alpha → 硅基流动备用池。
- * Key 只从 Worker Secret 读取，永不下发到客户端；没有配置的上游自动跳过。
- */
-function aiProviders(env) {
-  const providers = [];
-  if (env.OPENROUTER_KEY) {
-    providers.push({
-      name: 'openrouter',
-      base: env.OPENROUTER_BASE || 'https://openrouter.ai/api/v1',
-      key: env.OPENROUTER_KEY,
-      models: [env.OPENROUTER_MODEL || 'stealth/ox-alpha'],
-      headers: {
-        'HTTP-Referer': 'https://looka.foyue.org',
-        'X-Title': 'Looka'
-      }
-    });
-  }
-  if (env.SILICONFLOW_KEY) {
-    providers.push({
-      name: 'siliconflow',
-      base: env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1',
-      key: env.SILICONFLOW_KEY,
-      models: [
-        env.CHAT_MODEL || 'Qwen/Qwen3.5-35B-A3B',
-        env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3.5-9B'
-      ],
-      headers: {}
-    });
-  }
-  return providers;
-}
-
-function aiRequest(provider, model, payload, timeoutMs) {
-  const body = {
-    model, messages: payload.messages, temperature: payload.temperature,
-    max_tokens: 2048, ...(payload.stream ? { stream: true } : {})
-  };
-  // 仅硅基流动需要这个供应商专属参数；OpenRouter/Ox 不发送它。
-  if (provider.name === 'siliconflow') body.enable_thinking = false;
-  return fetch(`${provider.base.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${provider.key}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)',
-      ...provider.headers
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs)
-  });
-}
-
 // ---------- 鹿角（算力券）----------
 // 双桶记账：granted(赠送，有累计上限、不清零) / paid(购买，不过期)。消耗一律先扣 granted，
 // 保护用户真金白银买的那部分。余额表是流水的冗余缓存，两者必须在同一个 batch 里原子更新。

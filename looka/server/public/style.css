@@ -4,7 +4,7 @@
   --container: #EAF6E7;
   --on-container: #1E4D19;
   --ink: #1B1B1F;
-  --gray: #8A8F8E;
+  --gray: #727776;
   --hair: #ECECEC;
   --panel: #F7F8F7;
   --dim: #F2F3F2;
@@ -171,6 +171,8 @@ main { max-width: 860px; margin: 0 auto; }
 .diary-item .mood { font-size: 22px; }
 
 /* ---------- AI ---------- */
+/* §81：AI 生成内容显式标识 —— 一行小字，首屏可见但不抢内容 */
+.ai-notice { color: var(--gray); font-size: 11px; margin: 0; padding: 8px 14px 0; }
 .chat-list { min-height: calc(100vh - 260px); padding: 12px; }
 .chat-hello { text-align: center; color: var(--gray); font-size: 13px; line-height: 1.8; padding: 40px 0; }
 .chat-deer { width: 72px; }
@@ -234,11 +236,11 @@ main { max-width: 860px; margin: 0 auto; }
 /* ===== v1.2：极简登录 ===== */
 .auth-card .btn-primary-full{width:100%;border:0;background:#1b1b1f;color:#fff;border-radius:10px;
   padding:13px;font-size:15px;cursor:pointer;margin-top:4px}
-.auth-switch{font-size:13px;color:var(--gray,#8a8f8e);margin:14px 0 2px}
+.auth-switch{font-size:13px;color:var(--gray,#727776);margin:14px 0 2px}
 .auth-switch a,.auth-forgot a{color:var(--primary,#55b04b);cursor:pointer;text-decoration:none}
 .auth-forgot{font-size:12px;margin:4px 0 0}
 .auth-legal{font-size:11px;color:#b9bbb9;margin-top:18px}
-.auth-legal a{color:#8a8f8e}
+.auth-legal a{color:#727776}
 
 /* ===== 语言选择浮层复用 theme-picker ===== */
 
@@ -248,7 +250,7 @@ main { max-width: 860px; margin: 0 auto; }
   display:inline-flex;align-items:center;gap:5px;color:#1b1b1f}
 .lchip.on{background:#1b1b1f;color:#fff}
 .lchip .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
-.lchip.add{color:#8a8f8e}
+.lchip.add{color:#727776}
 .todo-item .ldot{width:8px;height:8px;border-radius:50%;flex:none;margin-right:2px}
 .todo-item .star{border:0;background:none;font-size:16px;color:#c9ccc9;cursor:pointer}
 .todo-item .star.on{color:#f2b23d}
@@ -258,7 +260,7 @@ main { max-width: 860px; margin: 0 auto; }
 .day-num-wrap .lunar{font-size:9px;color:#a8ada8}
 .cell-stamps .stamp-img{width:14px;height:14px;vertical-align:middle}
 .stamp-img-lg{width:30px;height:30px;vertical-align:middle;margin-right:6px;cursor:pointer}
-.panel-lunar{font-size:11px;color:#8a8f8e;padding:0 14px 4px}
+.panel-lunar{font-size:11px;color:#727776;padding:0 14px 4px}
 
 /* ===== 新版本提示条 ===== */
 .sw-banner{background:#1b1b1f;color:#fff;font-size:13px;text-align:center;padding:8px}
@@ -285,7 +287,7 @@ main { max-width: 860px; margin: 0 auto; }
 .stk{border:0;background:none;cursor:pointer;padding:4px 2px;border-radius:10px;
   display:flex;flex-direction:column;align-items:center;gap:2px}
 .stk img{width:42px;height:42px;transition:transform .18s}
-.stk span{font-size:9px;color:#8a8f8e;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stk span{font-size:9px;color:#727776;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stk.on{background:var(--container,#eaf6e7)}
 .stk.on img{transform:scale(1.12)}
 .stk.on span{color:#1b1b1f}
@@ -296,7 +298,7 @@ main { max-width: 860px; margin: 0 auto; }
 .stk-tab{border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;
   gap:2px;padding:4px 10px;border-bottom:2px solid transparent}
 .stk-tab img{width:26px;height:26px;opacity:.65}
-.stk-tab span{font-size:10px;color:#8a8f8e}
+.stk-tab span{font-size:10px;color:#727776}
 .stk-tab.on{border-bottom-color:#1b1b1f}
 .stk-tab.on img{opacity:1}
 .stk-tab.on span{color:#1b1b1f}
@@ -339,7 +341,7 @@ main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
 .more-row span:nth-child(2){ flex:1; }
 .more-row .mc{ color:#c5c8c5; font-size:18px; }
 .more-row.danger{ color:#e0504a; }
-.more-foot{ text-align:center; color:var(--gray,#8a8f8e); font-size:11.5px; line-height:1.9; padding:20px 0 8px; }
+.more-foot{ text-align:center; color:var(--gray,#727776); font-size:11.5px; line-height:1.9; padding:20px 0 8px; }
 
 /* ===== iOS「添加到主屏幕」引导 ===== */
 .ios-tip{
@@ -388,7 +390,7 @@ main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
   padding:5px 12px; border:0; border-radius:10px; background:var(--panel,#f7f8f7);
 }
 .tier-bar button b{ font-size:12px; font-weight:400; color:var(--ink,#1b1b1f); }
-.tier-bar button i{ font-style:normal; font-size:9px; color:var(--gray,#8a8f8e); }
+.tier-bar button i{ font-style:normal; font-size:9px; color:var(--gray,#727776); }
 .tier-bar button.on{ background:var(--primary-soft,#eaf6e7); }
 .tier-bar button.on b{ font-weight:600; color:var(--primary,#55b04b); }
 /* 自创色板选中态 */

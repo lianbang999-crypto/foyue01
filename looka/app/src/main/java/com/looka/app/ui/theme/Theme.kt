@@ -15,7 +15,7 @@ import com.looka.app.util.tr
 
 // ---- 固定视觉常量（不随主题变化，规格 §12 白底工具感） ----
 val Ink = Color(0xFF1B1B1F)          // 主文字
-val GrayText = Color(0xFF8A8F8E)     // 次级文字
+val GrayText = Color(0xFF727776)     // 次级文字（§81：#8A8F8E 白底仅 3.28:1，正文 AA 要 4.5；本色 4.55:1）
 val Hairline = Color(0xFFD8DBD8)     // 细分隔线（v1.3 加深：原 ECECEC 在日历网格上几乎看不见）
 val PanelBg = Color(0xFFF7F8F7)      // 浅灰面板
 val DimBg = Color(0xFFF4F5F4)        // 非本月日期底
