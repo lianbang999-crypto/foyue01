@@ -84,7 +84,9 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         }
         // E2：恢复未保存的草稿（进程被杀 / 按返回没点保存）
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
-        if (d.isNotBlank() && d != content && d.length > content.length) {
+        // §90 W3（BUG-ND-003）：原条件是 d.length > content.length —— 用户把日记**改短、
+        // 重写或清空**后草稿就永远恢复不了（那恰恰是最该救的几种情况）。改为「与已存内容不同」即可恢复。
+        if (d.isNotBlank() && d != content) {
             content = d
             toast(ctx, tr("已恢复未保存的草稿"))
         }
@@ -211,9 +213,16 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         },
         confirmButton = {
             TextButton(onClick = {
+                // §90 W5（BUG-ND-005）：按钮写着「允许并继续」，此前只设权限 + 提示「再点一次」——
+                // 说了继续就要继续，别让用户为同一个意图点两次。
                 com.looka.app.data.Prefs.setAiDiaryUpload(ctx, true)
                 privacyDlg = false
-                toast(ctx, tr("已允许，再点一次「AI 润色」开始"))
+                scope.launch {
+                    aiBusy = true
+                    try { polished = vm.aiPolish(content) }
+                    catch (e: Exception) { toast(ctx, e.message ?: tr("网络异常")) }
+                    finally { aiBusy = false }
+                }
             }) { Text(tr("允许并继续"), color = MaterialTheme.colorScheme.primary) }
         },
         dismissButton = {

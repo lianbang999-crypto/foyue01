@@ -119,24 +119,37 @@ object ThemeCtl {
 @Composable
 fun LookaTheme(content: @Composable () -> Unit) {
     val t = ThemeCtl.current()
+    // §90 R2（v1.3 §11：Theme apply 280–420ms crossfade）：此前换主题是**硬切** ——
+    // 整屏颜色一帧跳变，看着像闪了一下。给随主题变的几个色加 300ms 过渡，
+    // 换色过程变成"渐渐染上去"。reduce-motion 由系统动画缩放自动接管。
+    val spec = androidx.compose.animation.core.tween<Color>(300)
+    val primary by androidx.compose.animation.animateColorAsState(t.primary, spec, label = "thPrimary")
+    val container by androidx.compose.animation.animateColorAsState(t.container, spec, label = "thContainer")
+    val onContainer by androidx.compose.animation.animateColorAsState(t.onContainer, spec, label = "thOnContainer")
+    val paper by androidx.compose.animation.animateColorAsState(t.paper, spec, label = "thPaper")
+    val panel by androidx.compose.animation.animateColorAsState(t.panel, spec, label = "thPanel")
+    val ink by androidx.compose.animation.animateColorAsState(t.ink, spec, label = "thInk")
     MaterialTheme(
         // S4（§64）：弹窗统一 8dp —— AlertDialog 默认取 shapes.extraLarge(28dp)，
         // 一行改掉全站 33 个弹窗；底部面板要 16dp 顶角的单独在调用处指定。
         shapes = androidx.compose.material3.Shapes(
-            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+            // §90 R1：全站圆角归到五档 —— 容器/弹窗 10dp · 搜索框与输入框 4dp（按实机修订，
+            // 撤销 §64 那条「输入框 22dp 胶囊」）· Chip/Popover 6dp · 圆形元素 CircleShape。
+            // AI 聊天输入框的 22dp 胶囊属聊天场景，单列保留（见 §90 四）。
+            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
         ),
         colorScheme = lightColorScheme(
-            primary = t.primary,
+            primary = primary,
             onPrimary = Color.White,
-            primaryContainer = t.container,
-            onPrimaryContainer = t.onContainer,
+            primaryContainer = container,
+            onPrimaryContainer = onContainer,
             secondary = SaveDark,
             onSecondary = Color.White,
-            background = t.paper,
-            onBackground = t.ink,   // B2：字色随主题（默认仍是墨色 Ink，行为不变）
-            surface = t.paper,
-            onSurface = t.ink,
-            surfaceVariant = t.panel,
+            background = paper,
+            onBackground = ink,   // B2：字色随主题（默认仍是墨色 Ink，行为不变）
+            surface = paper,
+            onSurface = ink,
+            surfaceVariant = panel,
             onSurfaceVariant = GrayText,
             outline = Color(0xFFD8DAD8),
             outlineVariant = Hairline,

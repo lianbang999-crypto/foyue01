@@ -355,7 +355,15 @@ function expandEvents(from, to) {
 function modal(html) {
   const root = $('#modalRoot');
   root.innerHTML = `<div class="mask"><div class="dialog">${html}</div></div>`;
-  root.querySelector('.mask').addEventListener('click', e => { if (e.target.classList.contains('mask')) closeModal(); });
+  // §90 W4（BUG-ND-004）：误触遮罩此前直接 closeModal，写了一半的笔记/日程当场没。
+  // 现在只要框里有非空输入就先问一句 —— 与 App 的 Dirty discard 合同同语义。
+  root.querySelector('.mask').addEventListener('click', e => {
+    if (!e.target.classList.contains('mask')) return;
+    const dirty = [...root.querySelectorAll('input,textarea')]
+      .some(el => el.type !== 'checkbox' && el.type !== 'radio' && (el.value || '').trim() !== '');
+    if (dirty) { if (confirm(t('放弃已填写的内容？'))) closeModal(); }
+    else closeModal();
+  });
   return root.querySelector('.dialog');
 }
 const closeModal = () => { $('#modalRoot').innerHTML = ''; };
@@ -1772,12 +1780,14 @@ async function boot() {
       }
       for (const r of S.data.note.values()) {
         const p = r.p; if (!p) continue;
-        if ((p.title || '').toLowerCase().includes(kw) || (p.body || '').toLowerCase().includes(kw))
-          hits.push({ k: t('笔记'), text: p.title || (p.body || '').slice(0, 30) });
+        // §90 W2（BUG-ND-002）：搜的一直是 p.body，但笔记/日记的正文字段是 p.content ——
+        // 全局搜索因此**永远搜不到正文**，只有标题能命中。
+        if ((p.title || '').toLowerCase().includes(kw) || (p.content || '').toLowerCase().includes(kw))
+          hits.push({ k: t('笔记'), text: p.title || (p.content || '').slice(0, 30) });
       }
       for (const r of S.data.diary.values()) {
         const p = r.p; if (!p) continue;
-        if ((p.body || '').toLowerCase().includes(kw)) hits.push({ k: t('日记'), text: (p.body || '').slice(0, 30), day: p.day });
+        if ((p.content || '').toLowerCase().includes(kw)) hits.push({ k: t('日记'), text: (p.content || '').slice(0, 30), day: p.day });
       }
       out.innerHTML = hits.length
         ? hits.slice(0, 50).map(h => {

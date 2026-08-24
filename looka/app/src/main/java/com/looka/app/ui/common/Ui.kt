@@ -455,8 +455,15 @@ fun keyboardAwareOpen(open: () -> Unit): () -> Unit {
 fun Modifier.rowClick(onClick: () -> Unit): Modifier {
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
+    // §90 R2（v1.3 §11：pressed 60–100ms）：原来是瞬变，按下去像"闪一下"。
+    // 80ms 过渡让按压有厚度；抬手回弹稍快，避免拖沓。
+    val bg by androidx.compose.animation.animateColorAsState(
+        if (pressed) Color(0x0F1B1B1F) else Color.Transparent,
+        androidx.compose.animation.core.tween(if (pressed) 80 else 120),
+        label = "rowPress"
+    )
     return this
-        .background(if (pressed) Color(0x0F1B1B1F) else Color.Transparent)
+        .background(bg)
         .clickable(indication = null, interactionSource = src, onClick = onClick)
 }
 

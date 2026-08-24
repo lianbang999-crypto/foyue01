@@ -84,8 +84,10 @@ fun NotesDiaryScreen(vm: LookaViewModel, nav: NavHostController) {
                 },
                 singleLine = true,
                 colors = clearFieldColors(),
-                modifier = Modifier.weight(1f).height(44.dp)
-                    .clip(RoundedCornerShape(22.dp)).background(PanelBg)
+                // §90 S1/R1：实机测量 —— 高 121px÷3.156 = 38dp，圆角 13px ≈ 4dp（小圆角矩形，
+                // 不是胶囊）。此前的 44dp 高 + 22dp 胶囊是我自创的。
+                modifier = Modifier.weight(1f).height(38.dp)
+                    .clip(RoundedCornerShape(4.dp)).background(PanelBg)
             )
             // §71 A：AI 全站入口（用户拍板）—— 从独立顶栏挪到搜索行右端
             IconButton(onClick = { nav.navigate("aiChat") }) {

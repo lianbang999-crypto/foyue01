@@ -85,10 +85,11 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             Row(
                 Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(22.dp))
+                    // §90 R1：与笔记页同规格（实机 38dp 高 / 4dp 圆角）
+                    .clip(RoundedCornerShape(4.dp))
                     .background(PanelBg)
                     .rowClick { nav.navigate("search") }
-                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))

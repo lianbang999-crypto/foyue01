@@ -88,6 +88,10 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
         nav.popBackStack()
     }
 
+    // §90 W1（BUG-ND-001）：此前只有顶栏返回走 saveAndBack，**系统返回键直接 pop** ——
+    // 同一个「返回」动作两套行为，从系统返回退出就把没保存的内容吞了。
+    androidx.activity.compose.BackHandler(enabled = true) { saveAndBack() }
+
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .systemBarsPadding().imePadding()
