@@ -91,7 +91,7 @@ main { max-width: 860px; margin: 0 auto; }
 .pane-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-weight: 700; }
 /* §77 N6：搜索框即页首 —— 与 App 同形（浅灰圆角，无标题行） */
 .pane-search { padding: 8px 14px; }
-/* §98 E4：实机 **44px** 高 + 4px 小圆角（§90 写的 38 是没量图编的，实测 43.8dp） */
+/* §93 E4：实机 **44px** 高 + 4px 小圆角（§90 写的 38 是没量图编的，实测 43.8dp） */
 .pane-search input { width: 100%; height: 44px; border: 0; border-radius: 4px;
   background: var(--panel, #F7F8F7); padding: 0 12px; font-size: 14px; color: var(--ink); outline: none; }
 .pane-search input::placeholder { color: #B9BBB9; }
@@ -169,14 +169,14 @@ main { max-width: 860px; margin: 0 auto; }
 .todo-sec { padding: 8px 16px; color: var(--gray); font-size: 13px; }
 
 /* ---------- 笔记 / 日记 ---------- */
-/* §98 E2：笔记条目顺序是 **日期 / 标题 / 正文**（日期在最上），条目下通栏 hairline */
+/* §93 E2：笔记条目顺序是 **日期 / 标题 / 正文**（日期在最上），条目下通栏 hairline */
 .note-item { padding: 10px 16px 12px; border-bottom: 0.8px solid var(--hair); cursor: pointer; }
 .note-item:hover { background: var(--panel); }
 .note-item .nd { color: #B9BBB9; font-size: 12px; }
 .note-item .nt { font-weight: 600; font-size: 16px; }
 .note-item .np { color: var(--gray); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* §98 E1：ノート tab 是**清单列表**。icon 24 @ 左 16，文字左缘 72，**行间无分隔线** */
+/* §93 E1：ノート tab 是**清单列表**。icon 24 @ 左 16，文字左缘 72，**行间无分隔线** */
 .nl-row { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; }
 .nl-row:hover { background: var(--panel); }
 .nl-row .nl-ico { width: 24px; font-size: 18px; color: var(--gray); text-align: center; }
@@ -184,7 +184,7 @@ main { max-width: 860px; margin: 0 auto; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nl-row .nl-count { font-size: 14px; color: var(--gray); }
 
-/* §98 E2：清单二级视图的返回栏（网页是单页，用视图状态切换代替路由） */
+/* §93 E2：清单二级视图的返回栏（网页是单页，用视图状态切换代替路由） */
 .nl-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px;
   border-bottom: 0.8px solid var(--hair); }
 .nl-bar.hidden { display: none; }
@@ -194,7 +194,7 @@ main { max-width: 860px; margin: 0 auto; }
 .nl-act { background: none; border: 0; font-size: 14px; cursor: pointer; color: var(--gray); padding: 4px 6px; }
 .nl-act:hover { color: var(--ink); }
 
-/* §98 E6/E7：日记按月分组；左侧大号日期 + 星期，正文左缘 72px；**不显示心情** */
+/* §93 E6/E7：日记按月分组；左侧大号日期 + 星期，正文左缘 72px；**不显示心情** */
 .dg-month { color: var(--gray); font-size: 14px; padding: 20px 16px 6px; }
 .diary-item { display: flex; align-items: flex-start; padding: 18px 16px; cursor: pointer; }
 .diary-item:hover { background: var(--panel); }

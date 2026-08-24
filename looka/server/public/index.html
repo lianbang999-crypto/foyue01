@@ -124,6 +124,9 @@
   <main>
     <!-- 日历 -->
     <section id="tab-cal" class="pane">
+      <!-- §98 H6：网页此前**完全没有**日程搜索，四个 tab 里只有笔记和日记能搜 -->
+      <div class="pane-search"><input id="calSearch" type="search" placeholder="日程名、地点、备注"></div>
+      <div id="calSearchResult" class="hidden"></div>
       <div class="cal-wrap">
         <div id="weekHeader" class="week-header"></div>
         <div id="monthGrid" class="month-grid"></div>
@@ -143,6 +146,8 @@
 
     <!-- 待办（清单体系） -->
     <section id="tab-todo" class="pane hidden">
+      <!-- §98 H6：网页此前也搜不了任务 -->
+      <div class="pane-search"><input id="todoSearch" type="search" placeholder="任务名、备注"></div>
       <div id="listChips" class="list-chips"></div>
       <div class="todo-add">
         <input id="todoInput" type="text" placeholder="添加任务…">
@@ -154,9 +159,9 @@
     <!-- 笔记 -->
     <section id="tab-note" class="pane hidden">
       <!-- §77 N6/N7/N8：搜索框即页首（撤掉标题行与重复的 ＋，新建交给底部中央 ＋） -->
-      <!-- §98 E5：placeholder 两个 tab 不同 —— 笔记「笔记名、正文」/ 日记「正文」 -->
+      <!-- §93 E5：placeholder 两个 tab 不同 —— 笔记「笔记名、正文」/ 日记「正文」 -->
       <div class="pane-search"><input id="noteSearch" type="search" placeholder="笔记名、正文"></div>
-      <!-- §98 E2：清单二级视图的返回栏；tab 级（清单列表）时隐藏 -->
+      <!-- §93 E2：清单二级视图的返回栏；tab 级（清单列表）时隐藏 -->
       <div id="noteListBar" class="nl-bar hidden">
         <button id="nlBack" class="nl-back" aria-label="返回">←</button>
         <span id="nlTitle" class="nl-title"></span>

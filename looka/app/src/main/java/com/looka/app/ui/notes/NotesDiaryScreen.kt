@@ -81,70 +81,21 @@ fun NotesDiaryScreen(vm: LookaViewModel, nav: NavHostController) {
     var searching by rememberSaveable { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (searching) {
-            // ── 激活态：顶栏变「← + 裸输入框」，无底色、无圆角（实机图 73/75）──
-            val focus = remember { androidx.compose.ui.focus.FocusRequester() }
-            androidx.compose.runtime.LaunchedEffect(Unit) { focus.requestFocus() }
-            androidx.activity.compose.BackHandler(enabled = true) { searching = false; q = "" }
-            Row(
-                Modifier.fillMaxWidth().height(52.dp).padding(start = 4.dp, end = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { searching = false; q = "" }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        tr("返回"), tint = Ink
-                    )
-                }
-                TextField(
-                    value = q, onValueChange = { q = it },
-                    // §98 E5：**激活态与静置态同文案**（实机图 87）。§90 我自创了个
-                    // 「静置短 / 激活长」的规则，实机没有这回事。
-                    placeholder = {
-                        Text(
-                            if (seg == 0) tr("笔记名、正文") else tr("正文"),
-                            fontSize = 16.sp, color = Color(0xFFB9BBB9)
-                        )
-                    },
-                    textStyle = TextStyle(fontSize = 16.sp),
-                    singleLine = true,
-                    colors = clearFieldColors(),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Search
-                    ),
-                    modifier = Modifier.weight(1f).focusRequester(focus)
-                )
-            }
-            Hairline()
-        } else {
-            // ── 静置态：灰底小圆角入口，小鹿在同一行右端 ──
-            // §98 E4：高度 **44dp**（§90 我写的「实机 38dp」是没量图编的，实测 43.8dp）
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    Modifier.weight(1f).height(44.dp)
-                        .clip(RoundedCornerShape(4.dp)).background(PanelBg)
-                        .rowClick { searching = true }
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    // §98 E5：**两个 tab 文案不同** —— 笔记「ノート名、本文」/ 日记「本文」。
-                    // §90 我拿日记那一侧的观察覆盖了两个 tab，都写成了「正文」。
-                    Text(
-                        if (seg == 0) tr("笔记名、正文") else tr("正文"),
-                        fontSize = 14.sp, color = Color(0xFFB9BBB9)
-                    )
-                }
+        // §98 H2：改用全站唯一的 LookaSearchBar —— 这段两态代码原来写在这里，
+        // 现在搬进 ui/common，待办页和日历页复用同一份
+        com.looka.app.ui.common.LookaSearchBar(
+            query = q, onQueryChange = { q = it },
+            active = searching, onActiveChange = { searching = it },
+            // §93 E5：两个 tab 文案不同，且**两态同文案**
+            placeholder = if (seg == 0) tr("笔记名、正文") else tr("正文"),
+            trailing = {
                 // §71 A：AI 全站入口（用户拍板）
                 IconButton(onClick = { nav.navigate("aiChat") }) {
                     com.looka.app.ui.common.DeerBadge(24.dp)
                 }
             }
-        }
+        )
+        if (searching) Hairline()
         // §90 S2：tab 两个**等宽平分**，选中 = 黑粗体 + **整宽粗下划线**（实机图 71）
         Row(Modifier.fillMaxWidth().height(44.dp)) {
             SegTab(tr("笔记"), seg == 0, Modifier.weight(1f)) { vm.notesSeg = 0 }
@@ -169,7 +120,7 @@ private fun SegTab(label: String, selected: Boolean, modifier: Modifier = Modifi
             modifier = Modifier.weight(1f).wrapContentHeight()
         )
         // 下划线宽 = 选中 tab 整宽（实测占屏宽 50.0%，正好是等分后的一格）；
-        // §98 E4：厚度 3dp → **2dp**（实测 1.9dp）
+        // §93 E4：厚度 3dp → **2dp**（实测 1.9dp）
         Box(
             Modifier.fillMaxWidth().height(2.dp)
                 .background(if (selected) Ink else Color.Transparent)
@@ -178,7 +129,7 @@ private fun SegTab(label: String, selected: Boolean, modifier: Modifier = Modifi
 }
 
 /**
- * §98 E1：ノート tab 显示的是**清单列表**，不是笔记列表（实机图 82/85）。
+ * §93 E1：ノート tab 显示的是**清单列表**，不是笔记列表（实机图 82/85）。
  *
  * §90 我撤掉了自创的 chips 横排 —— 那一步对；但接着把这里做成「显示全部笔记」，
  * 落点错了：Lifebear 的笔记是**两级**的（清单 → 笔记），点清单才进二级页看笔记。
@@ -366,7 +317,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                 val dt = Fmt.d(d.day)
                 Row(
                     Modifier.fillMaxWidth().rowClick { nav.navigate("diary/${d.day}") }
-                        // §98 E7：条目间距放宽。实测同月相邻 pitch ≈119dp、条目本体才 41dp ——
+                        // §93 E7：条目间距放宽。实测同月相邻 pitch ≈119dp、条目本体才 41dp ——
                         // 那多半是给照片缩略图预留的（Lifebear 日记支持插图）。我们暂无照片，
                         // 照抄 119dp 会显得空，取 80dp。**这是取舍不是复刻。**
                         .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 18.dp),
@@ -382,9 +333,9 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                         fontSize = 15.sp, color = Ink, modifier = Modifier.weight(1f),
                         maxLines = 2, overflow = TextOverflow.Ellipsis
                     )
-                    // §98 E6：撤掉右侧心情 emoji —— 实机日记列表**不显示任何心情**，那是我自创的
+                    // §93 E6：撤掉右侧心情 emoji —— 实机日记列表**不显示任何心情**，那是我自创的
                 }
-                // §98 E7：分隔线只在**同月相邻**两条之间；左缩进 72dp、**右到边缘**。
+                // §93 E7：分隔线只在**同月相邻**两条之间；左缩进 72dp、**右到边缘**。
                 // 跨月不画（靠月标题上方的空白分隔）
                 if (idx < items.lastIndex) Hairline(Modifier.padding(start = 72.dp))
             }

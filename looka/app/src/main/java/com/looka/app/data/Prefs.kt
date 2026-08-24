@@ -192,7 +192,7 @@ object Prefs {
     fun setAntler(c: Context, v: Int) = sp(c).edit().putInt("antler", v).apply()
 
     /**
-     * §98 E3：笔记排序档 —— 0 更新日 / 1 创建日 / 2 笔记名。
+     * §93 E3：笔记排序档 —— 0 更新日 / 1 创建日 / 2 笔记名。
      * 默认 1（创建日），与实机「並び替え」对话框的默认选中一致。
      */
     fun noteSort(c: Context) = sp(c).getInt("note_sort", 1)

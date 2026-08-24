@@ -110,6 +110,10 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     val hiddenCals = remember(vm.settingsVersion) { Prefs.hiddenSysCals(ctx) }
 
     var menuOpen by remember { mutableStateOf(false) }
+    // §98 H4：日历也改**页内**搜索 —— 月历是网格没法原地过滤，搜索态就用结果列表盖住网格，
+    // 但人还在日历 tab 里，不跳页（与待办、笔记同一套模型）
+    var searching by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    var searchQ by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     var jumpOpen by remember { mutableStateOf(false) }
     var sysDetail by remember { mutableStateOf<SysCal.SysEvent?>(null) }
     // §72 §5/§9：印章 Popover（锚点 = 印章在根坐标系的中心）
@@ -271,6 +275,16 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         }
         val selDiary = remember(diariesList, selDay) { diariesList.find { it.day == selDay } }
         val selStamps = remember(stampsList, selDay) { stampsList.filter { it.day == selDay } }
+
+        // §98 H4：搜索态盖住整个视图区（月/周/日都一样），人还在日历 tab
+        if (searching) {
+            CalendarSearchPane(
+                q = searchQ, onQ = { searchQ = it },
+                onExit = { searching = false; searchQ = "" },
+                series = series, cats = cats, nav = nav
+            )
+            return@Column
+        }
 
         when (vm.calView) {
             0 -> MonthFull(
@@ -440,7 +454,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     }
     }
 
-    if (menuOpen) ViewMenuSheet(vm, nav, onJump = { jumpOpen = true }, onDismiss = { menuOpen = false })
+    if (menuOpen) ViewMenuSheet(vm, nav, onJump = { jumpOpen = true },
+        onSearch = { searching = true }, onDismiss = { menuOpen = false })
     if (jumpOpen) LookaDatePicker(
         initialDay = vm.selectedDay,
         onPick = { d ->
@@ -615,7 +630,8 @@ private fun MonthFull(
                 for (i in 0 until 7) {
                     val dow = ((firstDow - 1 + i) % 7) + 1
                     Text(
-                        Fmt.week(dow), fontSize = 11.sp,
+                        // §98 H7：实测 Lifebear 字面高 35px vs 我们 31px —— 小了 12%
+                        Fmt.week(dow), fontSize = 12.5.sp,
                         color = weekdayTint(dow, holidayMask) ?: GrayText,
                         textAlign = TextAlign.Center, modifier = Modifier.weight(1f)
                     )
@@ -625,7 +641,10 @@ private fun MonthFull(
 
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 // 固定行高：一屏约 6 周（Lifebear 密度）。不能再由"月行数"反推 —— 那是翻页模式的产物
-                val rowH = maxHeight / 6
+                // §98 H7：行高改**固定值**。原来 maxHeight/6 是强行让 6 行正好铺满屏幕 ——
+                // 那是翻页时代的算法；连续滚动下没有「一屏一个月」的概念，行高却随设备高度变。
+                // 实测 Lifebear 同机行高 313px = 99.4dp，网格区放得下 6.4 行（边缘露半行）。
+                val rowH = 100.dp
                 // S2/S3（§64）：字号三档 —— 大(默认)≈5条/格、中≈6、小≈8。
                 // Lifebear 的做法：不替用户决定字号，给三档自己选。
                 val ctxSz = androidx.compose.ui.platform.LocalContext.current
@@ -825,7 +844,8 @@ private fun DayCellV2(
                 onClick = onSelect, onLongClick = onLongPress
             )
     ) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 2.dp)) {
+            // §98 H7：日号左边距实测 Lifebear 17px = 5.4dp，我们只有 11px = 3.5dp，贴太左
+        Column(Modifier.fillMaxSize().padding(horizontal = 5.dp)) {
             // 日号（今天=黑方块白字，Lifebear 式）+ 农历/节日
             Row(
                 Modifier.fillMaxWidth().height(17.dp).padding(top = 1.dp),
@@ -837,7 +857,7 @@ private fun DayCellV2(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "${dt.dayOfMonth}", fontSize = 10.5.sp,
+                            "${dt.dayOfMonth}", fontSize = 11.sp,
                             color = Color.White, fontWeight = FontWeight.Bold
                         )
                     }
@@ -845,7 +865,8 @@ private fun DayCellV2(
                     // 连续滚动下月界要看得见：每月 1 号带上月份
                     Text(
                         if (dt.dayOfMonth == 1) tr("{0}月{1}", dt.monthValue, 1) else "${dt.dayOfMonth}",
-                        fontSize = if (dt.dayOfMonth == 1) 10.5.sp else 11.5.sp, color = numTint,
+                        // §98 H7：实测 Lifebear 日号字面 28px vs 我们 27px
+                        fontSize = if (dt.dayOfMonth == 1) 11.sp else 12.sp, color = numTint,
                         fontWeight = if (isSelected || dt.dayOfMonth == 1) FontWeight.Bold else FontWeight.Normal,
                         maxLines = 1, overflow = TextOverflow.Clip
                     )
@@ -1354,6 +1375,7 @@ fun ViewMenuSheet(
     vm: LookaViewModel,
     nav: NavHostController,
     onJump: () -> Unit,
+    onSearch: () -> Unit,
     onDismiss: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
@@ -1366,13 +1388,15 @@ fun ViewMenuSheet(
                     .padding(horizontal = 16.dp, vertical = 4.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(DimBg)
-                    .plainClick { onDismiss(); nav.navigate("search") }
+                    // §98 H4：不再 navigate("search")，就地开搜索态
+                    .plainClick { onDismiss(); onSearch() }
                     .padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Outlined.Search, null, tint = GrayText, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(10.dp))
-                Text(tr("搜索日程、任务、笔记…"), fontSize = 14.sp, color = GrayText)
+                // 日历页只搜日程 —— 任务归待办页、笔记日记归笔记页，各搜各的
+                Text(tr("日程名、地点、备注"), fontSize = 14.sp, color = GrayText)
             }
             Spacer(Modifier.height(6.dp))
             // 月/周/日：带日历图标，当前项整行灰底（不是右侧打勾）
@@ -1608,5 +1632,65 @@ private fun Caret(
         drawPath(p, Color.White)
         // §89 U3：描边与外框同色同粗
         drawPath(p, Ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+    }
+}
+
+
+/**
+ * §98 H4：日历页内搜索面板 —— 月历是网格没法原地过滤，所以搜索态用结果列表盖住它，
+ * 但**不跳页**，返回键/← 就回到月历。只搜日程（任务归待办页、笔记日记归笔记页，各搜各的）。
+ */
+@Composable
+private fun CalendarSearchPane(
+    q: String,
+    onQ: (String) -> Unit,
+    onExit: () -> Unit,
+    series: List<com.looka.app.data.EventSeries>,
+    cats: List<com.looka.app.data.Category>,
+    nav: NavHostController
+) {
+    val qq = q.trim()
+    val catById = remember(cats) { cats.associateBy { it.id } }
+    val hit = remember(qq, series) {
+        if (qq.isBlank()) emptyList()
+        else series.filter {
+            !it.deleted && (it.title.contains(qq, true) ||
+                it.location.contains(qq, true) || it.memo.contains(qq, true))
+        }.sortedByDescending { it.startDay }
+    }
+    Column(Modifier.fillMaxSize()) {
+        com.looka.app.ui.common.LookaSearchBar(
+            query = q, onQueryChange = onQ,
+            active = true, onActiveChange = { if (!it) onExit() },
+            placeholder = tr("日程名、地点、备注")
+        )
+        Hairline()
+        when {
+            qq.isBlank() -> com.looka.app.ui.common.EmptyDeer(tr("输入关键词，搜日程名、地点和备注"))
+            hit.isEmpty() -> com.looka.app.ui.common.EmptyDeer(
+                tr("没找到「{0}」", qq), hint = tr("换个词试试"))
+            else -> LazyColumn {
+                items(hit, key = { it.id }) { e ->
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .plainClick { nav.navigate("detail/${e.id}/${e.startDay}") }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.looka.app.ui.common.ColorDot(parseHex(catById[e.categoryId]?.colorHex ?: "#9AA0A6"), 10.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                e.title.ifBlank { tr("无标题") }, fontSize = 15.sp, color = Ink,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis
+                            )
+                            Text(Fmt.dateCn(e.startDay), fontSize = 12.sp, color = GrayText)
+                        }
+                    }
+                    Hairline(Modifier.padding(start = 38.dp))
+                }
+                item { Spacer(Modifier.height(70.dp)) }
+            }
+        }
     }
 }

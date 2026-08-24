@@ -67,7 +67,6 @@ import com.looka.app.ui.more.MoreScreen
 import com.looka.app.ui.notes.DiaryEditScreen
 import com.looka.app.ui.notes.NoteEditScreen
 import com.looka.app.ui.notes.NotesDiaryScreen
-import com.looka.app.ui.search.SearchScreen
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
 import com.looka.app.ui.todo.DoneListsScreen
@@ -136,7 +135,7 @@ fun LookaRoot() {
             arguments = listOf(navArgument("id") { type = NavType.LongType })
         ) { e -> com.looka.app.ui.event.TemplateEditorScreen(vm, nav, e.arguments!!.getLong("id")) }
         composable("calSettings") { CalendarSettingsScreen(vm, nav) }
-        composable("search") { SearchScreen(vm, nav) }
+        // §98 H5：独立搜索页已删 —— 搜索收成一套，四个 tab 各自页内搜，不跳页
         composable("aiChat") { AiChatScreen(vm, nav) }
         composable("account") { AccountScreen(vm, nav) }
         composable("subscription") { com.looka.app.ui.more.SubscriptionScreen(vm, nav) }
@@ -153,7 +152,7 @@ fun LookaRoot() {
         composable("next7") { Next7Screen(vm, nav) }
         composable("doneTasks") { DoneTasksScreen(vm, nav) }
         composable("doneLists") { DoneListsScreen(vm, nav) }
-        // §98 E2：笔记两级结构 —— ノート tab 给清单，这里是清单里的笔记
+        // §93 E2：笔记两级结构 —— ノート tab 给清单，这里是清单里的笔记
         composable(
             "noteList/{uid}",
             arguments = listOf(navArgument("uid") { type = NavType.StringType })

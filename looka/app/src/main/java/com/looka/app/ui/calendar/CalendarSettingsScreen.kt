@@ -115,9 +115,16 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
             NavRow(
                 tr("休日星期"),
-                value = (0..6).filter { (holidayMask shr it) and 1 == 1 }
-                    .joinToString(" ") { weekNames[it] }
-                    .ifBlank { tr("无") }
+                // §98 H8：七个全勾时原来把七个词连排，挤成一团 —— 用户根本看不出
+                // 「为什么整月都红了」。多于 3 个就只报个数。
+                value = (0..6).filter { (holidayMask shr it) and 1 == 1 }.let { on ->
+                    when {
+                        on.isEmpty() -> tr("无")
+                        on.size == 7 -> tr("全部（整月都会标红）")
+                        on.size > 3 -> tr("{0} 天", on.size)
+                        else -> on.joinToString(" ") { weekNames[it] }
+                    }
+                }
             ) { holidayDlg = true }
             Hairline()
             SwitchRow(tr("在日历显示已完成任务"), showDone) {

@@ -53,7 +53,7 @@ import com.looka.app.util.tr
 import com.looka.app.vm.LookaViewModel
 
 /**
- * §98 E2：笔记清单二级页（实机图 79）—— `← 清单名 ⋮`，**没有搜索框**。
+ * §93 E2：笔记清单二级页（实机图 79）—— `← 清单名 ⋮`，**没有搜索框**。
  *
  * 这是 Lifebear 笔记两级结构的第二级：ノート tab 给清单，点进来才是该清单的笔记。
  * 条目顺序是 **日期 / 标题 / 正文**（日期在最上），条目下通栏 hairline。

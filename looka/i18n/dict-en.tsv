@@ -957,3 +957,9 @@ AI 不限次（改回每天 10 次）· 生成新主题 / 表情包	Unlimited AI
 清单里的笔记会移入默认清单，不会丢	Notes in this list move to the default list — nothing is lost
 没找到	No match for
 里还没有笔记	has no notes yet
+{0} 天	{0} days
+任务名、备注	Task name, memo
+全部（整月都会标红）	All (every date turns red)
+日程名、地点、备注	Event name, place, memo
+输入关键词，搜任务名和备注	Type a keyword to search task names and memos
+输入关键词，搜日程名、地点和备注	Type a keyword to search events, places and memos

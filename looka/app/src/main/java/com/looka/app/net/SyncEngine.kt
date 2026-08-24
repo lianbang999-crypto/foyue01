@@ -195,7 +195,7 @@ object SyncEngine {
         for (n in db.noteDao().dirtyList()) {
             arr.put(rec("note", n.uid, n.updatedAt, n.deleted,
                 if (n.deleted) null else JSONObject().put("title", n.title).put("content", n.content)
-                    // §98 E3：createdAt 必须上云 —— 不带的话换设备后「按创建日排序」会全乱
+                    // §93 E3：createdAt 必须上云 —— 不带的话换设备后「按创建日排序」会全乱
                     .put("listUid", n.listUid).put("createdAt", n.createdAt)))
         }
         for (d in db.diaryDao().dirtyList()) {

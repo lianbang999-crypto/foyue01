@@ -29,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +61,9 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     val lists by vm.taskLists.collectAsState()
     val tasks by vm.tasks.collectAsState()
     var createDlg by remember { mutableStateOf(false) }
+    // §98 H3：搜索改**页内**，不再跳独立搜索页（用户拍板：一套搜索、当前页搜）
+    var q by rememberSaveable { mutableStateOf("") }
+    var searching by rememberSaveable { mutableStateOf(false) }
 
     val active = remember(lists) { lists.filter { !it.archived } }
     val archived = remember(lists) { lists.filter { it.archived } }
@@ -76,35 +80,50 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // §77 N5：删掉「待办」标题行，搜索条上提为页首（Lifebear 用搜索框当页首，不写标题）。
-        // 小鹿沿用 N8 的手法收进搜索行右端 —— 同一行，零额外高度。
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                Modifier
-                    .weight(1f)
-                    // §98 E4：与笔记页同规格 —— 实机 **44dp** 高 / 4dp 圆角。
-                    // §90 这里抄了我当时编的「38dp」，实测 43.8dp。
-                    .height(44.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(PanelBg)
-                    .rowClick { nav.navigate("search") }
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                // §77 N7：placeholder 写清能搜到什么
-                Text(tr("搜索任务名、备注"), fontSize = 14.sp, color = Color(0xFFB9BBB9))
+        // §77 N5：搜索条即页首（Lifebear 用搜索框当页首，不写标题）；
+        // §98 H3：换成全站唯一的 LookaSearchBar，点开就地进搜索态
+        com.looka.app.ui.common.LookaSearchBar(
+            query = q, onQueryChange = { q = it },
+            active = searching, onActiveChange = { searching = it },
+            // §77 N7：placeholder 写清能搜到什么（实机「タスク名、メモなど」）
+            placeholder = tr("任务名、备注"),
+            trailing = {
+                // §71 A：AI 全站入口（用户拍板）
+                androidx.compose.material3.IconButton(onClick = { nav.navigate("aiChat") }) {
+                    com.looka.app.ui.common.DeerBadge(24.dp)
+                }
             }
-            // §71 A：AI 全站入口（用户拍板）
-            androidx.compose.material3.IconButton(onClick = { nav.navigate("aiChat") }) {
-                com.looka.app.ui.common.DeerBadge(24.dp)
-            }
-        }
+        )
         Hairline()
+
+        // §98 H3：搜索态 —— 命中的任务直接铺在当前页，不跳走
+        if (searching) {
+            val qq = q.trim()
+            val hit = remember(qq, tasks) {
+                if (qq.isBlank()) emptyList()
+                else tasks.filter { !it.deleted && (it.title.contains(qq, true) || it.memo.contains(qq, true)) }
+            }
+            val listMap = remember(lists) { lists.associateBy { it.uid } }
+            when {
+                qq.isBlank() -> com.looka.app.ui.common.EmptyDeer(
+                    tr("输入关键词，搜任务名和备注"))
+                hit.isEmpty() -> com.looka.app.ui.common.EmptyDeer(
+                    tr("没找到「{0}」", qq), hint = tr("换个词试试"))
+                else -> LazyColumn {
+                    items(hit, key = { it.uid }) { t ->
+                        TaskRowV2(
+                            t, listName = listMap[t.listUid]?.name,
+                            listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { nav.navigate("task/${t.id}") }
+                        )
+                    }
+                    item { Spacer(Modifier.height(70.dp)) }
+                }
+            }
+            return@Column
+        }
 
         LazyColumn {
             // §77 N4：顺序对齐 Lifebear —— 星标/未来7天 在清单之前

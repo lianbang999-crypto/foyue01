@@ -884,7 +884,11 @@ function renderTodos() {
     curList = b.dataset.l; renderTodos();
   });
 
+  // §98 H6：待办页内搜索（与 App 同口径：任务名 + 备注）
+  const tq = ($('#todoSearch')?.value || '').trim().toLowerCase();
   let items = taskList();
+  if (tq) items = items.filter(k => (k.title || '').toLowerCase().includes(tq)
+    || (k.memo || '').toLowerCase().includes(tq));
   if (curList === 'next7') {   // P4-5：未来 7 天（含今天）有到期日的任务
     const t0 = todayEpoch();
     items = items.filter(k => (k.dueDay ?? -1) >= t0 && k.dueDay < t0 + 7)
@@ -938,7 +942,7 @@ function renderNotes() {
     return;
   }
 
-  // ── 清单二级视图（§98 E2）──
+  // ── 清单二级视图（§93 E2）──
   if (curNoteList) {
     const l = lists.find(x => x.uid === curNoteList);
     if (!l) { curNoteList = ''; renderNotes(); return; }
@@ -981,7 +985,7 @@ function noteRowHtml(r, lists) {
     </div>`;
 }
 
-/** §98 E3：排序档 0 更新日 / 1 创建日（默认，同实机）/ 2 笔记名 */
+/** §93 E3：排序档 0 更新日 / 1 创建日（默认，同实机）/ 2 笔记名 */
 function noteSortMode() { return +(localStorage.getItem('lk_note_sort') ?? 1); }
 function noteSortApply(arr) {
   const m = noteSortMode();
@@ -1062,8 +1066,8 @@ function renderDiary() {
       q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}</div>`;
     return;
   }
-  // §98 E7：按月分组 —— 灰色月标题 + 左侧大号日期/星期，正文左缘 72px
-  // §98 E6：**不显示心情** —— 实机日记列表没有任何心情图标，那是我们自创的
+  // §93 E7：按月分组 —— 灰色月标题 + 左侧大号日期/星期，正文左缘 72px
+  // §93 E6：**不显示心情** —— 实机日记列表没有任何心情图标，那是我们自创的
   const WK = ['日', '一', '二', '三', '四', '五', '六'];
   let html = '', curYm = '';
   list.forEach((r, idx) => {
@@ -2022,8 +2026,10 @@ async function boot() {
 
   // 笔记 / 日记
   // §77 N6：搜索即时过滤（笔记 / 日记）
+  $('#todoSearch').oninput = () => renderTodos();
+  $('#calSearch').oninput = () => renderCalSearch();
   $('#noteSearch').oninput = () => renderNotes();
-  // §98 E2/E3：清单二级视图的返回 / 新建笔记 / 重命名 / 排序
+  // §93 E2/E3：清单二级视图的返回 / 新建笔记 / 重命名 / 排序
   $('#nlBack').onclick = () => { curNoteList = ''; renderNotes(); };
   $('#nlAdd').onclick = () => openNoteModal(null);
   $('#nlRename').onclick = () => {
@@ -2062,3 +2068,39 @@ async function boot() {
 }
 
 boot();
+
+
+/* §98 H6：日历页内搜索 —— 月历是网格没法原地过滤，有关键词时用结果列表盖住它。
+   只搜日程（任务归待办页、笔记日记归笔记页，与 App 同一套分法）。 */
+function renderCalSearch() {
+  const q = ($('#calSearch')?.value || '').trim().toLowerCase();
+  const box = $('#calSearchResult'), wrap = document.querySelector('#tab-cal .cal-wrap'),
+        panel = $('#dayPanel');
+  if (!box) return;
+  if (!q) {
+    box.classList.add('hidden');
+    if (wrap) wrap.classList.remove('hidden');
+    if (panel) panel.classList.remove('hidden');
+    return;
+  }
+  box.classList.remove('hidden');
+  if (wrap) wrap.classList.add('hidden');
+  if (panel) panel.classList.add('hidden');
+  const cats = [...S.data.category.values()];
+  const hit = [...S.data.event.values()].filter(r =>
+    (r.p.title || '').toLowerCase().includes(q) ||
+    (r.p.location || '').toLowerCase().includes(q) ||
+    (r.p.memo || '').toLowerCase().includes(q)
+  ).sort((a, b) => (b.p.startDay || 0) - (a.p.startDay || 0));
+  box.innerHTML = hit.length ? hit.map(r => {
+    const c = cats.find(x => x.uid === r.p.categoryUid);
+    return `<div class="note-item" data-ev="${r.uid}" data-d="${r.p.startDay}">
+      <div class="nd">${dateCn(r.p.startDay)}</div>
+      <div class="nt"><span class="dot" style="background:${c?.p.color || '#9AA0A6'}"></span> ${esc(r.p.title || t('无标题'))}</div>
+    </div>`;
+  }).join('') : `<div class="empty-deer"><img src="deer.svg" alt="">${t('没找到')}「${esc(q)}」</div>`;
+  $$('#calSearchResult [data-d]').forEach(el => el.onclick = () => {
+    $('#calSearch').value = ''; renderCalSearch();
+    S.selDay = +el.dataset.d; renderAll();
+  });
+}
