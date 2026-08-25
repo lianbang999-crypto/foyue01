@@ -48,5 +48,24 @@ print('  静态资源与 SW 已盖章 v$VC')
 PYEOF
 
 echo "▶ 部署 Worker（version.json 生效）..."
-npx wrangler deploy | tail -2
-echo "✅ v$VN ($VC) 已发布 — 用户端次日启动会收到更新提示"
+# 2026-08-24：原来是 `npx wrangler deploy | tail -2` —— 管道让退出码变成 tail 的，
+# wrangler 超时失败也照打「✅ 已发布」。真出过一次：APK 传上去了、version.json 没生效，
+# 而屏幕上写着成功。改成先落变量、判成败，再决定打什么。
+set -o pipefail
+if npx wrangler deploy 2>&1 | tail -4; then
+  echo "✅ v$VN ($VC) 已发布 — 用户端次日启动会收到更新提示"
+else
+  echo "❌ Worker 部署失败：APK 已传 R2、version.json 已改本地，但**线上仍是旧版本**。"
+  echo "   网络恢复后在 server/ 下重跑：npx wrangler deploy"
+  exit 1
+fi
+
+# 发布后自检：线上 version.json 必须已经是本次版本，否则前面等于白发
+echo "▶ 自检线上版本 ..."
+LIVE=$(curl -s --max-time 25 https://looka.foyue.org/version.json | python3 -c "import sys,json;print(json.load(sys.stdin)['versionCode'])" 2>/dev/null || echo "?")
+if [ "$LIVE" = "$VC" ]; then
+  echo "✅ 线上 version.json = $LIVE，与本次一致"
+else
+  echo "❌ 线上 version.json = $LIVE，期望 $VC —— 部署没生效，别当已发布"
+  exit 1
+fi

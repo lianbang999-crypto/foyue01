@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 35,
-  "versionName": "1.18.0",
+  "versionCode": 36,
+  "versionName": "1.19.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3728965,
-  "sha256": "78864ce0b409d78194a28951fc1f34f9e12d180f7dccecb8c4a331386f3d4748",
-  "changelog": "笔记按清单分开放了，点清单进去看里面的笔记，还能改名和换排序方式；日记按月份列出来，左边一个大日期；同步不会再悄悄丢数据；删除后 5 秒内点撤销，这回是真能撤回来",
+  "size": 3729173,
+  "sha256": "a334c4e2404afd2c5b006b6c16fefe518dcb8689aa1e2a5a5b7d41cb986dc960",
+  "changelog": "笔记清单删掉后不再白屏；长按可以拖动排序、左滑可以删除，全站一个手势；删错了屏幕下方随时能撤销；贴纸更大了",
   "minSupported": 1
 }
