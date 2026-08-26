@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.room.withTransaction
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.looka.app.LookaApp
@@ -140,6 +141,15 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var composerMode by mutableIntStateOf(0)
     // 编辑器初始模式（面板/＋转入全屏时指定，消费后归零）
     var editorInitMode by mutableIntStateOf(0)
+    // §114 P7：任务模式的预填截止日。日历上下文进入=选中日（§75 T1 实机图47），
+    // 待办页进入=-1 无日期 —— selectedDay 是"上次在日历点的那天"，对待办页毫无意义
+    var editorTaskDue: Long = -1L
+    // §114 P14：任务编辑/复制的全页入口预填。id>0=编辑既有任务，id==0=复制出的新草稿，
+    // null=普通新建。消费一次即清 —— 任务对象从此只有一套容器（全页编辑器）
+    var editorTaskPrefill: com.looka.app.data.Task? = null
+    // §114 P16：系统日历事件的全页编辑通道。非空=编辑器进入"系统日程编辑"态：
+    // 保存写回 ContentResolver，不进 Looka 的 series 体系
+    var editorSysEvent: com.looka.app.util.SysCal.SysEvent? = null
     // §77 N9：笔记页当前子 tab（0 笔记 / 1 日记）。提到 VM 是因为中央 ＋ 要按它分流 ——
     // 留在 NotesDiaryScreen 里的话 Nav 拿不到，＋ 就只能一律建日程（那正是 N9 那个 bug）。
     var notesSeg by mutableIntStateOf(0)
@@ -642,21 +652,27 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         afterChange()
     }
 
-    /** 删除清单：任务移入默认清单，清单打墓碑 */
+    /** 删除清单：任务移入默认清单，清单打墓碑。
+     * §114 P11：三步（查任务→迁移→墓碑）包进一个 Room 事务 —— 原来是散步执行，
+     * 中途崩溃会留下「任务搬走了清单还在」或反过来的半完成状态。restore 同理。 */
     fun deleteTaskList(l: TaskList) {
         if (!l.deletable) return
         var moved: List<String> = emptyList()
         softDelete(
             l.name.take(12),
             delete = {
-                moved = taskDao.listAll().filter { it.listUid == l.uid }.map { it.uid }
-                taskDao.reassignList(l.uid, "list-default", now())
-                taskListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
+                db.withTransaction {
+                    moved = taskDao.listAll().filter { it.listUid == l.uid }.map { it.uid }
+                    taskDao.reassignList(l.uid, "list-default", now())
+                    taskListDao.update(l.copy(deleted = true, dirty = true, updatedAt = now()))
+                }
             },
             restore = {
-                taskListDao.upsert(l.copy(deleted = false, dirty = true, updatedAt = now()))
-                moved.forEach { u ->
-                    taskDao.byUid(u)?.let { taskDao.update(it.copy(listUid = l.uid, dirty = true, updatedAt = now())) }
+                db.withTransaction {
+                    taskListDao.upsert(l.copy(deleted = false, dirty = true, updatedAt = now()))
+                    moved.forEach { u ->
+                        taskDao.byUid(u)?.let { taskDao.update(it.copy(listUid = l.uid, dirty = true, updatedAt = now())) }
+                    }
                 }
             }
         )

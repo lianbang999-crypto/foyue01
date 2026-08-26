@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- §114 P16：系统日历可改可删（用户拍板：进了 Looka 就和自己的日程一样） -->
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <!-- 精确闹钟：Looka 是日历类应用，USE_EXACT_ALARM 自动授予；31-32 回落 SCHEDULE -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"

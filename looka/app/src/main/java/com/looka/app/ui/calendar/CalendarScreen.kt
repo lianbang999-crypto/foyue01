@@ -497,6 +497,30 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         onDismiss = { jumpOpen = false }
     )
 
+    // §114 P16：系统日历详情从「只读说明」升级为可编辑/删除（用户拍板：
+    // 进了 Looka 就和自己的日程一样）。重复事件首版拦下 —— Events 一行是整个系列。
+    var sysDetailInfo by remember { mutableStateOf<SysCal.SysEventDetail?>(null) }
+    var sysDelConfirm by remember { mutableStateOf<SysCal.SysEvent?>(null) }
+    var sysPendingEdit by remember { mutableStateOf(false) }   // 授权后恢复原意图
+    LaunchedEffect(sysDetail) {
+        sysDetailInfo = null
+        sysDetail?.let { sysDetailInfo = SysCal.eventDetail(ctx, it.id) }
+    }
+    fun openSysEditor(e: SysCal.SysEvent) {
+        vm.editorSysEvent = e
+        vm.prepareCreateDraft(e.day)
+        vm.editorInitMode = 0
+        sysDetail = null
+        nav.navigate("editor")
+    }
+    val writeCalLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val e = sysDetail
+        if (granted && sysPendingEdit && e != null) openSysEditor(e)
+        else if (!granted) com.looka.app.ui.common.toast(ctx, tr("没有日历写入权限，改不了系统日程"))
+        sysPendingEdit = false
+    }
     sysDetail?.let { e ->
         AlertDialog(
             onDismissRequest = { sysDetail = null },
@@ -521,19 +545,67 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                         Spacer(Modifier.width(8.dp))
                         Text(tr("来自系统日历「{0}」", e.calName), fontSize = 12.sp, color = GrayText)
                     }
-                    Text(
-                        tr("系统日历事件在 Looka 中为只读显示"),
+                    if (sysDetailInfo?.recurring == true) Text(
+                        tr("这是重复日程，请在系统日历中管理"),
                         fontSize = 11.sp, color = GrayText,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { sysDetail = null }) {
-                    Text(tr("好的"), color = MaterialTheme.colorScheme.primary)
+                if (sysDetailInfo?.recurring != true) {
+                    TextButton(onClick = { sysDelConfirm = e }) {
+                        Text(tr("删除"), color = Ink, fontWeight = FontWeight.SemiBold)
+                    }
+                    TextButton(onClick = {
+                        if (SysCal.hasWritePermission(ctx)) openSysEditor(e)
+                        else {
+                            sysPendingEdit = true
+                            writeCalLauncher.launch(android.Manifest.permission.WRITE_CALENDAR)
+                        }
+                    }) { Text(tr("编辑"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold) }
+                } else {
+                    TextButton(onClick = { sysDetail = null }) {
+                        Text(tr("好的"), color = MaterialTheme.colorScheme.primary)
+                    }
                 }
             },
             containerColor = Color.White
+        )
+    }
+
+    // §114 P16：系统日程删除 —— 二次确认后写回 ContentResolver；成功 bump settingsVersion
+    // 让 produceState 重拉 sysEvents。无写权限时先请求，授权即执行（恢复原意图）。
+    sysDelConfirm?.let { e ->
+        val delLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            if (granted) scope.launch {
+                if (SysCal.deleteEvent(ctx, e.id)) {
+                    vm.settingsVersion++
+                    com.looka.app.ui.common.toast(ctx, tr("已删除"))
+                } else com.looka.app.ui.common.toast(ctx, tr("删除失败，系统日历拒绝了"))
+                sysDelConfirm = null; sysDetail = null
+            } else {
+                com.looka.app.ui.common.toast(ctx, tr("没有日历写入权限，删不了系统日程"))
+                sysDelConfirm = null
+            }
+        }
+        ConfirmDialog(
+            title = tr("删除这条系统日程？"),
+            text = tr("「{0}」将从系统日历里删除，其他使用该日历的应用也会看不到它", e.title),
+            onConfirm = {
+                if (SysCal.hasWritePermission(ctx)) {
+                    scope.launch {
+                        if (SysCal.deleteEvent(ctx, e.id)) {
+                            vm.settingsVersion++
+                            com.looka.app.ui.common.toast(ctx, tr("已删除"))
+                        } else com.looka.app.ui.common.toast(ctx, tr("删除失败，系统日历拒绝了"))
+                        sysDelConfirm = null; sysDetail = null
+                    }
+                } else delLauncher.launch(android.Manifest.permission.WRITE_CALENDAR)
+            },
+            onDismiss = { sysDelConfirm = null }
         )
     }
 }
@@ -1527,6 +1599,7 @@ private fun CreatePanel(
                 onClose()
                 vm.prepareCreateDraft(vm.selectedDay)
                 vm.editorInitMode = 1
+                vm.editorTaskDue = vm.selectedDay   // §114 P7：日历上下文，预填选中日（§75 T1）
                 nav.navigate("editor")
             }
             PanelIcon(LkIcons.Smile, tr("表情"), true) { }

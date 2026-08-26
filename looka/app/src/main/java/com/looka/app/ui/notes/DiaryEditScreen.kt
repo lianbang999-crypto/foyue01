@@ -90,19 +90,31 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             existed = true
         }
         // E2：恢复草稿。§104 之后正常退出已自动保存并清草稿，所以这里救的是**进程被杀**
+        // §114 P13：草稿升级 JSON{m,c} —— 心情也入草稿（原来只存正文，改了心情被杀就丢）；
+        // 老格式（纯文本）按 §90 W3 的「与已存不同即恢复」处理。
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
-        // §90 W3（BUG-ND-003）：原条件是 d.length > content.length —— 用户把日记**改短、
-        // 重写或清空**后草稿就永远恢复不了（那恰恰是最该救的几种情况）。改为「与已存内容不同」即可恢复。
-        if (d.isNotBlank() && d != content) {
-            content = d
-            toast(ctx, tr("已恢复未保存的草稿"))
+        if (d.isNotBlank()) {
+            val o = runCatching { org.json.JSONObject(d) }.getOrNull()
+            if (o != null) {
+                val dm = o.optInt("m", mood); val dc = o.optString("c")
+                if (dc != content || dm != mood) {
+                    mood = dm.coerceIn(0, 4); content = dc
+                    toast(ctx, tr("已恢复未保存的草稿"))
+                }
+            } else if (d != content) {
+                content = d
+                toast(ctx, tr("已恢复未保存的草稿"))
+            }
         }
     }
     // 防抖落盘：§104 起返回键已自动保存，草稿只兜**进程被杀**这一种情况
     //（正常退出走 saveAndBack，草稿会被清掉，不会在下次进来时误弹"已恢复草稿"）
-    LaunchedEffect(content) {
+    // §114 P13：**删空也落盘**（原来 isNotBlank 才写 —— 清空正文后被杀，
+    // 回来恢复成删除前的旧文）；mood 一并入草稿
+    LaunchedEffect(content, mood) {
         kotlinx.coroutines.delay(500)
-        if (content.isNotBlank()) com.looka.app.data.Prefs.setDraft(ctx, draftKey, content)
+        val j = org.json.JSONObject().put("m", mood).put("c", content).toString()
+        com.looka.app.data.Prefs.setDraft(ctx, draftKey, j)
     }
 
     // §104（用户拍板）：日记改**自动保存**，与笔记同一套心智 ——
@@ -179,14 +191,19 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             MOOD_EMOJIS.forEachIndexed { i, e ->
+                // §114 P10：热区 30→44dp（外圈可点），选中底色圈保持 30dp 视觉不变
                 Box(
-                    Modifier.size(30.dp).clip(CircleShape)
-                        .background(if (mood == i) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                        .plainClick { mood = i },
+                    Modifier.size(44.dp).plainClick { mood = i },
                     contentAlignment = Alignment.Center
                 ) {
+                    Box(
+                        Modifier.size(30.dp).clip(CircleShape)
+                            .background(if (mood == i) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
                     // 未选中的心情压暗，不与正文抢注意力
                     Text(e, fontSize = 17.sp, modifier = Modifier.alpha(if (mood == i) 1f else 0.4f))
+                    }
                 }
                 Spacer(Modifier.width(2.dp))
             }

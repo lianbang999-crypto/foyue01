@@ -65,6 +65,10 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
     val lists by vm.noteLists.collectAsState()
 
     val draftKey = "note_$id"
+    // §114 P12：草稿从「只存正文」升级为 JSON{t,c,l} —— 原来标题、清单不入草稿
+    //（只输标题被杀=全丢），且旧笔记有正文时新草稿永不恢复（条件是 content.isBlank()）。
+    // 现在：草稿与已存内容**不同**即恢复；把正文删短/删空同样受保护。
+    // 兼容：老版本草稿是纯文本，parse 失败按纯 content 处理。
     LaunchedEffect(id) {
         vm.ensureNoteListDefault()
         if (id >= 0) vm.note(id)?.let {
@@ -72,17 +76,32 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
             content = it.content
             listUid = it.listUid
         }
-        // E2：进程被杀后回来，恢复没保存成的内容（正常保存路径会清掉草稿，走不到这里）
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
-        if (d.isNotBlank() && d != content) {
-            if (content.isBlank()) { content = d; toast(ctx, tr("已恢复未保存的草稿")) }
+        if (d.isNotBlank()) {
+            val o = runCatching { org.json.JSONObject(d) }.getOrNull()
+            if (o != null) {
+                // 新格式：全量恢复（含"标题被清空"这种编辑 —— dt 就是空）
+                val dt = o.optString("t"); val dc = o.optString("c"); val dl = o.optString("l")
+                if (dt != title || dc != content) {
+                    title = dt; content = dc
+                    if (dl.isNotBlank()) listUid = dl
+                    toast(ctx, tr("已恢复未保存的草稿"))
+                }
+            } else if (d != content && content.isBlank()) {
+                // 老格式（纯正文）：维持旧行为，只在正文为空时救
+                content = d
+                toast(ctx, tr("已恢复未保存的草稿"))
+            }
         }
     }
-    // 防抖草稿：停止输入 500ms 后落盘，killed 也不丢
-    LaunchedEffect(title, content) {
+    // 防抖草稿：停止输入 500ms 后落盘，killed 也不丢。
+    // §114 P12：**空内容也落盘**（内容为空的 JSON ≠ 无草稿）—— 用户把正文清空后被杀，
+    // 回来不该看到删除前的旧文假装无事发生。
+    LaunchedEffect(title, content, listUid) {
         kotlinx.coroutines.delay(500)
-        if (content.isNotBlank() || title.isNotBlank())
-            com.looka.app.data.Prefs.setDraft(ctx, draftKey, content)
+        val j = org.json.JSONObject()
+            .put("t", title).put("c", content).put("l", listUid).toString()
+        com.looka.app.data.Prefs.setDraft(ctx, draftKey, j)
     }
 
     fun saveAndBack() {

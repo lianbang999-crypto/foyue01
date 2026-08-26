@@ -104,15 +104,40 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     LaunchedEffect(Unit) { vm.editorInitMode = 0 }
     var scopeDlg by remember { mutableStateOf(false) }
 
+    // §114 P16：系统日程编辑态 —— 保存写回 ContentResolver，不进 Looka series 体系。
+    // 进入时把 SysEvent 的字段灌进 draft，再异步补 Events 表里的地点/备注。
+    val sysEv = remember { vm.editorSysEvent }
+    val isSysEdit = sysEv != null
+    var sysBase by remember { mutableStateOf<com.looka.app.util.SysCal.SysEventDetail?>(null) }
+    LaunchedEffect(Unit) {
+        vm.editorSysEvent = null
+        if (sysEv != null) {
+            d.title = sysEv.title
+            d.allDay = sysEv.allDay
+            d.startDay = sysEv.day; d.endDay = sysEv.endDayIncl
+            d.startMin = sysEv.startMin; d.endMin = sysEv.endMin
+            com.looka.app.util.SysCal.eventDetail(ctx, sysEv.id)?.let {
+                sysBase = it
+                d.location = it.location; d.memo = it.description
+            }
+        }
+    }
+
     // 任务模式状态
-    var taskTitle by rememberSaveable { mutableStateOf("") }
-    // §75 T1：任务面从 Composer 进入时预填选中日（图47：日期直接就是选的那天）
-    var taskDue by rememberSaveable { mutableLongStateOf(if (vm.editorInitMode == 1) vm.selectedDay else -1L) }
-    var taskMemo by rememberSaveable { mutableStateOf("") }
-    var taskDone by rememberSaveable { mutableStateOf(false) }
-    var taskStarred by rememberSaveable { mutableStateOf(false) }
-    var taskListUid by rememberSaveable { mutableStateOf("list-default") }
+    // §114 P14：任务编辑/复制从 TaskEditDialog 收编进全页 —— prefill 进入时取一次并消费
+    val taskPrefill = remember { vm.editorTaskPrefill }
+    val isTaskEdit = taskPrefill != null && taskPrefill.id > 0
+    var taskTitle by rememberSaveable { mutableStateOf(taskPrefill?.title ?: "") }
+    // §75 T1 → §114 P7：预填日按**入口**决定 —— 日历上下文=选中日（图47），
+    // 待办页=-1 无日期（selectedDay 是"上次在日历点的那天"，对待办页是幽灵数据）
+    var taskDue by rememberSaveable { mutableLongStateOf(
+        taskPrefill?.dueDay ?: if (vm.editorInitMode == 1) vm.editorTaskDue else -1L) }
+    var taskMemo by rememberSaveable { mutableStateOf(taskPrefill?.memo ?: "") }
+    var taskDone by rememberSaveable { mutableStateOf(taskPrefill?.done ?: false) }
+    var taskStarred by rememberSaveable { mutableStateOf(taskPrefill?.starred ?: false) }
+    var taskListUid by rememberSaveable { mutableStateOf(taskPrefill?.listUid ?: "list-default") }
     var taskDueDlg by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { vm.editorTaskPrefill = null }
 
     // 印章模式状态（图片资产优先，emoji 兜底）
     var stampEmoji by rememberSaveable { mutableStateOf("") }
@@ -132,13 +157,26 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
         nav.popBackStack()
     }
 
-    /** F3：有内容未保存时先问一句，别让误触 X 吞掉半篇输入 */
+    /** F3：有内容未保存时先问一句，别让误触 X 吞掉半篇输入。
+     * §114 P6：原来只查日程 draft 的字段 —— 任务模式敲完标题按返回，直接丢掉不问。
+     * 按当前所在的面分别查：任务查 taskTitle/taskMemo，贴纸选好了资产也算。 */
     fun close() {
-        val dirty = if (!isEdit) {
-            d.title.isNotBlank() || d.memo.isNotBlank() || d.location.isNotBlank()
-        } else {
-            val o = d.originalSeries
-            o != null && (d.title != o.title || d.memo != o.memo || d.location != o.location)
+        val dirty = when {
+            isSysEdit -> sysEv != null && (
+                d.title != sysEv.title || d.allDay != sysEv.allDay ||
+                d.startDay != sysEv.day || d.endDay != sysEv.endDayIncl ||
+                d.startMin != sysEv.startMin || d.endMin != sysEv.endMin ||
+                d.location != (sysBase?.location ?: "") || d.memo != (sysBase?.description ?: ""))
+            mode == 1 && isTaskEdit -> taskPrefill != null && (
+                taskTitle != taskPrefill.title || taskMemo != taskPrefill.memo ||
+                taskDue != taskPrefill.dueDay || taskListUid != taskPrefill.listUid)
+            !isEdit && mode == 1 -> taskTitle.isNotBlank() || taskMemo.isNotBlank()
+            !isEdit && mode == 2 -> stampEmoji.isNotBlank() || stampAsset.isNotBlank()
+            !isEdit -> d.title.isNotBlank() || d.memo.isNotBlank() || d.location.isNotBlank()
+            else -> {
+                val o = d.originalSeries
+                o != null && (d.title != o.title || d.memo != o.memo || d.location != o.location)
+            }
         }
         if (dirty && !saving) discardDlg = true else reallyClose()
     }
@@ -147,6 +185,17 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
         if (saving) return                                  // F2：保存是异步的，回调前再点会建重复日程
         saving = true
         val done: () -> Unit = { toast(ctx, tr("已保存")); reallyClose() }
+        if (isSysEdit && sysEv != null) {
+            // §114 P16：写回系统日历；成功 bump settingsVersion 让日历重拉 sysEvents
+            scope.launch {
+                val ok = com.looka.app.util.SysCal.updateEvent(
+                    ctx, sysEv.id, d.title, d.allDay,
+                    d.startDay, d.startMin, d.endDay, d.endMin, d.location, d.memo)
+                if (ok) { vm.settingsVersion++; done() }
+                else { saving = false; toast(ctx, tr("保存失败，系统日历拒绝了")) }
+            }
+            return
+        }
         if (!isEdit) {
             vm.saveCreate(d, done)
         } else {
@@ -174,7 +223,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             IconButton(onClick = { close() }) { Icon(LkIcons.Close, tr("关闭"), tint = Ink) }
             Text(
                 when {
-                    isEdit -> tr("编辑日程")
+                    isEdit || isSysEdit -> tr("编辑日程")
+                    mode == 1 && isTaskEdit -> tr("编辑任务")
                     mode == 0 -> tr("新建日程")
                     mode == 1 -> tr("新建任务")
                     mode == 2 -> tr("贴表情")
@@ -185,10 +235,21 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             )
             when (mode) {
                 0 -> SaveButton(enabled = d.title.isNotBlank()) { doSaveEvent() }
-                1 -> SaveButton(enabled = taskTitle.isNotBlank()) {
-                    vm.addTask(taskTitle, taskDue, taskMemo, taskListUid,
-                        starred = taskStarred, done = taskDone)
-                    toast(ctx, tr("已添加任务")); close()
+                1 -> SaveButton(enabled = taskTitle.isNotBlank() && !saving) {
+                    // §114 P5：日程那条有 saving 守卫、任务这条没有 —— 手快点两下就是两条任务
+                    saving = true
+                    if (isTaskEdit && taskPrefill != null) {
+                        // §114 P14：编辑既有任务 —— 同一容器，保存走 update
+                        vm.updateTask(taskPrefill.copy(
+                            title = taskTitle, dueDay = taskDue, memo = taskMemo,
+                            listUid = taskListUid, starred = taskStarred, done = taskDone))
+                        toast(ctx, tr("已保存"))
+                    } else {
+                        vm.addTask(taskTitle, taskDue, taskMemo, taskListUid,
+                            starred = taskStarred, done = taskDone)
+                        toast(ctx, tr("已添加任务"))
+                    }
+                    close()
                 }
                 2 -> SaveButton(enabled = stampEmoji.isNotBlank() || stampAsset.isNotBlank()) {
                     val name = if (stampAsset.isNotBlank())
@@ -207,7 +268,7 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
 
         Box(Modifier.weight(1f)) {
             when (mode) {
-                0 -> EventForm(vm, nav, d)
+                0 -> EventForm(vm, nav, d, isSysEdit = isSysEdit, sysCalName = sysEv?.calName ?: "")
                 1 -> TaskForm(
                     vm,
                     taskTitle, { taskTitle = it },
@@ -231,7 +292,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
         }
 
         // 底部模式切换（仅新建，规格 CAL-CRE-005：不退出即可切换）
-        if (!isEdit) {
+        // §114 P14：编辑既有任务时同样隐藏 —— 编辑态不该能切换对象类型
+        if (!isEdit && !isTaskEdit && !isSysEdit) {
             Hairline()
             // §109 D：靠左排、图标之间留 4dp；不再均分整宽（实机三个图标只占屏宽 30%）
             Row(
@@ -333,7 +395,11 @@ private val ComposerPickBg = Color(0xFFD0D0D0)
 // ==================== 日程表单 ====================
 
 @Composable
-private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft) {
+private fun EventForm(
+    vm: LookaViewModel, nav: NavHostController, d: EventDraft,
+    // §114 P16：系统日程编辑态 —— 分类/提醒/重复是 Looka 体系概念，这个态下不展示
+    isSysEdit: Boolean = false, sysCalName: String = ""
+) {
 
     // §87 D2：字段级层的统一开法 —— 先结束 composition 收键盘，再开层
     val focusMgr = androidx.compose.ui.platform.LocalFocusManager.current
@@ -417,7 +483,21 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
         }
         Hairline()
 
-        // 分类（颜色即分类 CAL-040）
+        // 分类（颜色即分类 CAL-040）。§114 P16：系统日程没有 Looka 分类 —— 显示来源只读行
+        if (isSysEdit) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(LkIcons.Calendar, null, tint = GrayText, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(sysCalName.ifBlank { tr("系统日历") }, fontSize = 16.sp)
+                    Text(tr("来自系统日历"), fontSize = 12.sp, color = GrayText)
+                }
+            }
+            Hairline()
+        } else {
         val cat = cats.find { it.id == d.categoryId }
         Row(
             // §85 B1：分类改全页 select-and-return；rowClick = B4 按压反馈先于转场
@@ -436,6 +516,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
             // §113 E8：去右箭头 —— 实机分类行（图 08 未分類/Lifebearカレンダー）行尾干净
         }
         Hairline()
+        }
 
         // 渐进式披露（规格 P2）：展开带动画
         androidx.compose.animation.AnimatedVisibility(visible = !d.detailExpanded) {
@@ -455,6 +536,8 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
             exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
         ) {
             Column {
+            // §114 P16：提醒/重复是 Looka 体系概念，系统日程编辑态不展示
+            if (!isSysEdit) {
             // 提醒（一个日程可多条 AC-012）
             NavRow(
                 tr("提醒"), icon = LkIcons.Bell,
@@ -471,6 +554,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 )
             ) { nav.navigate("recur") }
             Hairline()
+            }   // §114 P16：!isSysEdit 块结束（提醒+重复）
 
             // 地点
             Row(

@@ -973,3 +973,13 @@ AI 不限次（改回每天 10 次）· 生成新主题 / 表情包	Unlimited AI
 时间范围	Time range
 更多鹿角（每天 50 枚）	More antlers (50 per day)
 订阅	Subscription
+「{0}」将从系统日历里删除，其他使用该日历的应用也会看不到它	"{0}" will be removed from the system calendar; other apps using it will lose it too
+保存失败，系统日历拒绝了	Save failed — the system calendar refused
+删除失败，系统日历拒绝了	Delete failed — the system calendar refused
+删除这条系统日程？	Delete this system event?
+已删除	Deleted
+来自系统日历	From system calendar
+没有日历写入权限，删不了系统日程	No calendar write permission — can't delete system events
+没有日历写入权限，改不了系统日程	No calendar write permission — can't edit system events
+系统日历	System calendar
+这是重复日程，请在系统日历中管理	This is a recurring event — please manage it in the system calendar

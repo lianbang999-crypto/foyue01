@@ -70,12 +70,21 @@ class ReorderState(val order: SnapshotStateList<String>) {
     var offsetY by mutableStateOf(0f)
 }
 
-/** 列表侧持有：`open` 变化时同步顺序，但**拖拽中不覆盖**，否则手指下的行会跳回去 */
+/** 列表侧持有：`uids` 变化时同步顺序，但**拖拽中不覆盖**，否则手指下的行会跳回去。
+ *
+ * §114 P2：LaunchedEffect 改**同步计算** —— §108 定性过的"晚一帧"病根在这里原样留了一份：
+ * effect 落后组合一帧，新序要等下一次重组才生效；更糟的是它曾配合冻住的快照序
+ * 把用户拖好的顺序整个覆盖回去（拖完新建一条就"弹回"，再拖一次把假序写库，
+ * 上一次排序被永久冲掉）。同步写发生在组合早期、读（items）在其后，
+ * 属先写后读，Compose 允许；内容相同时不动，避免无谓失效。 */
 @Composable
 fun rememberReorderState(uids: List<String>): ReorderState {
     val st = remember { ReorderState(mutableStateListOf()) }
-    LaunchedEffect(uids) {
-        if (st.draggingUid == null) { st.order.clear(); st.order.addAll(uids) }
+    remember(uids) {
+        if (st.draggingUid == null && st.order.toList() != uids) {
+            st.order.clear(); st.order.addAll(uids)
+        }
+        Unit
     }
     return st
 }
@@ -267,12 +276,28 @@ fun rememberSnapshotOrder(visible: List<String>, alive: Set<String>): List<Strin
     // 用普通可变表即可：不再靠快照观察驱动重组，改由下面 remember 的 key 驱动
     val shown = remember { mutableListOf<String>() }
     return remember(visible, alive) {
-        // 先剔除真的没了的
-        shown.retainAll { it in alive }
-        // 再把新出现的按 visible 的顺序补进来
-        visible.forEachIndexed { i, uid ->
-            if (uid !in shown) shown.add(i.coerceAtMost(shown.size), uid)
+        // §114 P1：原来这里拿 visible 的下标 i 当 shown 的插入位置 —— 两张表在 §102 的
+        // 快照设计下**天然不等长**（勾掉的行留在 shown、不在 visible），下标一错位，
+        // 勾掉几条后新建的任务就插进列表中间（实测推演：[A,B,C,D] 勾 A、B 再建 E，
+        // E 落在第 3 位）。改成「前驱锚定」：
+        //   - 可见行**每次按 visible 重排** —— 拖拽写回的新序、别端同步来的新序即时生效
+        //     （原来 shown 里已存在的 uid 永不重排，顺序第一眼就冻住，拖完必弹回）；
+        //   - 滞留行（勾掉未消失的）锚在旧序里它前面最近的存活元素之后 —— §102 的
+        //     「打勾不当场消失/不挪位」由这条继续保证。
+        val visibleSet = visible.toSet()
+        val old = shown.filter { it in alive }
+        val result = visible.toMutableList()
+        for (s in old) {
+            if (s in visibleSet) continue          // 可见行已按 visible 排好
+            // 旧序中 s 前面最近的、仍存活的元素：可见行（已在 result）或更早插入的滞留行
+            var pos = 0
+            for (j in old.indexOf(s) - 1 downTo 0) {
+                val p = result.indexOf(old[j])
+                if (p >= 0) { pos = p + 1; break }
+            }
+            result.add(pos.coerceAtMost(result.size), s)
         }
-        shown.toList()   // ← 不可变快照：内容变身份就变，调用方的 remember 才会失效
+        shown.clear(); shown.addAll(result)
+        result.toList()   // ← 不可变快照：内容变身份就变，调用方的 remember 才会失效
     }
 }

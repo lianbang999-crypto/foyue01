@@ -89,7 +89,8 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
     val today = Fmt.today()
     val next7Count = remember(tasks, activeUids) {
-        tasks.count { !it.done && it.dueDay in 0..(today + 7) && it.listUid in activeUids }
+        // §114 P8：today..today+7 是 8 个日期。口径统一为「今天起 7 天」= today..today+6
+        tasks.count { !it.done && it.dueDay in 0..(today + 6) && it.listUid in activeUids }
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {

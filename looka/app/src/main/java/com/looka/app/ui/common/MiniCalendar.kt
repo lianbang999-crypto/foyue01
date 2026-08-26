@@ -108,10 +108,10 @@ fun LookaMonthPanel(
                     Modifier.fillMaxWidth().padding(bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { dir = -1; ym = ym.minusYears(1) }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { dir = -1; ym = ym.minusYears(1) }, modifier = Modifier.size(44.dp)) {
                         Text("«", fontSize = 15.sp, color = GrayText)
                     }
-                    IconButton(onClick = { dir = -1; ym = ym.minusMonths(1) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { dir = -1; ym = ym.minusMonths(1) }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Default.ChevronLeft, tr("上移"), tint = Ink, modifier = Modifier.size(22.dp))
                     }
                     Text(
@@ -119,10 +119,10 @@ fun LookaMonthPanel(
                         fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center, modifier = Modifier.weight(1f)
                     )
-                    IconButton(onClick = { dir = 1; ym = ym.plusMonths(1) }, modifier = Modifier.size(36.dp)) {
+                    IconButton(onClick = { dir = 1; ym = ym.plusMonths(1) }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Default.ChevronRight, tr("下移"), tint = Ink, modifier = Modifier.size(22.dp))
                     }
-                    IconButton(onClick = { dir = 1; ym = ym.plusYears(1) }, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = { dir = 1; ym = ym.plusYears(1) }, modifier = Modifier.size(44.dp)) {
                         Text("»", fontSize = 15.sp, color = GrayText)
                     }
                 }

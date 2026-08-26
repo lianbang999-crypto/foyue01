@@ -10626,3 +10626,101 @@ App 与网页同一公式（app.js THEMES 机器生成，数值同源）。
 | 批 C（形态） | 视图切换全宽直角 Sheet、能力门按钮对、PlainChoiceDialog、更多页黑顶区、设置页 X、贴纸托盘抽验、编辑器抽验 | B2、B4、B6、E4-E8 |
 | 批 D（网页） | F1-F5 全部 | F1-F5 |
 | 批 E（收口） | i18n 0 缺译、双端编译/语法、EXECUTION 登记、发版 | — |
+
+## 一百一十四、§114（2026-08-26 深夜二）：问题审计文档逐条落地 + 系统日历可改可删
+
+### 一、背景 / 用户诉求
+
+用户交来《对齐Lifebear存在的一些问题0826.rtf》（一份带行号的逐行代码审计），并点名一条：
+**系统日历（PHONE）在 Looka 中目前只读——要求与 Looka 自己的日程一样可以修改和删除。**
+
+审计文档的每条指控都**逐处读代码核对过**，16 条全部成立，无一冤枉：
+
+### 二、🔴 核实结果（全部代码实证）
+
+**每天都会撞上的两个列表 bug（同根：ListGestures.kt）**
+
+1. `rememberSnapshotOrder`（ListGestures.kt:273）拿 visible 的下标当 shown 的插入位置。
+   两表在 §102 快照设计下天然不等长（勾掉的行留在 shown 里）——勾掉几条后，
+   **新建任务插进列表中间**而不是末尾。推演：shown=[A,B,C,D] 勾 A、B 后建 E，
+   E 在 visible 下标 2 → 插成 [A,B,E,C,D]。
+2. `rememberReorderState`（ListGestures.kt:77）在 uids 变化时用**冻住的快照序**整个
+   覆盖 st.order，且还是 §108 已定性的 LaunchedEffect 晚一帧写法。链路：
+   TaskListScreens.kt:186 喂给它的正是快照序 → 拖拽后新建一条，**排序弹回**；
+   再拖一次把屏幕假序写回库，**上次排序被永久覆盖**。
+
+**一批确凿的小问题**
+
+3. RadioDialog 显式 `shape=8dp`（Ui.kt:447）盖掉了 §113 的全局 3dp——同 App 两套圆角。
+4. 任务详情页标题带删除线（TaskDetailScreen:132），§102 已定「全站去删除线」。
+5. 任务保存无 saving 防连点（EventEditorScreen mode=1 分支）——手快点两下建两条。
+6. 「放弃编辑？」只检查日程 draft 字段（close()），任务模式敲完标题按返回直接丢。
+7. 待办页按中央＋建任务，截止日被预填成 vm.selectedDay（Nav.kt）——上次在日历
+   点过哪天就是哪天，用户无感知。
+8. 「未来7天」是 today..today+7 共 **8 天**（TodoScreen:92、TaskListScreens:315）。
+9. 计数口径不一：首页星标/未来7天计数过滤已归档清单，两个页面本身不过滤——
+   归档后「计数 0、点进去有东西」。
+10. 热区不足 44dp：任务星标 38、日记心情 30、年月切换 32-36、Web 加号 38px。
+
+**数据可靠性**
+
+11. 删除清单三步（查任务→迁移→墓碑）不是 Room 事务（LookaViewModel.deleteTaskList）——
+    中途崩溃留半完成状态。
+12. 笔记草稿只存正文：标题、清单不入草稿；旧笔记有正文时新草稿不恢复；
+    只输标题时落盘的是空串（NoteEditScreen:67-90）。
+13. 日记草稿：心情不入草稿；删空不落盘（isNotBlank 才写）→ 杀进程后恢复成删前旧文
+    （DiaryEditScreen:103）。
+
+**结构统一**
+
+14. 任务对象两套容器：创建=全页编辑器，编辑/复制=长 AlertDialog（TaskDetailScreen
+    editDlg/copyDlg → TaskEditDialog）。违背「复杂对象统一 Full-page Editor」。
+15. Web 弹窗尺寸：94vw（应 86%）、内边距 18px（应 24）、标题 17px（§113 已改，维持）。
+16. 主题 16 语义色仅 4 个接渲染层 —— Tokens.kt 注释自认，§106 有意分批，**不算缺陷**，
+    维持原节奏不并入本章。
+
+**系统日历（用户点名）**
+
+- Manifest 仅 READ_CALENDAR；SysCal.kt 只有查询，无 update/delete；
+  详情弹窗（CalendarScreen sysDetail）纯只读。
+
+### 三、处置对表
+
+| # | 问题 | 处置 |
+|---|---|---|
+| P1 | 快照插入错位 | 插入位置改「前驱锚定」：滞留行锚在旧序前驱之后，可见行**每次按 visible 重排**（拖拽/同步来的新序即时生效，§102 的"勾掉不消失"由滞留机制继续保证） |
+| P2 | 拖拽弹回 | rememberReorderState 改同步计算（§108 同款收口），LaunchedEffect 退役 |
+| P3 | RadioDialog 8dp | 删显式 shape，走全局 3dp |
+| P4 | 删除线 | 去 LineThrough，灰字已够 |
+| P5 | 任务防连点 | mode=1 保存挂 saving 守卫 |
+| P6 | 放弃检查 | close() 按 mode 分别查任务/贴纸字段 |
+| P7 | 待办＋预填 | 待办页建任务不再带 selectedDay，默认无日期 |
+| P8 | 7 天口径 | 统一「今天起 7 天」= today..today+6，双端一致 |
+| P9 | 归档口径 | 星标/未来7天页面 shouldShow 补 archived 过滤，与首页计数同口径 |
+| P10 | 热区 | 星标按钮 38→44dp、心情 30→44dp 热区、年月切换 40→44dp；图标视觉尺寸不变 |
+| P11 | 删清单事务 | Dao 层新增 @Transaction 方法一次完成迁移+墓碑 |
+| P12 | 笔记草稿 | 草稿存 title+content+listUid（JSON），恢复条件改「与已存不同即提示恢复」，空内容也落盘（区分「无草稿」） |
+| P13 | 日记草稿 | 草稿存 mood+content，删空也落盘 |
+| P14 | 任务编辑统一 | EventEditorScreen 任务模式支持「编辑已有任务」：进入时预填、保存走 update；TaskDetailScreen 编辑/复制改跳全页；TaskEditDialog 退役 |
+| P15 | Web 弹窗 | .dialog 宽 86vw、padding 24px；同步 P7-P10 口径类改动 |
+| P16 | 系统日历可写 | Manifest 加 WRITE_CALENDAR；SysCal 加 updateEvent/deleteEvent；详情弹窗加「编辑/删除」；编辑复用日程编辑器骨架（标题/起止/全天/地点/备注），保存写回 ContentResolver；删除走确认弹窗。无写权限时点编辑/删除才请求，拒绝则解释并停留 |
+
+### 四、主动偏离与不做项
+
+| 项 | 判定 |
+|---|---|
+| 日记「离开自动保存 + ←」 | 有意偏离维持（§104 用户拍板，审计文档也认可） |
+| 履历/最近使用入口、图片附件、多关键词搜索 | 功能新增，入候选池不进本章（克制） |
+| Web 结构性差距（周/日视图、待办中枢、全页编辑器、贴纸 Popover） | §99 用户拍板「App 先行网页排后」，维持挂起；本章只做尺寸与口径同步 |
+| 主题 16 色全接渲染层 | §106 分批节奏维持 |
+| 真机验收 [~]→[x]、Room v6→v9 覆盖升级验证 | 需真机，列验收清单交用户 |
+
+### 五、批次
+
+| 批 | 内容 |
+|---|---|
+| 批 A | P1+P2（ListGestures 双 bug）+ P3-P10 小修复包 |
+| 批 B | P11-P13（事务 + 草稿完整性） |
+| 批 C | P14 任务编辑统一全页 |
+| 批 D | P16 系统日历可改可删 |
+| 批 E | P15 Web 同步 + i18n + 编译 + 发版 |

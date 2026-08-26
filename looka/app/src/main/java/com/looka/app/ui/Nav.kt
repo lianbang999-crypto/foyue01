@@ -270,6 +270,7 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
                         1 -> {
                             vm.prepareCreateDraft(vm.selectedDay)
                             vm.editorInitMode = 1
+                            vm.editorTaskDue = -1L   // §114 P7：待办页建任务不预填日期
                             nav.navigate("editor")
                         }
                         // 笔记页：笔记 tab 建笔记，日记 tab 建今天的日记

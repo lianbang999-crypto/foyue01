@@ -77,15 +77,22 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
     }
     val list = lists.find { it.uid == t.listUid }
     var moreMenu by remember { mutableStateOf(false) }
-    var editDlg by remember { mutableStateOf(false) }
-    var copyDlg by remember { mutableStateOf(false) }
     var delDlg by remember { mutableStateOf(false) }
+    // §114 P14：编辑/复制统一进全页编辑器（同"创建"一套容器与返回语义），
+    // 长 AlertDialog（TaskEditDialog）退役
+    fun openTaskEditor(prefill: com.looka.app.data.Task) {
+        vm.editorTaskPrefill = prefill
+        vm.prepareCreateDraft(if (prefill.dueDay >= 0) prefill.dueDay else com.looka.app.util.Fmt.today())
+        vm.editorInitMode = 1
+        vm.editorTaskDue = prefill.dueDay
+        nav.navigate("editor")
+    }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()
     ) {
         LookaTopBar(tr("任务"), onBack = { nav.popBackStack() }) {
-            IconButton(onClick = { editDlg = true }) {
+            IconButton(onClick = { openTaskEditor(t) }) {
                 Icon(LkIcons.Edit, tr("编辑"), tint = Ink, modifier = Modifier.size(20.dp))
             }
             // More：锚定菜单、无全屏遮罩（V013 [B]）——轻菜单只做选择，选完即关
@@ -99,7 +106,8 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                 ) {
                     DropdownMenuItem(
                         text = { Text(tr("复制"), fontSize = 14.sp) },
-                        onClick = { moreMenu = false; copyDlg = true }
+                        // §114 P14 / V013：Copy = 生成可取消的新 draft（id=0），保存才成为新任务
+                        onClick = { moreMenu = false; openTaskEditor(t.copy(id = 0, done = false, doneAt = -1L)) }
                     )
                     DropdownMenuItem(
                         text = { Text(tr("删除"), fontSize = 14.sp, color = HolidayRed) },
@@ -129,7 +137,7 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                 Text(
                     t.title, fontSize = 19.sp, fontWeight = FontWeight.SemiBold,
                     color = if (t.done) GrayText else Ink,
-                    textDecoration = if (t.done) TextDecoration.LineThrough else null,
+                    // §114 P4：去删除线 —— §102 定过「打勾+灰字即可，全站去删除线」，这里漏了
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { vm.setTaskStar(t, !t.starred) }) {
@@ -173,18 +181,6 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
         }
     }
 
-    // 编辑：复用现有对话框（字段级修改的事务边界仍是「保存」）
-    if (editDlg) TaskEditDialog(
-        vm, t, lists.filter { !it.archived },
-        onDismiss = { editDlg = false }
-    )
-    // 复制：预填的新 Draft —— 新对象、原任务不动；取消零残留，保存才成为新任务
-    if (copyDlg) TaskEditDialog(
-        vm, t.copy(id = 0, done = false, doneAt = -1L),
-        lists.filter { !it.archived },
-        isNew = true,
-        onDismiss = { copyDlg = false }
-    )
     if (delDlg) ConfirmDialog(
         title = tr("删除这个任务？"),
         text = t.title,

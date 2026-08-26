@@ -444,7 +444,7 @@ fun <T> RadioDialog(
             }
         },
         confirmButton = {},
-        shape = RoundedCornerShape(8.dp),
+        // §114 P3：显式 8dp 删除 —— 盖掉了 §113 的全局 3dp，同 App 两套圆角语言
         containerColor = Color.White
     )
 }

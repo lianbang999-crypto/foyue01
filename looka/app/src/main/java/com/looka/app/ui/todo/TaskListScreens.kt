@@ -243,7 +243,10 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
     val tasks by vm.tasks.collectAsState()
     val listMap = remember(lists) { lists.associateBy { it.uid } }
     // §102：快照式（§96.2 实机图 78/79 已证：取消星标、标完成，条目都还留在页上）
-    val shouldShow = remember(tasks) { tasks.filter { !it.done && it.starred }.map { it.uid } }
+    // §114 P9：补已归档清单过滤，与首页计数同口径
+    val shouldShow = remember(tasks, listMap) {
+        tasks.filter { !it.done && it.starred && listMap[it.listUid]?.archived != true }.map { it.uid }
+    }
     val alive = remember(tasks) { tasks.map { it.uid }.toSet() }
     val shown = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow, alive)
     val byUid = remember(tasks) { tasks.associateBy { it.uid } }
@@ -313,9 +316,13 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
     val today = Fmt.today()
 
     // §102：快照式 —— 同星标页，打勾不让条目当场消失
-    val shouldShow = remember(tasks, today) {
-        tasks.filter { !it.done && (it.dueDay in 0 until today || it.dueDay in today..(today + 7)) }
-            .map { it.uid }
+    // §114 P8/P9：口径改「今天起 7 天」（today..today+6，原 +7 是 8 个日期）；
+    // 补已归档清单过滤 —— 首页计数一直过滤，这里不过滤，归档后「计数 0 点进去有东西」
+    val shouldShow = remember(tasks, today, listMap) {
+        tasks.filter {
+            !it.done && listMap[it.listUid]?.archived != true &&
+                (it.dueDay in 0 until today || it.dueDay in today..(today + 6))
+        }.map { it.uid }
     }
     val alive = remember(tasks) { tasks.map { it.uid }.toSet() }
     val shown = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow, alive).toSet()
@@ -326,7 +333,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
         inView.filter { it.dueDay in 0 until today }.sortedBy { it.dueDay }
     }
     val byDay = remember(inView, today) {
-        (0..7).map { off ->
+        (0..6).map { off ->
             val d = today + off
             d to inView.filter { it.dueDay == d }
         }
@@ -678,7 +685,8 @@ fun TaskRowV2(
                 }
             }
         }
-        IconButton(onClick = onStar, modifier = Modifier.size(38.dp)) {
+        // §114 P10：热区 38→44dp（母档 touch.min 44×44），图标视觉 20dp 不变
+        IconButton(onClick = onStar, modifier = Modifier.size(44.dp)) {
             Icon(
                 if (t.starred) LkIcons.StarFill else LkIcons.Star,
                 tr("星标"),
@@ -689,201 +697,7 @@ fun TaskRowV2(
     }
 }
 
-/** 任务编辑弹窗：标题 / 清单 / 截止 / 备注 + AI 拆解 */
-@Composable
-fun TaskEditDialog(
-    vm: LookaViewModel,
-    t: Task,
-    lists: List<TaskList>,
-    // §85 B5：isNew = 「复制」语义 —— t 是预填的新对象（id=0），保存走 addTask 生成新任务，
-    // 取消零残留；原任务从头到尾不被触碰（V013「Copy ≠ Duplicate immediately」）
-    isNew: Boolean = false,
-    onDismiss: () -> Unit
-) {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var title by remember(t) { mutableStateOf(t.title) }
-    var due by remember(t) { mutableStateOf(t.dueDay) }
-    var memo by remember(t) { mutableStateOf(t.memo) }
-    var listUid by remember(t) { mutableStateOf(t.listUid) }
-    var dueDlg by remember { mutableStateOf(false) }
-    var listMenu by remember { mutableStateOf(false) }
-    var aiBusy by remember { mutableStateOf(false) }
-    var aiErr by remember { mutableStateOf<String?>(null) }
-    val subtasks = remember { mutableStateListOf<String>() }
-    val subChecked = remember { mutableStateListOf<Int>() }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { DlgTitle(if (isNew) tr("新建任务") else tr("编辑任务")) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                TextField(
-                    value = title, onValueChange = { title = it },
-                    placeholder = { Text(tr("任务名")) }, singleLine = true,
-                    colors = dialogFieldColors(),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                // 清单
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(tr("清单"), fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    val cur = lists.find { it.uid == listUid }
-                    Box {
-                        Row(
-                            Modifier.plainClick { listMenu = true },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            ColorDot(parseHex(cur?.colorHex ?: "#5C6670"), 9.dp)
-                            Spacer(Modifier.width(6.dp))
-                            Text(cur?.name ?: tr("我的清单"), fontSize = 14.sp)
-                        }
-                        DropdownMenu(
-                            expanded = listMenu, onDismissRequest = { listMenu = false },
-                            containerColor = Color.White
-                        ) {
-                            lists.forEach { l ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            ColorDot(parseHex(l.colorHex), 9.dp)
-                                            Spacer(Modifier.width(8.dp))
-                                            Text(l.name)
-                                        }
-                                    },
-                                    onClick = { listUid = l.uid; listMenu = false }
-                                )
-                            }
-                        }
-                    }
-                }
-                // 截止
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(tr("截止日期"), fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    Text(
-                        if (due >= 0) Fmt.dateCn(due) else tr("无"),
-                        fontSize = 14.sp, color = if (due >= 0) Ink else GrayText,
-                        modifier = Modifier.plainClick { dueDlg = true }
-                    )
-                    if (due >= 0) {
-                        Text(
-                            tr("  清除"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.plainClick { due = -1L }
-                        )
-                    }
-                }
-                // 推迟快捷（拖延一下也没关系 🦌）
-                Row(Modifier.padding(top = 6.dp)) {
-                    val today = Fmt.today()
-                    listOf(
-                        tr("今天") to today,
-                        tr("明天") to today + 1,
-                        tr("+1天") to (if (due >= 0) due + 1 else today + 1),
-                        tr("下周一") to (today + (8 - Fmt.d(today).dayOfWeek.value))
-                    ).forEach { (label, d0) ->
-                        Box(
-                            Modifier.padding(end = 6.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (due == d0) Ink else PanelBg)
-                                .plainClick { due = d0 }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(label, fontSize = 11.sp, color = if (due == d0) Color.White else Ink)
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = memo, onValueChange = { memo = it },
-                    label = { Text(tr("备注")) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
-                )
-                // AI 拆解
-                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        tr("✨ AI 拆解为子任务"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.plainClick {
-                            if (!aiBusy && title.isNotBlank()) {
-                                scope.launch {
-                                    aiBusy = true; aiErr = null
-                                    subtasks.clear(); subChecked.clear()
-                                    try {
-                                        val list = vm.aiSubtasks(title + if (memo.isNotBlank()) "（$memo）" else "")
-                                        if (list.isEmpty()) aiErr = tr("拆解失败，再试一次")
-                                        else {
-                                            subtasks.addAll(list)
-                                            subChecked.addAll(list.indices)
-                                        }
-                                    } catch (e: Exception) {
-                                        aiErr = e.message ?: tr("网络异常")
-                                    } finally {
-                                        aiBusy = false
-                                    }
-                                }
-                            }
-                        }
-                    )
-                    if (aiBusy) {
-                        Spacer(Modifier.width(8.dp))
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp, modifier = Modifier.size(14.dp),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                aiErr?.let { Text(it, fontSize = 12.sp, color = HolidayRed) }
-                if (subtasks.isNotEmpty()) {
-                    subtasks.forEachIndexed { i, s ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(
-                                checked = subChecked.contains(i),
-                                onCheckedChange = { if (it) subChecked.add(i) else subChecked.remove(i) }
-                            )
-                            Text(s, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                    TextButton(onClick = {
-                        val sel = subtasks.filterIndexed { i, _ -> subChecked.contains(i) }
-                        sel.forEach { vm.addTask(it, due, listUid = listUid) }
-                        toast(ctx, tr("已添加 {0} 个子任务", sel.size))
-                        onDismiss()
-                    }, enabled = subChecked.isNotEmpty()) {
-                        Text(tr("添加 {0} 个子任务", subChecked.size), color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.End) {
-                if (!isNew) TextButton(onClick = { vm.deleteTask(t); onDismiss() }) {
-                    Text(tr("删除"), color = Ink, fontWeight = FontWeight.SemiBold)
-                }
-                TextButton(
-                    onClick = {
-                        if (isNew) vm.addTask(title.trim(), due, memo.trim(), listUid, starred = t.starred)
-                        else vm.updateTask(
-                            t.copy(title = title.trim(), dueDay = due, memo = memo.trim(), listUid = listUid)
-                        )
-                        onDismiss()
-                    },
-                    enabled = title.isNotBlank()
-                ) { Text(tr("保存")) }
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) } },
-        containerColor = Color.White
-    )
-
-    if (dueDlg) LookaDatePicker(
-        initialDay = if (due >= 0) due else Fmt.today(),
-        onPick = { due = it },
-        onDismiss = { dueDlg = false }
-    )
-}
+// §114 P14：TaskEditDialog 已退役 —— 任务编辑/复制统一走全页编辑器（EventEditorScreen 任务面）
 
 /** 新建/编辑清单：名称 + 48 色大色板（Lifebear 式） */
 @Composable
