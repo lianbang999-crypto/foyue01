@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -125,11 +127,14 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             onBack = { saveAndBack() },
             onTitleClick = { dateDlg = true }
         ) {
-            if (existed) {
-                IconButton(onClick = { delDlg = true }) {
-                    Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
-                }
-            }
+            // §110：**删除键从顶栏拿掉了。**
+            //
+            // 实机（图 115/116）日记编辑页顶栏是 `✕ 日期▾ 📷 保存` —— 没有删除。
+            // 我们原来把垃圾桶**紧挨着保存**放，这是两个后果相反的操作贴在一起：
+            // 点错保存只是多存一次，点错删除是一篇日记没了。
+            //
+            // 删前查过全部可达路径：日记列表页仍可左滑删除
+            // （NotesDiaryScreen:357 + 5 秒撤销条），剩 1 条，不违反「删入口前确认剩 ≥1 条」。
             SaveButton(enabled = content.isNotBlank()) {
                 vm.saveDiary(day, mood, content) {
                     com.looka.app.data.Prefs.clearDraft(ctx, draftKey)
@@ -149,9 +154,25 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
                 .verticalScroll(rememberScrollState())
         )
 
-        // §77 N1：心情从顶部整行大圆圈挪到底部一行小图标。
-        // 原来一进页面先横着五个 42dp 圆圈，等于开口就问「你今天心情如何」——
-        // 与「安静等待用户先写」相悖。现在写完了顺手点一下，不点也能存。
+        // §110：**正在打字的时候，屏幕上只有你的字。**
+        //
+        // 这一条是拿实机图 115/116 对照出来的。数一下屏幕上有几样东西：
+        //   Lifebear 写日记：日期(可改) · 相机 · 保存 · 你的字 —— **4 样**
+        //   我们（改前）：  日期 · 删除 · 保存 · 你的字 · 5 个心情 · AI 润色 —— **9 样**
+        // 用户还没写完一句话，屏幕上已经有一排表情和一个"AI 润色"在等着他。
+        // 一个一直悬在那儿的润色按钮，等于一直在说「你写得不够好」。
+        //
+        // §77 N1 已经把心情从顶部大圆圈挪到底部小图标，方向是对的，但**还是常驻**。
+        // 现在改成：**输入法弹出（正在写）就淡出，收起键盘才回来。**
+        // 不是删掉功能 —— 写完了它们都在，写的时候不打扰。
+        val imeUp = WindowInsets.ime
+            .getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+        androidx.compose.animation.AnimatedVisibility(
+            visible = !imeUp,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(200)),
+            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
+        ) {
+        Column {
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -202,6 +223,8 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
                 enabled = content.isNotBlank() && !aiBusy
             ) { Text(tr("✨ AI 润色"), fontSize = 13.sp, color = MaterialTheme.colorScheme.primary) }
         }
+        }   // Column（心情 + AI 栏）
+        }   // AnimatedVisibility：正在打字时整组淡出
     }
 
     polished?.let { p ->
