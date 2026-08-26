@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 38,
-  "versionName": "1.21.0",
+  "versionCode": 39,
+  "versionName": "1.22.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4384893,
-  "sha256": "d788f0162f405c43dc8fbc850e07c9f6c03a3c930d8b15f0a66cac55d4db6009",
-  "changelog": "全新视觉对齐:更清爽的弹窗与按钮、更多页新顶区、更醒目的空状态与选中日,细节全面向手帐质感看齐",
+  "size": 4385353,
+  "sha256": "bb34ea864496a5e716d09a718542a60074437fbc1047db46b3ec6f5d635b8ecb",
+  "changelog": "系统日历日程现在可以直接修改和删除了；修复任务列表顺序错乱、拖拽排序弹回等 16 处问题；草稿保护更完整",
   "minSupported": 1
 }
