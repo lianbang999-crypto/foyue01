@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 39,
-  "versionName": "1.22.0",
+  "versionCode": 40,
+  "versionName": "1.22.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
   "size": 4385353,
-  "sha256": "bb34ea864496a5e716d09a718542a60074437fbc1047db46b3ec6f5d635b8ecb",
-  "changelog": "系统日历日程现在可以直接修改和删除了；修复任务列表顺序错乱、拖拽排序弹回等 16 处问题；草稿保护更完整",
+  "sha256": "22f24a69274baddffc2a4e708cf0351488291f062ede7420e5e4e117e5acbc2c",
+  "changelog": "修复贴纸贴在日期边缘被切一半、待办打勾后任务从眼前消失、日历右下角两个「回今天」重叠",
   "minSupported": 1
 }
