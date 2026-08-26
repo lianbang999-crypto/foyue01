@@ -22,7 +22,7 @@ class LookaApp : Application() {
             .addMigrations(
                 LookaDb.MIGRATION_3_4, LookaDb.MIGRATION_4_5, LookaDb.MIGRATION_5_6,
                 LookaDb.MIGRATION_6_7, LookaDb.MIGRATION_7_8,
-                LookaDb.MIGRATION_8_9)
+                LookaDb.MIGRATION_8_9, LookaDb.MIGRATION_9_10)
             // 仅 v1/v2 早期内部包允许破坏式升级；v3 起一律走正规迁移（B13）
             .fallbackToDestructiveMigrationFrom(1, 2)
             .build()

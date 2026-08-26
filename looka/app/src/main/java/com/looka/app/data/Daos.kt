@@ -382,3 +382,35 @@ interface ConflictDao {
     @Query("DELETE FROM conflict_log WHERE id = :id")
     suspend fun delete(id: Long)
 }
+
+
+// ── §117 A：附件 ──
+@Dao
+interface AttachmentDao {
+    @Query("SELECT * FROM Attachment WHERE ownerType = :type AND ownerUid = :owner AND deleted = 0 ORDER BY id")
+    fun byOwner(type: String, owner: String): kotlinx.coroutines.flow.Flow<List<Attachment>>
+
+    @Query("SELECT * FROM Attachment WHERE ownerType = :type AND ownerUid = :owner AND deleted = 0 ORDER BY id")
+    suspend fun byOwnerOnce(type: String, owner: String): List<Attachment>
+
+    @Query("SELECT * FROM Attachment WHERE uid = :uid LIMIT 1")
+    suspend fun byUid(uid: String): Attachment?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(a: Attachment): Long
+
+    @Update
+    suspend fun update(a: Attachment)
+
+    @Query("SELECT * FROM Attachment WHERE dirty = 1")
+    suspend fun listDirty(): List<Attachment>
+
+    @Query("SELECT * FROM Attachment WHERE remote = 0 AND deleted = 0 AND fileName != ''")
+    suspend fun listNeedUpload(): List<Attachment>
+
+    @Query("UPDATE Attachment SET dirty = 0 WHERE uid = :uid")
+    suspend fun clearDirty(uid: String)
+
+    @Query("SELECT COUNT(*) FROM Attachment WHERE ownerType = :type AND ownerUid = :owner AND deleted = 0")
+    suspend fun countOf(type: String, owner: String): Int
+}

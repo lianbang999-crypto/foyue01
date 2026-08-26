@@ -74,6 +74,17 @@ def main() -> int:
     camel = {re.sub(r"_(\w)", lambda m: m.group(1).upper(), k) for k in need}
     ok &= compare("LookaTokens ↔ theme-tokens.schema", camel, fields)
 
+    # §117 E3：皮肤包合同（theme-package.v1）三方对账 ——
+    # ① JSON 可解析且内嵌引用 theme-tokens；② Web 语义变量 --lk-* 与合同键一一对应。
+    # 皮肤包是外部（含 AI）按合同生成的，Web 端少接一个变量，装包后就有一块颜色不跟。
+    pkg = json.loads((ROOT / "docs/contracts/theme-package.v1.json").read_text())
+    assert pkg["properties"]["schema_version"]["const"] == "1.0"
+    css = (ROOT / "server/public/style.css").read_text()
+    css_vars = set(re.findall(r"--lk-([a-z-]+):", css))
+    css_semantic = {v.replace("-", "_") for v in css_vars if not v.startswith("skin_") and v not in ("skin",)}
+    css_semantic = {v for v in css_semantic if v not in ("skin_top", "skin_bottom")}
+    ok &= compare("Web --lk-* ↔ theme-tokens.schema", need, css_semantic)
+
     if ok:
         print("\n全部一致。")
     else:

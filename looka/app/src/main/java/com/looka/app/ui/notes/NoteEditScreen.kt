@@ -60,6 +60,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
     var delDlg by remember { mutableStateOf(false) }
     // §86 C3：清单归属。新建时继承笔记页当前筛选（"全部" → 默认清单）
     var listUid by remember { mutableStateOf(vm.noteListSel.ifEmpty { com.looka.app.data.NOTE_LIST_DEFAULT }) }
+    var noteUid by remember { mutableStateOf("") }   // §117 A：已存在笔记的稳定键（附件宿主）
     var listDlg by remember { mutableStateOf(false) }
     var createDlg by remember { mutableStateOf(false) }
     val lists by vm.noteLists.collectAsState()
@@ -75,6 +76,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
             title = it.title
             content = it.content
             listUid = it.listUid
+            noteUid = it.uid
         }
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
         if (d.isNotBlank()) {
@@ -133,7 +135,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
         }
         TextField(
             value = title, onValueChange = { title = it },
-            placeholder = { Text(tr("标题"), fontSize = 17.sp, color = Color(0xFFB9BBB9)) },
+            placeholder = { Text(tr("标题"), fontSize = 17.sp, color = com.looka.app.ui.theme.PlaceholderText) },
             textStyle = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
             colors = clearFieldColors(), singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
@@ -159,9 +161,14 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
             )
         }
         Hairline()
+        // §117 A：附件区。新建笔记要先保存才有稳定 uid —— 保存后再进来可加图（v1 限制，候选池有"新建即预生成 uid"）
+        if (noteUid.isNotBlank()) {
+            com.looka.app.ui.common.AttachmentSection(vm, "note", noteUid)
+            Hairline()
+        }
         TextField(
             value = content, onValueChange = { content = it },
-            placeholder = { Text(tr("开始写…"), fontSize = 15.sp, color = Color(0xFFB9BBB9)) },
+            placeholder = { Text(tr("开始写…"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
             textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
             colors = clearFieldColors(),
             modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)

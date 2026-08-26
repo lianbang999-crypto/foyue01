@@ -169,6 +169,9 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                 }
                 Hairline()
             }
+            // §117 A：附件区（图片 v1）
+            com.looka.app.ui.common.AttachmentSection(vm, "task", t.uid)
+            Hairline()
             if (t.done && t.doneAt > 0) {
                 DetailField(tr("完成于")) {
                     // 毫秒 → 本地日：与已完成列表同一换算（直接 /86400000 是 UTC 日，CST 早晨会错一天）

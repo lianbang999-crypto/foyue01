@@ -66,4 +66,8 @@ object LkIcons {
     val StarFill: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_star_fill)
     /** U 形回弯箭头：日历「回到今天」浮动按钮（照实机图 114 的字形描） */
     val ReturnToday: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_return_today)
+
+    // §117 A：附件（相机入口 + 图片占位）
+    val Camera: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_camera)
+    val Image: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_image)
 }

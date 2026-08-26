@@ -34,7 +34,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.looka.app.data.PlanState
@@ -277,7 +276,7 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             TextField(
                 // 用户一动文字，chip 的专用动作就作废，退化成普通对话
                 value = input, onValueChange = { input = it; chipAction = null },
-                placeholder = { Text(tr("和小鹿说点什么…"), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
+                placeholder = { Text(tr("和小鹿说点什么…"), fontSize = 14.sp, color = com.looka.app.ui.theme.PlaceholderText) },
                 colors = clearFieldColors(),
                 maxLines = 4,
                 // F1：回车即发送（对齐网页端 chatText 的 Enter 行为）

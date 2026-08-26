@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://looka.foyue.org/contracts/theme-package.v1.json",
+  "title": "Looka Theme Package v1（皮肤包）",
+  "description": "换肤范围按 Lifebear 着せかえ实机（0826 图 112-120）：语义色全量 + 顶栏横幅 + 底栏背景 + 五个导航图标 + 锁屏背景。月历格子区白底与周日红/周六蓝的时间语义由渲染层守护，包不可越权。App 与 Web 消费同一份包。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "name", "tokens"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]{1,40}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "author": { "type": "string", "maxLength": 60 },
+    "price_antler": { "type": "integer", "minimum": 0, "description": "鹿角售价；0 = 免费" },
+    "cover": { "$ref": "#/$defs/asset", "description": "商店封面竖图（3:4 以上，对齐图 119 网格）" },
+    "tokens": {
+      "$ref": "https://looka.foyue.org/contracts/theme-tokens.schema.json",
+      "description": "语义色全量（theme-tokens v1 整份内嵌）"
+    },
+    "assets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top_banner": { "$ref": "#/$defs/asset", "description": "顶栏横幅（图 114：状态栏下主题带，建议 1136×260 以上）" },
+        "bottom_bg": { "$ref": "#/$defs/asset", "description": "底栏背景带（图 114：草地+栅栏那条）" },
+        "nav_icons": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "calendar": { "$ref": "#/$defs/asset" },
+            "todo": { "$ref": "#/$defs/asset" },
+            "plus": { "$ref": "#/$defs/asset" },
+            "notes": { "$ref": "#/$defs/asset" },
+            "more": { "$ref": "#/$defs/asset" }
+          },
+          "description": "五个导航图标（图 114 全替换；缺省时用主题色染默认图标）"
+        },
+        "lock_bg": { "$ref": "#/$defs/asset", "description": "口令锁页背景（图 115）" },
+        "lock_dots": {
+          "type": "array", "items": { "$ref": "#/$defs/asset" }, "maxItems": 6,
+          "description": "锁屏密码占位图标序列（图 115 的四匹马）"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "asset": {
+      "type": "string",
+      "pattern": "^(assets/[a-z0-9_/.-]+\\.(png|webp|jpg)|https://[^\"]+)$",
+      "description": "包内相对路径或 https 绝对地址"
+    }
+  }
+}

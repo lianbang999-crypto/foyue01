@@ -72,14 +72,18 @@ fun tokensOf(t: DeerTheme) = LookaTokens(
                                          // 改成跟主题走会当场变色，超出本批"零像素改动"的范围
     textPrimary = t.ink,
     textSecondary = RAW_GRAY,
-    textTertiary = RAW_GRAY_LIGHT,
+    textTertiary = Color(0xFFB9BBB9),   // §117 E1：真实占位色（6 处渲染点都是它，RAW_GRAY_LIGHT 无人在用）
     accent = t.primary,
     weekend = RAW_WEEKEND,
     holiday = RAW_HOLIDAY,
     selection = t.container,
-    today = t.primary,
+    // §117 E1 出厂值修正：§106 建槽时是"拍脑袋对映"，没对着渲染层抄。
+    // 今天块实际画的是墨色方块（CalendarScreen isToday → Ink），不是 primary；
+    // 无分类事件兜底色实际是 0xFF9AA0A6，不是 primary。出厂值 = 真实渲染值，
+    // 接消费方才是零像素回归。
+    today = RAW_INK,
     eventAllDay = t.container,
-    eventTimed = t.primary,
+    eventTimed = Color(0xFF9AA0A6),
     eventExternal = RAW_GRAY,
     divider = RAW_HAIRLINE,
     scrim = RAW_SCRIM,
@@ -138,3 +142,15 @@ object Tokens {
         )
     }.getOrNull()
 }
+
+
+// ── §117 E1：新增三个已接消费方的槽 getter（与 HolidayRed/GrayText 同款总线读法）──
+
+/** 今天块底色（月历 isToday 方块）。装主题包时随 today 槽换 */
+val TodayBlock: Color get() = Tokens.active.today
+
+/** 占位文字色（输入框 placeholder 六处）。随 text_tertiary 槽 */
+val PlaceholderText: Color get() = Tokens.active.textTertiary
+
+/** 无分类事件兜底色（月格事件条 / 日面板色点）。随 event_timed 槽 */
+val EventFallback: Color get() = Tokens.active.eventTimed

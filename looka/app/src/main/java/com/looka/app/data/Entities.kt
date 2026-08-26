@@ -263,3 +263,26 @@ data class ConflictLog(
     val payload: String,           // 被覆盖版本的文本快照（可复制找回）
     val occurredAt: Long = System.currentTimeMillis()
 )
+
+
+/**
+ * §117 A：附件（图片 v1）。
+ * 字节在两处：本地 `files/attachments/<uid>.jpg`（fileName 非空 = 本地有）；
+ * 云端 R2 `attach/<userId>/<uid>`（remote = 已上云）。元数据走同步 kind="attachment"，
+ * 字节独立上传/按需下载 —— 元数据先到、图片后到是正常中间态，UI 按"占位图"处理。
+ * ownerUid 用宿主的 uid（全端稳定键）；视频明确不在 v1（用户拍板第二步评估）。
+ */
+@Entity
+data class Attachment(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uid: String = newUid(),
+    val ownerType: String,            // "event" | "task" | "note" | "diary"
+    val ownerUid: String,
+    val fileName: String = "",        // 本地文件名；"" = 本地还没有字节
+    val mime: String = "image/jpeg",
+    val size: Long = 0,
+    val remote: Boolean = false,      // 字节是否已在云端
+    val deleted: Boolean = false,
+    val dirty: Boolean = true,
+    val updatedAt: Long = System.currentTimeMillis()
+)

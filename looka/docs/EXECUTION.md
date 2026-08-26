@@ -1487,3 +1487,26 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | R3 | 更新弹窗显示「当前版本」 | [~] |
 | R4 | 清单详情持续显示已完成节（对齐 Lifebear 图 11） | [~] |
 | R5 | 日面板任务行整行点击进详情 | [~] |
+
+## P57 · §117 六线总攻(v1.23.0(42),2026-08-27)
+
+| | 项 | 状态 |
+|---|---|---|
+| E1 | App 语义槽全接渲染层:colorScheme 走 Tokens.active + today/textTertiary/eventTimed 出厂值修正与消费方接入 | [~] |
+| E2 | Web 语义变量层 --lk-*(16 槽对齐合同)+ applySkinPack 加载器 + 顶栏/底栏皮肤插槽 | [~] |
+| E3 | theme-package.v1.json 皮肤包合同 + check_contracts 四方对账(全绿) | [x] |
+| A1 | Attachment 实体 + Dao + Room v9→v10 迁移 | [~] |
+| A2 | Server:/api/attach put/get/del(R2 attach/ 前缀,归属键隔离,≤5MB 限速) | [~] |
+| A3 | SyncEngine:kind=attachment push/pull/回执 + 字节上传器(单轮≤10张) | [~] |
+| A4 | App UI:AttachmentSection(拍照/相册/压缩/缩略图/全屏预览/删除)挂 4 处(任务详情/日程详情/日记/笔记) | [~] |
+| A5 | Web:mountAttachRow 挂 3 modal(事件/笔记/日记)+ lightbox + blob 鉴权加载 | [~] |
+| A6 | 新建对象需先保存才能加图(uid 未生成);候选池:新建即预生成 uid | 记录 |
+| B1 | Server:entitlements 表 + /api/shop/items/buy(antlerSpend 记账,Pro 免费领) | [~] |
+| B2 | App:StickerPicker 锁定态(🔒 tab + PackUnlockCard 解锁卡);敦煌 30🦌/牛来 20🦌/日常恒免费 | [~] |
+| B3 | 已放置贴纸永远照常渲染(不收回旧数据);Web 商店随选择器挂账批 C | 记录 |
+| D1 | 编辑器「最近使用」入口(最近10个标题,select-and-close);Web 用 datalist | [~] |
+| D2 | 多关键词 AND 搜索(matchWords 三端同口径:笔记/日记/待办 ×2端) | [~] |
+| D3 | DeerLoading 统一加载态(替换 3 处转圈,清 4 处孤儿 import) | [~] |
+| C5 | Web 贴纸 Popover:pointer-events 打开+登记日程/编辑/复合删除(对齐图30语义) | [~] |
+| C挂 | 周/日视图、待办中枢、日记同级、全页编辑器、已完成清单页 —— 页面级重构,下轮专章 | [ ] |
+| F | 小鹿 AI:代码全通,wrangler secret list=[] 实证无 SILICONFLOW_KEY,等用户提供 | 等用户 |

@@ -952,7 +952,7 @@ private fun DayCellV2(
             ) {
                 if (isToday) {
                     Box(
-                        Modifier.size(16.dp).clip(RoundedCornerShape(3.dp)).background(Ink),
+                        Modifier.size(16.dp).clip(RoundedCornerShape(3.dp)).background(com.looka.app.ui.theme.TodayBlock),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -1011,7 +1011,7 @@ private fun DayCellV2(
             for (o in occList) {
                 if (shown >= budget) break
                 if (o.seriesId in bubbleSids) continue
-                EventLine(o, catColorMap[o.categoryId] ?: Color(0xFF9AA0A6), evFs, evLh)
+                EventLine(o, catColorMap[o.categoryId] ?: com.looka.app.ui.theme.EventFallback, evFs, evLh)
                 shown++
             }
             for (e in sysList) {
@@ -1251,7 +1251,7 @@ private fun DaySheet(
                         }
                         Box(
                             Modifier.size(11.dp).clip(CircleShape)
-                                .background(catColorMap[o.categoryId] ?: Color(0xFF9AA0A6))
+                                .background(catColorMap[o.categoryId] ?: com.looka.app.ui.theme.EventFallback)
                         )
                         Spacer(Modifier.width(12.dp))
                         // §75 M2（图42）：绑定贴纸的日程，缩略图出现在标题左 —— 列表里靠它认贴纸
@@ -1366,7 +1366,7 @@ private fun DaySheet(
                         } else {
                             Text(
                                 tr("随便写点什么吧 ✎"),
-                                fontSize = 13.sp, color = Color(0xFFB9BBB9),
+                                fontSize = 13.sp, color = com.looka.app.ui.theme.PlaceholderText,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis
                             )
                         }

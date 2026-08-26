@@ -115,7 +115,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             val qq = q.trim()
             val hit = remember(qq, tasks) {
                 if (qq.isBlank()) emptyList()
-                else tasks.filter { !it.deleted && (it.title.contains(qq, true) || it.memo.contains(qq, true)) }
+                else tasks.filter { !it.deleted && com.looka.app.util.matchWords(qq, it.title, it.memo) }   // §117 D2：分词 AND
             }
             val listMap = remember(lists) { lists.associateBy { it.uid } }
             when {

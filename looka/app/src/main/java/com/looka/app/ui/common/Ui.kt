@@ -49,6 +49,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -611,4 +612,27 @@ fun dialogFieldColors(): TextFieldColors = TextFieldDefaults.colors(
 /** 轻提示 */
 fun toast(ctx: android.content.Context, msg: String) {
     android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_SHORT).show()
+}
+
+
+/**
+ * §117 D3：统一加载态 —— 小鹿呼吸。
+ * 替代散在各处的 Material 转圈：转圈是"系统在忙"，小鹿是"小鹿在忙"——
+ * 加载也是品牌时刻。尺寸跟随字号语义，动画 900ms 呼吸缩放，reduce-motion 时由
+ * 系统动画缩放自动停。
+ */
+@Composable
+fun DeerLoading(size: androidx.compose.ui.unit.TextUnit = 22.sp, modifier: Modifier = Modifier) {
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "deerLoad")
+    val scale by t.animateFloat(
+        0.85f, 1.12f,
+        androidx.compose.animation.core.infiniteRepeatable(
+            androidx.compose.animation.core.tween(900),
+            androidx.compose.animation.core.RepeatMode.Reverse
+        ), label = "deerScale"
+    )
+    Text(
+        "🦌", fontSize = size,
+        modifier = modifier.graphicsLayer { scaleX = scale; scaleY = scale }
+    )
 }

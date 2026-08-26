@@ -9,9 +9,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         Category::class, EventSeries::class, EventException::class, Reminder::class,
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
-        Template::class, ConflictLog::class
+        Template::class, ConflictLog::class, Attachment::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -25,6 +25,7 @@ abstract class LookaDb : RoomDatabase() {
     abstract fun stampDao(): StampDao
     abstract fun templateDao(): TemplateDao
     abstract fun conflictDao(): ConflictDao
+    abstract fun attachmentDao(): AttachmentDao
 
     companion object {
         /**
@@ -104,6 +105,22 @@ abstract class LookaDb : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE note ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("UPDATE note SET sortOrder = -updatedAt")
+            }
+        }
+
+        /** v9 → v10（§117 A）：附件表（图片 v1）。纯新增表，不动旧数据 */
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS Attachment (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        uid TEXT NOT NULL, ownerType TEXT NOT NULL, ownerUid TEXT NOT NULL,
+                        fileName TEXT NOT NULL DEFAULT '', mime TEXT NOT NULL DEFAULT 'image/jpeg',
+                        size INTEGER NOT NULL DEFAULT 0, remote INTEGER NOT NULL DEFAULT 0,
+                        deleted INTEGER NOT NULL DEFAULT 0, dirty INTEGER NOT NULL DEFAULT 1,
+                        updatedAt INTEGER NOT NULL DEFAULT 0
+                    )""".trimIndent()
+                )
             }
         }
 

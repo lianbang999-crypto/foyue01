@@ -1,16 +1,40 @@
 /* Looka 网页端 —— 白底工具感 + 九色主题（与 App 同视觉语言） */
 :root {
-  --primary: #55B04B;
-  --container: #EAF6E7;
+  /* §117 E2：语义层与 theme-tokens.schema v1 同名（lk- 前缀 + kebab）。
+     旧变量名保留为别名逐步退役 —— 老样式规则不用一次全改，
+     但 applyTheme() 只写 --lk-*，别名跟着引用自动变。 */
+  --lk-surface: #FFFFFF;
+  --lk-surface-variant: #F7F8F7;
+  --lk-text-primary: #1B1B1F;
+  --lk-text-secondary: #727776;
+  --lk-text-tertiary: #B9BBB9;
+  --lk-accent: #55B04B;
+  --lk-weekend: #4A7DDC;
+  --lk-holiday: #E0504A;
+  --lk-selection: #EAF6E7;
+  --lk-today: #1B1B1F;
+  --lk-event-all-day: #EAF6E7;
+  --lk-event-timed: #9AA0A6;
+  --lk-event-external: #727776;
+  --lk-divider: #D8DBD8;   /* 对齐 App 出厂 RAW_HAIRLINE；网页行分隔 --hair 另有更浅的 ECECEC，不并槽 */
+  --lk-scrim: rgba(0, 0, 0, 0.6);
+  --lk-danger: #E0504A;
+  /* 皮肤资产槽（url() 或 none）：顶栏横幅 / 底栏背景（Lifebear 图 114 的两条主题带）*/
+  --lk-skin-top: none;
+  --lk-skin-bottom: none;
+
+  /* —— 旧别名（引用语义层）——*/
+  --primary: var(--lk-accent);
+  --container: var(--lk-selection);
   --on-container: #1E4D19;
-  --ink: #1B1B1F;
-  --gray: #727776;
-  --hair: #ECECEC;
-  --panel: #F7F8F7;
+  --ink: var(--lk-text-primary);
+  --gray: var(--lk-text-secondary);
+  --hair: #ECECEC;   /* 保持原值：行分隔比格线浅一档，并槽会全站变深（零回归红线） */
+  --panel: var(--lk-surface-variant);
   --dim: #F2F3F2;
-  --red: #E0504A;
-  --sat: #4A7DDC;
-  --dark: #1B1B1F;
+  --red: var(--lk-holiday);
+  --sat: var(--lk-weekend);
+  --dark: var(--lk-text-primary);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
@@ -317,7 +341,7 @@ main { max-width: 860px; margin: 0 auto; }
 }
 
 /* ===== v1.3：网格线加深（原来太浅几乎看不见） ===== */
-:root{ --line:#d8dbd8; }
+:root{ --line: var(--lk-divider); }   /* §117 E2：格线并入语义层，不再另立 */
 .month-grid .day-cell{ border-right:1px solid var(--line); border-bottom:1px solid var(--line) }
 .week-header span{ border-right:1px solid transparent }
 
@@ -537,3 +561,43 @@ body, main, .pane{ background: var(--paper); }
 .more-black-top button{ flex:1; display:flex; flex-direction:column; align-items:center; gap:5px;
   color:#fff; font-size:12px; }
 .more-black-top .bt-ic{ font-size:22px; line-height:1; }
+
+
+/* ── §117 E2：皮肤插槽（Lifebear 图 114 的两条主题带）──
+   默认 none 零开销；装包后 body.skinned 生效。图片盖在底色上、内容文字在图之上。 */
+body.skinned .topbar {
+  background-image: var(--lk-skin-top);
+  background-size: cover; background-position: center bottom;
+}
+body.skinned .bottombar {
+  background-image: var(--lk-skin-bottom);
+  background-size: cover; background-position: center top;
+}
+
+/* ── §117 A：附件区（图片 v1）── */
+.att-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 0; }
+.att-thumb {
+  width: 64px; height: 64px; border-radius: 4px; overflow: hidden;
+  background: #F0F1F0; cursor: pointer; flex: none;
+}
+.att-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.att-add {
+  width: 64px; height: 64px; border-radius: 4px; border: 1px solid var(--lk-divider);
+  color: var(--gray); font-size: 22px; flex: none;
+}
+.att-light {
+  position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+}
+.att-light img { max-width: 96vw; max-height: 84vh; object-fit: contain; }
+.att-light .att-acts { position: absolute; top: 14px; right: 14px; display: flex; gap: 10px; }
+.att-light .att-acts button { color: #fff; font-size: 14px; padding: 6px 10px; }
+
+/* §117 C5：贴纸 Popover（对齐 App 锚定菜单：白底 4px 圆角轻阴影，无 scrim） */
+.stamp-pop {
+  position: fixed; z-index: 260; background: #fff; border-radius: 4px;
+  box-shadow: 0 3px 14px rgba(0,0,0,.18); display: flex; overflow: hidden;
+}
+.stamp-pop button { padding: 10px 16px; font-size: 14px; color: var(--ink); }
+.stamp-pop button + button { border-left: 0.8px solid var(--hair); }
+.stamp-pop button.danger { color: var(--red); }

@@ -680,6 +680,56 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun note(id: Long) = noteDao.byId(id)
 
+    // ── §117 A：附件（图片 v1）──
+
+    fun attachmentsOf(type: String, ownerUid: String) = db.attachmentDao().byOwner(type, ownerUid)
+
+    /** §117 D1：最近用过的日程标题（去重、按最近编辑倒序）——编辑器"最近使用"入口 */
+    fun recentEventTitles(limit: Int): List<String> =
+        seriesAll.value.asSequence()
+            .filter { !it.deleted && it.title.isNotBlank() }
+            .sortedByDescending { it.updatedAt }
+            .map { it.title }.distinct().take(limit).toList()
+
+    /** 导入一张图（相机/相册 uri）：压缩落盘 → 建记录 → 触发同步上传 */
+    fun addAttachment(type: String, ownerUid: String, uri: android.net.Uri, onDone: (Boolean) -> Unit = {}) =
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val uid = com.looka.app.data.newUid()
+            val r = com.looka.app.util.AttachmentStore.importImage(getApplication(), uri, uid)
+            if (r == null) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone(false) }
+                return@launch
+            }
+            db.attachmentDao().upsert(
+                com.looka.app.data.Attachment(
+                    uid = uid, ownerType = type, ownerUid = ownerUid,
+                    fileName = r.first, size = r.second
+                )
+            )
+            afterChange()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone(true) }
+        }
+
+    /** 删附件：墓碑走同步、本地字节即删、云端字节尽力删（失败也无害，键私有） */
+    fun deleteAttachment(a: com.looka.app.data.Attachment) = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+        com.looka.app.util.AttachmentStore.delete(getApplication(), a.fileName)
+        db.attachmentDao().update(a.copy(deleted = true, dirty = true, updatedAt = now()))
+        runCatching { com.looka.app.net.Api.attachDel(getApplication(), a.uid) }
+        afterChange()
+    }
+
+    /** 云端有、本地无字节的附件：按需拉下来（详情页展示时触发） */
+    fun ensureAttachmentLocal(a: com.looka.app.data.Attachment, onDone: () -> Unit = {}) =
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            if (a.fileName.isNotBlank() || !a.remote) return@launch
+            val fn = a.uid + ".jpg"
+            val f = com.looka.app.util.AttachmentStore.fileOf(getApplication(), fn)
+            if (com.looka.app.net.Api.attachGet(getApplication(), a.uid, f)) {
+                db.attachmentDao().update(a.copy(fileName = fn, dirty = false))
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { onDone() }
+            }
+        }
+
     fun saveNote(
         id: Long, title: String, content: String,
         listUid: String = NOTE_LIST_DEFAULT, onDone: () -> Unit = {}

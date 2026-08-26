@@ -112,3 +112,12 @@ CREATE TABLE IF NOT EXISTS pay_orders (
   handled_at INTEGER NOT NULL,
   PRIMARY KEY (channel, order_no)   -- 主键就是防重复发放的锁
 );
+
+-- §117 B：鹿角商店 —— 已解锁的商品（贴纸包 v1；将来主题包同表）
+CREATE TABLE IF NOT EXISTS entitlements (
+  user_id    INTEGER NOT NULL,
+  item_id    TEXT    NOT NULL,      -- 'pack:dunhuang' / 'pack:cow' / 将来 'theme:xxx'
+  price_paid INTEGER NOT NULL,      -- 成交鹿角数（Pro 免费领取 = 0，留审计线索）
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, item_id)
+);

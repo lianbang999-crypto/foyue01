@@ -413,6 +413,7 @@ private fun EventForm(
     var startTimeDlg by remember { mutableStateOf(false) }
     var endTimeDlg by remember { mutableStateOf(false) }
     var tplSheet by remember { mutableStateOf(false) }
+    var recentSheet by remember { mutableStateOf(false) }  // §117 D1：最近使用（履历）
 
     // 节奏（2026-08-21 对齐 Lifebear 实机录屏）：进来光标就在标题上、键盘已经起来。
     // 少这一步，用户每次新建都要多点一下、多停半秒去找"从哪开始写"。
@@ -449,6 +450,10 @@ private fun EventForm(
                 singleLine = true,
                 modifier = Modifier.weight(1f).padding(start = 4.dp).focusRequester(titleFocus)
             )
+            // §117 D1：最近使用（Lifebear 履历位）—— 上次写过的标题一点即填
+            IconButton(onClick = { recentSheet = true }) {
+                Icon(LkIcons.Clock, tr("最近使用"), tint = GrayText, modifier = Modifier.size(20.dp))
+            }
             IconButton(onClick = { tplSheet = true }) {
                 Icon(LkIcons.Tag, tr("日程模板"), tint = GrayText, modifier = Modifier.size(20.dp))
             }
@@ -614,6 +619,29 @@ private fun EventForm(
 
 
 
+    if (recentSheet) {
+        // §117 D1：最近 10 个不同标题（按最近编辑倒序）。点选即填标题并关闭 ——
+        // select-and-close 语法；只填标题，不碰其它已填字段
+        val recents = remember { vm.recentEventTitles(10) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { recentSheet = false },
+            title = { DlgTitle(tr("最近使用")) },
+            text = {
+                if (recents.isEmpty()) Text(tr("还没有历史日程"), fontSize = 14.sp, color = GrayText)
+                else Column {
+                    recents.forEach { title ->
+                        Row(
+                            Modifier.fillMaxWidth().rowClick { d.title = title; recentSheet = false }
+                                .padding(vertical = 13.dp)
+                        ) { Text(title, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        Hairline()
+                    }
+                }
+            },
+            confirmButton = {},
+            containerColor = Color.White
+        )
+    }
     if (tplSheet) TemplateSheet(vm, d, nav = nav, onDismiss = { tplSheet = false })
 }
 
@@ -1093,9 +1121,7 @@ private fun AiQuickForm(vm: LookaViewModel, onDone: (Int) -> Unit) {
             modifier = Modifier.fillMaxWidth()
         ) {
             if (busy) {
-                CircularProgressIndicator(
-                    color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp)
-                )
+                com.looka.app.ui.common.DeerLoading(15.sp)   // §117 D3
                 Spacer(Modifier.width(8.dp))
                 Text(tr("小鹿识别中…"))
             } else Text(tr("识别"))

@@ -6,7 +6,7 @@
 //            AI 对话不限次（分钟/日限速）、崩溃收集、CORS、Cron 清理、R2 APK 分发。
 
 const PBKDF2_ITER = 100000;
-const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings'];  // §86：notelist = 笔记清单  // P5-1：设置也是同步实体
+const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings', 'attachment'];  // §117 A：附件元数据  // §86：notelist = 笔记清单  // P5-1：设置也是同步实体
 const SYNC_PAGE = 1000;            // 同步单页上限（配 has_more/next_since 游标）
 const PUSH_MAX = 500;              // §97 TL-001：单次上行上限；超出部分**回报给客户端**，不静默丢
 const enc = new TextEncoder();
@@ -921,6 +921,75 @@ async function route(request, env, ctx) {
       ok: true,
       message: 'Looka 云端数据已全部删除。登录凭证与自知录共用故保留；如需一并删除请到自知录操作'
     });
+  }
+
+  // ===== §117 B：鹿角商店 v1（贴纸包）=====
+  // 商品是静态清单：资产已随 App 分发，服务端只管「谁解锁了什么」。
+  // 日常包不进商店 —— 基础表达不设墙（铁律 3：只问这让用户过得更好吗）。
+  const SHOP_ITEMS = [
+    { id: 'pack:dunhuang', name: '敦煌', price: 30, count: 38 },
+    { id: 'pack:cow', name: '牛来', price: 20, count: 24 }
+  ];
+  if (p === '/api/shop/items' && m === 'GET') {
+    const plan = (await planOf(env, user.id)).plan;
+    const rows = await env.DB.prepare('SELECT item_id FROM entitlements WHERE user_id = ?1')
+      .bind(user.id).all();
+    const owned = (rows.results || []).map(r => r.item_id);
+    const bal = await antlerOf(env, user.id, plan);
+    return json({ items: SHOP_ITEMS, owned, plan, antler: bal.total });
+  }
+  if (p === '/api/shop/buy' && m === 'POST') {
+    const b = await body();
+    const item = SHOP_ITEMS.find(x => x.id === String(b.item || ''));
+    if (!item) return json({ error: '没有这个商品' }, 404);
+    const ex = await env.DB.prepare('SELECT 1 FROM entitlements WHERE user_id = ?1 AND item_id = ?2')
+      .bind(user.id, item.id).first();
+    if (ex) return json({ ok: true, already: true });
+    const plan = (await planOf(env, user.id)).plan;
+    let paid = 0;
+    if (plan !== 'pro') {   // Pro 免费领取；普通用户扣鹿角（antlerSpend 自带余额校验+账本）
+      const r = await antlerSpend(env, user.id, plan, item.price, 'shop', item.id);
+      if (!r) return json({ error: '鹿角不够啦，明天签到还有 🦌', need: item.price }, 402);
+      paid = item.price;
+    }
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO entitlements (user_id, item_id, price_paid, created_at) VALUES (?1,?2,?3,?4)'
+    ).bind(user.id, item.id, paid, Date.now()).run();
+    const bal = await antlerOf(env, user.id, plan);
+    return json({ ok: true, antler: bal.total });
+  }
+
+  // ===== §117 A：附件字节（图片 v1）。元数据走 /api/sync kind=attachment，字节走这里 =====
+  // R2 键：attach/<userId>/<uid> —— 与 APK 共桶不同前缀；读写都过登录鉴权，桶本身不公开。
+  if (p === '/api/attach/put' && m === 'POST') {
+    const uid = String(url.searchParams.get('uid') || '').slice(0, 64);
+    if (!uid) return json({ error: '缺 uid' }, 400);
+    // 防滥用：单文件 ≤5MB（客户端压缩后一般 <1MB），每分钟 ≤20 传
+    if (!await rateLimit(env, `att:${user.id}`, 20, 60_000)) return json({ error: '传得太快啦' }, 429);
+    const bytes = await request.arrayBuffer();
+    if (bytes.byteLength > 5 * 1024 * 1024) return json({ error: '图片过大（上限 5MB）' }, 413);
+    if (bytes.byteLength < 64) return json({ error: '内容为空' }, 400);
+    const mime = request.headers.get('content-type') || 'image/jpeg';
+    if (!/^image\//.test(mime)) return json({ error: '仅支持图片' }, 415);
+    await env.APK.put(`attach/${user.id}/${uid}`, bytes, { httpMetadata: { contentType: mime } });
+    return json({ ok: true, size: bytes.byteLength });
+  }
+  if (p === '/api/attach/get' && m === 'GET') {
+    const uid = String(url.searchParams.get('uid') || '').slice(0, 64);
+    // 归属由键前缀保证：只读本人前缀下的对象，不查表也越权不了
+    const obj = await env.APK.get(`attach/${user.id}/${uid}`);
+    if (!obj) return json({ error: '不存在' }, 404);
+    return new Response(obj.body, {
+      headers: {
+        'content-type': obj.httpMetadata?.contentType || 'image/jpeg',
+        'cache-control': 'private, max-age=31536000'   // uid 不可变，可长缓存
+      }
+    });
+  }
+  if (p === '/api/attach/del' && m === 'POST') {
+    const uid = String(url.searchParams.get('uid') || '').slice(0, 64);
+    await env.APK.delete(`attach/${user.id}/${uid}`);
+    return json({ ok: true });
   }
 
   // ===== 双向同步（分页游标：has_more / next_since，修复 >2000 条丢数据） =====

@@ -127,6 +127,7 @@ object SyncEngine {
                 SimpleDateFormat(if (com.looka.app.util.I18n.isZh()) tr("M月d日 HH:mm") else "MMM d HH:mm",
                     Locale.getDefault()).format(Date()))
             NotifyScheduler.rescheduleFromDb(app)
+            pushAttachmentBytes(app)   // §117 A：元数据同步完，补传还没上云的图片字节
             return "ok"
         } catch (e: Exception) {
             lastMsg = tr("同步失败：{0}", e.message ?: tr("网络异常"))
@@ -210,6 +211,13 @@ object SyncEngine {
                 if (s.deleted) null else JSONObject()
                     .put("emoji", s.emoji).put("day", s.day).put("eventUid", s.eventUid)
                     .put("assetId", s.assetId)))
+        }
+        // §117 A：附件元数据（字节另走 /api/attach，见 pushAttachmentBytes）
+        for (a in db.attachmentDao().listDirty()) {
+            arr.put(rec("attachment", a.uid, a.updatedAt, a.deleted,
+                if (a.deleted) null else JSONObject()
+                    .put("ownerType", a.ownerType).put("ownerUid", a.ownerUid)
+                    .put("mime", a.mime).put("size", a.size)))
         }
         return arr
     }
@@ -522,6 +530,26 @@ object SyncEngine {
                     }
                 }
 
+                "attachment" -> {
+                    // §117 A：元数据先到、字节后到是正常中间态（fileName 空 = 本地无字节）
+                    val ex = db.attachmentDao().byUid(uid)
+                    if (del) {
+                        if (ex != null) {
+                            com.looka.app.util.AttachmentStore.delete(app, ex.fileName)
+                            db.attachmentDao().update(ex.copy(deleted = true, dirty = false, updatedAt = up))
+                        }
+                    } else if (ex == null) {
+                        db.attachmentDao().upsert(
+                            com.looka.app.data.Attachment(
+                                uid = uid, ownerType = o.optString("ownerType"),
+                                ownerUid = o.optString("ownerUid"), mime = o.optString("mime", "image/jpeg"),
+                                size = o.optLong("size"), remote = true,
+                                fileName = "", dirty = false, updatedAt = up
+                            )
+                        )
+                    }
+                }
+
                 "diary" -> {
                     val ex = db.diaryDao().byUid(uid)
                     if (del) {
@@ -571,6 +599,22 @@ object SyncEngine {
         }
     }
 
+    /**
+     * §117 A：图片字节上传器。挑出「本地有字节但没上云」的逐个传，成功标 remote。
+     * 单轮最多 10 张 —— 附件可能攒了一批，别让一次 sync 卡成大文件马拉松；
+     * 剩下的下一轮 sync 继续（sync 由前台进入/操作触发，节奏天然合适）。
+     */
+    private suspend fun pushAttachmentBytes(app: LookaApp) {
+        val db = app.db
+        for (a in db.attachmentDao().listNeedUpload().take(10)) {
+            val f = com.looka.app.util.AttachmentStore.fileOf(app, a.fileName)
+            if (!f.exists()) continue
+            if (Api.attachPut(app, a.uid, f)) {
+                db.attachmentDao().update(a.copy(remote = true))
+            }
+        }
+    }
+
     // ================= 上行确认（清脏 / 清墓碑） =================
 
     private suspend fun confirmPush(app: LookaApp, push: JSONArray) {
@@ -583,6 +627,10 @@ object SyncEngine {
             val del = r.optInt("deleted") == 1
             when (kind) {
                 "settings" -> Prefs.setSettingsDirty(app, false)
+
+                "attachment" -> db.attachmentDao().byUid(uid)?.let {
+                    if (it.dirty && it.updatedAt == up) db.attachmentDao().update(it.copy(dirty = false))
+                }
 
                 "category" -> {
                     if (del) db.categoryDao().byUid(uid)?.let {

@@ -109,14 +109,14 @@ function mixHex(hex, to, f) {
 }
 function applyCustomTheme(hex) {
   const r = document.documentElement.style;
-  r.setProperty('--primary', hex);
-  r.setProperty('--container', mixHex(hex, '#ffffff', 0.90));
+  // §117 E2：写入层统一走 --lk-* 语义槽（旧别名在样式表里引用语义槽，自动跟随）。
+  // 直接写 --primary 会以内联值盖住别名引用，皮肤包一装就失灵 —— 所以只许写语义层。
+  r.setProperty('--lk-accent', hex);
+  r.setProperty('--lk-selection', mixHex(hex, '#ffffff', 0.90));
   r.setProperty('--on-container', mixHex(hex, '#000000', 0.55));
   // §107 B：纸色回到纯白，对齐 Lifebear。与 App 同步撤回（App 侧见 Theme.kt DEER_THEMES）。
-  // 撤的是 2026-08-21 那条"页面底色随主题走"—— 想让换主题有感觉是对的，
-  // 但不该拿内容区的中性底去换，那是靠牺牲长时间阅读的舒适度买来的。
-  r.setProperty('--paper', '#ffffff');
-  r.setProperty('--panel', '#f7f8f7');
+  r.setProperty('--lk-surface', '#ffffff');
+  r.setProperty('--lk-surface-variant', '#f7f8f7');
   localStorage.setItem('lk_theme', 'c:' + hex);
   $$('.theme-dot').forEach(el => el.classList.remove('active'));
   $$('.custom-dot').forEach(el => el.classList.toggle('active', el.dataset.c === hex));
@@ -126,14 +126,44 @@ function applyTheme(i) {
   if (typeof i === 'string' && i.startsWith('c:')) return applyCustomTheme(i.slice(2));
   const t = THEMES[+i] || THEMES[0];
   const r = document.documentElement.style;
-  r.setProperty('--primary', t[1]); r.setProperty('--container', t[2]); r.setProperty('--on-container', t[3]);
-  r.setProperty('--paper', '#ffffff');   // §107 B：同上，纸色不再随主题
-  r.setProperty('--panel', '#f7f8f7');
+  r.setProperty('--lk-accent', t[1]); r.setProperty('--lk-selection', t[2]); r.setProperty('--on-container', t[3]);
+  r.setProperty('--lk-surface', '#ffffff');   // §107 B：同上，纸色不再随主题
+  r.setProperty('--lk-surface-variant', '#f7f8f7');
   localStorage.setItem('lk_theme', i);
   $$('.custom-dot').forEach(el => el.classList.remove('active'));
   $$('.theme-dot').forEach((el, j) => el.classList.toggle('active', j === +i));
   pushThemeSettings(+i, null);   // B1：主题上云
 }
+/**
+ * §117 E2：**皮肤包加载器**（对接 docs/contracts/theme-package.v1.json）。
+ * 皮肤包 = 语义色全量 + 资产清单（顶栏横幅 / 底栏背景 / 导航图标）。
+ * Lifebear 图 114 实证的换肤范围：顶栏与底栏两条主题带 + 选中日强调色，
+ * 月历格子区白底、周日红/周六蓝**不许动** —— 校验层直接拒掉动这些的包。
+ * pack=null 卸下皮肤，回到九色主题。
+ */
+function applySkinPack(pack) {
+  const r = document.documentElement.style;
+  const KEYS = ['surface','surface_variant','text_primary','text_secondary','text_tertiary',
+    'accent','weekend','holiday','selection','today','event_all_day','event_timed',
+    'event_external','divider','scrim','danger'];
+  if (!pack) {   // 卸包：清语义层内联值，回落到样式表默认 + 九色主题
+    KEYS.forEach(k => r.removeProperty('--lk-' + k.replace(/_/g, '-')));
+    r.removeProperty('--lk-skin-top'); r.removeProperty('--lk-skin-bottom');
+    document.body.classList.remove('skinned');
+    const saved = localStorage.getItem('lk_theme') || '0';
+    applyTheme(saved.startsWith('c:') ? saved : +saved);
+    return;
+  }
+  const sem = pack.semantic || {};
+  for (const k of KEYS) {
+    if (sem[k]) r.setProperty('--lk-' + k.replace(/_/g, '-'), sem[k]);
+  }
+  const assets = pack.assets || {};
+  r.setProperty('--lk-skin-top', assets.top_banner ? `url("${assets.top_banner}")` : 'none');
+  r.setProperty('--lk-skin-bottom', assets.bottom_bg ? `url("${assets.bottom_bg}")` : 'none');
+  document.body.classList.toggle('skinned', !!(assets.top_banner || assets.bottom_bg));
+}
+
 /* B1（§48）：主题并入 settings 同步实体（与 App 的 themeIndex/customColor 同构）。
    applyingRemote 防回环：收云端设置落地时不再往回推。 */
 let applyingRemoteSettings = false;
@@ -151,7 +181,7 @@ function pushThemeSettings(idx, hex) {
 }
 
 /* ---------------- 状态与存储 ---------------- */
-const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings'];
+const KINDS = ['category', 'tasklist', 'event', 'task', 'notelist', 'note', 'diary', 'stamp', 'settings', 'attachment'];  // §117 A
 // P5-1 设置上云：App 是设置的主人，网页跟随（两端看同一本日历）。
 // 默认值与 App Prefs 一致：周一起始 / 农历跟随中文 / 显示已完成
 const ST = { weekStartMon: true, showLunar: null, holidayMask: 1 << 6, showDoneTasks: true, stampTitle: true };
@@ -289,6 +319,14 @@ function applyRec(rec) {
   try { p = JSON.parse(rec.payload || '{}'); } catch (e) { }
   map.set(rec.uid, { uid: rec.uid, updated_at: rec.updated_at, p });
 }
+/* §117 D2：多关键词搜索（与 App matchWords 同口径：空格分词、词间 AND） */
+function matchWords(query, ...fields) {
+  const words = query.split(/[\s\u3000]+/).filter(Boolean);
+  if (!words.length) return true;
+  const low = fields.map(f => (f || '').toLowerCase());
+  return words.every(w => low.some(f => f.includes(w.toLowerCase())));
+}
+
 function put(kind, uid, p) {
   const rec = { kind, uid, updated_at: Date.now(), deleted: 0, p };
   S.data[kind].set(uid, { uid, updated_at: rec.updated_at, p });
@@ -543,11 +581,13 @@ function renderCalendar(anchorDay) {
       const canvasHtml = placedSts.map(st => {
         // §97 G7（与 App 同步）：素材平均填充率实测 **78.7%**（§89 写的 85% 只取了最满的几张）。
         // 实机视觉 41.3%×Wd → 持平需画布 52.5%；§99 I2：用户定 61.8%（视觉 48.6%，比实机 +18%）。
+        // §117 C5：贴纸从「装饰」变回「对象」—— pointer-events 打开，点击出 Popover
+        // （此前 none，用户点不开编辑/删除，Lifebear 图 30 的予定登録/削除语义整个缺失）
         const style = `position:absolute;left:${(st.px * 100).toFixed(1)}%;top:${(st.py * 100).toFixed(1)}%;` +
-          `width:61.8%;transform:translate(-50%,-50%);pointer-events:none;text-align:center`;
+          `width:61.8%;transform:translate(-50%,-50%);pointer-events:auto;cursor:pointer;text-align:center`;
         return (st.assetId
-          ? `<img src="stamps/${st.assetId}.webp" alt="" style="${style}">`
-          : `<span style="${style};font-size:18px">${st.emoji}</span>`);
+          ? `<img src="stamps/${st.assetId}.webp" alt="" data-stamp="${st.uid}" style="${style}">`
+          : `<span data-stamp="${st.uid}" style="${style};font-size:18px">${st.emoji}</span>`);
       }).join('');
       // 连续滚动下月界要看得见：每月 1 号带月份
       const numHtml = f.d === 1 ? `${f.m}月1` : f.d;
@@ -587,6 +627,11 @@ function renderCalendar(anchorDay) {
     });
   }
 
+  // §117 C5：贴纸点击（委托）——先于选日处理，阻止冒泡
+  grid.querySelectorAll('[data-stamp]').forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    openStampPopover(el.dataset.stamp, e.clientX, e.clientY);
+  });
   grid.querySelectorAll('.day-cell').forEach(el => el.onclick = () => {
     S.selDay = +el.dataset.day;
     grid.querySelectorAll('.day-cell.sel').forEach(x => x.classList.remove('sel'));
@@ -674,6 +719,135 @@ function renderDayPanel(evs, tks, sts) {
 const tplList = () => { try { return JSON.parse(localStorage.getItem('lk_templates') || '[]'); } catch (e) { return []; } };
 const tplStore = l => { try { localStorage.setItem('lk_templates', JSON.stringify(l.slice(0, 30))); } catch (e) { } };
 
+/* ── §117 A：附件（图片 v1）──
+   字节走 /api/attach/*（带登录头），元数据走 sync kind=attachment。
+   <img> 带不了 Authorization —— 用 fetch→blob URL，内存缓存防重复拉。 */
+const ATT_BLOB = new Map();
+async function attachBlobUrl(uid) {
+  if (ATT_BLOB.has(uid)) return ATT_BLOB.get(uid);
+  const r = await fetch('/api/attach/get?uid=' + uid, { headers: { Authorization: 'Bearer ' + S.token } });
+  if (!r.ok) return '';
+  const u = URL.createObjectURL(await r.blob());
+  ATT_BLOB.set(uid, u); return u;
+}
+function attachmentsOf(type, owner) {
+  return [...S.data.attachment.values()]
+    .filter(r => r.p && r.p.ownerType === type && r.p.ownerUid === owner);
+}
+/** 压缩（最长边 2048 / JPEG 85，与 App 同参）后上传，成功落元数据 */
+function uploadAttachment(type, owner, file, onDone) {
+  const img = new Image();
+  img.onload = async () => {
+    const edge = Math.max(img.width, img.height);
+    const r = edge > 2048 ? 2048 / edge : 1;
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(img.width * r); cv.height = Math.round(img.height * r);
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(async blob => {
+      if (!blob) return onDone && onDone(false);
+      const uid = uuid();
+      const resp = await fetch('/api/attach/put?uid=' + uid, {
+        method: 'POST', headers: { Authorization: 'Bearer ' + S.token, 'Content-Type': 'image/jpeg' }, body: blob
+      }).catch(() => null);
+      URL.revokeObjectURL(img.src);
+      if (!resp || !resp.ok) return onDone && onDone(false);
+      put('attachment', uid, { ownerType: type, ownerUid: owner, mime: 'image/jpeg', size: blob.size });
+      onDone && onDone(true);
+    }, 'image/jpeg', 0.85);
+  };
+  img.onerror = () => onDone && onDone(false);
+  img.src = URL.createObjectURL(file);
+}
+/** modal 里的附件区：缩略图 + 添加格；点开 lightbox（删除在里面） */
+function mountAttachRow(container, type, owner) {
+  if (!owner || !S.token) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'att-row';
+  container.appendChild(wrap);
+  const paint = () => {
+    wrap.innerHTML = attachmentsOf(type, owner).map(a =>
+      `<div class="att-thumb" data-a="${a.uid}"><img alt=""></div>`).join('') +
+      `<button class="att-add" title="${t('添加图片')}">+</button>`;
+    wrap.querySelectorAll('.att-thumb').forEach(el => {
+      attachBlobUrl(el.dataset.a).then(u => { if (u) el.querySelector('img').src = u; });
+      el.onclick = () => openAttachLightbox(el.dataset.a, () => paint());
+    });
+    wrap.querySelector('.att-add').onclick = () => {
+      const inp = document.createElement('input');
+      inp.type = 'file'; inp.accept = 'image/*';
+      inp.onchange = () => {
+        const f = inp.files && inp.files[0];
+        if (f) uploadAttachment(type, owner, f, ok => { if (ok) paint(); else toast(t('图片上传失败')); });
+      };
+      inp.click();
+    };
+  };
+  paint();
+}
+function openAttachLightbox(uid, onChange) {
+  const ov = document.createElement('div');
+  ov.className = 'att-light';
+  ov.innerHTML = `<img alt=""><div class="att-acts">
+    <button class="att-del">${t('删除')}</button><button class="att-close">${t('关闭')}</button></div>`;
+  document.body.appendChild(ov);
+  attachBlobUrl(uid).then(u => { if (u) ov.querySelector('img').src = u; });
+  const close = () => ov.remove();
+  ov.onclick = e => { if (e.target === ov) close(); };
+  ov.querySelector('.att-close').onclick = close;
+  ov.querySelector('.att-del').onclick = () => {
+    confirmDlg(t('删除这张图片？'), () => {
+      del('attachment', uid);
+      fetch('/api/attach/del?uid=' + uid, { method: 'POST', headers: { Authorization: 'Bearer ' + S.token } }).catch(() => {});
+      close(); onChange && onChange();
+    });
+  };
+}
+
+/* §117 C5：贴纸 Popover —— 与 App §72 §5 同语义：
+   未绑定 = 予定登録（以贴纸所在日打开日程创建）/ 删除；
+   已绑定 = 编辑（打开绑定日程）/ 删除（复合删除：贴纸与日程一起，先确认）。 */
+function openStampPopover(uid, x, y) {
+  document.querySelectorAll('.stamp-pop').forEach(el => el.remove());
+  const r = S.data.stamp.get(uid);
+  if (!r) return;
+  const st = r.p;
+  const bound = st.eventUid && S.data.event.get(st.eventUid);
+  const pop = document.createElement('div');
+  pop.className = 'stamp-pop';
+  pop.innerHTML = bound
+    ? `<button data-act="edit">${t('编辑')}</button><button data-act="del" class="danger">${t('删除')}</button>`
+    : `<button data-act="reg">${t('登记日程')}</button><button data-act="del" class="danger">${t('删除')}</button>`;
+  document.body.appendChild(pop);
+  // 锚在点击点上方居中，出屏则贴边
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(x - w / 2, innerWidth - w - 8)) + 'px';
+  pop.style.top = Math.max(8, y - h - 10) + 'px';
+  const close = () => { pop.remove(); document.removeEventListener('click', onDoc, true); };
+  const onDoc = e => { if (!pop.contains(e.target)) close(); };
+  setTimeout(() => document.addEventListener('click', onDoc, true), 0);
+  pop.onclick = e => {
+    const act = e.target.dataset && e.target.dataset.act;
+    if (!act) return;
+    close();
+    if (act === 'reg') {
+      S.selDay = st.day; openEventModal(null);   // 以贴纸所在日为上下文创建
+    } else if (act === 'edit' && bound) {
+      const p = bound.p;
+      openEventModal({ uid: st.eventUid, title: p.title, allDay: p.allDay, day: p.startDay,
+        startMin: p.startMin, endMin: p.endMin, categoryUid: p.categoryUid,
+        location: p.location, memo: p.memo, recurring: (p.freq || 0) > 0 });
+    } else if (act === 'del') {
+      if (bound) {
+        confirmDlg(t('删除这条日程？') + ' ' + t('「{0}」和这个贴纸会一起删除。').replace('{0}', bound.p.title || ''), () => {
+          del('stamp', uid); del('event', st.eventUid);
+        });
+      } else {
+        confirmDlg(t('贴纸会从这一天移除。'), () => del('stamp', uid));
+      }
+    }
+  };
+}
+
 function openEventModal(occ) {
   const isEdit = !!occ;
   const p = isEdit ? S.data.event.get(occ.uid)?.p : null;
@@ -693,7 +867,10 @@ function openEventModal(occ) {
     ${isEdit && occ.recurring ? '<p style="font-size:12px;color:var(--gray);margin-bottom:8px">重复日程在网页端按整个系列修改；改单次请在 App 内操作</p>' : ''}
     ${tpls.length ? `<div class="tpl-row">${tpls.map((tp, i) =>
       `<button class="tpl-chip" data-i="${i}">${esc(tp.n)}<span class="tpl-x" data-x="${i}">×</span></button>`).join('')}</div>` : ''}
-    <div class="frow"><input id="evTitle" placeholder="日程名" value="${esc(init.title)}"></div>
+    <div class="frow"><input id="evTitle" placeholder="日程名" value="${esc(init.title)}" list="evRecent">
+      <datalist id="evRecent">${[...new Set([...S.data.event.values()]
+        .filter(r => r.p && r.p.title).sort((a, b) => b.updated_at - a.updated_at)
+        .map(r => r.p.title))].slice(0, 10).map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
     <div class="check-line"><input type="checkbox" id="evAllDay" ${init.allDay ? 'checked' : ''}><label for="evAllDay">全天</label></div>
     <div class="frow-inline">
       <div class="frow"><label>开始日期</label><input id="evDate" type="date" value="${isoDate(init.day)}"></div>
@@ -716,6 +893,7 @@ function openEventModal(occ) {
       `<button class="wk ${(init.weekdays >> i) & 1 ? 'on' : ''}" data-i="${i}">${w}</button>`).join('')}</div>
     <div class="frow"><input id="evLoc" placeholder="${t('地点')}" value="${esc(init.location)}"></div>
     <div class="frow"><textarea id="evMemo" rows="2" placeholder="${t('备注')}">${esc(init.memo)}</textarea></div>
+    <div id="evAttach"></div>
     </div>
     <div class="btns">
       ${isEdit ? '<button class="btn-ghost left" id="evDel" style="color:var(--red)">删除</button>'
@@ -724,6 +902,8 @@ function openEventModal(occ) {
       <button class="btn-dark" id="evSave">保存</button>
     </div>`);
 
+  // §117 A：编辑已有日程时挂附件区（新建要先保存才有 uid，与 App 同限制）
+  if (isEdit && occ.uid) mountAttachRow(d.querySelector('#evAttach'), 'event', occ.uid);
   const freqSel = d.querySelector('#evFreq');
   freqSel.value = String(init.freq);
   const syncVis = () => {
@@ -920,8 +1100,7 @@ function renderTodos() {
   // §98 H6：待办页内搜索（与 App 同口径：任务名 + 备注）
   const tq = ($('#todoSearch')?.value || '').trim().toLowerCase();
   let items = taskList();
-  if (tq) items = items.filter(k => (k.title || '').toLowerCase().includes(tq)
-    || (k.memo || '').toLowerCase().includes(tq));
+  if (tq) items = items.filter(k => matchWords(tq, k.title, k.memo));   // §117 D2
   if (curList === 'next7') {   // P4-5：未来 7 天（含今天）有到期日的任务
     const t0 = todayEpoch();
     items = items.filter(k => (k.dueDay ?? -1) >= t0 && k.dueDay < t0 + 7)
@@ -978,8 +1157,7 @@ function renderNotes() {
   // ── 搜索态：跨清单，直接出命中的笔记（与 App 同口径）──
   if (q) {
     if (bar) bar.classList.add('hidden');
-    const hit = every.filter(r =>
-      (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q))
+    const hit = every.filter(r => matchWords(q, r.p.title, r.p.content))
       .sort((a, b) => b.updated_at - a.updated_at);
     $('#noteList').innerHTML = hit.length ? hit.map(r => noteRowHtml(r, lists)).join('')
       : `<div class="empty-deer">${t('没找到')}「${esc(q)}」<img src="deer.svg" alt=""></div>`;
@@ -1084,11 +1262,13 @@ function openNoteModal(uid) {
     <div class="frow"><select id="nList">${noteLists().map(l =>
       `<option value="${l.uid}" ${(r?.p.listUid || curNoteList || 'nlist-default') === l.uid ? 'selected' : ''}>${esc(l.p.name)}</option>`).join('')}</select></div>
     <div class="frow"><textarea id="nContent" rows="8" placeholder="开始写…">${esc(r?.p.content || '')}</textarea></div>
+    <div id="nAttach"></div>
     <div class="btns">
       ${r ? '<button class="btn-ghost left" id="nDel" style="color:var(--red)">删除</button>' : ''}
       <button class="btn-ghost" id="nX">取消</button>
       <button class="btn-dark" id="nSave">保存</button>
     </div>`);
+  if (r) mountAttachRow(d.querySelector('#nAttach'), 'note', uid);   // §117 A：已存在笔记
   d.querySelector('#nX').onclick = closeModal;
   d.querySelector('#nSave').onclick = () => {
     const title = d.querySelector('#nTitle').value.trim();
@@ -1142,11 +1322,13 @@ function openDiaryModal(day) {
     <div class="frow"><textarea id="dContent" rows="8" placeholder="${t('今天过得怎么样？')}">${esc(r?.p.content || '')}</textarea></div>
     <!-- §77 N1：心情移到正文之后 —— 别一开口就问「你今天心情如何」，先让人写 -->
     <div class="mood-row">${MOODS.map((e, i) => `<button class="mood ${i === mood ? 'on' : ''}" data-m="${i}">${e}</button>`).join('')}</div>
+    <div id="dAttach"></div>
     <div class="btns">
       ${r ? '<button class="btn-ghost left" id="dDel" style="color:var(--red)">删除</button>' : ''}
       <button class="btn-ghost" id="dX">取消</button>
       <button class="btn-dark" id="dSave">保存</button>
     </div>`);
+  mountAttachRow(d.querySelector('#dAttach'), 'diary', 'day:' + day);   // §117 A：与 App 同键 day:<epochDay>
   d.querySelectorAll('.mood').forEach(b => b.onclick = () => {
     mood = +b.dataset.m;
     d.querySelectorAll('.mood').forEach(x => x.classList.toggle('on', +x.dataset.m === mood));

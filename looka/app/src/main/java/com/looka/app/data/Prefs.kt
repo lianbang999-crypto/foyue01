@@ -241,6 +241,11 @@ object Prefs {
     fun apkTargetCode(c: Context) = sp(c).getInt("apk_target_code", 0)
     fun setApkTargetCode(c: Context, v: Int) = sp(c).edit().putInt("apk_target_code", v).apply()
 
+    // ---- §117 B：鹿角商店 ----
+    /** 已解锁的贴纸包 id（服务端 entitlements 的本地缓存；daily 恒不需要） */
+    fun ownedPacks(c: Context): Set<String> = sp(c).getStringSet("owned_packs", emptySet())!!
+    fun setOwnedPacks(c: Context, v: Set<String>) = sp(c).edit().putStringSet("owned_packs", v).apply()
+
     // ---- 系统日历聚合 ----
     fun showSysCal(c: Context) = sp(c).getBoolean("show_sys_cal", false)
     fun setShowSysCal(c: Context, v: Boolean) = sp(c).edit().putBoolean("show_sys_cal", v).apply()

@@ -152,6 +152,45 @@ object Api {
     /** 鹿角余额与流水 */
     suspend fun antler(c: Context): JSONObject = call(c, "/api/antler")
 
+    // ── §117 B：鹿角商店 ──
+    suspend fun shopItems(c: Context): JSONObject = call(c, "/api/shop/items")
+    suspend fun shopBuy(c: Context, item: String): JSONObject =
+        call(c, "/api/shop/buy", JSONObject().put("item", item))
+
+    // ── §117 A：附件字节 ──
+
+    /** 上传图片字节。成功返回 true；失败 false（不抛，让上传器下轮重试） */
+    suspend fun attachPut(c: Context, uid: String, file: java.io.File): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val b = Request.Builder()
+                    .url(Prefs.serverUrl(c).trimEnd('/') + "/api/attach/put?uid=" + uid)
+                    .post(file.readBytes().toRequestBody("image/jpeg".toMediaType()))
+                Prefs.authToken(c)?.let { b.header("Authorization", "Bearer $it") }
+                client.newCall(b.build()).execute().use { it.isSuccessful }
+            }.getOrDefault(false)
+        }
+
+    /** 下载图片字节到本地文件。成功 true */
+    suspend fun attachGet(c: Context, uid: String, dest: java.io.File): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val b = Request.Builder()
+                    .url(Prefs.serverUrl(c).trimEnd('/') + "/api/attach/get?uid=" + uid)
+                Prefs.authToken(c)?.let { b.header("Authorization", "Bearer $it") }
+                client.newCall(b.build()).execute().use { resp ->
+                    if (!resp.isSuccessful) return@use false
+                    dest.outputStream().use { out -> resp.body?.byteStream()?.copyTo(out) }
+                    dest.length() > 0
+                }
+            }.getOrDefault(false)
+        }
+
+    /** 删云端字节（幂等） */
+    suspend fun attachDel(c: Context, uid: String) {
+        runCatching { call(c, "/api/attach/del?uid=" + uid, JSONObject()) }
+    }
+
     /** 启动配置：注册闸门模式等（无需登录） */
     suspend fun config(c: Context): JSONObject = call(c, "/api/config", auth = false)
 

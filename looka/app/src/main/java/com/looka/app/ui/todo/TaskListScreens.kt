@@ -43,7 +43,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -634,7 +633,7 @@ fun QuickAddTaskRow(
             Spacer(Modifier.width(10.dp))
             TextField(
                 value = input, onValueChange = { input = it },
-                placeholder = { Text(placeholder, fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
+                placeholder = { Text(placeholder, fontSize = 14.sp, color = com.looka.app.ui.theme.PlaceholderText) },
                 colors = clearFieldColors(),
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(

@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -160,12 +159,14 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
 
         TextField(
             value = content, onValueChange = { content = it },
-            placeholder = { Text(tr("今天过得怎么样？"), fontSize = 15.sp, color = Color(0xFFB9BBB9)) },
+            placeholder = { Text(tr("今天过得怎么样？"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
             textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
             colors = clearFieldColors(),
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp)
                 .verticalScroll(rememberScrollState())
         )
+        // §117 A：附件（宿主键 = "day:<epochDay>"，一天一篇天然全端稳定，不依赖 Diary.uid 是否已生成）
+        com.looka.app.ui.common.AttachmentSection(vm, "diary", "day:" + day)
 
         // §110：**正在打字的时候，屏幕上只有你的字。**
         //

@@ -164,13 +164,19 @@ fun LookaTheme(content: @Composable () -> Unit) {
     // §90 R2（v1.3 §11：Theme apply 280–420ms crossfade）：此前换主题是**硬切** ——
     // 整屏颜色一帧跳变，看着像闪了一下。给随主题变的几个色加 300ms 过渡，
     // 换色过程变成"渐渐染上去"。reduce-motion 由系统动画缩放自动接管。
+    //
+    // §117 E1：colorScheme 的取值源从 DeerTheme 字段改为 **Tokens.active** ——
+    // 这是主题包能"一装就全变"的关键一跳：装包时 Tokens.pack 覆盖 derived，
+    // 全 App 经由 MaterialTheme.colorScheme 的读点自动跟随，一个调用方都不用改。
+    // 没装包时 active == tokensOf(当前九色主题)，取值与旧写法逐位相同（零像素回归）。
+    val tok = Tokens.active
     val spec = androidx.compose.animation.core.tween<Color>(300)
-    val primary by androidx.compose.animation.animateColorAsState(t.primary, spec, label = "thPrimary")
-    val container by androidx.compose.animation.animateColorAsState(t.container, spec, label = "thContainer")
+    val primary by androidx.compose.animation.animateColorAsState(tok.accent, spec, label = "thPrimary")
+    val container by androidx.compose.animation.animateColorAsState(tok.selection, spec, label = "thContainer")
     val onContainer by androidx.compose.animation.animateColorAsState(t.onContainer, spec, label = "thOnContainer")
-    val paper by androidx.compose.animation.animateColorAsState(t.paper, spec, label = "thPaper")
+    val paper by androidx.compose.animation.animateColorAsState(tok.surface, spec, label = "thPaper")
     val panel by androidx.compose.animation.animateColorAsState(t.panel, spec, label = "thPanel")
-    val ink by androidx.compose.animation.animateColorAsState(t.ink, spec, label = "thInk")
+    val ink by androidx.compose.animation.animateColorAsState(tok.textPrimary, spec, label = "thInk")
     MaterialTheme(
         // S4（§64）→ §113 A1：弹窗圆角对齐实机。AlertDialog 默认取 shapes.extraLarge(28dp)，
         // 一行改掉全站 31 个弹窗；底部面板要 16dp 顶角的单独在调用处指定。
@@ -199,7 +205,13 @@ fun LookaTheme(content: @Composable () -> Unit) {
             surfaceContainer = Color.White,
             outline = Color(0xFFD8DAD8),
             outlineVariant = Hairline,
-            error = HolidayRed
+            // §117 E1：error 从 HolidayRed（holiday 槽）改读 danger 槽 —— 两槽出厂同值，
+            // 但语义不同：主题包可以把节日染成品牌红、而删除警示保持标准红
+            error = Tokens.active.danger,
+            // §117 E1：scrim 槽接上 —— AlertDialog/ModalBottomSheet 的遮罩经由这里。
+            // M3 组件对 colorScheme.scrim 会再乘一层 32% alpha，所以包里的 scrim
+            // 存 RGB 主体即可；60% 总浓度已由 §113 在组件层锚定
+            scrim = Tokens.active.scrim.copy(alpha = 1f)
         ),
         content = content
     )

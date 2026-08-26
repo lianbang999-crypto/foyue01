@@ -27,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -224,9 +223,8 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = Ink, disabledContainerColor = Color(0xFFD6D9D6)),
             modifier = Modifier.fillMaxWidth().height(48.dp)
         ) {
-            if (busy) CircularProgressIndicator(
-                color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(17.dp)
-            ) else Text(
+            if (busy) com.looka.app.ui.common.DeerLoading(15.sp)   // §117 D3：加载也是品牌时刻
+            else Text(
                 if (isRegister) tr("注册") else tr("登录"),
                 fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Color.White
             )
@@ -440,10 +438,8 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
                 },
                 enabled = !SyncEngine.syncing
             ) {
-                if (SyncEngine.syncing) CircularProgressIndicator(
-                    strokeWidth = 2.dp, modifier = Modifier.size(14.dp),
-                    color = MaterialTheme.colorScheme.primary
-                ) else Text(tr("立即同步"), fontSize = 13.sp)
+                if (SyncEngine.syncing) com.looka.app.ui.common.DeerLoading(13.sp)   // §117 D3
+                else Text(tr("立即同步"), fontSize = 13.sp)
             }
         }
         Hairline()

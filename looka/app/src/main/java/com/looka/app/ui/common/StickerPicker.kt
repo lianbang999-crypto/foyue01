@@ -83,11 +83,18 @@ fun StickerPicker(
     val scope = rememberCoroutineScope()
 
     // Tab：最近（有才显示）在前，其余为官方包
-    data class Tab(val id: String, val label: String, val ids: List<String>)
-    val tabs = remember(packs, recent) {
+    // §117 B：daily 免费；dunhuang/cow 需解锁（鹿角商店）。已放置的贴纸**永远照常渲染**，
+    // 锁只挡"新选择" —— 不收回用户已经在用的东西。
+    var owned by remember { mutableStateOf(Prefs.ownedPacks(ctx)) }
+    val FREE_PACKS = setOf("daily")
+    data class Tab(val id: String, val label: String, val ids: List<String>, val locked: Boolean = false)
+    val tabs = remember(packs, recent, owned) {
         buildList {
             if (recent.isNotEmpty()) add(Tab("recent", tr("最近"), recent))
-            packs.forEach { add(Tab(it.id, it.name(), it.stamps.map { s -> s.id })) }
+            packs.forEach {
+                add(Tab(it.id, it.name(), it.stamps.map { s -> s.id },
+                    locked = it.id !in FREE_PACKS && it.id !in owned))
+            }
         }
     }
     if (tabs.isEmpty()) return
@@ -98,6 +105,10 @@ fun StickerPicker(
     LaunchedEffect(tabIdx) { pager.scrollToPage(0) }
 
     Column(modifier.fillMaxWidth()) {
+        // §117 B：锁定包 → 网格位显示解锁卡（价格 + 一键解锁；Pro 免费领取）
+        if (tab.locked) {
+            PackUnlockCard(tab.id, tab.label, height = 120.dp) { owned = Prefs.ownedPacks(ctx) }
+        } else
         // ── 表情网格（10 枚/页，固定两行高度，翻页不跳动）
         HorizontalPager(
             state = pager,
@@ -187,7 +198,7 @@ fun StickerPicker(
                         }
                     }
                     Text(
-                        tb.label, fontSize = 10.sp,
+                        (if (tb.locked) "\uD83D\uDD12 " else "") + tb.label, fontSize = 10.sp,
                         color = if (on) Ink else GrayText,
                         modifier = Modifier.padding(top = 1.dp)
                     )
@@ -262,5 +273,86 @@ private fun StickerCell(
             color = if (selected) Ink else GrayText,
             maxLines = 1, overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+
+/**
+ * §117 B：贴纸包解锁卡 —— 出现在锁定包的网格位。
+ * 价格从服务端拿（/api/shop/items），Pro 显示"免费领取"；解锁成功即缓存 ownedPacks。
+ * 未登录只能看：解锁按钮引导先登录（商店记账在服务端，本地破解不生效）。
+ */
+@Composable
+fun PackUnlockCard(packId: String, packName: String, height: androidx.compose.ui.unit.Dp, onUnlocked: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var price by remember { mutableStateOf(-1) }
+    var antler by remember { mutableStateOf(-1) }
+    var isPro by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    val authed = remember { com.looka.app.net.Api.authed(ctx) }
+    LaunchedEffect(packId) {
+        if (!authed) return@LaunchedEffect
+        runCatching {
+            val r = com.looka.app.net.Api.shopItems(ctx)
+            val items = r.optJSONArray("items")
+            for (i in 0 until (items?.length() ?: 0)) {
+                val o = items!!.getJSONObject(i)
+                if (o.optString("id") == "pack:" + packId) price = o.optInt("price")
+            }
+            antler = r.optInt("antler", -1)
+            isPro = r.optString("plan") == "pro"
+            // 顺手校准本地缓存（换设备后第一次打开就对）
+            val ow = r.optJSONArray("owned")
+            val set = mutableSetOf<String>()
+            for (i in 0 until (ow?.length() ?: 0)) set.add(ow!!.getString(i).removePrefix("pack:"))
+            Prefs.setOwnedPacks(ctx, set)
+            if (packId in set) onUnlocked()
+        }
+    }
+    Column(
+        Modifier.fillMaxWidth().height(height).padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            when {
+                !authed -> tr("登录后可用鹿角解锁「{0}」贴纸包", packName)
+                isPro -> tr("「{0}」贴纸包 · Pro 免费领取", packName)
+                price > 0 -> tr("「{0}」贴纸包 · {1} 鹿角", packName, price.toString())
+                else -> tr("「{0}」贴纸包", packName)
+            },
+            fontSize = 13.sp, color = Ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+        if (authed && !isPro && antler >= 0) {
+            Text(tr("我的鹿角：{0}", antler.toString()), fontSize = 11.sp, color = GrayText,
+                modifier = Modifier.padding(top = 2.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.material3.Button(
+            onClick = {
+                if (!authed) { toast(ctx, tr("请先在「更多 → 账号」登录")); return@Button }
+                if (busy) return@Button
+                busy = true
+                scope.launch {
+                    runCatching {
+                        val r = com.looka.app.net.Api.shopBuy(ctx, "pack:" + packId)
+                        if (r.optBoolean("ok")) {
+                            Prefs.setOwnedPacks(ctx, Prefs.ownedPacks(ctx) + packId)
+                            toast(ctx, tr("已解锁「{0}」🦌", packName))
+                            onUnlocked()
+                        } else toast(ctx, r.optString("error", tr("解锁失败，请稍后再试")))
+                    }.onFailure { toast(ctx, it.message ?: tr("解锁失败，请稍后再试")) }
+                    busy = false
+                }
+            },
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                containerColor = com.looka.app.ui.theme.SaveDark),
+            shape = RoundedCornerShape(5.dp),
+            modifier = Modifier.height(34.dp)
+        ) {
+            if (busy) DeerLoading(13.sp)
+            else Text(if (isPro) tr("免费领取") else tr("解锁"), fontSize = 13.sp, color = Color.White)
+        }
     }
 }

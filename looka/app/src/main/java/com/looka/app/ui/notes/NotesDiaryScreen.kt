@@ -157,7 +157,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
     // 搜索态是**跨清单**的：这时候还给清单列表没有意义，直接出命中的笔记。
     // （实机的搜索是整页独立模式，我们做的是实时过滤 —— §93 已写明这条故意不对齐）
     if (q.isNotBlank()) {
-        val hit = all.filter { it.title.contains(q, true) || it.content.contains(q, true) }
+        val hit = all.filter { com.looka.app.util.matchWords(q, it.title, it.content) }   // §117 D2：分词 AND
         if (hit.isEmpty()) { EmptyDeer(tr("没找到「{0}」", q), hint = tr("换个词试试")); return }
         LazyColumn {
             items(hit, key = { it.id }) { n -> NoteRow(n, lists.find { it.uid == n.listUid }?.name) { nav.navigate("note/${n.id}") } }
@@ -305,7 +305,7 @@ fun NoteListNameDialog(
 private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, searching: Boolean) {
     val all by vm.diaries.collectAsState()
     // §77 N6：日记只有正文可搜（心情是图标不是文字）
-    val diaries = if (q.isBlank()) all else all.filter { it.content.contains(q, true) }
+    val diaries = if (q.isBlank()) all else all.filter { com.looka.app.util.matchWords(q, it.content) }   // §117 D2
     val today = Fmt.today()
     // 搜索态下不插「写今天的日记」那一行 —— 它不是搜索结果
     val hasToday = searching || all.any { it.day == today }

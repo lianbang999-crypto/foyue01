@@ -191,6 +191,8 @@ fun EventDetailScreen(vm: LookaViewModel, nav: NavHostController, sid: Long, occ
                 DetailRow(LkIcons.Note, o.memo)
                 Hairline()
             }
+            // §117 A：附件区（图片 v1）—— 宿主键用系列 uid，重复日程各次共享同一批图
+            s?.let { com.looka.app.ui.common.AttachmentSection(vm, "event", it.uid) }
         }
     }
 
