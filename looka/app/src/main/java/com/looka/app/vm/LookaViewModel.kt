@@ -753,6 +753,29 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     suspend fun diaryOf(day: Long) = diaryDao.byDay(day)
 
+    /**
+     * §103（DNA 8.2）：日记改期。实机日记页标题栏就是可点的日期 `8月22日(土) ▾`，
+     * 我们此前**只能在建的那天写，日子选错了改不了**，只能删了重写 —— 那是功能缺失。
+     *
+     * ⚠️ 不能原地改 `day`：`day` 有唯一索引、`uid` 固定为 `diary-<day>`（跨设备靠它天然合并）。
+     * 原地改会让同一条记录换 uid，云端变成两个对象。所以改期 = **搬**：新日期建一条、旧的打墓碑。
+     *
+     * @return null = 成功；非 null = 失败原因（目标日已有日记，不静默覆盖）
+     */
+    suspend fun moveDiary(from: Long, to: Long): String? {
+        if (from == to) return null
+        if (diaryDao.byDay(to) != null) return tr("{0} 已经有日记了", Fmt.dateFull(to))
+        val src = diaryDao.byDay(from) ?: return tr("找不到这篇日记")
+        diaryDao.upsert(
+            Diary(day = to, mood = src.mood, content = src.content,
+                  updatedAt = now(), uid = "diary-$to", dirty = true)
+        )
+        // 旧的走软删 —— 墓碑要上云，否则其它设备还留着原来那天
+        diaryDao.update(src.copy(deleted = true, dirty = true, updatedAt = now()))
+        afterChange()
+        return null
+    }
+
     fun saveDiary(day: Long, mood: Int, content: String, onDone: () -> Unit = {}) = viewModelScope.launch {
         val ex = diaryDao.byDay(day)
         diaryDao.upsert(

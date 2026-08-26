@@ -75,6 +75,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
     var aiBusy by remember { mutableStateOf(false) }
     var polished by remember { mutableStateOf<String?>(null) }
     var privacyDlg by remember { mutableStateOf(false) }
+    var dateDlg by remember { mutableStateOf(false) }
 
     val draftKey = "diary_$day"
     LaunchedEffect(day) {
@@ -102,7 +103,13 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .systemBarsPadding().imePadding()
     ) {
-        LookaTopBar(Fmt.dateFull(day), onBack = { nav.popBackStack() }) {
+        // §103（DNA 8.2）：标题栏是**可点的日期 + ▾**，点开改期。
+        // 实机图 83 就是 `← 8月22日(土) ▾`；我们此前是死标题，日子选错了只能删了重写。
+        LookaTopBar(
+            Fmt.dateFull(day) + " ▾",
+            onBack = { nav.popBackStack() },
+            onTitleClick = { dateDlg = true }
+        ) {
             if (existed) {
                 IconButton(onClick = { delDlg = true }) {
                     Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
@@ -230,6 +237,25 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             TextButton(onClick = { privacyDlg = false }) { Text(tr("暂不"), color = GrayText) }
         },
         containerColor = Color.White
+    )
+
+    if (dateDlg) com.looka.app.ui.common.LookaDatePicker(
+        initialDay = day,
+        onPick = { newDay ->
+            dateDlg = false
+            scope.launch {
+                // 先把当前编辑的内容落到原日期，再整篇搬过去 —— 否则搬走的是上次保存的版本
+                if (content.isNotBlank()) vm.saveDiary(day, mood, content)
+                val err = vm.moveDiary(day, newDay)
+                if (err != null) toast(ctx, err)
+                else {
+                    com.looka.app.data.Prefs.clearDraft(ctx, draftKey)
+                    nav.popBackStack()
+                    nav.navigate("diary/$newDay")
+                }
+            }
+        },
+        onDismiss = { dateDlg = false }
     )
 
     if (delDlg) ConfirmDialog(

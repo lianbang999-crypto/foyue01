@@ -83,6 +83,8 @@ fun LookaTopBar(
     title: String,
     onBack: (() -> Unit)? = null,
     backIcon: ImageVector = Icons.AutoMirrored.Filled.ArrowBack,
+    /** §103：标题可点（日记改期用）—— 传 null 时标题就是死的，行为不变 */
+    onTitleClick: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Column {
@@ -102,6 +104,7 @@ fun LookaTopBar(
                 title, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
+                    .then(if (onTitleClick != null) Modifier.plainClick(onTitleClick) else Modifier)
             )
             actions()
         }
