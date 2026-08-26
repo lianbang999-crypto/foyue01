@@ -1313,7 +1313,12 @@ private fun DaySheet(
                 }
                 items(taskList) { t ->
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
+                        Modifier.fillMaxWidth()
+                            // §116（用户实机）：日程行、系统行都能整行点开，唯独任务行只有
+                            // 圆圈可点 —— 「任务在日历上没法进入编辑」就是这条。补上与
+                            // 待办页同款的行点击 → 任务详情页。
+                            .plainClick { nav.navigate("task/" + t.id) }
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(tr("任务"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))

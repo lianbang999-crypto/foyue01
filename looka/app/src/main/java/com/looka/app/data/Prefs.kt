@@ -232,6 +232,15 @@ object Prefs {
     fun apkSha256(c: Context) = sp(c).getString("apk_sha256", "")!!
     fun setApkSha256(c: Context, v: String) = sp(c).edit().putString("apk_sha256", v).apply()
 
+    /** §116：已下载并通过校验、等待安装的 APK 版本名（空 = 无待装包）。
+     * 有它才能在「更多」页给出常驻的「点击安装」入口 —— 用户从授权设置页回来后
+     * 不依赖广播时序也能装。 */
+    fun apkReadyVersion(c: Context) = sp(c).getString("apk_ready_ver", "")!!
+    fun setApkReadyVersion(c: Context, v: String) = sp(c).edit().putString("apk_ready_ver", v).apply()
+    /** 待装包的目标 versionCode —— 装上后（当前 code ≥ 它）安装入口自动消失 */
+    fun apkTargetCode(c: Context) = sp(c).getInt("apk_target_code", 0)
+    fun setApkTargetCode(c: Context, v: Int) = sp(c).edit().putInt("apk_target_code", v).apply()
+
     // ---- 系统日历聚合 ----
     fun showSysCal(c: Context) = sp(c).getBoolean("show_sys_cal", false)
     fun setShowSysCal(c: Context, v: Boolean) = sp(c).edit().putBoolean("show_sys_cal", v).apply()

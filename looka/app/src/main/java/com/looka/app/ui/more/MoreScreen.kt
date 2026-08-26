@@ -259,7 +259,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     updateInfo?.let { info ->
         AlertDialog(
             onDismissRequest = { updateInfo = null },
-            title = { DlgTitle(tr("发现新版本 ") + info.versionName) },
+            // §116：标题写清「当前 → 新」 —— 用户反复报"装完没变化"，
+            // 有了这行，装没装上、现在是几，一眼可辨
+            title = { DlgTitle(tr("发现新版本 ") + info.versionName + tr("（当前 {0}）", com.looka.app.BuildConfig.VERSION_NAME)) },
             text = { Text(info.changelog.ifBlank { tr("修复与体验优化") }, fontSize = 14.sp, lineHeight = 21.sp) },
             confirmButton = {
                 TextButton(onClick = {
@@ -313,6 +315,19 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                             }
                         }
                     )
+                }
+                // §116：已下载待装的包给**常驻入口** —— 用户去系统设置开完
+                // 「允许安装未知应用」回来，从这里一点就装，不依赖下载广播的时序
+                com.looka.app.util.UpdateManager.readyApk(ctx)?.let { apk ->
+                    Row(Modifier.padding(top = 10.dp)) {
+                        Text(
+                            tr("安装已下载的新版本"),
+                            fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.plainClick {
+                                com.looka.app.util.UpdateManager.install(ctx, apk)
+                            }
+                        )
+                    }
                 }
                 // E5：更新与语言收进关于页（更多页减行）
                 Row(Modifier.padding(top = 10.dp)) {

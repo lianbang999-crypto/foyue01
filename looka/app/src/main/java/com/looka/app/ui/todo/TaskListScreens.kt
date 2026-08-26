@@ -128,11 +128,20 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             .sortedWith(compareBy({ it.sortOrder }, { it.id }))
     }
     // §102：**快照式** —— 打勾后条目不当场消失（否则看着像被删了，正是用户反馈的那条）。
-    // 真被删掉的才移除；离开页面再进来会重新快照，勾掉的自然就归到「已完成」了。
+    // 真被删掉的才移除。
     val aliveUids = remember(tasks, uid) { tasks.filter { it.listUid == uid }.map { it.uid }.toSet() }
     val shownUids = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow.map { it.uid }, aliveUids)
     val allByUid = remember(tasks) { tasks.associateBy { it.uid } }
     val open = remember(shownUids, allByUid) { shownUids.mapNotNull { allByUid[it] } }
+    // §116（用户实机 + Lifebear 图 11 实证）：**已完成任务留在清单里**，不是退出再进就没。
+    // Lifebear 的清单详情页持续显示已完成（实心圆+白勾），「完了タスク」只是跨清单汇总。
+    // 我们原来 filter { !it.done } 一刀切 —— 重进页面后勾掉的任务凭空消失，用户以为丢了。
+    // 形态与网页端一致：未完成（快照序，可拖拽）在上，已完成排在后面（只可点开/左滑删）。
+    val doneInList = remember(tasks, uid, shownUids) {
+        val inSnap = shownUids.toSet()
+        tasks.filter { it.done && it.listUid == uid && it.uid !in inSnap }
+            .sortedByDescending { it.doneAt }
+    }
     var editList by remember { mutableStateOf(false) }
     var delList by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
@@ -208,7 +217,36 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                     )
                 }
             }
-            if (open.isEmpty()) {
+            // §116：已完成任务持续显示（Lifebear 图 11）——不参与拖拽排序，可点开、可左滑删
+            if (doneInList.isNotEmpty()) {
+                item {
+                    Text(
+                        tr("已完成 {0}", doneInList.size.toString()),
+                        fontSize = 12.sp, color = GrayText,
+                        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp)
+                    )
+                }
+                items(doneInList, key = { "done-" + it.uid }) { t ->
+                    androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
+                        TaskRowV2(
+                            t,
+                            modifier = Modifier
+                                .background(MaterialTheme.colorScheme.background)
+                                .listRowGestures(
+                                    uid = "done-" + t.uid, state = null, rowHeightPx = rowHeightPx,
+                                    onReorder = null,
+                                    onDelete = { vm.deleteTask(t) }
+                                ),
+                            listName = null, listColor = parseHex(list.colorHex),
+                            onToggle = { vm.toggleTask(t) },
+                            onStar = { vm.setTaskStar(t, !t.starred) },
+                            onClick = { nav.navigate("task/${t.id}") }
+                        )
+                    }
+                }
+            }
+            if (open.isEmpty() && doneInList.isEmpty()) {
                 item { EmptyDeer(tr("清单空空的"), hint = tr("在上方输入框写下第一条 ↑")) }
             }
             item { Spacer(Modifier.height(60.dp)) }

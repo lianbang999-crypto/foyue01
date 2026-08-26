@@ -983,3 +983,10 @@ AI 不限次（改回每天 10 次）· 生成新主题 / 表情包	Unlimited AI
 没有日历写入权限，改不了系统日程	No calendar write permission — can't edit system events
 系统日历	System calendar
 这是重复日程，请在系统日历中管理	This is a recurring event — please manage it in the system calendar
+（当前 {0}）	(current {0})
+安装已下载的新版本	Install downloaded update
+请先允许 Looka 安装应用，开启后回到「更多」页点「安装已下载的新版本」	Please allow Looka to install apps first, then return to More and tap "Install downloaded update"
+下载的安装包不见了，请重新检查更新	Downloaded package is missing, please check for updates again
+安装包校验失败，已删除，请重新下载	Package verification failed and was deleted, please download again
+无法打开安装器：{0}	Cannot open installer: {0}
+已完成 {0}	Done {0}

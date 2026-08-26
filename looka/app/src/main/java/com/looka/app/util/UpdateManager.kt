@@ -85,31 +85,73 @@ object UpdateManager {
         val id = dm.enqueue(req)
         Prefs.setApkDownloadId(c, id)
         Prefs.setApkSha256(c, info.sha256)
+        Prefs.setApkTargetCode(c, info.versionCode)
     }
 
-    /** 下载完成回调：校验 sha256 后唤起安装 */
+    /** 下载完成回调：校验 sha256 后唤起安装。
+     * §116：每个失败分支都要**说话** —— 原来校验失败/文件丢失都静默 return，
+     * 用户看到的就是「下载完了，然后什么都没发生」。 */
     fun onDownloadComplete(c: Context, downloadId: Long) {
         if (downloadId != Prefs.apkDownloadId(c) || downloadId < 0) return
         Prefs.setApkDownloadId(c, -1L)
         val f = apkFile(c)
-        if (!f.exists()) return
+        if (!f.exists()) {
+            android.widget.Toast.makeText(c, com.looka.app.util.tr("下载的安装包不见了，请重新检查更新"), android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         val expect = Prefs.apkSha256(c)
         if (expect.isNotBlank() && !sha256(f).equals(expect, true)) {
             f.delete()   // 校验失败：不安装损坏包
+            Prefs.setApkReadyVersion(c, "")
+            android.widget.Toast.makeText(c, com.looka.app.util.tr("安装包校验失败，已删除，请重新下载"), android.widget.Toast.LENGTH_LONG).show()
             return
         }
+        Prefs.setApkReadyVersion(c, versionTag(c))
         install(c, f)
     }
 
+    /** 已就绪待装的包（存在且校验过）；「更多」页用它显示常驻安装入口。
+     * 目标 code ≤ 当前 code 说明已经装上了 —— 入口自动消失，不用手动清。 */
+    fun readyApk(c: Context): File? {
+        if (Prefs.apkTargetCode(c) <= BuildConfig.VERSION_CODE) return null
+        val f = apkFile(c)
+        return if (Prefs.apkReadyVersion(c).isNotBlank() && f.exists()) f else null
+    }
+
+    private fun versionTag(c: Context): String = Prefs.apkSha256(c).take(8)
+
+    /**
+     * §116 根因：Android 8+ 唤起 APK 安装器**必须先获得本应用的
+     * 「允许安装未知应用」授权**（REQUEST_INSTALL_PACKAGES 只是声明，不等于授权）。
+     * 未授权时 ACTION_VIEW 会被系统拦下 —— 部分 ROM 弹一下设置又退回，部分直接无反应。
+     * 全项目此前**没有任何地方检查过这件事**，这正是用户「下载了、点了安装、
+     * 装完没变化、每次都这样」的根因：每次都卡死在同一个未授权环节。
+     */
     fun install(c: Context, f: File) {
         try {
+            if (android.os.Build.VERSION.SDK_INT >= 26 && !c.packageManager.canRequestPackageInstalls()) {
+                android.widget.Toast.makeText(
+                    c,
+                    com.looka.app.util.tr("请先允许 Looka 安装应用，开启后回到「更多」页点「安装已下载的新版本」"),
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                c.startActivity(
+                    Intent(
+                        android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + BuildConfig.APPLICATION_ID)
+                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                return
+            }
             val uri = FileProvider.getUriForFile(c, "${BuildConfig.APPLICATION_ID}.fileprovider", f)
             c.startActivity(
                 Intent(Intent.ACTION_VIEW)
                     .setDataAndType(uri, "application/vnd.android.package-archive")
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             )
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(c, com.looka.app.util.tr("无法打开安装器：{0}", e.message ?: ""), android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun sha256(f: File): String {
