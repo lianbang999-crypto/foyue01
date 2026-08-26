@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 36,
-  "versionName": "1.19.0",
+  "versionCode": 37,
+  "versionName": "1.20.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 3729173,
-  "sha256": "a334c4e2404afd2c5b006b6c16fefe518dcb8689aa1e2a5a5b7d41cb986dc960",
-  "changelog": "笔记清单删掉后不再白屏；长按可以拖动排序、左滑可以删除，全站一个手势；删错了屏幕下方随时能撤销；贴纸更大了",
+  "size": 4591421,
+  "sha256": "8590a1c946ac533c13a3aa546f8da737b6beb47414c2fb7c09cf050a7aea9ceb",
+  "changelog": "左滑一滑到底就删（撤销条兜底）；全站换上 Looka 自己的图标；日记页写字时只剩你的字；回到今天挪到右下角；待办删不掉/新建第一条不显示已修；应用图标换成水彩九色鹿；底色回到纯白",
   "minSupported": 1
 }

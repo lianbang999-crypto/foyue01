@@ -137,8 +137,9 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
             SectionLabel(tr("Pro"))
+            // §112：「做自己的主题」权益随自创色盘一并撤下（主题只留九色）
             Text(
-                tr("更多鹿角（每天 50 枚） · 做自己的主题"),
+                tr("更多鹿角（每天 50 枚）"),
                 fontSize = 13.sp, lineHeight = 20.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )

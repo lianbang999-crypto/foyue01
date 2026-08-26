@@ -63,6 +63,17 @@ fun paperOf(c: Color, f: Float = 0.96f) = Color(
     c.red * (1 - f) + f, c.green * (1 - f) + f, c.blue * (1 - f) + f
 )
 
+/** 两色线性混合（浅底 = 掺白 90%，深字 = 掺黑 55%，全站主题共用这一个公式） */
+fun mixColor(c: Color, w: Color, f: Float) = Color(
+    c.red * (1 - f) + w.red * f, c.green * (1 - f) + w.green * f, c.blue * (1 - f) + w.blue * f
+)
+
+/** 九色统一由主色推导浅底与深字 —— 九色来自 48 色盘，配套色机器推导，不再逐个手调 */
+private fun themeOf(name: String, argb: Long): DeerTheme {
+    val base = Color(argb)
+    return DeerTheme(name, base, mixColor(base, Color.White, 0.90f), mixColor(base, Color.Black, 0.55f))
+}
+
 // §107 B（2026-08-26 用户拍板）：**纸色回到纯白，对齐 Lifebear。**
 //
 // 这是撤回 §48 B2 那条「纸色掺 4% 主色」。当时的理由是"换主题只动 10% 的点缀像素，
@@ -73,31 +84,37 @@ fun paperOf(c: Color, f: Float = 0.96f) = Color(
 // "换主题该有感觉"这件事不作废，只是换了承载物：**由皮肤的插画去承载**
 // （顶栏画带 / 角落装饰 / 空状态 / 底部导航），不是由纸的色温去承载。
 // 那套槽位就是 §107 C 这批建的。
+// §112（2026-08-26 用户拍板）：**九色从 48 色盘里提取** —— 主题色与分类/清单色
+// 同一个色系，日历上主题强调色和用户内容色永远不打架。
+// 提取方法：对原九色在 LIST_PALETTE 里找**色相优先**的最近邻（纯 RGB 距离会被亮度
+// 带偏 —— 第一轮算出"樱粉→珊瑚粉、鎏金→橄榄绿"，色相加权后才对）。两处人工把关：
+//   樱粉取 #FE74C2（首选 #FD98D0 太浅撑不起主色）；
+//   鎏金取 #FFBE0C（48 色里最"金"的一个；原 #C9A227 那种暗金盘里没有 ——
+//   代价：鎏金主题下 primary 直接当前景色的地方会比原来浅一档，实测不行再议）。
 val DEER_THEMES = listOf(
-    DeerTheme(tr("森绿"), LookaGreen, LookaGreenSoft, Color(0xFF1E4D19)),
-    DeerTheme(tr("青碧"), Color(0xFF2FA69A), Color(0xFFE3F4F1), Color(0xFF0F4B45)),
-    DeerTheme(tr("天蓝"), Color(0xFF4A9EDB), Color(0xFFE6F1FA), Color(0xFF16436B)),
-    DeerTheme(tr("绀青"), Color(0xFF4A7DDC), Color(0xFFE8EEFB), Color(0xFF1A3670)),
-    DeerTheme(tr("藕紫"), Color(0xFF7E6BD8), Color(0xFFEEEAFA), Color(0xFF35296B)),
-    DeerTheme(tr("樱粉"), Color(0xFFE077A8), Color(0xFFFBEAF2), Color(0xFF6B2145)),
-    DeerTheme(tr("珊瑚"), Color(0xFFE0504A), Color(0xFFFBEAE9), Color(0xFF6B1F1C)),
-    DeerTheme(tr("暖橙"), Color(0xFFF2913D), Color(0xFFFCEFE2), Color(0xFF6B3C0F)),
-    DeerTheme(tr("鎏金"), Color(0xFFC9A227), Color(0xFFF7F1DC), Color(0xFF5C4A0E))
+    themeOf(tr("森绿"), 0xFF50A955),
+    themeOf(tr("青碧"), 0xFF0EAE96),
+    themeOf(tr("天蓝"), 0xFF4EBEEC),
+    themeOf(tr("绀青"), 0xFF435EC9),
+    themeOf(tr("藕紫"), 0xFF877BDD),
+    themeOf(tr("樱粉"), 0xFFFE74C2),
+    themeOf(tr("珊瑚"), 0xFFED4E60),
+    themeOf(tr("暖橙"), 0xFFF7941F),
+    themeOf(tr("鎏金"), 0xFFFFBE0C)
 )
 
 /** 自创主题（十三节 C4 v1，2026-08-21）：用户挑一个主色，浅底与深字由 HSL 推导 */
 const val CUSTOM_THEME = -1
 
+// §112：自创主题的**入口已撤**（用户拍板"主题只留九色"，自创色盘与照片取色
+// 一并移除 —— 那是个 Pro 卖点，撤的代价在 §112 记账）。
+// 这个函数保留：已经设了自定义主题的老用户，升级后主题不能凭空变掉 ——
+// ThemeCtl.init 仍认 index=-1，直到他自己挑一个九色为止。
 fun customTheme(argb: Long): DeerTheme {
     val base = Color(argb)
-    // container = 主色掺 90% 白（同九色的浅底手感）；onContainer = 掺 55% 黑保证对比度
-    fun mix(c: Color, w: Color, f: Float) = Color(
-        c.red * (1 - f) + w.red * f, c.green * (1 - f) + w.green * f, c.blue * (1 - f) + w.blue * f
-    )
-    // §107 B：自创主题的纸色同样回到纯白（否则九色是白纸、自创是色纸，两套规矩）
     return DeerTheme(
         tr("自定义"), base,
-        mix(base, Color.White, 0.90f), mix(base, Color.Black, 0.55f)
+        mixColor(base, Color.White, 0.90f), mixColor(base, Color.Black, 0.55f)
     )
 }
 

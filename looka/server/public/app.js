@@ -76,12 +76,12 @@ function toast(msg) {
 
 /* ---------------- 九色主题 ---------------- */
 const THEMES = [
-  ['森绿', '#55B04B', '#EAF6E7', '#1E4D19'], ['青碧', '#2FA69A', '#E3F4F1', '#0F4B45'],
-  ['天蓝', '#4A9EDB', '#E6F1FA', '#16436B'], ['绀青', '#4A7DDC', '#E8EEFB', '#1A3670'],
-  ['藕紫', '#7E6BD8', '#EEEAFA', '#35296B'], ['樱粉', '#E077A8', '#FBEAF2', '#6B2145'],
-  ['珊瑚', '#E0504A', '#FBEAE9', '#6B1F1C'], ['暖橙', '#F2913D', '#FCEFE2', '#6B3C0F'],
-  ['鎏金', '#C9A227', '#F7F1DC', '#5C4A0E']
-];
+  ['森绿', '#50A955', '#EEF6EE', '#244C26'], ['青碧', '#0EAE96', '#E7F7F4', '#064E44'],
+  ['天蓝', '#4EBEEC', '#EDF8FD', '#23556A'], ['绀青', '#435EC9', '#ECEFFA', '#1E2A5A'],
+  ['藕紫', '#877BDD', '#F3F2FC', '#3D3763'], ['樱粉', '#FE74C2', '#FFF1F9', '#723457'],
+  ['珊瑚', '#ED4E60', '#FDEDEF', '#6B232B'], ['暖橙', '#F7941F', '#FEF4E9', '#6F430E'],
+  ['鎏金', '#FFBE0C', '#FFF8E7', '#735505']
+];  // §112：九色从 48 色盘提取（与 App Theme.kt 同源同公式），浅底=掺白90%、深字=掺黑55%
 // 自创主题（与 App 同步，2026-08-21）：主色掺 90% 白做浅底、掺 55% 黑做深字
 // 2026-08-21 对齐 Lifebear：48 色贴纸盘（与 App LIST_PALETTE 同源，色相环螺旋、高饱和）
 const LK_PALETTE = [
@@ -1578,83 +1578,8 @@ async function boot() {
   $('#themePicker').innerHTML = THEMES.map((t, i) =>
     `<button class="theme-dot" title="${t[0]}" data-i="${i}" style="background:${t[2]}"><span style="background:${t[1]}"></span></button>`).join('');
   $$('.theme-dot').forEach(b => b.onclick = () => { applyTheme(+b.dataset.i); });
-  // 自创色板（与 App 同款 18 色敦煌矿物色系）
-  const CUSTOM_COLORS = ['#8c4a3c','#b56a48','#c98a4b','#8f7b3e','#5f7a3d','#3e7a55',
-    '#3e7a78','#3e6c8f','#4a5c9e','#6d55a8','#95538f','#ad5271',
-    '#87695a','#6e7b6e','#5c6b7a','#444b52','#b08e4e','#7a5c9e'];
-  const tp = $('#themePicker');
-  if (tp && !tp.querySelector('.custom-dot')) {
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'width:100%;display:flex;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid var(--hair)';
-    wrap.innerHTML = CUSTOM_COLORS.map(c =>
-      `<button class="custom-dot" data-c="${c}" style="width:26px;height:26px;border-radius:50%;border:2px solid transparent;background:${c}"></button>`).join('');
-    tp.appendChild(wrap);
-    wrap.querySelectorAll('.custom-dot').forEach(b => b.onclick = () => applyCustomTheme(b.dataset.c));
-    // B6-lite（§48）：从照片取色生成主题（Pro）。取色在浏览器本地 canvas 完成，照片不上传。
-    const photoBtn = document.createElement('button');
-    photoBtn.className = 'custom-dot';
-    photoBtn.title = t('从照片生成主题');
-    photoBtn.style.cssText = 'width:26px;height:26px;border-radius:50%;border:1px dashed var(--hair);background:#fff;font-size:14px;line-height:1';
-    photoBtn.textContent = '📷';
-    tp.appendChild(photoBtn);
-    const photoInput = document.createElement('input');
-    photoInput.type = 'file'; photoInput.accept = 'image/*'; photoInput.style.display = 'none';
-    tp.appendChild(photoInput);
-    photoBtn.onclick = () => {
-      if (S.plan !== 'pro') { const m = $('#mPro'); if (m && m.onclick) m.onclick(); return; }
-      photoInput.click();
-    };
-    photoInput.onchange = () => {
-      const f = photoInput.files && photoInput.files[0]; photoInput.value = '';
-      if (!f) return;
-      const img = new Image();
-      img.onload = () => {
-        // 64×64 降采样 → 32 级量化桶计数 → 按「数量×饱和度×中亮度」打分取前 3 个不同色相
-        const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64;
-        const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, 64, 64);
-        const d = cx.getImageData(0, 0, 64, 64).data;
-        const bucket = {};
-        for (let i = 0; i < d.length; i += 4) {
-          const r = d[i], g = d[i + 1], b = d[i + 2];
-          const k = ((r >> 5) << 6) | ((g >> 5) << 3) | (b >> 5);
-          const e = bucket[k] || (bucket[k] = { n: 0, r: 0, g: 0, b: 0 });
-          e.n++; e.r += r; e.g += g; e.b += b;
-        }
-        const cands = Object.values(bucket).map(e => {
-          const r = e.r / e.n, g = e.g / e.n, b = e.b / e.n;
-          const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-          const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-          const sat = mx === 0 ? 0 : (mx - mn) / mx;
-          let h = 0;
-          if (mx !== mn) {
-            if (mx === r) h = ((g - b) / (mx - mn)) % 6; else if (mx === g) h = (b - r) / (mx - mn) + 2; else h = (r - g) / (mx - mn) + 4;
-            h = (h * 60 + 360) % 360;
-          }
-          return { r, g, b, h, score: e.n * sat * (lum > 0.05 && lum < 0.75 ? 1 : 0) };
-        }).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
-        const picked = [];
-        for (const c of cands) {
-          if (picked.some(x => Math.min(Math.abs(x.h - c.h), 360 - Math.abs(x.h - c.h)) < 24)) continue;
-          picked.push(c); if (picked.length >= 3) break;
-        }
-        if (!picked.length) { toast(t('没取到合适的颜色，换一张色彩多一点的照片试试？')); return; }
-        const hex = c => '#' + [c.r, c.g, c.b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
-        modal(`<h3>${t('照片里的颜色 🦌')}</h3>
-          <p class="dim-note">${t('挑一套喜欢的，点一下就换上')}</p>
-          <div style="display:flex;justify-content:space-evenly;padding:12px 0">
-          ${picked.map(c => `<button class="photo-theme" data-c="${hex(c)}"
-            style="width:56px;height:56px;border-radius:50%;border:1px solid #0003;background:${mixHex(hex(c), '#ffffff', 0.9)};display:flex;align-items:center;justify-content:center">
-            <span style="width:30px;height:30px;border-radius:50%;background:${hex(c)}"></span></button>`).join('')}
-          </div>
-          <div class="modal-btns"><button class="btn-mini" id="photoThemeCancel">${t('取消')}</button></div>`);
-        $('#photoThemeCancel').onclick = closeModal;
-        document.querySelectorAll('.photo-theme').forEach(b => b.onclick = () => {
-          applyCustomTheme(b.dataset.c); closeModal();
-        });
-      };
-      img.src = URL.createObjectURL(f);
-    };
-  }
+  // §112（用户拍板）：主题只留九色 —— 自创色板与照片取色已撤（App 同步撤）。
+  // applyCustomTheme 保留：同步下来的旧自定义主题仍要能应用。
   applyingRemoteSettings = true;
   try { applyTheme(localStorage.getItem('lk_theme') || 0); } finally { applyingRemoteSettings = false; }
 

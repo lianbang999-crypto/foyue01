@@ -85,20 +85,6 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.looka.app.util.UpdateManager.Info?>(null) }
     var updateMsg by remember { mutableStateOf<String?>(null) }
-    // 自创主题 Pro 门禁：记录用户点的那个颜色，弹窗里就用它演示（看得见才想要）
-    var customGate by remember { mutableStateOf<Long?>(null) }
-    // B6-lite（§48）：从照片取色生成主题。取色在端上完成（androidx.palette），图片不出设备。
-    val themeScope = androidx.compose.runtime.rememberCoroutineScope()
-    var photoThemes by remember { mutableStateOf<List<Long>>(emptyList()) }
-    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) themeScope.launch {
-            val colors = extractThemeColors(ctx, uri)
-            if (colors.isEmpty()) com.looka.app.ui.common.toast(ctx, tr("没取到合适的颜色，换一张色彩多一点的照片试试？"))
-            else photoThemes = colors
-        }
-    }
     androidx.compose.runtime.LaunchedEffect(checkingUpdate) {
         if (checkingUpdate) {
             val info = com.looka.app.util.UpdateManager.check(ctx)
@@ -156,7 +142,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             SectionLabel(tr("外观"))
             NavRow(
                 tr("主题"), icon = LkIcons.Palette,
-                value = DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
+                // §112：老用户可能还停在自定义主题（入口已撤但设置仍有效），别把它标成"森绿"
+                value = if (ThemeCtl.index == com.looka.app.ui.theme.CUSTOM_THEME) tr("自定义")
+                        else DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
             ) { themeSheet = true }
             Hairline()
 
@@ -242,160 +230,19 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
 
-            // ── 自创主题（十三节 C4 v1）：挑一个自己的颜色。手帐要的是"这是我的本子"。
-            Hairline()
-            Text(
-                tr("或者，调一个自己的颜色"),
-                fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-            // T10（§65）：与 Lifebear 同规格 48 色盘（复用分类色盘，滤掉当不了主色的极亮/极暗）
-            val palette = remember {
-                com.looka.app.data.LIST_PALETTE.mapNotNull { hex ->
-                    val argb = 0xFF000000L or hex.removePrefix("#").toLong(16)
-                    val c0 = Color(argb)
-                    if (c0.luminance() in 0.04f..0.72f) argb else null
-                }
-            }
-            palette.chunked(8).forEach { rowColors ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    rowColors.forEach { argb ->
-                        val selC = ThemeCtl.index == com.looka.app.ui.theme.CUSTOM_THEME &&
-                                   ThemeCtl.customColor == argb
-                        Box(
-                            Modifier.size(30.dp).clip(CircleShape)
-                                .background(Color(argb))
-                                .border(
-                                    width = if (selC) 2.5.dp else 0.8.dp,
-                                    color = if (selC) Ink else Color(0x33000000),
-                                    shape = CircleShape
-                                )
-                                .plainClick {
-                                    // 自创主题是 Pro 权益（2026-08-21 决定）。
-                                    // 未开通不弹冷冰冰的付费墙 —— 先演示功能（ProFeatureDialog）
-                                    if (com.looka.app.data.Prefs.isPro(ctx)) ThemeCtl.setCustom(ctx, argb)
-                                    else customGate = argb
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selC) Text("✓", color = Color.White, fontSize = 12.sp)
-                        }
-                    }
-                }
-            }
-            Text(
-                tr("挑一个主色，整本手帐的浅底与深字会自动配好"),
-                fontSize = 11.5.sp, color = GrayText,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-            )
-
-            // ── B6-lite：从照片取色（Pro）。取色在手机上完成，照片不会上传 ──
-            Hairline()
-            Row(
-                Modifier.fillMaxWidth()
-                    .plainClick {
-                        if (com.looka.app.data.Prefs.isPro(ctx)) photoPicker.launch("image/*")
-                        else customGate = 0xFF8C4A3CL
-                    }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("📷", fontSize = 20.sp)
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text(tr("从照片生成主题"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        tr("挑一张照片，小鹿取色配一套"),
-                        fontSize = 11.sp, color = GrayText
-                    )
-                }
-            }
+            // §112（用户拍板）：**主题只留九色，自创色盘与照片取色已撤。**
+            // 「一鹿九色」本来就是品牌 —— 九个之外再给 48 个，等于自己稀释自己。
+            // 撤掉的是一个 Pro 卖点（§48 C4 / B6-lite），代价在 §112 记账；
+            // 已设自定义主题的老用户不受影响（ThemeCtl 仍认 index=-1，直到他换成九色之一）。
         }
     }
 
-    // B6-lite：照片取色候选（最多 3 套，点一套即应用）
-    if (photoThemes.isNotEmpty()) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { photoThemes = emptyList() },
-            title = { Text(tr("照片里的颜色 🦌"), fontSize = 16.sp) },
-            text = {
-                Column {
-                    Text(tr("挑一套喜欢的，点一下就换上"), fontSize = 12.sp, color = GrayText)
-                    Row(
-                        Modifier.fillMaxWidth().padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        photoThemes.take(3).forEach { argb ->
-                            val t = com.looka.app.ui.theme.customTheme(argb)
-                            Column(
-                                Modifier.plainClick {
-                                    ThemeCtl.setCustom(ctx, argb)
-                                    photoThemes = emptyList()
-                                },
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Box(
-                                    Modifier.size(56.dp).clip(CircleShape).background(t.container)
-                                        .border(0.8.dp, Color(0x33000000), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Box(Modifier.size(30.dp).clip(CircleShape).background(t.primary))
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { photoThemes = emptyList() }) { Text(tr("取消"), color = GrayText) }
-            }
-        )
-    }
 
     updateMsg?.let { m ->
         androidx.compose.runtime.LaunchedEffect(m) {
             com.looka.app.ui.common.toast(ctx, m)
             updateMsg = null
         }
-    }
-    // 自创主题上锁弹窗：用他刚点的颜色现场演示"纸"会变成什么样
-    customGate?.let { argb ->
-        val t = com.looka.app.ui.theme.customTheme(argb)
-        com.looka.app.ui.common.ProFeatureDialog(
-            title = tr("调一个自己的颜色"),
-            desc = tr("Pro 可以用任意颜色做主题：整本手帐的纸色、按钮、强调色都会跟着换。上面就是你刚选的颜色铺出来的样子。"),
-            onGo = { customGate = null; nav.navigate("subscription") },
-            onDismiss = { customGate = null },
-            demo = {
-                // 迷你手帐页：纸色底 + 主色标题条 + 两行"日程"
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(t.paper)
-                        .padding(10.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(t.primary))
-                        Spacer(Modifier.width(6.dp))
-                        Text(tr("我的手帐"), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = t.onContainer)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Box(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp))
-                            .background(t.container).padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) { Text(tr("9:00 晨跑"), fontSize = 10.sp, color = t.onContainer) }
-                    Spacer(Modifier.height(3.dp))
-                    Box(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp))
-                            .background(Color.White).padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) { Text(tr("14:00 和朋友喝茶"), fontSize = 10.sp, color = t.onContainer) }
-                }
-            }
-        )
     }
     updateInfo?.let { info ->
         AlertDialog(
@@ -492,58 +339,3 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         containerColor = Color.White
     )
 }
-
-/**
- * B6-lite（§48）：端上取色 —— 照片不出设备。
- * Palette 各 swatch 按「适合做主题主色」过滤（太亮太暗都撑不起浅底深字的推导），
- * 再按色相去重，最多给 3 个候选。
- */
-private suspend fun extractThemeColors(
-    c: android.content.Context,
-    uri: android.net.Uri
-): List<Long> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-    runCatching {
-        // 采样解码：取色不需要原图，128px 足够且省内存
-        val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        c.contentResolver.openInputStream(uri)?.use {
-            android.graphics.BitmapFactory.decodeStream(it, null, opts)
-        }
-        var sample = 1
-        while (maxOf(opts.outWidth, opts.outHeight) / (sample * 2) >= 128) sample *= 2
-        val bmp = c.contentResolver.openInputStream(uri)?.use {
-            android.graphics.BitmapFactory.decodeStream(
-                it, null,
-                android.graphics.BitmapFactory.Options().apply { inSampleSize = sample })
-        } ?: return@runCatching emptyList()
-
-        val p = androidx.palette.graphics.Palette.from(bmp).maximumColorCount(24).generate()
-        val raw = listOfNotNull(
-            p.vibrantSwatch, p.darkVibrantSwatch, p.mutedSwatch,
-            p.darkMutedSwatch, p.lightVibrantSwatch, p.dominantSwatch
-        ).map { it.rgb }
-
-        val out = ArrayList<Long>()
-        for (rgb in raw) {
-            val col = androidx.compose.ui.graphics.Color(rgb or 0xFF000000.toInt())
-            val lum = col.luminance()
-            if (lum < 0.05f || lum > 0.75f) continue          // 太暗/太亮做不了主色
-            val argb = 0xFF000000L or (rgb.toLong() and 0xFFFFFFL)
-            // 色相去重：与已选颜色太接近的跳过
-            val h1 = hueOf(col)
-            if (out.any { kotlin.math.abs(hueOf(androidx.compose.ui.graphics.Color(it)) - h1)
-                    .let { d -> minOf(d, 360f - d) } < 24f }) continue
-            out += argb
-            if (out.size >= 3) break
-        }
-        out
-    }.getOrDefault(emptyList())
-}
-
-private fun hueOf(c: androidx.compose.ui.graphics.Color): Float {
-    val hsv = FloatArray(3)
-    android.graphics.Color.RGBToHSV(
-        (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt(), hsv)
-    return hsv[0]
-}
-
-
