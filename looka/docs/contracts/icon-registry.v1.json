@@ -1,0 +1,446 @@
+{
+  "registry_version": "looka.icon-registry.v1",
+  "icons": [
+    {
+      "icon_id": "nav.calendar",
+      "action": "OPEN_CALENDAR",
+      "accessibility_label_key": "nav.calendar",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "nav.todo",
+      "action": "OPEN_TODO",
+      "accessibility_label_key": "nav.tasks",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "nav.create",
+      "action": "OPEN_CREATE",
+      "accessibility_label_key": "nav.create",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "nav.notes",
+      "action": "OPEN_NOTES",
+      "accessibility_label_key": "nav.notes",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "nav.more",
+      "action": "OPEN_MORE",
+      "accessibility_label_key": "nav.more",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.back",
+      "action": "NAVIGATE_BACK",
+      "accessibility_label_key": "action.back",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.close",
+      "action": "CLOSE",
+      "accessibility_label_key": "action.close",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.save",
+      "action": "SAVE",
+      "accessibility_label_key": "action.save",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.search",
+      "action": "SEARCH",
+      "accessibility_label_key": "action.search",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.edit",
+      "action": "EDIT",
+      "accessibility_label_key": "action.edit",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.delete",
+      "action": "DELETE",
+      "accessibility_label_key": "action.delete",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.copy",
+      "action": "COPY",
+      "accessibility_label_key": "action.copy",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.share",
+      "action": "SHARE",
+      "accessibility_label_key": "action.share",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.camera",
+      "action": "OPEN_CAMERA",
+      "accessibility_label_key": "action.camera",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.more",
+      "action": "OPEN_MORE_ACTIONS",
+      "accessibility_label_key": "action.more",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.undo",
+      "action": "UNDO",
+      "accessibility_label_key": "action.undo",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "action.add",
+      "action": "ADD",
+      "accessibility_label_key": "action.add",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.today",
+      "action": "GO_TO_TODAY",
+      "accessibility_label_key": "calendar.today",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.reminder",
+      "action": "OPEN_REMINDERS",
+      "accessibility_label_key": "calendar.reminder",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.repeat",
+      "action": "OPEN_RECURRENCE",
+      "accessibility_label_key": "action.repeat",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.location",
+      "action": "OPEN_LOCATION",
+      "accessibility_label_key": "calendar.location",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.event",
+      "action": null,
+      "accessibility_label_key": "calendar.event",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.task",
+      "action": null,
+      "accessibility_label_key": "calendar.task",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.all_day",
+      "action": null,
+      "accessibility_label_key": "calendar.all_day",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "calendar.external",
+      "action": null,
+      "accessibility_label_key": "calendar.external",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.checked",
+      "action": "MARK_INCOMPLETE",
+      "accessibility_label_key": "state.checked",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.unchecked",
+      "action": "MARK_COMPLETE",
+      "accessibility_label_key": "state.unchecked",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.starred",
+      "action": "UNSTAR",
+      "accessibility_label_key": "state.starred",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.unstarred",
+      "action": "STAR",
+      "accessibility_label_key": "state.unstarred",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.warning",
+      "action": null,
+      "accessibility_label_key": "state.warning",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "state.error",
+      "action": null,
+      "accessibility_label_key": "state.error",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "ai.sparkle",
+      "action": null,
+      "accessibility_label_key": "ai.sparkle",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "ai.generate",
+      "action": "AI_GENERATE",
+      "accessibility_label_key": "ai.generate",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "ai.magic",
+      "action": "OPEN_AI_ACTIONS",
+      "accessibility_label_key": "ai.magic",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "ai.voice",
+      "action": "START_VOICE_INPUT",
+      "accessibility_label_key": "ai.voice",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "ai.camera",
+      "action": "START_AI_CAMERA",
+      "accessibility_label_key": "ai.camera",
+      "required": true,
+      "modes": [
+        "mask",
+        "full_color"
+      ]
+    },
+    {
+      "icon_id": "more.account",
+      "action": "OPEN_ACCOUNT",
+      "accessibility_label_key": "more.account",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.plan",
+      "action": "OPEN_PLAN",
+      "accessibility_label_key": "more.plan",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.settings",
+      "action": "OPEN_SETTINGS",
+      "accessibility_label_key": "nav.settings",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.notice",
+      "action": "OPEN_NOTICE",
+      "accessibility_label_key": "more.notice",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.stamp_shop",
+      "action": "OPEN_STAMP_SHOP",
+      "accessibility_label_key": "more.stamp_shop",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.dressup_shop",
+      "action": "OPEN_DRESSUP_SHOP",
+      "accessibility_label_key": "more.dressup_shop",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.howto",
+      "action": "OPEN_HOWTO",
+      "accessibility_label_key": "more.howto",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.faq",
+      "action": "OPEN_FAQ",
+      "accessibility_label_key": "more.faq",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    },
+    {
+      "icon_id": "more.remove_ads",
+      "action": "OPEN_REMOVE_ADS",
+      "accessibility_label_key": "more.remove_ads",
+      "required": false,
+      "modes": [
+        "mask"
+      ]
+    }
+  ]
+}

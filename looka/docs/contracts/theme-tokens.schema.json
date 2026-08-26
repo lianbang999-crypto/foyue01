@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://looka.foyue.org/contracts/theme-tokens.schema.json",
+  "title": "Looka Theme Tokens v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "semantic", "event_palette"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "mode": { "enum": ["light", "dark"] },
+    "semantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface", "surface_variant", "text_primary", "text_secondary", "text_tertiary",
+        "accent", "weekend", "holiday", "selection", "today",
+        "event_all_day", "event_timed", "event_external", "divider", "scrim", "danger"
+      ],
+      "properties": {
+        "surface": { "$ref": "#/$defs/color" },
+        "surface_variant": { "$ref": "#/$defs/color" },
+        "text_primary": { "$ref": "#/$defs/color" },
+        "text_secondary": { "$ref": "#/$defs/color" },
+        "text_tertiary": { "$ref": "#/$defs/color" },
+        "accent": { "$ref": "#/$defs/color" },
+        "weekend": { "$ref": "#/$defs/color" },
+        "holiday": { "$ref": "#/$defs/color" },
+        "selection": { "$ref": "#/$defs/color" },
+        "today": { "$ref": "#/$defs/color" },
+        "event_all_day": { "$ref": "#/$defs/color" },
+        "event_timed": { "$ref": "#/$defs/color" },
+        "event_external": { "$ref": "#/$defs/color" },
+        "divider": { "$ref": "#/$defs/color" },
+        "scrim": { "$ref": "#/$defs/colorWithAlpha" },
+        "danger": { "$ref": "#/$defs/color" }
+      }
+    },
+    "event_palette": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": { "$ref": "#/$defs/color" }
+    },
+    "list_palette": {
+      "type": "array",
+      "minItems": 48,
+      "maxItems": 48,
+      "items": { "$ref": "#/$defs/color" }
+    }
+  },
+  "$defs": {
+    "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+    "colorWithAlpha": { "type": "string", "pattern": "^#[0-9A-Fa-f]{8}$" }
+  }
+}

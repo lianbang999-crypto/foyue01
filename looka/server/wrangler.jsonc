@@ -32,9 +32,10 @@
   "r2_buckets": [
     { "binding": "APK", "bucket_name": "looka-apk" }
   ],
-  // 每天北京时间 03:17 清理：过期会话 / 限流窗口 / 重置令牌 / 90 天墓碑 / 崩溃日志截尾
-  // 03:17 北京 = 全套清理+汇总+告警；*/5 = 爱发电拉单对账（webhook 掉了也最慢 5 分钟自动开通）
-  "triggers": { "crons": ["17 19 * * *", "*/5 * * * *"] },
+  // §107 A：**只留一条 cron**。免费版账号总额度 5 个已占满，两条会被直接拒绝部署。
+  // 合并后：每 5 分钟做爱发电拉单对账（webhook 掉了也最慢 5 分钟自动开通）；
+  // 走到北京 03:15 那一跳时，handler 里顺带跑全套清理+汇总+告警（见 worker.js scheduled）。
+  "triggers": { "crons": ["*/5 * * * *"] },
   "vars": {
     // 国内站 .cn（国际站 .com 对 CF 出口有风控，切勿改回）
     "SILICONFLOW_BASE": "https://api.siliconflow.cn/v1",

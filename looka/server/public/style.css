@@ -435,9 +435,11 @@ main{ padding-bottom:calc(62px + env(safe-area-inset-bottom)); }
 /* 自创色板选中态 */
 .custom-dot.active{ border-color:var(--ink,#1b1b1f) !important; }
 
-/* ===== 2026-08-21 主题「纸」：页面底色随主题走 =====
-   原来换主题只改强调色，界面 90% 是白底墨字，几乎看不出变化。
-   现在把页面底色也纳入主题（掺 96% 白，有色温但不刺眼），与 App 同算法。 */
+/* ===== 主题「纸」=====
+   2026-08-21 曾把页面底色纳入主题（掺 96% 白），
+   §107 B（2026-08-26）**撤回**：纸色回到纯白，对齐 Lifebear 实机，两端同步。
+   "换主题要有感觉"改由皮肤插画承载，不由纸的色温承载。
+   下面这些变量仍然保留 —— 皮肤系统将来还要用同一批钩子。 */
 :root{ --paper:#fff; --panel:#f7f8f7; }
 body, main, .pane{ background: var(--paper); }
 .topbar, .bottombar{ background: var(--paper); }

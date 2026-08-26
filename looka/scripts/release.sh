@@ -3,6 +3,12 @@
 # 用法：改好 app/build.gradle.kts 的 versionCode/versionName 后运行 scripts/release.sh "更新说明"
 set -e
 
+# §107 C：发版前对账枚举与机器合同。放在最前面 ——
+# 主题包是外部（含 AI）按 Registry 生成的，两边对不上要等图装进去才看得见，
+# 那时已经发出去了。这里挡一秒，比线上白一片便宜。
+echo "▶ 合约对账 ..."
+python3 "$(dirname "$0")/check_contracts.py" || { echo "❌ 枚举与合约不一致，中止发版"; exit 1; }
+
 # X12（§67）：先上 GitHub 再部署 —— 推送失败就中止，线上不允许跑仓库里没有的代码
 echo "▶ 推送 GitHub（looka 私库）..."
 git -C "$(git rev-parse --show-toplevel)" push looka main || { echo "❌ GitHub 推送失败，中止发版"; exit 1; }

@@ -8,10 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import com.looka.app.R
+import com.looka.app.ui.theme.ResolvedAsset
+import com.looka.app.ui.theme.SkinCtl
+import com.looka.app.ui.theme.SkinSlot
 import com.looka.app.util.tr
 
 /**
@@ -28,14 +32,34 @@ import com.looka.app.util.tr
  * 24dp 下可辨识度实测过：鹿身、鹿角、叶子都还认得出，所以 22–26dp 那批调用点
  * 不用另外给简化版。
  *
+ * §107 C：改成**走槽位查询**（`GLOBAL_MASCOT_DEFAULT`）而不是写死 R.drawable。
+ * 这条正好把上面那笔代价还回来一半 —— 水彩鹿不跟主题变色是真的，
+ * 但将来装一个 MascotSkin（含 AI 生的），这里**不用改一行**就换掉了。
+ * 这是 25 个槽位里 v1 目前唯一真接上渲染层的一个。
+ *
  * @param primary 保留参数只为不动 11 处调用点；**现在不再使用**。
  */
 @Composable
 fun DeerBadge(size: Dp, primary: Color = MaterialTheme.colorScheme.primary) {
-    Image(
-        painter = painterResource(R.drawable.ic_deer_photo),
-        contentDescription = tr("小鹿"),
-        modifier = Modifier.size(size).clip(CircleShape),
-        contentScale = ContentScale.Crop
-    )
+    val m = Modifier.size(size).clip(CircleShape)
+    when (val a = SkinCtl.resolver.asset(SkinSlot.GLOBAL_MASCOT_DEFAULT)) {
+        is ResolvedAsset.Builtin -> Image(
+            painterResource(a.resId), tr("小鹿"), m, contentScale = ContentScale.Crop
+        )
+        is ResolvedAsset.Managed -> Image(
+            // 托管资产（含 AI 生成）：已校验过 hash 的本地文件
+            painter = androidx.compose.ui.graphics.painter.BitmapPainter(
+                android.graphics.BitmapFactory.decodeFile(a.localPath)
+                    ?.asImageBitmap() ?: return DeerBadgeBuiltin(m)
+            ),
+            contentDescription = tr("小鹿"), modifier = m, contentScale = ContentScale.Crop
+        )
+        // 语义回退：没装皮肤就用随包那只水彩鹿
+        ResolvedAsset.Absent -> DeerBadgeBuiltin(m)
+    }
 }
+
+@Composable
+private fun DeerBadgeBuiltin(m: Modifier) = Image(
+    painterResource(R.drawable.ic_deer_photo), tr("小鹿"), m, contentScale = ContentScale.Crop
+)

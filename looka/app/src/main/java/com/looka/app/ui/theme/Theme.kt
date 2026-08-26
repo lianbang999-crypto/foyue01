@@ -63,16 +63,26 @@ fun paperOf(c: Color, f: Float = 0.96f) = Color(
     c.red * (1 - f) + f, c.green * (1 - f) + f, c.blue * (1 - f) + f
 )
 
+// §107 B（2026-08-26 用户拍板）：**纸色回到纯白，对齐 Lifebear。**
+//
+// 这是撤回 §48 B2 那条「纸色掺 4% 主色」。当时的理由是"换主题只动 10% 的点缀像素，
+// 所以毫无感觉"—— 理由本身没错，但**解法错了**：靠给整张纸染色去制造"换了主题"的感觉，
+// 代价是长时间阅读的底色不再中性，而 Lifebear 实机（图 99/100/122）从日历到编辑页
+// 全是纯白。内容区必须中性，这也正是主题规格「Skin 只能在 Layer 2–5、不进内容层」那条。
+//
+// "换主题该有感觉"这件事不作废，只是换了承载物：**由皮肤的插画去承载**
+// （顶栏画带 / 角落装饰 / 空状态 / 底部导航），不是由纸的色温去承载。
+// 那套槽位就是 §107 C 这批建的。
 val DEER_THEMES = listOf(
-    DeerTheme(tr("森绿"), LookaGreen, LookaGreenSoft, Color(0xFF1E4D19), paperOf(LookaGreen), paperOf(LookaGreen, 0.92f)),
-    DeerTheme(tr("青碧"), Color(0xFF2FA69A), Color(0xFFE3F4F1), Color(0xFF0F4B45), paperOf(Color(0xFF2FA69A)), paperOf(Color(0xFF2FA69A), 0.92f)),
-    DeerTheme(tr("天蓝"), Color(0xFF4A9EDB), Color(0xFFE6F1FA), Color(0xFF16436B), paperOf(Color(0xFF4A9EDB)), paperOf(Color(0xFF4A9EDB), 0.92f)),
-    DeerTheme(tr("绀青"), Color(0xFF4A7DDC), Color(0xFFE8EEFB), Color(0xFF1A3670), paperOf(Color(0xFF4A7DDC)), paperOf(Color(0xFF4A7DDC), 0.92f)),
-    DeerTheme(tr("藕紫"), Color(0xFF7E6BD8), Color(0xFFEEEAFA), Color(0xFF35296B), paperOf(Color(0xFF7E6BD8)), paperOf(Color(0xFF7E6BD8), 0.92f)),
-    DeerTheme(tr("樱粉"), Color(0xFFE077A8), Color(0xFFFBEAF2), Color(0xFF6B2145), paperOf(Color(0xFFE077A8)), paperOf(Color(0xFFE077A8), 0.92f)),
-    DeerTheme(tr("珊瑚"), Color(0xFFE0504A), Color(0xFFFBEAE9), Color(0xFF6B1F1C), paperOf(Color(0xFFE0504A)), paperOf(Color(0xFFE0504A), 0.92f)),
-    DeerTheme(tr("暖橙"), Color(0xFFF2913D), Color(0xFFFCEFE2), Color(0xFF6B3C0F), paperOf(Color(0xFFF2913D)), paperOf(Color(0xFFF2913D), 0.92f)),
-    DeerTheme(tr("鎏金"), Color(0xFFC9A227), Color(0xFFF7F1DC), Color(0xFF5C4A0E), paperOf(Color(0xFFC9A227)), paperOf(Color(0xFFC9A227), 0.92f))
+    DeerTheme(tr("森绿"), LookaGreen, LookaGreenSoft, Color(0xFF1E4D19)),
+    DeerTheme(tr("青碧"), Color(0xFF2FA69A), Color(0xFFE3F4F1), Color(0xFF0F4B45)),
+    DeerTheme(tr("天蓝"), Color(0xFF4A9EDB), Color(0xFFE6F1FA), Color(0xFF16436B)),
+    DeerTheme(tr("绀青"), Color(0xFF4A7DDC), Color(0xFFE8EEFB), Color(0xFF1A3670)),
+    DeerTheme(tr("藕紫"), Color(0xFF7E6BD8), Color(0xFFEEEAFA), Color(0xFF35296B)),
+    DeerTheme(tr("樱粉"), Color(0xFFE077A8), Color(0xFFFBEAF2), Color(0xFF6B2145)),
+    DeerTheme(tr("珊瑚"), Color(0xFFE0504A), Color(0xFFFBEAE9), Color(0xFF6B1F1C)),
+    DeerTheme(tr("暖橙"), Color(0xFFF2913D), Color(0xFFFCEFE2), Color(0xFF6B3C0F)),
+    DeerTheme(tr("鎏金"), Color(0xFFC9A227), Color(0xFFF7F1DC), Color(0xFF5C4A0E))
 )
 
 /** 自创主题（十三节 C4 v1，2026-08-21）：用户挑一个主色，浅底与深字由 HSL 推导 */
@@ -84,10 +94,10 @@ fun customTheme(argb: Long): DeerTheme {
     fun mix(c: Color, w: Color, f: Float) = Color(
         c.red * (1 - f) + w.red * f, c.green * (1 - f) + w.green * f, c.blue * (1 - f) + w.blue * f
     )
+    // §107 B：自创主题的纸色同样回到纯白（否则九色是白纸、自创是色纸，两套规矩）
     return DeerTheme(
         tr("自定义"), base,
-        mix(base, Color.White, 0.90f), mix(base, Color.Black, 0.55f),
-        paperOf(base), paperOf(base, 0.92f)
+        mix(base, Color.White, 0.90f), mix(base, Color.Black, 0.55f)
     )
 }
 

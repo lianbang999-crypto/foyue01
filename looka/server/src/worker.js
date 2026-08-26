@@ -1457,9 +1457,18 @@ export default {
     }
   },
   async scheduled(event, env, ctx) {
-    // */5 = 只做爱发电拉单对账（webhook 没配/掉单时，最慢 5 分钟自动开通）；
-    // 03:17 北京（19:17 UTC）= 全套：对账 + 清理 + 埋点汇总 + 告警
-    if (event.cron === '*/5 * * * *') {
+    // §107 A（2026-08-26）：**两条 cron 合成一条**。
+    // 账号 cron 额度是「免费版 5 个/账号」且已被占满，拿回 looka.foyue.org 时
+    // 部署直接被拒。合并后本 Worker 只占 1 个额度。
+    //
+    // 合并原则：**保住用户看得见的那条**。`*/5` 是爱发电拉单对账 ——
+    // webhook 掉单时靠它兜底，最慢 5 分钟自动开通，少了它用户付了钱开不了会员。
+    // 每日清理只是内务，晚几分钟没人察觉，所以让它搭 `*/5` 的车：
+    // 走到 19:15 UTC（北京 03:15）那一跳时顺带跑全套。
+    const t = new Date(event.scheduledTime || Date.now());
+    const isDaily = event.cron === '17 19 * * *' ||   // 万一以后额度松了，单独挂回来也认
+      (t.getUTCHours() === 19 && t.getUTCMinutes() >= 15 && t.getUTCMinutes() < 20);
+    if (!isDaily) {
       ctx.waitUntil(afdianReconcile(env));
       return;
     }

@@ -112,9 +112,11 @@ function applyCustomTheme(hex) {
   r.setProperty('--primary', hex);
   r.setProperty('--container', mixHex(hex, '#ffffff', 0.90));
   r.setProperty('--on-container', mixHex(hex, '#000000', 0.55));
-  // 纸：与 App 的 paperOf 同算法（掺 96% 白），页面底色随主题走
-  r.setProperty('--paper', mixHex(hex, '#ffffff', 0.96));
-  r.setProperty('--panel', mixHex(hex, '#ffffff', 0.92));
+  // §107 B：纸色回到纯白，对齐 Lifebear。与 App 同步撤回（App 侧见 Theme.kt DEER_THEMES）。
+  // 撤的是 2026-08-21 那条"页面底色随主题走"—— 想让换主题有感觉是对的，
+  // 但不该拿内容区的中性底去换，那是靠牺牲长时间阅读的舒适度买来的。
+  r.setProperty('--paper', '#ffffff');
+  r.setProperty('--panel', '#f7f8f7');
   localStorage.setItem('lk_theme', 'c:' + hex);
   $$('.theme-dot').forEach(el => el.classList.remove('active'));
   $$('.custom-dot').forEach(el => el.classList.toggle('active', el.dataset.c === hex));
@@ -125,8 +127,8 @@ function applyTheme(i) {
   const t = THEMES[+i] || THEMES[0];
   const r = document.documentElement.style;
   r.setProperty('--primary', t[1]); r.setProperty('--container', t[2]); r.setProperty('--on-container', t[3]);
-  r.setProperty('--paper', mixHex(t[1], '#ffffff', 0.96));
-  r.setProperty('--panel', mixHex(t[1], '#ffffff', 0.92));
+  r.setProperty('--paper', '#ffffff');   // §107 B：同上，纸色不再随主题
+  r.setProperty('--panel', '#f7f8f7');
   localStorage.setItem('lk_theme', i);
   $$('.custom-dot').forEach(el => el.classList.remove('active'));
   $$('.theme-dot').forEach((el, j) => el.classList.toggle('active', j === +i));
