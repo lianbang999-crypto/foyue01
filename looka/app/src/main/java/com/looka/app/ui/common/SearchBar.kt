@@ -1,5 +1,7 @@
 package com.looka.app.ui.common
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
@@ -33,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.Ink
-import com.looka.app.ui.theme.PanelBg
+import com.looka.app.ui.theme.SearchBg
 import com.looka.app.util.tr
 
 /**
@@ -91,12 +93,12 @@ fun LookaSearchBar(
         ) {
             Row(
                 Modifier.weight(1f).height(44.dp)
-                    .clip(RoundedCornerShape(4.dp)).background(PanelBg)
+                    .clip(RoundedCornerShape(4.dp)).background(SearchBg)
                     .rowClick { onActiveChange(true) }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
+                Icon(LkIcons.Search, tr("搜索"), tint = GrayText, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(placeholder, fontSize = 14.sp, color = Color(0xFFB9BBB9))
             }

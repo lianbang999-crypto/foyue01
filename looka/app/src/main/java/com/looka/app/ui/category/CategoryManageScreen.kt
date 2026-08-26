@@ -85,7 +85,7 @@ fun CategoryManageScreen(vm: LookaViewModel, nav: NavHostController) {
             items(reorder.order.toList(), key = { it }) { cuid ->
                 val c = byUid[cuid] ?: return@items
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) { if (c.deletable) delCat = c }
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
                     Modifier.fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)

@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.event
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 
@@ -168,7 +170,7 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { close() }) { Icon(Icons.Default.Close, tr("关闭"), tint = Ink) }
+            IconButton(onClick = { close() }) { Icon(LkIcons.Close, tr("关闭"), tint = Ink) }
             Text(
                 when {
                     isEdit -> tr("编辑日程")
@@ -230,15 +232,17 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
         // 底部模式切换（仅新建，规格 CAL-CRE-005：不退出即可切换）
         if (!isEdit) {
             Hairline()
+            // §109 D：靠左排、图标之间留 4dp；不再均分整宽（实机三个图标只占屏宽 30%）
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ModeIcon(Icons.Outlined.CalendarMonth, tr("日程"), mode == 0) { mode = 0; vm.composerMode = 0 }
-                ModeIcon(Icons.Outlined.TaskAlt, tr("任务"), mode == 1) { mode = 1; vm.composerMode = 1 }
+                ModeIcon(LkIcons.Calendar, tr("日程"), mode == 0) { mode = 0; vm.composerMode = 0 }
+                ModeIcon(LkIcons.Check, tr("任务"), mode == 1) { mode = 1; vm.composerMode = 1 }
                 // §75 C4（三面模型）：贴纸不是页内表单 —— 它必须让日历可见可点。
                 // 点表情 = 收起全屏页，回月历打开贴纸停靠面板
-                ModeIcon(Icons.Outlined.Mood, tr("表情"), false) {
+                ModeIcon(LkIcons.Smile, tr("表情"), false) {
                     vm.composerMode = 2
                     vm.draft = null
                     vm.pendingStampBind = -1L
@@ -294,24 +298,36 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     )
 }
 
+/**
+ * §109 D（用户：「对齐 Lifebear 他的设计，他是极简的设计」）：切换条改**纯图标**。
+ *
+ * 三处按实机改（静态图 99/100 + 演示视频 141s）：
+ *  1. **去掉文字标签**。实机底部只有三个图标，一个字都没有。
+ *  2. **左侧靠拢，不再 `weight(1f)` 均分整宽**。实机三个图标只占屏宽 30%，
+ *     挤在左边；均分会让它显得像个正式导航栏，那就不"轻"了。
+ *  3. **选中态灰圆加深**：`PanelBg #F7F8F7` → 实机量出来是 **#D0D0D0**。
+ *     原来那个太浅，在白底上根本看不出哪个是选中的 —— "克制"不等于"看不见"。
+ *
+ * **代价说明**：去掉标签之后，「表情」和「AI」这两个图标的含义不如日历/勾选自明。
+ * 实机只有三个人人认得的图标才敢不加标签，我们有四个。
+ * 先按拍板做，真机上如果发现找不到入口，最先该加回来的是这两个的标签。
+ *
+ * `label` 参数保留：现在只作为无障碍朗读文本，不再画出来。
+ */
 @Composable
-private fun RowScope.ModeIcon(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    Column(
-        Modifier.weight(1f).plainClick(onClick),
-        horizontalAlignment = Alignment.CenterHorizontally
+private fun ModeIcon(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(44.dp).clip(CircleShape)
+            .background(if (selected) ComposerPickBg else Color.Transparent)
+            .plainClick(onClick),
+        contentAlignment = Alignment.Center
     ) {
-        // M5（§63）：选中态从黑底方块改为浅灰正圆 —— Lifebear 的轻，不压内容
-        Box(
-            Modifier.size(38.dp).clip(CircleShape)
-                .background(if (selected) PanelBg else Color.Transparent),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, label, tint = if (selected) Ink else GrayText, modifier = Modifier.size(22.dp))
-        }
-        Text(label, fontSize = 10.sp, color = if (selected) Ink else GrayText,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+        Icon(icon, label, tint = if (selected) Ink else GrayText, modifier = Modifier.size(24.dp))
     }
 }
+
+/** Composer 切换条选中态底色。实机量得 #D0D0D0 */
+private val ComposerPickBg = Color(0xFFD0D0D0)
 
 // ==================== 日程表单 ====================
 
@@ -367,7 +383,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 modifier = Modifier.weight(1f).padding(start = 4.dp).focusRequester(titleFocus)
             )
             IconButton(onClick = { tplSheet = true }) {
-                Icon(Icons.Outlined.Bookmarks, tr("日程模板"), tint = GrayText, modifier = Modifier.size(20.dp))
+                Icon(LkIcons.Tag, tr("日程模板"), tint = GrayText, modifier = Modifier.size(20.dp))
             }
         }
         Hairline()
@@ -408,7 +424,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.CalendarMonth, null, tint = GrayText, modifier = Modifier.size(20.dp))
+            Icon(LkIcons.Calendar, null, tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
             ColorDot(parseHex(cat?.colorHex ?: "#9AA0A6"), 10.dp)
             Spacer(Modifier.width(8.dp))
@@ -440,7 +456,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
             Column {
             // 提醒（一个日程可多条 AC-012）
             NavRow(
-                tr("提醒"), icon = Icons.Outlined.Notifications,
+                tr("提醒"), icon = LkIcons.Bell,
                 value = if (d.reminders.isEmpty()) tr("无")
                 else d.reminders.joinToString("、") { Fmt.reminderText(d.allDay, it) }
             ) { nav.navigate("reminders") }   // §85 B2：List 管理器 + Create 全页
@@ -474,7 +490,7 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
             // 备注
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp)) {
                 Icon(
-                    Icons.Outlined.Notes, null, tint = GrayText,
+                    LkIcons.Note, null, tint = GrayText,
                     modifier = Modifier.size(20.dp).padding(top = 2.dp)
                 )
                 TextField(
@@ -551,7 +567,7 @@ fun TemplateSheet(vm: LookaViewModel, d: EventDraft, nav: NavHostController? = n
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Bookmarks, tr("模板"), tint = GrayText, modifier = Modifier.size(18.dp))
+                    Icon(LkIcons.Tag, tr("模板"), tint = GrayText, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(t.title, fontSize = 15.sp, modifier = Modifier.weight(1f))
                 }
@@ -650,7 +666,7 @@ fun ReminderSheet(d: EventDraft, onDismiss: () -> Unit) {
                         d.reminders.removeAt(i)
                         d.remindersTouched = true
                     }) {
-                        Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
+                        Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                     }
                 }
                 // A2-5：提醒 vs 闹钟 —— 提醒响一声可划走；闹钟持续响，必须手动停
@@ -750,7 +766,7 @@ fun CategoryPickerSheet(
                         fontSize = 15.sp, modifier = Modifier.weight(1f),
                         color = if (c.visible) Ink else GrayText
                     )
-                    if (c.id == current) Icon(Icons.Default.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
+                    if (c.id == current) Icon(LkIcons.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
                 }
             }
             Hairline()
@@ -801,7 +817,7 @@ private fun TaskForm(
         // §75 T1（图47）：○ 任务名 ☆ —— 左侧圆圈建时即可打勾，右侧星标
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                if (done) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                if (done) LkIcons.CheckCircle else LkIcons.Circle,
                 if (done) tr("取消完成") else tr("完成"),
                 tint = if (done) MaterialTheme.colorScheme.primary else Color(0xFFC0C3C0),
                 modifier = Modifier.padding(start = 14.dp).size(26.dp)
@@ -815,7 +831,7 @@ private fun TaskForm(
                 modifier = Modifier.weight(1f)
             )
             Icon(
-                if (starred) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                if (starred) LkIcons.StarFill else LkIcons.Star,
                 tr("星标"),
                 tint = if (starred) Color(0xFFF2B23D) else Color(0xFFC0C3C0),
                 modifier = Modifier.padding(end = 14.dp).size(26.dp)
@@ -829,7 +845,7 @@ private fun TaskForm(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.Notes, null, tint = GrayText, modifier = Modifier.size(20.dp))
+            Icon(LkIcons.Note, null, tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
             val cur = lists.find { it.uid == listUid }
             Box(
@@ -856,7 +872,7 @@ private fun TaskForm(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.CalendarMonth, null, tint = GrayText, modifier = Modifier.size(20.dp))
+            Icon(LkIcons.Calendar, null, tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
             Text(tr("截止日期"), fontSize = 15.sp, modifier = Modifier.weight(1f))
             Text(
@@ -871,7 +887,7 @@ private fun TaskForm(
         Hairline()
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp)) {
             Icon(
-                Icons.Outlined.Notes, null, tint = GrayText,
+                LkIcons.Note, null, tint = GrayText,
                 modifier = Modifier.size(20.dp).padding(top = 2.dp)
             )
             TextField(
@@ -907,7 +923,7 @@ private fun StampForm(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.CalendarMonth, null, tint = GrayText, modifier = Modifier.size(20.dp))
+            Icon(LkIcons.Calendar, null, tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
             Text(tr("贴到哪天"), fontSize = 15.sp, modifier = Modifier.weight(1f))
             Text(Fmt.dateCn(day), fontSize = 14.sp)

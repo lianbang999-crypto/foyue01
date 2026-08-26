@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.ai
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.Image
@@ -107,10 +109,10 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
     ) {
         LookaTopBar(tr("小鹿 AI"), onBack = { nav.popBackStack() }) {
             IconButton(onClick = { vm.clearChat() }) {
-                Icon(Icons.Outlined.DeleteOutline, tr("清空对话"), tint = GrayText)
+                Icon(LkIcons.Trash, tr("清空对话"), tint = GrayText)
             }
             IconButton(onClick = { nav.navigate("subscription") }) {
-                Icon(Icons.Outlined.Settings, tr("订阅与设置"), tint = GrayText)
+                Icon(LkIcons.Settings, tr("订阅与设置"), tint = GrayText)
             }
         }
 

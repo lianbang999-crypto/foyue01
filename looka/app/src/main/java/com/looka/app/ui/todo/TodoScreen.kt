@@ -1,5 +1,7 @@
 package com.looka.app.ui.todo
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -159,7 +161,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             // §94 F2：星标计数 0 不显示（实机如此）
             item {
                 HubRow(
-                    icon = { Icon(Icons.Filled.Star, null, tint = Color(0xFFF2B23D), modifier = Modifier.size(20.dp)) },
+                    icon = { Icon(LkIcons.StarFill, null, tint = Color(0xFFF2B23D), modifier = Modifier.size(20.dp)) },
                     title = tr("星标"),
                     trailing = if (starredCount > 0) "$starredCount" else null
                 ) {
@@ -186,7 +188,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             items(reorder.order.toList(), key = { it }) { luid ->
                 val l = byUid[luid] ?: return@items
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) { if (l.deletable) vm.deleteTaskList(l) }
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -216,7 +218,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                         .padding(horizontal = 16.dp, vertical = 13.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, tr("新建清单"), tint = GrayText, modifier = Modifier.size(19.dp))
+                    Icon(LkIcons.Plus, tr("新建清单"), tint = GrayText, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(14.dp))
                     Text(tr("新建清单"), fontSize = 15.sp, color = GrayText)
                 }
@@ -226,7 +228,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
             item { GroupTitle(tr("已完成")) }
             item {
                 HubRow(
-                    icon = { Icon(Icons.Default.CheckCircle, null, tint = GrayText, modifier = Modifier.size(20.dp)) },
+                    icon = { Icon(LkIcons.CheckCircle, null, tint = GrayText, modifier = Modifier.size(20.dp)) },
                     title = tr("已完成任务"),
                     trailing = null
                 ) {

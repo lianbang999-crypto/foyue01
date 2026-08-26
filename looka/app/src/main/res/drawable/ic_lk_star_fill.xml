@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Looka Core Icon System：24×24 / 1.8px 描边 / round caps。
+     派生图标（非原始 24 个，按同一笔法补）
+     **机器生成，不要手改** —— 改源 SVG 后跑 scripts/build_icons.py。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" android:fillColor="#FF000000"/>
+</vector>

@@ -1,5 +1,7 @@
 package com.looka.app.ui.more
 
+import com.looka.app.ui.theme.LkIcons
+
 import android.app.AlarmManager
 import android.content.Intent
 import android.net.Uri
@@ -357,13 +359,13 @@ private fun BenefitRow(title: String, free: Boolean, pro: Boolean) {
     ) {
         Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
         Icon(
-            if (free) Icons.Default.Check else Icons.Default.Close, null,
+            if (free) LkIcons.Check else LkIcons.Close, null,
             tint = if (free) MaterialTheme.colorScheme.primary else Color(0xFFCFD2CF),
             modifier = Modifier.size(16.dp)
         )
         Spacer(Modifier.width(26.dp))
         Icon(
-            if (pro) Icons.Default.Check else Icons.Default.Close, null,
+            if (pro) LkIcons.Check else LkIcons.Close, null,
             tint = if (pro) MaterialTheme.colorScheme.primary else Color(0xFFCFD2CF),
             modifier = Modifier.size(16.dp)
         )

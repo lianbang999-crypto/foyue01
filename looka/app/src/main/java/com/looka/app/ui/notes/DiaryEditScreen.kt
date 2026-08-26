@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.background
@@ -125,7 +127,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         ) {
             if (existed) {
                 IconButton(onClick = { delDlg = true }) {
-                    Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
+                    Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                 }
             }
             SaveButton(enabled = content.isNotBlank()) {

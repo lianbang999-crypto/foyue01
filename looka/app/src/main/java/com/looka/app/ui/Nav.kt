@@ -1,5 +1,7 @@
 package com.looka.app.ui
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -319,8 +321,8 @@ private fun LookaBottomBar(tab: Int, onTab: (Int) -> Unit, onPlus: () -> Unit) {
                 .height(58.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BarItem(Icons.Outlined.CalendarMonth, tr("日历"), tab == 0) { onTab(0) }
-            BarItem(Icons.Outlined.TaskAlt, tr("待办"), tab == 1) { onTab(1) }
+            BarItem(LkIcons.Calendar, tr("日历"), tab == 0) { onTab(0) }
+            BarItem(LkIcons.Check, tr("待办"), tab == 1) { onTab(1) }
             // 中央黑色圆形 +（规格 §12：全局最强操作锚点）
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
@@ -341,11 +343,11 @@ private fun LookaBottomBar(tab: Int, onTab: (Int) -> Unit, onPlus: () -> Unit) {
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Add, tr("新建"), tint = Color.White, modifier = Modifier.size(26.dp))
+                    Icon(LkIcons.Plus, tr("新建"), tint = Color.White, modifier = Modifier.size(26.dp))
                 }
             }
-            BarItem(Icons.AutoMirrored.Outlined.MenuBook, tr("笔记·日记"), tab == 2) { onTab(2) }
-            BarItem(Icons.Outlined.MoreHoriz, tr("更多"), tab == 3) { onTab(3) }
+            BarItem(LkIcons.Book, tr("笔记·日记"), tab == 2) { onTab(2) }
+            BarItem(LkIcons.More, tr("更多"), tab == 3) { onTab(3) }
         }
     }
 }

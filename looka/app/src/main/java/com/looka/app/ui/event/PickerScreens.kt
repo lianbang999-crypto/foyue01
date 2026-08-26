@@ -1,5 +1,7 @@
 package com.looka.app.ui.event
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -89,7 +91,7 @@ fun CategoryPickScreen(vm: LookaViewModel, nav: NavHostController) {
                         color = if (c.visible) Ink else GrayText
                     )
                     if (c.id == d.categoryId) {
-                        Icon(Icons.Default.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
+                        Icon(LkIcons.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
                     }
                 }
                 Hairline()
@@ -143,7 +145,7 @@ fun ReminderListScreen(vm: LookaViewModel, nav: NavHostController) {
                             d.reminders.removeAt(i)
                             d.remindersTouched = true
                         }) {
-                            Icon(Icons.Outlined.DeleteOutline, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
+                            Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                         }
                     }
                     // A2-5：提醒响一声可划走；闹钟持续响必须手动停 —— 语义保留自旧 Sheet
@@ -169,7 +171,7 @@ fun ReminderListScreen(vm: LookaViewModel, nav: NavHostController) {
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+                Icon(LkIcons.Plus, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(tr("添加提醒"), fontSize = 15.sp, color = MaterialTheme.colorScheme.primary)
             }
@@ -202,7 +204,7 @@ fun ReminderCreateScreen(vm: LookaViewModel, nav: NavHostController) {
         LookaTopBar(
             tr("添加提醒"),
             onBack = { nav.popBackStack() },
-            backIcon = Icons.Default.Close
+            backIcon = LkIcons.Close
         ) {
             SaveButton {
                 d.reminders.add(

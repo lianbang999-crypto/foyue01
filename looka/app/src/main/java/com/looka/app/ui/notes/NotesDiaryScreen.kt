@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.border
@@ -171,9 +173,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
         items(reorder.order.toList(), key = { it }) { luid ->
             val l = byUid[luid] ?: return@items
             Box(Modifier.animateItem()) {
-            com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) {
-                if (l.deletable) vm.deleteNoteList(l)
-            }
+            com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
             Row(
                 Modifier.fillMaxWidth()
                     .background(MaterialTheme.colorScheme.background)
@@ -209,7 +209,7 @@ private fun NotesList(vm: LookaViewModel, nav: NavHostController, q: String) {
                     .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, null, tint = Ink, modifier = Modifier.size(24.dp))
+                Icon(LkIcons.Plus, null, tint = Ink, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(32.dp))
                 Text(tr("新建清单"), fontSize = 16.sp, color = Ink)
             }
@@ -334,7 +334,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Edit, tr("编辑"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Icon(LkIcons.Edit, tr("编辑"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))
                     Text(tr("写今天的日记"), fontSize = 14.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                 }
@@ -354,9 +354,7 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                 // §99 I6：日记**只给左滑删除**，不做手动排序 —— 天然按日期倒序，
                 // 手动打乱反而找不到（用户拍板）
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) {
-                    vm.deleteDiaryEntity(d)
-                }
+                com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                 Row(
                     Modifier.fillMaxWidth()
                         .background(MaterialTheme.colorScheme.background)

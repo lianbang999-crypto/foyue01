@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.calendar
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -1178,7 +1180,7 @@ private fun DaySheet(
                         }
                         if (o.seriesId in reminderSeriesIds) {
                             Icon(
-                                Icons.Outlined.NotificationsNone, null,
+                                LkIcons.Bell, null,
                                 tint = GrayText, modifier = Modifier.size(17.dp)
                             )
                         }
@@ -1220,8 +1222,8 @@ private fun DaySheet(
                         Text(tr("任务"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))
                         // §73：与待办页同款 —— 未完成圆圈 / 完成圆圈里打勾（旧版未完成用日历图标，像日程）
                         Icon(
-                            if (t.done) Icons.Default.CheckCircle
-                            else Icons.Default.RadioButtonUnchecked,
+                            if (t.done) LkIcons.CheckCircle
+                            else LkIcons.Circle,
                             if (t.done) tr("取消完成") else tr("完成"),
                             tint = if (t.done) MaterialTheme.colorScheme.primary
                             else (listColorMap[t.listUid] ?: Color(0xFFC0C3C0)),
@@ -1393,7 +1395,7 @@ fun ViewMenuSheet(
                     .padding(horizontal = 14.dp, vertical = 11.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Search, null, tint = GrayText, modifier = Modifier.size(19.dp))
+                Icon(LkIcons.Search, null, tint = GrayText, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(10.dp))
                 // 日历页只搜日程 —— 任务归待办页、笔记日记归笔记页，各搜各的
                 Text(tr("日程名、地点、备注"), fontSize = 14.sp, color = GrayText)
@@ -1422,8 +1424,8 @@ fun ViewMenuSheet(
                 }
             }
             Hairline()
-            NavRow(tr("跳转到日期"), icon = Icons.Outlined.Event) { onDismiss(); onJump() }
-            NavRow(tr("显示设置"), icon = Icons.Outlined.Tune) { onDismiss(); nav.navigate("calSettings") }
+            NavRow(tr("跳转到日期"), icon = LkIcons.Calendar) { onDismiss(); onJump() }
+            NavRow(tr("显示设置"), icon = LkIcons.Settings) { onDismiss(); nav.navigate("calSettings") }
         }
     }
 }
@@ -1472,24 +1474,24 @@ private fun CreatePanel(
             Modifier.fillMaxWidth().padding(start = 10.dp, end = 4.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PanelIcon(Icons.Outlined.Event, tr("日程"), false) {
+            PanelIcon(LkIcons.Calendar, tr("日程"), false) {
                 vm.composerMode = 0
                 onClose()
                 vm.prepareCreateDraft(vm.selectedDay)
                 vm.editorInitMode = 0
                 nav.navigate("editor")
             }
-            PanelIcon(Icons.Outlined.TaskAlt, tr("任务"), false) {
+            PanelIcon(LkIcons.Check, tr("任务"), false) {
                 vm.composerMode = 1
                 onClose()
                 vm.prepareCreateDraft(vm.selectedDay)
                 vm.editorInitMode = 1
                 nav.navigate("editor")
             }
-            PanelIcon(Icons.Outlined.Mood, tr("表情"), true) { }
+            PanelIcon(LkIcons.Smile, tr("表情"), true) { }
             Spacer(Modifier.weight(1f))
             androidx.compose.material3.IconButton(onClick = onClose) {
-                androidx.compose.material3.Icon(Icons.Default.Close, tr("关闭"), tint = GrayText)
+                androidx.compose.material3.Icon(LkIcons.Close, tr("关闭"), tint = GrayText)
             }
         }
         Hairline()

@@ -1,5 +1,7 @@
 package com.looka.app.ui.common
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween

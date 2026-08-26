@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,7 +72,7 @@ fun NoteListChangeDialog(
                         Spacer(Modifier.width(12.dp))
                         Text(l.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
                         if (l.uid == current) {
-                            Icon(Icons.Default.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
+                            Icon(LkIcons.Check, tr("已选中"), tint = Ink, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -79,7 +81,7 @@ fun NoteListChangeDialog(
                     Modifier.fillMaxWidth().rowClick(onCreate).padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Add, null, tint = GrayText, modifier = Modifier.size(18.dp))
+                    Icon(LkIcons.Plus, null, tint = GrayText, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(12.dp))
                     Text(tr("新建清单"), fontSize = 15.sp, color = GrayText)
                 }

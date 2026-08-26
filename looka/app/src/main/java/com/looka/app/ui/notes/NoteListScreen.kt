@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -88,11 +90,11 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(list.name, onBack = { nav.popBackStack() }) {
             IconButton(onClick = { vm.noteListSel = uid; nav.navigate("note/-1") }) {
-                Icon(Icons.Default.Add, tr("新建笔记"), tint = Ink, modifier = Modifier.size(22.dp))
+                Icon(LkIcons.Plus, tr("新建笔记"), tint = Ink, modifier = Modifier.size(22.dp))
             }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, tr("更多"), tint = Ink)
+                    Icon(LkIcons.More, tr("更多"), tint = Ink)
                 }
                 // 实机 ⋮ 只有「編集 / 並び替え」两项，锚定右上、无遮罩
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
@@ -118,7 +120,7 @@ fun NoteListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                 items(reorder.order.toList(), key = { it }) { nuid ->
                     val n = byUid[nuid] ?: return@items
                     androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                        com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteNoteEntity(n) }
+                        com.looka.app.ui.common.SwipeDeleteBackdrop(Modifier.matchParentSize())
                         NoteRow(
                             n,
                             modifier = Modifier

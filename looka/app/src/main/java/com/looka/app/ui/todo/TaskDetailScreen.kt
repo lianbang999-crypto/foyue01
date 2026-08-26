@@ -1,5 +1,7 @@
 package com.looka.app.ui.todo
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -84,12 +86,12 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
     ) {
         LookaTopBar(tr("任务"), onBack = { nav.popBackStack() }) {
             IconButton(onClick = { editDlg = true }) {
-                Icon(Icons.Outlined.Edit, tr("编辑"), tint = Ink, modifier = Modifier.size(20.dp))
+                Icon(LkIcons.Edit, tr("编辑"), tint = Ink, modifier = Modifier.size(20.dp))
             }
             // More：锚定菜单、无全屏遮罩（V013 [B]）——轻菜单只做选择，选完即关
             Box {
                 IconButton(onClick = { moreMenu = true }) {
-                    Icon(Icons.Default.MoreVert, tr("更多"), tint = Ink, modifier = Modifier.size(20.dp))
+                    Icon(LkIcons.More, tr("更多"), tint = Ink, modifier = Modifier.size(20.dp))
                 }
                 DropdownMenu(
                     expanded = moreMenu, onDismissRequest = { moreMenu = false },
@@ -121,7 +123,7 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                         .plainClick { vm.toggleTask(t) },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (t.done) Icon(Icons.Default.Check, tr("已完成"), tint = Color.White, modifier = Modifier.size(16.dp))
+                    if (t.done) Icon(LkIcons.Check, tr("已完成"), tint = Color.White, modifier = Modifier.size(16.dp))
                 }
                 Spacer(Modifier.width(14.dp))
                 Text(
@@ -131,8 +133,8 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { vm.setTaskStar(t, !t.starred) }) {
-                    if (t.starred) Icon(Icons.Default.Star, tr("取消星标"), tint = Color(0xFFF2B23D), modifier = Modifier.size(24.dp))
-                    else Icon(Icons.Outlined.StarBorder, tr("加星标"), tint = GrayText, modifier = Modifier.size(24.dp))
+                    if (t.starred) Icon(LkIcons.StarFill, tr("取消星标"), tint = Color(0xFFF2B23D), modifier = Modifier.size(24.dp))
+                    else Icon(LkIcons.Star, tr("加星标"), tint = GrayText, modifier = Modifier.size(24.dp))
                 }
             }
             Hairline()

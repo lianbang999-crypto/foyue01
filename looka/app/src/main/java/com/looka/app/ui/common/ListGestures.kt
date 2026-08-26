@@ -1,6 +1,10 @@
 package com.looka.app.ui.common
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -77,16 +81,30 @@ fun rememberReorderState(uids: List<String>): ReorderState {
 }
 
 /**
- * 行手势：长按纵向拖拽排序 + 左滑露出删除按钮。
+ * 行手势：长按纵向拖拽排序 + **左滑一滑到底删除**。
  *
- * §100：**改成两步**。原来是「划过阈值就直接删」—— 手一滑东西就没了。
- * 实机（Lifebear）是划开露出一条红色的「删除」，**再点一下**才真删。
- * 两步比一步安全得多，而且撤销条只是兜底、不该当主防线。
+ * §109（2026-08-26 用户拍板「一滑到底」）：撤回 §100 的两步确认。
+ *
+ * 依据是 160 秒实机演示视频，两次独立左滑逐帧量红区宽度：
+ * ```
+ *   105.3→105.8s   7% → 17% → 28% → 41% → 100%屏宽
+ *   130.1→131.0s  14% → 26% → 35% → 41% → 44% → 47% → 52% → 55% → 100%
+ *   右边距          恒为 0
+ * ```
+ * 红区**从右边缘连续生长、跟手走，不在任何宽度上停住** —— 也就是说
+ * §100 依据的那张"红条 + 确认按钮"静态截图，拍到的是**滑动过程中的一帧**，
+ * 不是一个停住的按钮。我按那张图做的两步式是个误读。
+ *
+ * 阈值取 [DISMISS_FRACTION]：实测**上界 ≤41%**（105s 那次在 41% 松手就删了）。
+ * 取 35% 留一点余量；再低会容易误删，再高会出现"滑了很远却弹回去"。
+ *
+ * 一步删的安全网**全押在撤销条上** —— 所以 `onDelete` 必须走
+ * `LookaViewModel.softDelete`（5 秒可撤销），不能直接硬删。
  *
  * @param uid          本行的稳定标识（拖拽用）
  * @param rowHeightPx  行高，把位移换算成"挪了几格"
  * @param onReorder    拖拽结束回调新顺序；null = 本列表不支持排序（智能视图）
- * @param onDelete     点红色「删除」后回调；null = 本行不可删
+ * @param onDelete     越过阈值后回调；null = 本行不可删
  */
 @Composable
 fun Modifier.listRowGestures(
@@ -98,10 +116,9 @@ fun Modifier.listRowGestures(
 ): Modifier {
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current
-    // 红色删除条的宽度；行最多划开这么多，不会整条飞走
-    val revealPx = with(density) { SWIPE_REVEAL.toPx() }
     val swipeX = remember(uid) { Animatable(0f) }
+    // 行宽由测量得到 —— 阈值是「行宽的百分比」，写死 dp 在不同屏宽上手感会漂
+    var rowWidthPx by remember(uid) { mutableStateOf(0f) }
     val dragging = state?.draggingUid == uid
 
     var m = this
@@ -138,22 +155,33 @@ fun Modifier.listRowGestures(
     }
 
     if (onDelete != null) {
-        m = m.pointerInput(uid) {
-            detectHorizontalDragGestures(
-                onDragEnd = {
-                    // 划过一半就停在"开着"的位置露出删除按钮；不够就弹回去。**不直接删**
-                    scope.launch {
-                        if (swipeX.value <= -revealPx / 2f) swipeX.animateTo(-revealPx)
-                        else swipeX.animateTo(0f)
-                    }
-                },
-                onDragCancel = { scope.launch { swipeX.animateTo(0f) } }
-            ) { change, delta ->
-                val next = (swipeX.value + delta).coerceIn(-revealPx, 0f)
-                if (next != swipeX.value) change.consume()
-                scope.launch { swipeX.snapTo(next) }
+        m = m
+            .onSizeChanged { rowWidthPx = it.width.toFloat() }
+            .pointerInput(uid) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            val w = rowWidthPx.coerceAtLeast(1f)
+                            if (-swipeX.value >= w * DISMISS_FRACTION) {
+                                swipeX.animateTo(-w, tween(160))   // 整行飞出去
+                                onDelete()
+                                // 兜底复位：正常情况这一行已经被数据层移除、根本不会再画；
+                                // 万一没移除（比如撤销把它放回来了），也不能留一个划到屏外的隐形行 ——
+                                // 弹回来至少是诚实的"没删掉"，比消失得莫名其妙好。
+                                swipeX.snapTo(0f)
+                            } else {
+                                swipeX.animateTo(0f)
+                            }
+                        }
+                    },
+                    onDragCancel = { scope.launch { swipeX.animateTo(0f) } }
+                ) { change, delta ->
+                    // 只能往左划；往右到 0 就停。允许一直划到整行宽度
+                    val next = (swipeX.value + delta).coerceIn(-rowWidthPx, 0f)
+                    if (next != swipeX.value) change.consume()
+                    scope.launch { swipeX.snapTo(next) }
+                }
             }
-        }
     }
 
     return m.graphicsLayer {
@@ -163,27 +191,31 @@ fun Modifier.listRowGestures(
     }
 }
 
-/** 左滑露出的红色删除条宽度 */
-val SWIPE_REVEAL = 88.dp
+/**
+ * 越过这个比例（行宽的百分比）松手即删。
+ * 实测上界 ≤41%（见 [listRowGestures] 注释里的逐帧数据），取 35% 留余量。
+ */
+private const val DISMISS_FRACTION = 0.35f
+
+/** 删除红。取自实机视频帧的中位色 #FC422F（H.264 有损，±几不必较真），比休日红更橙更亮 */
+val SwipeRed = Color(0xFFFC422F)
 
 /**
- * 左滑露出的**红色删除按钮**。放在行下面一层，行划开时露出来，点它才真删。
- * 抽出来是为了每个列表长得一样 —— 不然又会各画各的。
+ * 左滑时**行底下露出来的红色底板**。
+ *
+ * §109：它不再是"按钮"了 —— 一滑到底直接删，没有第二步，所以这里**不接点击**。
+ * 铺满整行，行往左走多少就露多少，垃圾桶图标钉在右端。
+ *
+ * 几何按实机量：图标 20dp、右内边距 22dp、无圆角、无文字。
+ * （原来这里是 88dp 宽的红条 + 「删除」二字，那是 §100 两步式的遗留）
  */
 @Composable
-fun SwipeDeleteBackdrop(modifier: Modifier = Modifier, onDelete: (() -> Unit)? = null) {
-    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        Box(
-            Modifier.width(SWIPE_REVEAL).fillMaxHeight()
-                .background(HolidayRed)
-                .then(if (onDelete != null) Modifier.plainClick(onDelete) else Modifier),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Outlined.Delete, null, tint = Color.White, modifier = Modifier.size(20.dp))
-                Text(tr("删除"), color = Color.White, fontSize = 12.sp)
-            }
-        }
+fun SwipeDeleteBackdrop(modifier: Modifier = Modifier) {
+    Box(
+        modifier.fillMaxWidth().background(SwipeRed).padding(end = 22.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Icon(LkIcons.Trash, tr("删除"), tint = Color.White, modifier = Modifier.size(20.dp))
     }
 }
 

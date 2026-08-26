@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.common
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -431,7 +433,7 @@ fun Stepper(value: Int, min: Int = 1, max: Int = 99, onChange: (Int) -> Unit) {
         )
         IconButton(onClick = { if (value < max) onChange(value + 1) }, modifier = Modifier.size(32.dp)) {
             Icon(
-                Icons.Default.Add, null, modifier = Modifier.size(18.dp),
+                LkIcons.Plus, null, modifier = Modifier.size(18.dp),
                 tint = if (value < max) Ink else Color(0xFFCFCFCF)
             )
         }

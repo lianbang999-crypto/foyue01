@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -100,7 +102,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
         LookaTopBar(tr("笔记"), onBack = { saveAndBack() }) {
             if (id >= 0) {
                 IconButton(onClick = { delDlg = true }) {
-                    Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
+                    Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                 }
             }
             SaveButton(enabled = title.isNotBlank() || content.isNotBlank()) {

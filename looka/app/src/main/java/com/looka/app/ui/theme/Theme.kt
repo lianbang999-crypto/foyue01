@@ -183,3 +183,12 @@ fun LookaTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
+
+/**
+ * §109 B：搜索框底色。实机量得 **#EFEFEF**，高 44.5dp、圆角 ~1.8dp。
+ *
+ * 单列出来而不是复用 `PanelBg`：`PanelBg #F7F8F7` 在白纸上几乎看不见，
+ * 搜索框会"消失"成一片白 —— **克制不等于看不见**。
+ * 但 PanelBg 另有 19 处调用点（输入框底、卡片底），一起加深会牵连太多，所以分开。
+ */
+val SearchBg = Color(0xFFEFEFEF)

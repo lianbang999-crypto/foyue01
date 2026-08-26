@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Looka Core Icon System：24×24 / 1.8px 描边 / round caps。
+     源：icon组件素材参考/workspace/output/icons/more.svg
+     **机器生成，不要手改** —— 改源 SVG 后跑 scripts/build_icons.py。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M3.75,12.0 a1.25,1.25 0 1,0 2.5,0 a1.25,1.25 0 1,0 -2.5,0"
+        android:strokeWidth="1.8" android:strokeColor="#FF000000"
+        android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M10.75,12.0 a1.25,1.25 0 1,0 2.5,0 a1.25,1.25 0 1,0 -2.5,0"
+        android:strokeWidth="1.8" android:strokeColor="#FF000000"
+        android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M17.75,12.0 a1.25,1.25 0 1,0 2.5,0 a1.25,1.25 0 1,0 -2.5,0"
+        android:strokeWidth="1.8" android:strokeColor="#FF000000"
+        android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

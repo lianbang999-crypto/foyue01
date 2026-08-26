@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.todo
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -139,7 +141,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             ColorDot(parseHex(list.colorHex), 12.dp)
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, tr("更多"), tint = Ink)
+                    Icon(LkIcons.More, tr("更多"), tint = Ink)
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = Color.White) {
                     DropdownMenuItem(text = { Text(tr("编辑清单")) }, onClick = { menu = false; editList = true })
@@ -186,9 +188,7 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
                 val t = allByUid[tuid] ?: return@items
                 // 左滑露出的红底衬在行下面一层
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
-                    SwipeDeleteBackdrop(
-                        Modifier.matchParentSize()
-                    ) { vm.deleteTask(t) }
+                    SwipeDeleteBackdrop(Modifier.matchParentSize())
                     TaskRowV2(
                         t,
                         modifier = Modifier
@@ -277,7 +277,7 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
                 items(ts, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
                         TaskRowV2(
                             t, listName = null, listColor = parseHex(l?.colorHex ?: "#5C6670"),
                             onToggle = { vm.toggleTask(t) },
@@ -349,7 +349,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                 items(overdue, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
                         TaskRowV2(
                             t, listName = listMap[t.listUid]?.name,
                             listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
@@ -382,7 +382,7 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
                     items(ts, key = { it.uid }) { t ->
                         // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                         Box(Modifier.animateItem()) {
-                            SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
+                            SwipeDeleteBackdrop(Modifier.matchParentSize())
                             TaskRowV2(
                                 t, listName = listMap[t.listUid]?.name,
                                 listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
@@ -471,7 +471,7 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
                 items(ts, key = { it.uid }) { t ->
                     // §99 I6：智能视图**只给左滑删除** —— 顺序由规则决定，不该手动排
                     Box(Modifier.animateItem()) {
-                        SwipeDeleteBackdrop(Modifier.matchParentSize()) { vm.deleteTask(t) }
+                        SwipeDeleteBackdrop(Modifier.matchParentSize())
                         TaskRowV2(
                             t, listName = listMap[t.listUid]?.name,
                             listColor = parseHex(listMap[t.listUid]?.colorHex ?: "#5C6670"),
@@ -568,7 +568,7 @@ fun QuickAddTaskRow(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Add, tr("添加"), tint = GrayText, modifier = Modifier.size(20.dp))
+            Icon(LkIcons.Plus, tr("添加"), tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
             TextField(
                 value = input, onValueChange = { input = it },
@@ -584,7 +584,7 @@ fun QuickAddTaskRow(
             )
             Spacer(Modifier.width(4.dp))
             Icon(
-                if (starOn) Icons.Default.Star else Icons.Outlined.StarOutline,
+                if (starOn) LkIcons.StarFill else LkIcons.Star,
                 tr("星标"),
                 tint = if (starOn) StarAmber else Color(0xFFC0C3C0),
                 modifier = Modifier.size(22.dp).plainClick { starOn = !starOn }
@@ -627,7 +627,7 @@ fun TaskRowV2(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            if (t.done) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+            if (t.done) LkIcons.CheckCircle else LkIcons.Circle,
             if (t.done) tr("取消完成") else tr("完成"),
             tint = if (t.done) MaterialTheme.colorScheme.primary else Color(0xFFC0C3C0),
             modifier = Modifier.size(22.dp)
@@ -661,7 +661,7 @@ fun TaskRowV2(
         }
         IconButton(onClick = onStar, modifier = Modifier.size(38.dp)) {
             Icon(
-                if (t.starred) Icons.Filled.Star else Icons.Outlined.StarOutline,
+                if (t.starred) LkIcons.StarFill else LkIcons.Star,
                 tr("星标"),
                 tint = if (t.starred) StarAmber else Color(0xFFC9CCC9),
                 modifier = Modifier.size(20.dp)
@@ -953,7 +953,7 @@ fun ListEditDialog(
                                 ) {
                                     if (color == hex) {
                                         Icon(
-                                            Icons.Default.CheckCircle, null,
+                                            LkIcons.CheckCircle, null,
                                             // 亮色块上白勾会隐形，按亮度选色
                                             tint = onColor(parseHex(hex)), modifier = Modifier.size(14.dp)
                                         )

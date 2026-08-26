@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.event
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -88,14 +90,14 @@ fun TemplateManageScreen(vm: LookaViewModel, nav: NavHostController) {
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Bookmarks, null, tint = GrayText, modifier = Modifier.size(18.dp))
+                    Icon(LkIcons.Tag, null, tint = GrayText, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
                         Text(t.title, fontSize = 15.sp)
                         if (sub.isNotBlank()) Text(sub, fontSize = 12.sp, color = GrayText)
                     }
                     IconButton(onClick = { delTpl = t }) {
-                        Icon(Icons.Outlined.Delete, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
+                        Icon(LkIcons.Trash, tr("删除"), tint = GrayText, modifier = Modifier.size(20.dp))
                     }
                 }
                 Hairline()
@@ -148,7 +150,7 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
             IconButton(onClick = {
                 val dirty = d.title.isNotBlank() || d.memo.isNotBlank() || d.location.isNotBlank()
                 if (dirty) discardDlg = true else nav.popBackStack()
-            }) { Icon(Icons.Default.Close, tr("关闭"), tint = Ink) }
+            }) { Icon(LkIcons.Close, tr("关闭"), tint = Ink) }
             Text(
                 if (isEdit) tr("编辑模板") else tr("新建模板"),
                 fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
@@ -219,7 +221,7 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.CalendarMonth, null, tint = GrayText, modifier = Modifier.size(20.dp))
+                Icon(LkIcons.Calendar, null, tint = GrayText, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(14.dp))
                 ColorDot(parseHex(cat?.colorHex ?: "#9AA0A6"), 10.dp)
                 Spacer(Modifier.width(8.dp))
@@ -234,7 +236,7 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Notifications, null, tint = GrayText, modifier = Modifier.size(20.dp))
+                Icon(LkIcons.Bell, null, tint = GrayText, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(tr("提醒"), fontSize = 15.sp, modifier = Modifier.weight(1f))
                 Text(
@@ -265,7 +267,7 @@ fun TemplateEditorScreen(vm: LookaViewModel, nav: NavHostController, tplId: Long
             // 备注
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp)) {
                 Icon(
-                    Icons.Outlined.Notes, null, tint = GrayText,
+                    LkIcons.Note, null, tint = GrayText,
                     modifier = Modifier.size(20.dp).padding(top = 2.dp)
                 )
                 TextField(

@@ -1,5 +1,7 @@
 package com.looka.app.ui.event
 
+import com.looka.app.ui.theme.LkIcons
+
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,11 +104,11 @@ fun EventDetailScreen(vm: LookaViewModel, nav: NavHostController, sid: Long, occ
                 scope.launch {
                     if (vm.prepareEditDraft(sid, occDay)) nav.navigate("editor")
                 }
-            }) { Icon(Icons.Outlined.Edit, tr("编辑"), tint = Ink) }
+            }) { Icon(LkIcons.Edit, tr("编辑"), tint = Ink) }
             // 低频动作收进 More
             Box {
                 IconButton(onClick = { moreOpen = true }) {
-                    Icon(Icons.Default.MoreVert, tr("更多"), tint = Ink)
+                    Icon(LkIcons.More, tr("更多"), tint = Ink)
                 }
                 DropdownMenu(
                     expanded = moreOpen,
@@ -174,7 +176,7 @@ fun EventDetailScreen(vm: LookaViewModel, nav: NavHostController, sid: Long, occ
 
             if (reminders.isNotEmpty()) {
                 DetailRow(
-                    Icons.Outlined.Notifications,
+                    LkIcons.Bell,
                     reminders.joinToString("、") {
                         Fmt.reminderText(o.allDay, it) + if (!it.enabled) tr("（已关）") else ""
                     }
@@ -186,7 +188,7 @@ fun EventDetailScreen(vm: LookaViewModel, nav: NavHostController, sid: Long, occ
                 Hairline()
             }
             if (o.memo.isNotBlank()) {
-                DetailRow(Icons.Outlined.Notes, o.memo)
+                DetailRow(LkIcons.Note, o.memo)
                 Hairline()
             }
         }

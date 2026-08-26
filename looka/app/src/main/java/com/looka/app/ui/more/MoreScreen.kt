@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.more
 
+import com.looka.app.ui.theme.LkIcons
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -140,7 +142,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             // X1：小鹿 AI 独立入口回归（§67 事故修复）。
             SectionLabel(tr("我"))
             NavRow(
-                tr("账号与同步"), icon = Icons.Outlined.PersonOutline,
+                tr("账号与同步"), icon = LkIcons.User,
                 value = if (loggedIn) "$email · ${if (plan == "pro") "Pro" else tr("免费版")}" else tr("未登录")
             ) { nav.navigate("account") }
             Hairline()
@@ -153,15 +155,15 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
 
             SectionLabel(tr("外观"))
             NavRow(
-                tr("主题"), icon = Icons.Outlined.Brush,
+                tr("主题"), icon = LkIcons.Palette,
                 value = DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
             ) { themeSheet = true }
             Hairline()
 
             SectionLabel(tr("设置"))
-            NavRow(tr("日历设置"), icon = Icons.Outlined.Tune) { nav.navigate("calSettings") }
+            NavRow(tr("日历设置"), icon = LkIcons.Settings) { nav.navigate("calSettings") }
             Hairline()
-            NavRow(tr("提醒自检"), icon = Icons.Outlined.NotificationsActive) { nav.navigate("selfcheck") }
+            NavRow(tr("提醒自检"), icon = LkIcons.Bell) { nav.navigate("selfcheck") }
             Hairline()
             NavRow(
                 tr("语言 / Language"), icon = Icons.Outlined.Translate,
@@ -178,7 +180,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
 
             SectionLabel(tr("帮助"))
-            NavRow(tr("关于 Looka"), icon = Icons.Outlined.Info,
+            NavRow(tr("关于 Looka"), icon = LkIcons.Help,
                 value = "v" + com.looka.app.BuildConfig.VERSION_NAME) { aboutDlg = true }
             Hairline()
             // §106 B：更多页运营 Banner 位（对照 0826 参考图更多页宫格下方那块）。
