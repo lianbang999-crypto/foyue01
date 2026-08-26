@@ -203,19 +203,44 @@ fun SwipeDeleteBackdrop(modifier: Modifier = Modifier, onDelete: (() -> Unit)? =
  *  - 因为改状态而不再满足筛选的（打勾/取消星标）**留着**
  *  - **真被删掉的**（从 `alive` 里消失）才移除 —— 否则左滑删完还赖着不走
  *
+ * ── §108（2026-08-26）修两个 BUG，**同一个根因** ────────────────────────
+ *
+ * 用户报的两条症状：
+ *   a) 左滑删除后条目**不消失**
+ *   b) 建第一条不显示，**建第二条时才一起跳出来**
+ *
+ * 都出在这个函数原来的两个写法上：
+ *
+ * **① 原来用 `LaunchedEffect` 更新 —— 晚一帧。**
+ *   而调用方普遍写成 `remember(shown, byUid) { shown.mapNotNull{...} }`。
+ *   加第一条时：这一帧 shown 还是空 → 算出空列表并**被 remember 缓存**；
+ *   下一帧 effect 才把它填上，但那时 remember 的 key 已经不再变化 → 缓存的空列表赖着不走。
+ *
+ * **② 原来返回 `SnapshotStateList` 本身 —— 身份永不改变。**
+ *   `remember(keys)` 用 `equals` 比 key，而 `SnapshotStateList` **没有重写 equals**，
+ *   走的是引用相等。所以它内容怎么变，对 `remember` 来说 key 都"没变"。
+ *   这一条正好把 ① 的缓存钉死：只有等别的 key（`byUid`）变，整块才会重算 ——
+ *   而 `byUid` 只在 tasks 变化时才换，于是表现成"要等下一次增删才刷新"。
+ *   删除同理：删完 `byUid` 变了一次、重算了一次，但那一帧 shown 还没剔除，
+ *   于是**删掉的行留在页面上**。
+ *
+ * 两处一起改：**同步算 + 返回不可变 List**。
+ * 返回不可变 List 之后，调用方的 `remember(...)` 才是按内容比较，语义才对。
+ *
  * @param visible 当前"按规则该显示"的 uid 列表
  * @param alive   仍然存在（未删除）的全部 uid —— 用来区分「改了状态」和「真删了」
  */
 @Composable
 fun rememberSnapshotOrder(visible: List<String>, alive: Set<String>): List<String> {
-    val shown = remember { mutableStateListOf<String>() }
-    LaunchedEffect(visible, alive) {
+    // 用普通可变表即可：不再靠快照观察驱动重组，改由下面 remember 的 key 驱动
+    val shown = remember { mutableListOf<String>() }
+    return remember(visible, alive) {
         // 先剔除真的没了的
         shown.retainAll { it in alive }
         // 再把新出现的按 visible 的顺序补进来
         visible.forEachIndexed { i, uid ->
             if (uid !in shown) shown.add(i.coerceAtMost(shown.size), uid)
         }
+        shown.toList()   // ← 不可变快照：内容变身份就变，调用方的 remember 才会失效
     }
-    return shown
 }
