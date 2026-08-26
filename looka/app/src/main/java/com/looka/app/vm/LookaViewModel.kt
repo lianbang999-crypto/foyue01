@@ -778,6 +778,13 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveDiary(day: Long, mood: Int, content: String, onDone: () -> Unit = {}) = viewModelScope.launch {
         val ex = diaryDao.byDay(day)
+        // §104：日记改自动保存后**必须有空内容守卫** —— 否则用户点进某天看一眼再返回，
+        // 就凭空多一条空日记，日记列表很快被「（无正文）」塞满。
+        // 判据：正文为空 + 这天本来没有日记 + 心情还是默认值 → 什么都没发生，不落库。
+        // 只挑了心情（非默认就存）是因为它是唯一可能"只选了它"的输入；saveNote 同款守卫。
+        if (content.isBlank() && ex == null && mood == 2) {
+            onDone(); return@launch
+        }
         diaryDao.upsert(
             Diary(
                 id = ex?.id ?: 0, day = day, mood = mood, content = content,

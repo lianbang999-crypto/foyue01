@@ -84,7 +84,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             content = it.content
             existed = true
         }
-        // E2：恢复未保存的草稿（进程被杀 / 按返回没点保存）
+        // E2：恢复草稿。§104 之后正常退出已自动保存并清草稿，所以这里救的是**进程被杀**
         val d = com.looka.app.data.Prefs.draft(ctx, draftKey)
         // §90 W3（BUG-ND-003）：原条件是 d.length > content.length —— 用户把日记**改短、
         // 重写或清空**后草稿就永远恢复不了（那恰恰是最该救的几种情况）。改为「与已存内容不同」即可恢复。
@@ -93,11 +93,24 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             toast(ctx, tr("已恢复未保存的草稿"))
         }
     }
-    // 防抖落盘：日记的返回键不自动保存（写完要点保存才算数），草稿是安全网
+    // 防抖落盘：§104 起返回键已自动保存，草稿只兜**进程被杀**这一种情况
+    //（正常退出走 saveAndBack，草稿会被清掉，不会在下次进来时误弹"已恢复草稿"）
     LaunchedEffect(content) {
         kotlinx.coroutines.delay(500)
         if (content.isNotBlank()) com.looka.app.data.Prefs.setDraft(ctx, draftKey, content)
     }
+
+    // §104（用户拍板）：日记改**自动保存**，与笔记同一套心智 ——
+    // 离开就存，不用惦记点保存。所以顶栏保持 `←`（返回父上下文）而不是 X（放弃）：
+    // DNA 5.4 说「有明确 commit 的全页编辑器用 X」，那是给"不保存就丢"的模型定的，
+    // 自动保存下 X 反而说谎。**这是有意偏离，不是漏做。**
+    // 空内容守卫在 vm.saveDiary 里 —— 看一眼就退不会凭空生出空日记。
+    fun saveAndBack() {
+        vm.saveDiary(day, mood, content)
+        com.looka.app.data.Prefs.clearDraft(ctx, draftKey)
+        nav.popBackStack()
+    }
+    androidx.activity.compose.BackHandler(enabled = true) { saveAndBack() }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -107,7 +120,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
         // 实机图 83 就是 `← 8月22日(土) ▾`；我们此前是死标题，日子选错了只能删了重写。
         LookaTopBar(
             Fmt.dateFull(day) + " ▾",
-            onBack = { nav.popBackStack() },
+            onBack = { saveAndBack() },
             onTitleClick = { dateDlg = true }
         ) {
             if (existed) {
