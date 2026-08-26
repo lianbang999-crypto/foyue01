@@ -804,14 +804,27 @@ private fun MonthFull(
                         // P2-B2：水印叠在格子「之上」（之前 drawBehind 被格子不透明底色盖住，
                         // 只有溢出到上一行的顶部 30% 漏出来）。低透明度 + 一行内装得下。
                         val wmMonth = (0..6).map { Fmt.d(ws + it) }.firstOrNull { it.dayOfMonth == 15 }?.monthValue
-                        Box(Modifier.height(rowH).fillMaxWidth()) {
+                        // §115（用户实机反馈：贴纸被日期之间的线截断）：贴纸视觉主体是
+                        // 0.618×列宽、以落点为中心居中画，贴到格子边缘时**必然溢出格子**。
+                        // 而日格与周行都是不透明底（background + drawBehind 画网格线），
+                        // 兄弟节点按声明顺序后画覆盖先画 —— 于是溢出的那半个贴纸被
+                        // 右邻格 / 下一周行的底色齐刷刷切掉，看着就是"卡在线上被截断"。
+                        // 贴纸自身的 zIndex(3f) 只在**它所在的日格内部**排序，跨不出格子。
+                        // 这里给"本周有贴纸"的整行提一层，下面 DayCellV2 再给"本格有贴纸"提一层。
+                        val weekHasStamp = (0..6).any { c0 ->
+                            stampsByDay[ws + c0]?.any { it.posX >= 0f } == true
+                        }
+                        Box(Modifier.height(rowH).fillMaxWidth()
+                            .zIndex(if (weekHasStamp) 1f else 0f)) {
                         Row(
                             Modifier.fillMaxSize()
                         ) {
                             for (c in 0 until 7) {
                                 val day = ws + c
                                 DayCellV2(
-                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                    // §115：本格有贴纸时提一层，横向溢出不再被右邻格底色切掉
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                        .zIndex(if (stampsByDay[day]?.any { it.posX >= 0f } == true) 2f else 0f),
                                     day = day,
                                     showLunar = showLunar,
                                     inMonth = YearMonth.from(Fmt.d(day)) == month,
@@ -863,32 +876,10 @@ private fun MonthFull(
                     }
                 }
             
-                // CAL-001 v1.1：远离今天时右下浮现「回今天」（连续滚动特有）
-                val todayIdx = remember(weekStartMon) { ((weekStart(today, weekStartMon) - origin) / 7).toInt() }
-                val farFromToday by remember {
-                    derivedStateOf { kotlin.math.abs(listState.firstVisibleItemIndex - todayIdx) > 2 }
-                }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = farFromToday,
-                    enter = androidx.compose.animation.fadeIn(tween(com.looka.app.ui.theme.Motion.ENTER)) +
-                        androidx.compose.animation.scaleIn(tween(com.looka.app.ui.theme.Motion.ENTER), initialScale = 0.85f),
-                    exit = androidx.compose.animation.fadeOut(tween(com.looka.app.ui.theme.Motion.EXIT)),
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 14.dp, bottom = 16.dp)
-                ) {
-                    Box(
-                        Modifier
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Ink.copy(alpha = 0.86f))
-                            .plainClick {
-                                vm.selectedDay = today
-                                vm.calMonth = YearMonth.now()
-                                vm.calScrollReq = today
-                            }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Text(tr("回今天"), fontSize = 12.5.sp, color = Color.White, fontWeight = FontWeight.Medium)
-                    }
-                }
+                // §115（用户实机反馈）：这里原本还有一颗**文字版「回今天」黑胶囊**
+                // （CAL-001 v1.1 旧实现），与 §111 的图标版都 align(BottomEnd) ——
+                // 两颗叠在屏幕右下同一个位置。用户拍板留图标版（对齐 Lifebear 图 114），
+                // 文字版在此删除。
 }
         }
     }

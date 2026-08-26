@@ -864,6 +864,37 @@ function noteLists() {
   return [...S.data.notelist.values()].filter(r => !r.deleted)
     .sort((a, b) => (a.p.sort || 0) - (b.p.sort || 0));
 }
+/**
+ * §115（用户实机反馈：待办打勾后任务从原位消失）：网页端补上 App §102 的**快照式列表**。
+ *
+ * 原来 open/done 分两组渲染，打勾的一瞬间任务就从当前位置跳到页面下方的
+ * 「已完成任务」分区 —— 用户的手指还停在原处，东西没了，看着像被删。
+ * Lifebear 不是这样（图 11/12）：勾掉的任务**留在原地**变成已完成态，
+ * 「完了タスク」是独立归档页，不是当场搬走。
+ *
+ * 算法与 App 的 rememberSnapshotOrder 逐行同构（前驱锚定）：
+ *  - 可见行每次按数据顺序重排（拖拽、同步来的新序即时生效）
+ *  - 勾掉的滞留行锚在旧序里它前面最近的存活元素之后
+ *  - 真被删掉的（不在 alive 里）才移除
+ */
+function snapshotOrder(prev, visible, alive) {
+  const visibleSet = new Set(visible);
+  const old = prev.filter(x => alive.has(x));
+  const result = [...visible];
+  for (const s of old) {
+    if (visibleSet.has(s)) continue;
+    let pos = 0;
+    for (let j = old.indexOf(s) - 1; j >= 0; j--) {
+      const p = result.indexOf(old[j]);
+      if (p >= 0) { pos = p + 1; break; }
+    }
+    result.splice(Math.min(pos, result.length), 0, s);
+  }
+  return result;
+}
+// 快照按「清单 + 搜索词」分桶；换清单或改搜索就重新快照（等同 App 的"离开页面再进来"）
+let TODO_SNAP = { key: '', order: [] };
+
 function renderTodos() {
   ensureDefaultList();
   const lists = taskLists().filter(l => !l.archived);
@@ -910,18 +941,30 @@ function renderTodos() {
     ${(k.dueDay ?? -1) >= 0 ? `<span class="due ${!k.done && k.dueDay < td ? 'late' : ''}">${dateCn(k.dueDay)}</span>` : ''}
     <button class="star ${k.starred ? 'on' : ''}" data-s="${k.uid}">${k.starred ? '★' : '☆'}</button>
     <button class="del" data-x="${k.uid}">×</button></div>`;
-  let html = open.map(row).join('');
-  if (done.length) {
-    html += `<div class="todo-sec">${t('已完成任务')} ${done.length} <button class="btn-mini" id="clearDone">${t('清除')}</button></div>`;
-    html += done.map(row).join('');
+  // §115：快照顺序 —— 勾掉的行留在原地，不当场搬到下面
+  const snapKey = curList + '|' + tq;
+  if (TODO_SNAP.key !== snapKey) TODO_SNAP = { key: snapKey, order: [] };
+  const aliveSet = new Set(items.map(k => k.uid));
+  TODO_SNAP.order = snapshotOrder(TODO_SNAP.order, open.map(k => k.uid), aliveSet);
+  const byUid = new Map(items.map(k => [k.uid, k]));
+  const shownRows = TODO_SNAP.order.map(u => byUid.get(u)).filter(Boolean);
+  const inSnap = new Set(TODO_SNAP.order);
+  const doneRest = done.filter(k => !inSnap.has(k.uid));   // 进页面前就已完成的，归到下面
+
+  let html = shownRows.map(row).join('');
+  if (doneRest.length) {
+    html += `<div class="todo-sec">${t('已完成任务')} ${doneRest.length} <button class="btn-mini" id="clearDone">${t('清除')}</button></div>`;
+    html += doneRest.map(row).join('');
   }
-  if (!open.length && !done.length) html = `<div class="empty-deer">还没有任务，从上面添加一个吧<img src="deer.svg" alt=""></div>`;
+  if (!shownRows.length && !doneRest.length) html = `<div class="empty-deer">还没有任务，从上面添加一个吧<img src="deer.svg" alt=""></div>`;
   $('#todoList').innerHTML = html;
   $$('#todoList [data-t]').forEach(b => b.onclick = () => toggleTask(b.dataset.t));
   $$('#todoList [data-s]').forEach(b => b.onclick = () => toggleStar(b.dataset.s));
   $$('#todoList [data-x]').forEach(b => b.onclick = () => confirmDlg('删除这个任务？', () => del('task', b.dataset.x)));
   const cd = $('#clearDone');
-  if (cd) cd.onclick = () => confirmDlg('清除全部已完成任务？', () => done.forEach(k => del('task', k.uid)), null, t('清除'));
+    // §115：按钮长在「已完成」分区里，就只清这个分区的（doneRest）——
+  // 显示 N 条却删掉 N+滞留 条是撒谎。留在上面的滞留行刷新后自然归到这里，届时可清。
+  if (cd) cd.onclick = () => confirmDlg('清除全部已完成任务？', () => doneRest.forEach(k => del('task', k.uid)), null, t('清除'));
 }
 
 /* ---------------- 笔记 ---------------- */

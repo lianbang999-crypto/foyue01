@@ -22,8 +22,8 @@ android {
         applicationId = "com.looka.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 39
-        versionName = "1.22.0"
+        versionCode = 40
+        versionName = "1.22.1"
     }
 
     signingConfigs {
