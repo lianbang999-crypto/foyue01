@@ -2,4 +2,6 @@
 <resources>
     <!-- Looka 品牌绿（鹿的森林绿） -->
     <color name="looka_green">#55B04B</color>
+    <!-- 启动器图标遮罩底色：取水彩图四边中位色，正常情况下被满幅前景盖住看不见 -->
+    <color name="looka_icon_bg">#80D0A2</color>
 </resources>

@@ -13,16 +13,22 @@ import androidx.compose.ui.unit.dp
 import com.looka.app.data.Prefs
 import com.looka.app.util.tr
 
-// ---- 固定视觉常量（不随主题变化，规格 §12 白底工具感） ----
-val Ink = Color(0xFF1B1B1F)          // 主文字
-val GrayText = Color(0xFF727776)     // 次级文字（§81：#8A8F8E 白底仅 3.28:1，正文 AA 要 4.5；本色 4.55:1）
-val Hairline = Color(0xFFD8DBD8)     // 细分隔线（v1.3 加深：原 ECECEC 在日历网格上几乎看不见）
-val PanelBg = Color(0xFFF7F8F7)      // 浅灰面板
-val DimBg = Color(0xFFF4F5F4)        // 非本月日期底
-val LinkBlue = Color(0xFF2E6BD8)     // “显示详细设置”链接蓝
-val HolidayRed = Color(0xFFE0504A)   // 休日红
-val SatBlue = Color(0xFF4A7DDC)      // 周六蓝
-val SaveDark = Color(0xFF3F3F46)     // 深色保存按钮
+// ---- 视觉常量（规格 §12 白底工具感） ----
+//
+// §106 A：其中四个改成**读语义令牌的 getter**（见 Tokens.kt）。
+// 值没变 —— `Tokens.derived` 的出厂默认就是下面注释里那几个原值，逐位相同。
+// 改成 getter 是为了让将来的主题包能接管它们：这四个常量身后有 467 处调用点，
+// 走 getter 就全部自动跟随，一处调用方都不用改。
+// 在 composable 里读它们会登记 Compose 快照读，装包/换主题时该重组的会自己重组。
+val Ink = Color(0xFF1B1B1F)          // 主文字（契约里对应 text_primary，但那个槽还没接渲染层，先固定）
+val GrayText: Color get() = Tokens.active.textSecondary   // 原 #727776（§81：4.55:1，够正文 AA）
+val Hairline: Color get() = Tokens.active.divider         // 原 #D8DBD8（v1.3 加深：ECECEC 在日历网格上看不见）
+val PanelBg = Color(0xFFF7F8F7)      // 浅灰面板（契约无对应 slot，保持固定）
+val DimBg = Color(0xFFF4F5F4)        // 非本月日期底（契约无对应 slot）
+val LinkBlue = Color(0xFF2E6BD8)     // “显示详细设置”链接蓝（契约无对应 slot）
+val HolidayRed: Color get() = Tokens.active.holiday       // 原 #E0504A 休日红
+val SatBlue: Color get() = Tokens.active.weekend          // 原 #4A7DDC 周六蓝
+val SaveDark = Color(0xFF3F3F46)     // 深色保存按钮（契约无对应 slot）
 
 // 品牌绿（鹿徽标底色，固定不随主题变）
 val LookaGreen = Color(0xFF55B04B)
@@ -97,19 +103,28 @@ object ThemeCtl {
         val i = Prefs.themeIndex(c)
         index = if (i == CUSTOM_THEME && customColor != 0L) CUSTOM_THEME
                 else i.coerceIn(0, DEER_THEMES.size - 1)
+        syncTokens()
     }
 
     fun set(c: Context, i: Int) {
         index = if (i == CUSTOM_THEME) CUSTOM_THEME else i.coerceIn(0, DEER_THEMES.size - 1)
         Prefs.setThemeIndex(c, index)
         Prefs.markSettingsDirty(c)   // B1：主题随 settings 实体上云
+        syncTokens()
     }
 
     fun setCustom(c: Context, argb: Long) {
         customColor = argb
         Prefs.setCustomThemeColor(c, argb)
-        set(c, CUSTOM_THEME)
+        set(c, CUSTOM_THEME)   // set() 里已经 syncTokens
     }
+
+    /**
+     * §106 A：主题一变就把语义令牌重算一次。
+     * 放在这里而不是 LookaTheme 里，是因为**组合期不该写状态** ——
+     * 在 composable 里写 Tokens.derived 会触发 "写后读" 警告并可能多跑一帧。
+     */
+    private fun syncTokens() { Tokens.derived = tokensOf(current()) }
 
     fun current(): DeerTheme =
         if (index == CUSTOM_THEME) customTheme(customColor)

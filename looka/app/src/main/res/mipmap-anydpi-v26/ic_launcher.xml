@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Looka 启动器图标（2026-08-26 换成水彩九色鹿）。
+
+  前景是 108dp 满幅位图，不是"透明底上一只鹿"—— 所以 background 那层
+  实际永远看不见，留 looka_icon_bg 只是给极少数会漏底的启动器兜底。
+  前景怎么拼的：艺术图缩到 80dp 居中，外圈边缘像素外推到 108dp 后**整体高斯模糊**
+  （不模糊会在圆角方遮罩下露出竖条拉丝；模糊后是水彩晕开，看不出接缝）。
+  为什么是 80 不是 108 —— 自适应图标只保证中间 72dp 可见，外圈 18dp 会被
+  各家启动器的圆 / 方 / 水滴遮罩吃掉；放 80dp 时鹿臀最右 ≈ 中心 +36dp，
+  正好压在 72dp 圆的边上，任何遮罩下鹿都完整。
+
+  monochrome 仍用旧的线稿鹿 ic_deer —— 主题图标（Android 13+ 单色模式）
+  要的是剪影，水彩图去色之后是一团灰，认不出。
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/looka_green" />
-    <foreground android:drawable="@drawable/ic_deer" />
+    <background android:drawable="@color/looka_icon_bg" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_deer" />
 </adaptive-icon>

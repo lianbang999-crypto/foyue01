@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 圆形启动器图标：与 ic_launcher 同源，遮罩由系统施加 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/looka_green" />
-    <foreground android:drawable="@drawable/ic_deer" />
+    <background android:drawable="@color/looka_icon_bg" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_deer" />
 </adaptive-icon>

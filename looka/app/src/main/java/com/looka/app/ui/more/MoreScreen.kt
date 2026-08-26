@@ -181,6 +181,12 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             NavRow(tr("关于 Looka"), icon = Icons.Outlined.Info,
                 value = "v" + com.looka.app.BuildConfig.VERSION_NAME) { aboutDlg = true }
             Hairline()
+            // §106 B：更多页运营 Banner 位（对照 0826 参考图更多页宫格下方那块）。
+            // 没接 SDK / Pro 用户 → 不画、不占高度。
+            com.looka.app.ui.common.AdSlot(
+                com.looka.app.ui.common.AdPlacement.MORE_BANNER,
+                Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+            )
             Spacer(Modifier.height(60.dp))
         }
     }

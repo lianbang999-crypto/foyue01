@@ -919,6 +919,14 @@ fun ListEditDialog(
                         ) {
                             Text(tr("色"), fontSize = 15.sp)
                             Spacer(Modifier.weight(1f))
+                            // §106：展开态**也要留当前色点**（实机图 96/128 两张都在）。
+                            // 原来展开就把点收了 —— 挑色的时候恰恰最需要看见"现在是哪个"
+                            Box(
+                                Modifier.size(18.dp).clip(CircleShape)
+                                    .background(parseHex(color))
+                                    .border(0.8.dp, Color(0xFFD8D8D8), CircleShape)
+                            )
+                            Spacer(Modifier.width(8.dp))
                             Icon(
                                 Icons.Default.KeyboardArrowUp, tr("色"),
                                 tint = GrayText, modifier = Modifier.size(20.dp)

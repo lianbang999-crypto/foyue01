@@ -308,6 +308,9 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
 @Composable
 private fun LookaBottomBar(tab: Int, onTab: (Int) -> Unit, onPlus: () -> Unit) {
     Column(Modifier.background(Color.White)) {
+        // §106 B：广告槽在导航条**上方**、且画在所有装饰之上（皮肤不得覆盖广告位）。
+        // 没接 SDK 时这行什么都不画、也不占高度。
+        com.looka.app.ui.common.AdSlot(com.looka.app.ui.common.AdPlacement.BOTTOM_NAV)
         Hairline()
         Row(
             Modifier
