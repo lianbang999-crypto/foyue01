@@ -94,6 +94,14 @@ def main():
             FILL.format(d=circle_path(12, 12, 10), c="#FF000000")
             + STROKE.format(d="M7.8,12.3 L10.6,15.1 L16.2,9.2", w="2", c="#FFFFFFFF", extra="")
         ),
+        # U 形回弯箭头：日历「回到今天」浮动按钮。
+        # 照实机图 114 那颗按钮里的字形描的 —— 箭头在左上，横线向右，
+        # 右侧半圆回弯，底部再向左收。不用 Material 的 Undo 是因为那个笔法
+        # 与这套 1.8px 描边不是一家，同屏出现会打架。
+        "return_today": (
+            STROKE.format(d="M10.5,5 L6.5,9 L10.5,13", w="1.8", c="#FF000000", extra="")
+            + STROKE.format(d="M6.5,9 H14 A4,4 0 0 1 14,17 H9", w="1.8", c="#FF000000", extra="")
+        ),
     }
     if star_svg:
         # 实心星：与空心星**同一条轮廓**，只是填上 —— 保证两态形状完全一致

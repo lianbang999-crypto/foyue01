@@ -203,24 +203,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            androidx.compose.animation.AnimatedVisibility(
-                visible = vm.selectedDay != Fmt.today() || vm.calMonth != YearMonth.now(),
-                enter = androidx.compose.animation.fadeIn(tween(180)) +
-                        androidx.compose.animation.scaleIn(tween(180), initialScale = 0.85f),
-                exit = androidx.compose.animation.fadeOut(tween(140))
-            ) {
-                Text(
-                    tr("今天"), fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .plainClick {
-                            vm.selectedDay = Fmt.today()
-                            vm.calMonth = YearMonth.now()
-                            vm.calScrollReq = Fmt.today()   // 连续滚动模式下要真的滚回去
-                        }
-                        .padding(horizontal = 6.dp)
-                )
-            }
+            // §111：「今天」**从顶栏挪到右下角浮动按钮**（用户拍板，实机图 114）。
+            // 原来的文字按钮在这里，代码见本文件底部 BackToTodayFab。
             // §71 A：AI 顶栏入口恢复（用户 2026-08-23 拍板推翻 §60 R3——全站要有方便调出的位置）
             IconButton(onClick = { nav.navigate("aiChat") }, modifier = Modifier.size(40.dp)) {
                 com.looka.app.ui.common.DeerBadge(24.dp)
@@ -332,6 +316,50 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
                     vm.prepareCreateDraft(d, allDay = true); nav.navigate("editor")
                 }
             )
+        }
+    }
+
+    // §111：**回到今天 —— 需要时才出现，且落在拇指区。**
+    //
+    // 实机图 114 抓到的细节：滚动离开当前月后，右下角浮出一颗白色圆角方按钮
+    // （量得 ≈33dp、距屏右 16dp、U 形回弯箭头），滚回当月就消失。
+    // 它同时做对两件事：**不用时不占位**（克制）、**落在拇指区**（人性化）——
+    // 顶栏右上角在 6.7 吋手机上单手够不到。
+    //
+    // 显示条件里带上 `!sheetOpen`，是照实机来的：图 112 面板开着时没有这颗按钮，
+    // 图 114 面板收起后才出现。这样也顺带保证**它永远不会压在日详情面板上**。
+    // 代价：面板开着时没有回今天的入口 —— 实机也一样，把面板划下去即可。
+    androidx.compose.animation.AnimatedVisibility(
+        visible = !sheetOpen && (vm.calMonth != YearMonth.now() || vm.selectedDay != Fmt.today()),
+        enter = androidx.compose.animation.fadeIn(tween(180)) +
+                androidx.compose.animation.scaleIn(tween(180), initialScale = 0.85f),
+        exit = androidx.compose.animation.fadeOut(tween(140)),
+        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp)
+            .zIndex(40f)
+    ) {
+        Box(
+            // 视觉 36dp（实机量得 ≈33dp），但外面套到 48dp 触控区 ——
+            // 33dp 低于 Android 最小可触目标 48dp，照抄尺寸会难点中。
+            Modifier.size(48.dp).plainClick {
+                vm.selectedDay = Fmt.today()
+                vm.calMonth = YearMonth.now()
+                vm.calScrollReq = Fmt.today()   // 连续滚动模式下要真的滚回去
+            },
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                color = Color.White,
+                shadowElevation = 3.dp,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        LkIcons.ReturnToday, tr("回到今天"),
+                        tint = Ink, modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
         }
     }
 

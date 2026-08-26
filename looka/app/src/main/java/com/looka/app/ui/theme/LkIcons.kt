@@ -64,4 +64,6 @@ object LkIcons {
     val CheckCircle: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_check_circle)
     /** 实心星：与空心星同一条轮廓，只是填上 —— 两态形状完全一致 */
     val StarFill: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_star_fill)
+    /** U 形回弯箭头：日历「回到今天」浮动按钮（照实机图 114 的字形描） */
+    val ReturnToday: ImageVector @Composable get() = ImageVector.vectorResource(R.drawable.ic_lk_return_today)
 }
