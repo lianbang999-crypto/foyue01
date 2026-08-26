@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 41,
-  "versionName": "1.22.2",
+  "versionCode": 42,
+  "versionName": "1.23.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4385773,
-  "sha256": "d71003f9777ab57d9f4204ec7a775206e5b1690cda9364d05d129490c82f7845",
-  "changelog": "修复更新装不上的根本原因（需要授权「允许安装未知应用」，现在会引导开启）、勾掉的任务留在清单里不再消失、日历上任务可以点开编辑",
+  "size": 4404617,
+  "sha256": "02ef360c0f95f85075447761c19d69b285b583386742d961b41d3bbdcb8d8bc3",
+  "changelog": "新增：日程/任务/笔记/日记都能贴图片了（拍照或相册，云端同步）；鹿角商店上线（敦煌、牛来贴纸包可用鹿角解锁，Pro 免费）；日程标题可一键填入最近用过的；搜索支持空格分多个关键词；网页端贴纸可以点开编辑和删除了",
   "minSupported": 1
 }
