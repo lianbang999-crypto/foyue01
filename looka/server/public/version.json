@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 40,
-  "versionName": "1.22.1",
+  "versionCode": 41,
+  "versionName": "1.22.2",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4385353,
-  "sha256": "22f24a69274baddffc2a4e708cf0351488291f062ede7420e5e4e117e5acbc2c",
-  "changelog": "修复贴纸贴在日期边缘被切一半、待办打勾后任务从眼前消失、日历右下角两个「回今天」重叠",
+  "size": 4385773,
+  "sha256": "d71003f9777ab57d9f4204ec7a775206e5b1690cda9364d05d129490c82f7845",
+  "changelog": "修复更新装不上的根本原因（需要授权「允许安装未知应用」，现在会引导开启）、勾掉的任务留在清单里不再消失、日历上任务可以点开编辑",
   "minSupported": 1
 }
