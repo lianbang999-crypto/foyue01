@@ -642,8 +642,8 @@ function renderDayPanel(evs, tks, sts) {
     }).join('')}</div><div class="time">${t('印章')}</div></div>`;
   }
   if (!evs.length && !tks.length && !diary && !sts.length) {
-    html = `<div class="empty-deer"><img src="deer.svg" alt="">${t('这一天还没有安排')}
-      <span class="empty-hint">${t('点右上角 ＋ 安排一条 ↗')}</span></div>` + html;
+    html = `<div class="empty-deer">${t('这一天还没有安排')}
+      <span class="empty-hint">${t('点右上角 ＋ 安排一条 ↗')}</span><img src="deer.svg" alt=""></div>` + html;
   }
   $('#dayItems').innerHTML = html;
 
@@ -915,7 +915,7 @@ function renderTodos() {
     html += `<div class="todo-sec">${t('已完成任务')} ${done.length} <button class="btn-mini" id="clearDone">${t('清除')}</button></div>`;
     html += done.map(row).join('');
   }
-  if (!open.length && !done.length) html = `<div class="empty-deer"><img src="deer.svg" alt="">还没有任务，从上面添加一个吧</div>`;
+  if (!open.length && !done.length) html = `<div class="empty-deer">还没有任务，从上面添加一个吧<img src="deer.svg" alt=""></div>`;
   $('#todoList').innerHTML = html;
   $$('#todoList [data-t]').forEach(b => b.onclick = () => toggleTask(b.dataset.t));
   $$('#todoList [data-s]').forEach(b => b.onclick = () => toggleStar(b.dataset.s));
@@ -939,7 +939,7 @@ function renderNotes() {
       (r.p.title || '').toLowerCase().includes(q) || (r.p.content || '').toLowerCase().includes(q))
       .sort((a, b) => b.updated_at - a.updated_at);
     $('#noteList').innerHTML = hit.length ? hit.map(r => noteRowHtml(r, lists)).join('')
-      : `<div class="empty-deer"><img src="deer.svg" alt="">${t('没找到')}「${esc(q)}」</div>`;
+      : `<div class="empty-deer">${t('没找到')}「${esc(q)}」<img src="deer.svg" alt=""></div>`;
     $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
     return;
   }
@@ -952,7 +952,7 @@ function renderNotes() {
     const inList = every.filter(r => (r.p.listUid || 'nlist-default') === curNoteList);
     const sorted = noteSortApply(inList);
     $('#noteList').innerHTML = sorted.length ? sorted.map(r => noteRowHtml(r, null)).join('')
-      : `<div class="empty-deer"><img src="deer.svg" alt="">「${esc(l.p.name)}」${t('里还没有笔记')}</div>`;
+      : `<div class="empty-deer">「${esc(l.p.name)}」${t('里还没有笔记')}<img src="deer.svg" alt=""></div>`;
     $$('#noteList [data-n]').forEach(el => el.onclick = () => openNoteModal(el.dataset.n));
     return;
   }
@@ -1064,8 +1064,8 @@ function renderDiary() {
   const all = [...S.data.diary.values()].sort((a, b) => (b.p.day || 0) - (a.p.day || 0));
   const list = q ? all.filter(r => (r.p.content || '').toLowerCase().includes(q)) : all;
   if (!list.length) {
-    $('#diaryList').innerHTML = `<div class="empty-deer"><img src="deer.svg" alt="">${
-      q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}</div>`;
+    $('#diaryList').innerHTML = `<div class="empty-deer">${
+      q ? '没找到「' + esc(q) + '」' : '一天一页，从今天开始记录吧'}<img src="deer.svg" alt=""></div>`;
     return;
   }
   // §93 E7：按月分组 —— 灰色月标题 + 左侧大号日期/星期，正文左缘 72px
@@ -1734,7 +1734,7 @@ async function boot() {
   };
 
   // 昵称：小鹿怎么称呼你（与自知录共用同一账号的昵称）
-  const mNick = $('#mNick');
+  const mNick = $('#mNick') || $('#mtAccount');   // §113 F5：黑顶区「账号」承接昵称入口
   if (mNick) mNick.onclick = () => {
     modal(`<h3>${t('怎么称呼你？')}</h3>
       <input id="nickInput" type="text" maxlength="20" placeholder="${t('最多 20 个字')}" style="width:100%" value="${esc(S.nickname || '')}">
@@ -1889,7 +1889,9 @@ async function boot() {
     toast(t('已导出'));
   };
 
-  const relay = { mTheme: 'btnTheme', mLang: 'btnLang', mSync: 'btnSyncNow', mRedeem: 'btnRedeem', mLogout: 'btnLogout' };
+  const relay = { mTheme: 'btnTheme', mLang: 'btnLang', mSync: 'btnSyncNow', mRedeem: 'btnRedeem', mLogout: 'btnLogout',
+    // §113 F5：黑顶区 → 复用既有入口逻辑（mtAccount 在昵称处直连）
+    mtTheme: 'btnTheme', mtPro: 'mPro' };
   Object.entries(relay).forEach(([from, to]) => {
     const el = $('#' + from);
     if (el) el.onclick = () => $('#' + to)?.click();
@@ -2025,7 +2027,7 @@ function renderCalSearch() {
       <div class="nd">${dateCn(r.p.startDay)}</div>
       <div class="nt"><span class="dot" style="background:${c?.p.color || '#9AA0A6'}"></span> ${esc(r.p.title || t('无标题'))}</div>
     </div>`;
-  }).join('') : `<div class="empty-deer"><img src="deer.svg" alt="">${t('没找到')}「${esc(q)}」</div>`;
+  }).join('') : `<div class="empty-deer">${t('没找到')}「${esc(q)}」<img src="deer.svg" alt=""></div>`;
   $$('#calSearchResult [data-d]').forEach(el => el.onclick = () => {
     $('#calSearch').value = ''; renderCalSearch();
     S.selDay = +el.dataset.d; renderAll();

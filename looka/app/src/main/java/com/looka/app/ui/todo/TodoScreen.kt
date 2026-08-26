@@ -151,7 +151,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                     ) {
                         ColorDot(parseHex(dl.colorHex), 13.dp)
                         Spacer(Modifier.width(14.dp))
-                        Text(dl.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        Text(dl.name, fontSize = 16.sp, modifier = Modifier.weight(1f))
                         val c = openCount[dl.uid] ?: 0
                         if (c > 0) Text("$c", fontSize = 13.sp, color = GrayText)
                     }
@@ -204,7 +204,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                 ) {
                     ColorDot(parseHex(l.colorHex), 13.dp)
                     Spacer(Modifier.width(14.dp))
-                    Text(l.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    Text(l.name, fontSize = 16.sp, modifier = Modifier.weight(1f))
                     val c = openCount[l.uid] ?: 0
                     if (c > 0) Text("$c", fontSize = 13.sp, color = GrayText)
                 }
@@ -220,7 +220,7 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                 ) {
                     Icon(LkIcons.Plus, tr("新建清单"), tint = GrayText, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(14.dp))
-                    Text(tr("新建清单"), fontSize = 15.sp, color = GrayText)
+                    Text(tr("新建清单"), fontSize = 16.sp, color = GrayText)
                 }
             }
 
@@ -278,7 +278,7 @@ private fun HubRow(
     ) {
         icon()
         Spacer(Modifier.width(14.dp))
-        Text(title, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(title, fontSize = 16.sp, modifier = Modifier.weight(1f))
         // §94 F2：行尾无 `>` 箭头（实机就没有）
         if (trailing != null) Text(trailing, fontSize = 13.sp, color = GrayText)
     }

@@ -1,5 +1,6 @@
 package com.looka.app.ui.account
 
+import com.looka.app.ui.common.DlgTitle
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -268,7 +269,7 @@ private fun LoginForm(vm: LookaViewModel, onDone: () -> Unit) {
         var fMsg by remember { mutableStateOf<String?>(null) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { forgotDlg = false },
-            title = { Text(tr("找回密码"), fontSize = 17.sp) },
+            title = { DlgTitle(tr("找回密码")) },
             text = {
                 Column {
                     Text(tr("邮箱账号直接接收重置邮件；手机号账号需要先在登录后绑定并验证邮箱。"),
@@ -513,7 +514,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         var saving by remember { mutableStateOf(false) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { nickDlg = false },
-            title = { Text(tr("怎么称呼你？"), fontSize = 16.sp) },
+            title = { DlgTitle(tr("怎么称呼你？")) },
             text = {
                 Column {
                     MiniField(draft, { if (it.length <= 20) draft = it },
@@ -554,7 +555,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         var msg by remember { mutableStateOf<String?>(null) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { bindDlg = false },
-            title = { Text(tr("绑定找回邮箱"), fontSize = 17.sp) },
+            title = { DlgTitle(tr("绑定找回邮箱")) },
             text = {
                 Column {
                     Text(tr("会向该邮箱发送验证链接，点过才算绑定成功；之后忘记密码可用它找回。"),
@@ -595,7 +596,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         var msg by remember { mutableStateOf<String?>(null) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { pwDlg = false },
-            title = { Text(tr("修改密码"), fontSize = 17.sp) },
+            title = { DlgTitle(tr("修改密码")) },
             text = {
                 Column {
                     Text(tr("修改后对使用同一账号的服务同时生效，其他设备将被退出。"),
@@ -640,7 +641,7 @@ private fun AccountPanel(vm: LookaViewModel, refresh: Int, onChanged: () -> Unit
         var msg by remember { mutableStateOf<String?>(null) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { delDlg = false },
-            title = { Text(tr("注销账号？"), fontSize = 17.sp, color = HolidayRed) },
+            title = { DlgTitle(tr("注销账号？")) },
             text = {
                 Column {
                     Text(tr("将永久删除 Looka 云端全部数据（本机数据保留）。登录凭证由统一账号服务管理，将予保留。此操作不可撤销。"),
@@ -708,7 +709,7 @@ private fun KeepLoseDialog(onDismiss: () -> Unit) {
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) { Text(tr("知道了")) }
         },
-        title = { Text(tr("Pro 到期后"), fontSize = 16.sp) },
+        title = { DlgTitle(tr("Pro 到期后")) },
         text = {
             Column {
                 Text(tr("你保留了"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)

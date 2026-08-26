@@ -2,6 +2,7 @@
 
 package com.looka.app.ui.calendar
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.activity.compose.BackHandler
@@ -499,7 +500,7 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
     sysDetail?.let { e ->
         AlertDialog(
             onDismissRequest = { sysDetail = null },
-            title = { Text(e.title, fontSize = 17.sp) },
+            title = { DlgTitle(e.title) },
             text = {
                 Column {
                     Text(
@@ -862,7 +863,12 @@ private fun DayCellV2(
             // 2026-08-22 P2-B1（用户实测反馈）：白/灰按「月份奇偶」交替，与滚动位置无关。
             // 上一版按 inMonth（= 是否为标题月）染色，标题一跳整屏翻转 —— 那是翻页时代的遗留概念。
             // Lifebear：一个月白、一个月灰，下划不改。今天格用日号黑方块标识即可，不再整格染灰。
-            .background(if (dt.monthValue % 2 == 0) DimBg else Color.White)
+            // §113 E1：选中日整格加浅灰底（实机图 02/30：浅灰底 + 黑描边 + 日号黑块三层同现）。
+            // 之前只有描边，选中态在满屏白格里不够醒目。
+            .background(
+                if (isSelected) Color(0xFFEDEEED)
+                else if (dt.monthValue % 2 == 0) DimBg else Color.White
+            )
             .drawBehind {
                 drawLine(hairColor, Offset(0f, size.height), Offset(size.width, size.height), 1f)
                 drawLine(hairColor, Offset(size.width, 0f), Offset(size.width, size.height), 1f)
@@ -1408,9 +1414,16 @@ fun ViewMenuSheet(
     onSearch: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White,
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) {
+    // §113 B6：全宽**直角**面板（实机图 05/07；母档 4.2 特别纠正过「16-20dp 是 clean-room
+    // 建议、不是实机定值」）。直角 + 60% scrim + 无拖柄 —— 视图切换是个短导航选择，
+    // 不是可拖拽的内容面板，拖柄给的是错误的手势暗示。
+    ModalBottomSheet(
+        onDismissRequest = onDismiss, containerColor = Color.White,
+        shape = androidx.compose.ui.graphics.RectangleShape,
+        scrimColor = Color.Black.copy(alpha = 0.6f),
+        dragHandle = null
+    ) {
+        Column(Modifier.navigationBarsPadding().padding(top = 10.dp, bottom = 8.dp)) {
             // 顶部搜索框（Lifebear 式）：点击进搜索页
             Row(
                 Modifier
@@ -1446,7 +1459,7 @@ fun ViewMenuSheet(
                     CalendarGlyph(num, size = 21.dp)
                     Spacer(Modifier.width(14.dp))
                     Text(
-                        label, fontSize = 15.sp,
+                        label, fontSize = 16.sp,
                         fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }

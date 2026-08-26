@@ -1,5 +1,6 @@
 package com.looka.app.ui.calendar
 
+import com.looka.app.ui.common.DlgTitle
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -98,7 +99,12 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     val weekNames = listOf(tr("周一"), tr("周二"), tr("周三"), tr("周四"), tr("周五"), tr("周六"), tr("周日"))
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("日历设置"), onBack = { nav.popBackStack() })
+        // §113 E5：全页设置用 **X** 关闭（实机图 33/34/37 设定页全是 X）——
+        // 语义分工：X=关闭一个路由页，←=返回内容层级。详情/编辑页保持 ←。
+        LookaTopBar(
+            tr("日历设置"), onBack = { nav.popBackStack() },
+            backIcon = com.looka.app.ui.theme.LkIcons.Close
+        )
         Column(Modifier.verticalScroll(rememberScrollState())) {
             // E5（§57）：分类管理并入日历设置（更多页 16→8）
             NavRow(tr("分类管理")) { nav.navigate("categories") }
@@ -245,7 +251,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     // E2（§70 图示代替文字）：字号三档所见即所得 —— 样例直接按月视图里的真实字号渲染
     if (fontDlg) AlertDialog(
         onDismissRequest = { fontDlg = false },
-        title = { Text(tr("日程文字大小"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("日程文字大小")) },
         text = {
             Column {
                 val cur = com.looka.app.data.Prefs.eventTextSize(ctx)
@@ -275,7 +281,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     // E2（§70）：一周开始日 —— 每个选项直接给出整排周条预览
     if (weekStartDlg) AlertDialog(
         onDismissRequest = { weekStartDlg = false },
-        title = { Text(tr("一周开始日"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("一周开始日")) },
         text = {
             Column {
                 listOf(true to tr("周一"), false to tr("周日")).forEach { (v, label) ->
@@ -313,7 +319,7 @@ fun CalendarSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
     var tmpMask by remember(holidayDlg) { mutableIntStateOf(holidayMask) }
     AlertDialog(
         onDismissRequest = { holidayDlg = false },
-        title = { Text(tr("休日星期"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("休日星期")) },
         text = {
             Column {
                 // E2（§70）：不解释"会变红"—— 勾上的星期名当场变红，所见即所得

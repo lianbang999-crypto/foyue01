@@ -2,6 +2,7 @@
 
 package com.looka.app.ui.event
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -260,11 +261,11 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     if (discardDlg) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { discardDlg = false },
-            title = { Text(tr("放弃编辑？"), fontSize = 17.sp) },
+            title = { DlgTitle(tr("放弃编辑？")) },
             text = { Text(tr("刚才输入的内容不会保存。"), fontSize = 14.sp) },
             confirmButton = {
                 TextButton(onClick = { discardDlg = false; reallyClose() }) {
-                    Text(tr("放弃"), color = HolidayRed)
+                    Text(tr("放弃"), color = Ink, fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
@@ -429,10 +430,10 @@ private fun EventForm(vm: LookaViewModel, nav: NavHostController, d: EventDraft)
             ColorDot(parseHex(cat?.colorHex ?: "#9AA0A6"), 10.dp)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(cat?.name ?: tr("未分类"), fontSize = 15.sp)
-                Text(tr("Looka 日历"), fontSize = 11.sp, color = GrayText)
+                Text(cat?.name ?: tr("未分类"), fontSize = 16.sp)
+                Text(tr("Looka 日历"), fontSize = 12.sp, color = GrayText)
             }
-            Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFC9CCC9), modifier = Modifier.size(20.dp))
+            // §113 E8：去右箭头 —— 实机分类行（图 08 未分類/Lifebearカレンダー）行尾干净
         }
         Hairline()
 
@@ -781,7 +782,7 @@ fun CategoryPickerSheet(
 fun ScopeDialog(title: String, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 17.sp) },
+        title = { DlgTitle(title) },
         text = {
             Column {
                 listOf(tr("仅本次"), tr("本次及以后"), tr("全部")).forEachIndexed { i, label ->

@@ -79,6 +79,31 @@ fun Hairline(modifier: Modifier = Modifier) {
     HorizontalDivider(modifier, thickness = 0.6.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
+/**
+ * §113 A3：把当前 Dialog 的 scrim 提到 60% 黑。
+ * Lifebear 实机 scrim 采样 RGB(102,102,102) ≈ black 60%（母档 5.2），M3 默认只有 32% ——
+ * 背景压不暗，弹窗「浮」不出来。M3 没开这个口子，只能从 view 树往上摸 DialogWindowProvider。
+ * 放在 Dialog 内容里任意位置调用即可（此时 LocalView 已在 dialog window 内）。
+ */
+@Composable
+fun DialogDim(fraction: Float = 0.6f) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        (view.parent as? androidx.compose.ui.window.DialogWindowProvider)
+            ?.window?.setDimAmount(fraction)
+    }
+}
+
+/**
+ * §113 A2+A3：全站 Dialog 标题的唯一写法 —— 19sp SemiBold（实机 20sp 粗，图 09/15/18/26），
+ * 顺手把 scrim 拉到 60%。替换掉此前散落各处的 `Text(xx, fontSize = 17.sp)`。
+ */
+@Composable
+fun DlgTitle(text: String) {
+    DialogDim()
+    Text(text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+}
+
 /** 顶栏：左返回 / 标题 / 右操作（规格 §12 App Bar 语言） */
 @Composable
 fun LookaTopBar(
@@ -114,7 +139,10 @@ fun LookaTopBar(
     }
 }
 
-/** 可点击导航行 */
+/** 可点击导航行。
+ * §113 C1：对齐实机设置行模板（图 33/34）—— 主标签 16sp 黑 + **摘要 12sp 灰在下一行**、
+ * **行尾无箭头**。此前是「15sp + 右侧 value + chevron」：值在右边一挤就截断，
+ * 而实机把摘要放主标签底下，整行留白反而更透气；箭头实机根本没有。 */
 @Composable
 fun NavRow(
     title: String,
@@ -127,21 +155,23 @@ fun NavRow(
             .fillMaxWidth()
             .rowClick(onClick)   // §85 B4：整行浅灰按压（V011 §6.1），替换水波纹
             .heightIn(min = 52.dp)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
             Icon(icon, null, tint = GrayText, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(14.dp))
         }
-        Text(title, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        if (value != null) {
-            Text(
-                value, fontSize = 13.sp, color = GrayText, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 180.dp)
-            )
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 16.sp)
+            if (value != null) {
+                Text(
+                    value, fontSize = 12.sp, color = GrayText, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
-        Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFC9CCC9), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -218,15 +248,16 @@ fun weekdayTint(dowIso: Int, holidayMask: Int): Color? = when {
     else -> null
 }
 
-/** 深色保存按钮（规格 §12：保存为实色深色按钮） */
+/** 深色保存按钮（规格 §12）。§113 A5：底色从 #3F3F46 改纯黑 Ink、圆角 8→6dp ——
+ * 实机可用态是纯黑小矩形（图 31），#3F3F46 偏灰半档；禁用灰不变（图 06）。 */
 @Composable
 fun SaveButton(text: String = tr("保存"), enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = SaveDark,
+            containerColor = Ink,
             contentColor = Color.White,
             disabledContainerColor = Color(0xFFC3C5C3),
             disabledContentColor = Color.White
@@ -261,7 +292,10 @@ fun DeerLoading(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** 空状态小鹿（轻微上下浮动） */
+/** 空状态小鹿（轻微上下浮动）。
+ * §113 D1：结构对齐实机（图 13/14/17）—— **黑粗标题在上、插画在下且放大**。
+ * 此前是 64dp 小鹿在上 + 13sp 灰字在下：层级弱，一眼扫不到「这里为什么是空的」。
+ * 实机语法：标题（タスクはありません，约 22sp 黑粗）先说清状态，插画只做情绪陪衬。 */
 @Composable
 fun EmptyDeer(text: String, modifier: Modifier = Modifier, hint: String? = null) {
     val float = androidx.compose.animation.core.rememberInfiniteTransition(label = "deerFloat")
@@ -276,21 +310,23 @@ fun EmptyDeer(text: String, modifier: Modifier = Modifier, hint: String? = null)
     Column(
         modifier
             .fillMaxWidth()
-            .padding(vertical = 32.dp),
+            .padding(vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        DeerBadge(64.dp)   // B3 补漏（§58）：空状态小鹿也随主题
-        Spacer(Modifier.height(10.dp))
-        Text(text, fontSize = 13.sp, color = GrayText)
+        Text(text, fontSize = 17.sp, color = Ink, fontWeight = FontWeight.SemiBold)
         // 指向性提示（对齐 Lifebear「ここから作成できます ↓」）：
         // 空状态不能只说"没有"，要指给用户从哪开始 —— 箭头方向由调用方写进文案（↑ ↗ ↓）
         if (hint != null) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 hint, fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium
             )
+        }
+        Spacer(Modifier.height(26.dp))
+        Box(Modifier.offset(y = dy.dp)) {
+            DeerBadge(96.dp)   // B3 补漏（§58）：空状态小鹿也随主题
         }
     }
 }
@@ -309,13 +345,13 @@ fun ProFeatureDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 17.sp) },
+        title = { DlgTitle(title) },
         text = {
             Column {
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(6.dp))
                         .background(Color(0xFFF4F4F2))
                         .padding(14.dp),
                     contentAlignment = Alignment.Center
@@ -324,19 +360,33 @@ fun ProFeatureDialog(
                 Text(desc, fontSize = 13.5.sp, color = GrayText, lineHeight = 20.sp)
             }
         },
+        // §113 B4：能力门是全站唯一用「实心按钮对」的 Dialog（实机图 20/21：
+        // 閉じる=白底黑描边 / 詳しくみる=黑底白字，并排等宽）。普通确认弹窗仍是文字按钮 ——
+        // 能力门带营销性质，按钮要有「可选择的两条路」的分量；删除确认不配拥有这种分量。
         confirmButton = {
-            TextButton(onClick = onGo) {
-                Text(tr("了解 Pro"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            }
+            Button(
+                onClick = onGo,
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Ink, contentColor = Color.White),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+            ) { Text(tr("了解 Pro"), fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(tr("关闭"), color = GrayText) }
+            androidx.compose.material3.OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(6.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Ink),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
+            ) { Text(tr("关闭"), fontSize = 14.sp) }
         },
         containerColor = Color.White
     )
 }
 
-/** 二次确认弹窗（规格 AC-008 普通删除需确认） */
+/** 二次确认弹窗（规格 AC-008 普通删除需确认）。
+ * §113 A4：确认动作从红字改 **Ink 黑字 SemiBold** —— Lifebear 实机删除确认里
+ * 「削除」也是黑字（图 09/11），危险语义靠文案与二次确认承担，红色只留给日历休日。 */
 @Composable
 fun ConfirmDialog(
     title: String,
@@ -347,12 +397,14 @@ fun ConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 17.sp) },
+        title = { DlgTitle(title) },
         text = if (text != null) {
             { Text(text, fontSize = 14.sp) }
         } else null,
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(confirmText, color = HolidayRed) }
+            TextButton(onClick = onConfirm) {
+                Text(confirmText, color = Ink, fontWeight = FontWeight.SemiBold)
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(tr("取消"), color = GrayText) }
@@ -371,9 +423,10 @@ fun <T> RadioDialog(
     onDismiss: () -> Unit
 ) {
     // S4（§64，Lifebear 规格）：19sp 标题 / 56dp 选项行 / 点即生效即关 / 无取消按钮
+    // §113 A2：标题收敛到 DlgTitle（19sp SemiBold + 60% scrim）
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 19.sp, fontWeight = FontWeight.Bold) },
+        title = { DlgTitle(title) },
         text = {
             Column {
                 options.forEach { (v, label) ->
@@ -396,6 +449,43 @@ fun <T> RadioDialog(
     )
 }
 
+/**
+ * §113 B2：短语义单选弹窗 —— **整行浅灰底标当前项、无 radio、选择即关**。
+ * 实机的「期間選択」（图 15/16）就是这个形态：选项少、语义一眼懂时，
+ * radio 是多余的仪式感；当前项整行灰底比圆点更快扫到。
+ * 与 RadioDialog 的分工：设置枚举（含说明性选项）用 radio，快速范围切换用这个。
+ */
+@Composable
+fun <T> PlainChoiceDialog(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { DlgTitle(title) },
+        text = {
+            Column {
+                options.forEach { (v, label) ->
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(if (v == selected) Color(0xFFE4E5E4) else Color.Transparent)
+                            .clickable { onSelect(v); onDismiss() }
+                            .padding(horizontal = 8.dp, vertical = 15.dp)
+                    ) {
+                        Text(label, fontSize = 16.sp, color = Ink)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        containerColor = Color.White
+    )
+}
+
 /** 时间选择弹窗（当日分钟数进出） */
 @Composable
 fun LookaTimePicker(initialMin: Int, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
@@ -406,7 +496,7 @@ fun LookaTimePicker(initialMin: Int, onPick: (Int) -> Unit, onDismiss: () -> Uni
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        text = { TimePicker(state) },
+        text = { DialogDim(); TimePicker(state) },
         confirmButton = {
             TextButton(onClick = {
                 onPick(state.hour * 60 + state.minute); onDismiss()
@@ -499,6 +589,23 @@ fun clearFieldColors(): TextFieldColors = TextFieldDefaults.colors(
     unfocusedIndicatorColor = Color.Transparent,
     disabledIndicatorColor = Color.Transparent,
     cursorColor = MaterialTheme.colorScheme.primary
+)
+
+/**
+ * §113 A8：**弹窗内**输入框样式 —— 黑色下划线。
+ * Lifebear 的建清单/重命名 Dialog 里输入框是一条醒目的黑色下划线（图 18/19/27/28），
+ * 不是无边框也不是描边框。页面级标题输入（日程名等）继续用 clearFieldColors。
+ * 线厚由 M3 内置：聚焦 2dp / 未聚焦 1dp，颜色统一 Ink。
+ */
+@Composable
+fun dialogFieldColors(): TextFieldColors = TextFieldDefaults.colors(
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent,
+    disabledContainerColor = Color.Transparent,
+    focusedIndicatorColor = Ink,
+    unfocusedIndicatorColor = Ink,
+    disabledIndicatorColor = Color(0xFFC9CCC9),
+    cursorColor = Ink
 )
 
 /** 轻提示 */

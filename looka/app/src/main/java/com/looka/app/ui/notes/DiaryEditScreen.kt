@@ -1,5 +1,6 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.material3.MaterialTheme
@@ -230,7 +231,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
     polished?.let { p ->
         AlertDialog(
             onDismissRequest = { polished = null },
-            title = { Text(tr("润色结果"), fontSize = 17.sp) },
+            title = { DlgTitle(tr("润色结果")) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     Text(p, fontSize = 14.sp, lineHeight = 22.sp)
@@ -250,7 +251,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
 
     if (privacyDlg) AlertDialog(
         onDismissRequest = { privacyDlg = false },
-        title = { Text(tr("允许上传日记正文？"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("允许上传日记正文？")) },
         text = {
             Text(
                 tr("AI 润色需要把这篇日记发送给大模型服务商处理。日记是最私密的内容，默认关闭。\n允许后可随时在「订阅与小鹿 AI」中关闭。"),

@@ -1,5 +1,7 @@
 package com.looka.app.ui.notes
 
+import androidx.compose.material3.TextField
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.foundation.layout.Column
@@ -58,7 +60,7 @@ fun NoteListChangeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("选择清单"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("选择清单")) },
         text = {
             // V014 Scalability：清单多了要能滚，且「新建」行始终可发现
             Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
@@ -114,15 +116,16 @@ fun NoteListCreateDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("新建清单"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("新建清单")) },
         text = {
             Column {
-                OutlinedTextField(
+                TextField(
                     value = name,
                     onValueChange = { name = it; err = null },
-                    label = { Text(tr("清单名")) },
+                    placeholder = { Text(tr("清单名")) },
                     singleLine = true,
                     isError = err != null,
+                    colors = com.looka.app.ui.common.dialogFieldColors(),
                     modifier = Modifier.fillMaxWidth().focusRequester(focus)
                 )
                 err?.let { Text(it, fontSize = 12.sp, color = com.looka.app.ui.theme.HolidayRed) }

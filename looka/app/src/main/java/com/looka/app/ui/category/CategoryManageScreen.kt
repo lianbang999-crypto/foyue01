@@ -1,5 +1,7 @@
 package com.looka.app.ui.category
 
+import androidx.compose.material3.TextField
+import com.looka.app.ui.common.DlgTitle
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.background
@@ -161,14 +163,15 @@ private fun CategoryEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (cat == null) tr("新建颜色") else tr("编辑分类"), fontSize = 17.sp) },
+        title = { DlgTitle(if (cat == null) tr("新建颜色") else tr("编辑分类")) },
         text = {
             // 48 色 8 行较高，小屏上让色盘可滚
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
+                TextField(
                     value = name, onValueChange = { name = it },
                     placeholder = { Text(tr("分类名称，如：工作")) },
                     singleLine = true,
+                    colors = com.looka.app.ui.common.dialogFieldColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.padding(top = 12.dp))

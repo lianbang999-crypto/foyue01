@@ -1,5 +1,6 @@
 package com.looka.app.ui.more
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import android.app.AlarmManager
@@ -311,7 +312,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
     // 认领订单：粘贴爱发电订单号 → 服务端反查开通（不依赖备注的唯一兜底）
     if (claimDlg) AlertDialog(
         onDismissRequest = { claimDlg = false },
-        title = { Text(tr("认领爱发电订单"), fontSize = 17.sp) },
+        title = { DlgTitle(tr("认领爱发电订单")) },
         text = {
             Column {
                 Text(
@@ -471,7 +472,7 @@ fun BackupScreen(vm: LookaViewModel, nav: NavHostController) {
         val groups = remember(dedupDlg) { vm.duplicateEventGroups() }
         AlertDialog(
             onDismissRequest = { dedupDlg = false },
-            title = { Text(tr("清理重复日程"), fontSize = 16.sp) },
+            title = { DlgTitle(tr("清理重复日程")) },
             text = {
                 if (groups.isEmpty()) Text(tr("没有发现重复的日程 🦌"), fontSize = 13.sp)
                 else Column {

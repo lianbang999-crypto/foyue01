@@ -2,6 +2,8 @@
 
 package com.looka.app.ui.todo
 
+import com.looka.app.ui.common.dialogFieldColors
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.animation.core.Animatable
@@ -441,24 +443,39 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("已完成任务"), onBack = { nav.popBackStack() })
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(tr("近1月"), tr("近3月"), tr("近1年"), tr("全部")).forEachIndexed { i, label ->
-                Box(
-                    Modifier
-                        .padding(horizontal = 4.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(if (range == i) Ink else PanelBg)
-                        .plainClick { range = i }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(label, fontSize = 12.sp, color = if (range == i) Color.White else Ink)
-                }
+        // §113 C6：范围选择从「四个并排 chip」改成实机形态（图 14/15/16）——
+        // 左侧**一个**白底灰描边胶囊「近3月 ▼」，点开期间选择弹窗（整行灰底单选、即选即关）；
+        // 右侧灰字说明。四个 chip 占满一行，实机只用一个下拉，行反而透气。
+        var rangeDlg by remember { mutableStateOf(false) }
+        val rangeLabels = listOf(tr("近1月"), tr("近3月"), tr("近1年"), tr("全部"))
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .border(0.8.dp, Color(0xFFC9CCC9), RoundedCornerShape(50))
+                    .plainClick { rangeDlg = true }
+                    .padding(horizontal = 14.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(rangeLabels[range], fontSize = 13.sp, color = Ink)
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    Icons.Default.KeyboardArrowDown, null,
+                    tint = Ink, modifier = Modifier.size(16.dp)
+                )
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.weight(1f))
             // §94 F8：说明文字（实机「未完了リストのタスクが表示されます」放右侧）——
             // 用户不知道已归档清单的任务不在这里，是真的会困惑
             Text(tr("只显示未归档清单里的任务"), fontSize = 10.sp, color = GrayText)
         }
+        if (rangeDlg) com.looka.app.ui.common.PlainChoiceDialog(
+            title = tr("时间范围"),
+            options = rangeLabels.mapIndexed { i, l -> i to l },
+            selected = range,
+            onSelect = { range = it },
+            onDismiss = { rangeDlg = false }
+        )
         Hairline()
         LazyColumn {
             groups.forEach { (day, ts) ->
@@ -523,7 +540,7 @@ fun DoneListsScreen(vm: LookaViewModel, nav: NavHostController) {
                     }
                     if (l.deletable) {
                         TextButton(onClick = { delList = l }) {
-                            Text(tr("删除"), fontSize = 13.sp, color = HolidayRed)
+                            Text(tr("删除"), fontSize = 13.sp, color = Ink, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -640,22 +657,24 @@ fun TaskRowV2(
             // 圆圈变实心勾（上面 Icon 已处理）+ 标题转灰。
             // 不加删除线：母档 B 项定过「打勾+灰字即可，全站去删除线」。
             Text(
-                t.title, fontSize = 15.sp,
+                t.title, fontSize = 16.sp,
                 color = if (t.done) GrayText else Ink,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
+            // §113 C3：副行对齐实机（图 14/15）—— **日期在前、色点+清单名在后**
+            // （「10月1日(木) ●マイリスト」），字号 10 → 12sp（实机 Secondary 12sp，10sp 要眯眼）
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (t.dueDay >= 0) {
+                    Text(
+                        Fmt.dateCn(t.dueDay), fontSize = 12.sp,
+                        color = if (!t.done && t.dueDay < Fmt.today()) HolidayRed else GrayText
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 if (listName != null) {
                     ColorDot(listColor, 7.dp)
                     Spacer(Modifier.width(4.dp))
-                    Text(listName, fontSize = 10.sp, color = GrayText)
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (t.dueDay >= 0) {
-                    Text(
-                        Fmt.dateCn(t.dueDay), fontSize = 10.sp,
-                        color = if (!t.done && t.dueDay < Fmt.today()) HolidayRed else GrayText
-                    )
+                    Text(listName, fontSize = 12.sp, color = GrayText)
                 }
             }
         }
@@ -696,12 +715,13 @@ fun TaskEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isNew) tr("新建任务") else tr("编辑任务"), fontSize = 17.sp) },
+        title = { DlgTitle(if (isNew) tr("新建任务") else tr("编辑任务")) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                OutlinedTextField(
+                TextField(
                     value = title, onValueChange = { title = it },
-                    label = { Text(tr("任务名")) }, singleLine = true,
+                    placeholder = { Text(tr("任务名")) }, singleLine = true,
+                    colors = dialogFieldColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 // 清单
@@ -840,7 +860,7 @@ fun TaskEditDialog(
         confirmButton = {
             Row(horizontalArrangement = Arrangement.End) {
                 if (!isNew) TextButton(onClick = { vm.deleteTask(t); onDismiss() }) {
-                    Text(tr("删除"), color = HolidayRed)
+                    Text(tr("删除"), color = Ink, fontWeight = FontWeight.SemiBold)
                 }
                 TextButton(
                     onClick = {
@@ -880,13 +900,14 @@ fun ListEditDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) tr("新建清单") else tr("编辑清单"), fontSize = 17.sp) },
+        title = { DlgTitle(if (existing == null) tr("新建清单") else tr("编辑清单")) },
         text = {
             Column {
-                OutlinedTextField(
+                TextField(
                     value = name, onValueChange = { name = it },
                     placeholder = { Text(tr("清单名，如：购物 / 学习")) },
                     singleLine = true,
+                    colors = dialogFieldColors(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(4.dp))

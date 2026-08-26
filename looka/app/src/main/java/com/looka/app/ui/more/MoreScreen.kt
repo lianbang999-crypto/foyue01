@@ -2,6 +2,7 @@
 
 package com.looka.app.ui.more
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.foundation.Image
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -110,6 +112,25 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         }
         Hairline()
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            // §113 E4：**黑色顶区三主入口**（实机图 32：アカウント/プラン/設定，
+            // 白线稿图标 + 白字三等分，是 More 页最显著的视觉锚）。
+            // 与 §68 的关系：§68 撤回的是「把一切入口做成宫格黑块」；这次只把
+            // 账户/订阅/设置三个身份级入口收进一条黑区，下方仍是分组列表 —— 不冲突。
+            Row(Modifier.fillMaxWidth().background(Ink).padding(vertical = 16.dp)) {
+                BlackTopEntry(
+                    LkIcons.User,
+                    if (loggedIn) email.ifBlank { tr("账号") } else tr("账号"),
+                    Modifier.weight(1f)
+                ) { nav.navigate("account") }
+                BlackTopEntry(
+                    Icons.Outlined.WorkspacePremium,
+                    if (plan == "pro") "Pro" else tr("订阅"),
+                    Modifier.weight(1f)
+                ) { nav.navigate("subscription") }
+                BlackTopEntry(LkIcons.Settings, tr("设置"), Modifier.weight(1f)) {
+                    nav.navigate("calSettings")
+                }
+            }
             // 品牌区
             Row(
                 Modifier.fillMaxWidth().padding(20.dp),
@@ -124,17 +145,8 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             Hairline()
             // §68 四：宫格方案撤回（大黑块太重、分组逻辑错）。
-            // 按语义 6 组分组列表 —— Lifebear More 的真实骨架：emoji 分组标题 + 行级列表（§64 五）。
-            // X1：小鹿 AI 独立入口回归（§67 事故修复）。
-            SectionLabel(tr("我"))
-            NavRow(
-                tr("账号与同步"), icon = LkIcons.User,
-                value = if (loggedIn) "$email · ${if (plan == "pro") "Pro" else tr("免费版")}" else tr("未登录")
-            ) { nav.navigate("account") }
-            Hairline()
-            NavRow(tr("订阅 · 鹿角"), icon = Icons.Outlined.WorkspacePremium) { nav.navigate("subscription") }
-            Hairline()
-
+            // 按语义分组列表 —— Lifebear More 的下半部本来也是入口列表/宫格混排。
+            // §113 E4：原「我」组两行（账号与同步/订阅·鹿角）已上移进黑区，组撤销。
             SectionLabel(tr("小鹿"))
             NavRow(tr("小鹿 AI"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
             Hairline()
@@ -247,7 +259,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     updateInfo?.let { info ->
         AlertDialog(
             onDismissRequest = { updateInfo = null },
-            title = { Text(tr("发现新版本 ") + info.versionName, fontSize = 17.sp) },
+            title = { DlgTitle(tr("发现新版本 ") + info.versionName) },
             text = { Text(info.changelog.ifBlank { tr("修复与体验优化") }, fontSize = 14.sp, lineHeight = 21.sp) },
             confirmButton = {
                 TextButton(onClick = {
@@ -263,7 +275,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
 
     if (aboutDlg) AlertDialog(
         onDismissRequest = { aboutDlg = false },
-        title = { Text("Looka v" + com.looka.app.BuildConfig.VERSION_NAME, fontSize = 17.sp) },
+        title = { DlgTitle("Looka v" + com.looka.app.BuildConfig.VERSION_NAME) },
         text = {
             Column {
                 Text(
@@ -338,4 +350,26 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         },
         containerColor = Color.White
     )
+}
+
+
+/** §113 E4：黑色顶区单项 —— 白线稿图标 + 白字，等分三列（实机图 32） */
+@Composable
+private fun BlackTopEntry(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier.plainClick(onClick).padding(vertical = 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
+        Spacer(Modifier.height(6.dp))
+        Text(
+            label, fontSize = 12.sp, color = Color.White,
+            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
 }

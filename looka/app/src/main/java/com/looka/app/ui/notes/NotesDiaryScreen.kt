@@ -1,5 +1,6 @@
 package com.looka.app.ui.notes
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.material3.MaterialTheme
@@ -276,11 +277,12 @@ fun NoteListNameDialog(
     var name by remember { mutableStateOf(initial) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, fontSize = 17.sp) },
+        title = { DlgTitle(title) },
         text = {
-            androidx.compose.material3.OutlinedTextField(
+            androidx.compose.material3.TextField(
                 value = name, onValueChange = { name = it },
                 placeholder = { Text(tr("清单名")) }, singleLine = true,
+                colors = com.looka.app.ui.common.dialogFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
         },
@@ -371,8 +373,10 @@ private fun DiaryList(vm: LookaViewModel, nav: NavHostController, q: String, sea
                 ) {
                     // 左：大号日期 + 星期（竖排）。宽 56dp 使正文左缘落在 72dp —— 与清单列表同一根竖线
                     Column(Modifier.width(56.dp)) {
-                        Text("${dt.dayOfMonth}", fontSize = 26.sp, fontWeight = FontWeight.Medium, color = Ink)
-                        Text(Fmt.week(dt.dayOfWeek.value), fontSize = 12.sp, color = Ink)
+                        // §113 C5：日记日期数字统一红色 —— 实机图 22 里 21(月)/19(水)/17(月) 全是红，
+                        // 不分星期。红在日记域是「时间锚点」语义，不是休日语义。
+                        Text("${dt.dayOfMonth}", fontSize = 26.sp, fontWeight = FontWeight.Medium, color = com.looka.app.ui.theme.HolidayRed)
+                        Text(Fmt.week(dt.dayOfWeek.value), fontSize = 12.sp, color = com.looka.app.ui.theme.HolidayRed)
                     }
                     Text(
                         d.content.replace("\n", " ").ifBlank { tr("（无正文）") },

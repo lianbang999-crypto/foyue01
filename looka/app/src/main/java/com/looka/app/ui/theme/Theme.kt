@@ -172,13 +172,14 @@ fun LookaTheme(content: @Composable () -> Unit) {
     val panel by androidx.compose.animation.animateColorAsState(t.panel, spec, label = "thPanel")
     val ink by androidx.compose.animation.animateColorAsState(t.ink, spec, label = "thInk")
     MaterialTheme(
-        // S4（§64）：弹窗统一 8dp —— AlertDialog 默认取 shapes.extraLarge(28dp)，
-        // 一行改掉全站 33 个弹窗；底部面板要 16dp 顶角的单独在调用处指定。
+        // S4（§64）→ §113 A1：弹窗圆角对齐实机。AlertDialog 默认取 shapes.extraLarge(28dp)，
+        // 一行改掉全站 31 个弹窗；底部面板要 16dp 顶角的单独在调用处指定。
         shapes = androidx.compose.material3.Shapes(
-            // §90 R1：全站圆角归到五档 —— 容器/弹窗 10dp · 搜索框与输入框 4dp（按实机修订，
-            // 撤销 §64 那条「输入框 22dp 胶囊」）· Chip/Popover 6dp · 圆形元素 CircleShape。
-            // AI 聊天输入框的 22dp 胶囊属聊天场景，单列保留（见 §90 四）。
-            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(10.dp)
+            // §113 A1：10dp → 3dp。Lifebear 实机 Dialog 顶角量得约 2dp（母档 4.1，977px 面板
+            // 顶角 6 原图 px）——10dp 在它的视觉语言里已经是「卡片」。取 3dp 不取 2dp 是
+            // 因为 2dp 在 3x 密度屏上渲染≈直角，3dp 是「看得出低圆角」的下限（偏离表 P-2）。
+            // 锚定菜单走 extraSmall（M3 默认 4dp，在实机 4-6dp 带内，不另设）。
+            extraLarge = androidx.compose.foundation.shape.RoundedCornerShape(3.dp)
         ),
         colorScheme = lightColorScheme(
             primary = primary,
@@ -193,6 +194,9 @@ fun LookaTheme(content: @Composable () -> Unit) {
             onSurface = ink,
             surfaceVariant = panel,
             onSurfaceVariant = GrayText,
+            // §113 A6：DropdownMenu 容器走 surfaceContainer，M3 默认从色调派生出一层
+            // 淡紫灰 —— Lifebear 锚定菜单是纯白（图 16/23），显式钉成白
+            surfaceContainer = Color.White,
             outline = Color(0xFFD8DAD8),
             outlineVariant = Hairline,
             error = HolidayRed

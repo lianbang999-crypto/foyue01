@@ -1,5 +1,6 @@
 package com.looka.app.ui
 
+import com.looka.app.ui.common.DlgTitle
 import com.looka.app.ui.theme.LkIcons
 
 import androidx.compose.animation.animateColorAsState
@@ -199,7 +200,7 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
     if (carryCount > 0) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { carryCount = 0 },
-            title = { Text(com.looka.app.util.tr("有 {0} 个任务逾期未完成", carryCount), fontSize = 17.sp) },
+            title = { DlgTitle(com.looka.app.util.tr("有 {0} 个任务逾期未完成", carryCount)) },
             text = { Text(com.looka.app.util.tr("要把它们移到今天继续做吗？保持原日期则显示为已逾期。"), fontSize = 14.sp) },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
@@ -225,7 +226,7 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
     update?.let { info ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { if (!info.forced) update = null },
-            title = { Text(com.looka.app.util.tr("发现新版本 {0}", info.versionName), fontSize = 17.sp) },
+            title = { DlgTitle(com.looka.app.util.tr("发现新版本 {0}", info.versionName)) },
             text = {
                 Column {
                     Text(info.changelog.ifBlank { com.looka.app.util.tr("修复与体验优化") },
@@ -333,7 +334,8 @@ private fun LookaBottomBar(tab: Int, onTab: (Int) -> Unit, onPlus: () -> Unit) {
                 )
                 Box(
                     Modifier
-                        .offset(y = (-8).dp)
+                        // §113 E3：去掉 -8dp 上浮 —— 实机中央 + 完全嵌在 58dp 栏内（图 01/10/21），
+                        // 不凸出。凸出是 M3 FAB 的语言，不是 Lifebear 的。
                         .size(48.dp)
                         .scale(plusScale)
                         .clip(CircleShape)
