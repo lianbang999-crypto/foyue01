@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 37,
-  "versionName": "1.20.0",
+  "versionCode": 38,
+  "versionName": "1.21.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4591421,
-  "sha256": "8590a1c946ac533c13a3aa546f8da737b6beb47414c2fb7c09cf050a7aea9ceb",
-  "changelog": "左滑一滑到底就删（撤销条兜底）；全站换上 Looka 自己的图标；日记页写字时只剩你的字；回到今天挪到右下角；待办删不掉/新建第一条不显示已修；应用图标换成水彩九色鹿；底色回到纯白",
+  "size": 4384893,
+  "sha256": "d788f0162f405c43dc8fbc850e07c9f6c03a3c930d8b15f0a66cac55d4db6009",
+  "changelog": "全新视觉对齐:更清爽的弹窗与按钮、更多页新顶区、更醒目的空状态与选中日,细节全面向手帐质感看齐",
   "minSupported": 1
 }
