@@ -30,6 +30,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Star
@@ -126,7 +129,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     val shownUids = com.looka.app.ui.common.rememberSnapshotOrder(shouldShow.map { it.uid }, aliveUids)
     val allByUid = remember(tasks) { tasks.associateBy { it.uid } }
     val open = remember(shownUids, allByUid) { shownUids.mapNotNull { allByUid[it] } }
-    var input by remember { mutableStateOf("") }
     var editList by remember { mutableStateOf(false) }
     var delList by remember { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
@@ -162,53 +164,31 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             }
         }
 
-        // 快速添加
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextField(
-                value = input, onValueChange = { input = it },
-                placeholder = { Text(tr("添加任务到「{0}」…", list.name), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
-                colors = clearFieldColors(),
-                singleLine = true,
-                // F1：回车即提交，且不收键盘 —— 连续加多条是这个输入框的核心场景
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
-                    if (input.isNotBlank()) { vm.addTask(input, listUid = uid); input = "" }
-                }),
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(PanelBg)
-            )
-            Spacer(Modifier.width(8.dp))
-            IconButton(
-                onClick = {
-                    if (input.isNotBlank()) {
-                        vm.addTask(input, listUid = uid); input = ""
-                    }
-                },
-                modifier = Modifier.size(40.dp).clip(CircleShape)
-                    .background(if (input.isNotBlank()) MaterialTheme.colorScheme.primary else PanelBg)
-            ) {
-                Icon(Icons.Default.Add, tr("添加"), tint = if (input.isNotBlank()) Color.White else GrayText)
-            }
-        }
+        // §94 F4：快速添加行改形态 —— 去 22dp 胶囊底色与 40dp 圆形按钮，
+        // 改「＋ 输入框 ☆」一行 + 通栏 hairline（实机图 58-63 统一形态）；
+        // placeholder 保留「添加任务到「X」…」（比实机的「添加任务」说清了去向，有意不对齐）
+        QuickAddTaskRow(
+            placeholder = tr("添加任务到「{0}」…", list.name),
+            defaultStarred = false,
+            onSubmit = { title, star -> vm.addTask(title, listUid = uid, starred = star) }
+        )
 
-        // §99 I5：拖拽状态改用**共享**的 rememberReorderState —— 原来这里各写一遍，
-        // 现在与笔记/清单等所有列表同一份实现（用户要求：不要有重复和冲突）
+        // §103：**用户拍板 B** —— 排序回到页内长按拖，全站五处一套手势，不留排序按钮。
+        //
+        // 撤销的是 §94 F5「拆独立排序页」。那条依据是实机图 61（ToDo 的 並び替え 确实是
+        // 独立整页、☆ 换 ☰），**证据本身没错**，是产品选择不同：用户要全站统一的手势语言，
+        // 不要为同一件事再留一个入口。代价写明：拖拽与完成圈/星标同处一行，误触风险由
+        // 「必须先长按」来兜（detectDragGesturesAfterLongPress），真机若仍误触再议。
         val reorder = rememberReorderState(open.map { it.uid })
-        val localOrder = reorder.order
-        val byUid = remember(open) { open.associateBy { it.uid } }
         val rowHeightPx = with(androidx.compose.ui.platform.LocalDensity.current) { 56.dp.toPx() }
-
         LazyColumn(Modifier.weight(1f)) {
-            items(localOrder.toList(), key = { it }) { tuid ->
-                val t = byUid[tuid] ?: return@items
+            items(reorder.order.toList(), key = { it }) { tuid ->
+                val t = allByUid[tuid] ?: return@items
                 // 左滑露出的红底衬在行下面一层
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
                     SwipeDeleteBackdrop(
                         Modifier.matchParentSize()
-                    )
+                    ) { vm.deleteTask(t) }
                     TaskRowV2(
                         t,
                         modifier = Modifier
@@ -228,13 +208,6 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
             }
             if (open.isEmpty()) {
                 item { EmptyDeer(tr("清单空空的"), hint = tr("在上方输入框写下第一条 ↑")) }
-            }
-            item {
-                if (open.size > 1) Text(
-                    tr("长按任务可拖动排序"),
-                    fontSize = 11.sp, color = GrayText,
-                    modifier = Modifier.padding(start = 16.dp, top = 6.dp)
-                )
             }
             item { Spacer(Modifier.height(60.dp)) }
         }
@@ -258,6 +231,8 @@ fun TaskListScreen(vm: LookaViewModel, nav: NavHostController, uid: String) {
     }
 }
 
+// §103：ReorderScreen（独立排序页）已删 —— 用户拍板走页内长按拖，全站一套手势。
+
 // ==================== 星标 ====================
 
 @Composable
@@ -280,6 +255,12 @@ fun StarredScreen(vm: LookaViewModel, nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("星标"), onBack = { nav.popBackStack() })
+        // §94 F3：星标页快速添加行 —— 右侧 ☆ **默认亮**（在这页建的任务自然带星，实机图 60）
+        QuickAddTaskRow(
+            placeholder = tr("添加任务"),
+            defaultStarred = true,
+            onSubmit = { title, star -> vm.addTask(title, starred = star) }
+        )
         LazyColumn {
             groups.forEach { (listUid, ts) ->
                 val l = listMap[listUid]
@@ -351,6 +332,12 @@ fun Next7Screen(vm: LookaViewModel, nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("未来 7 天"), onBack = { nav.popBackStack() })
+        // §94 F3 + §96 定案：从「未来 7 天」快速添加，日期自动填今天（实机图 74/75）
+        QuickAddTaskRow(
+            placeholder = tr("添加任务"),
+            defaultStarred = false,
+            onSubmit = { title, star -> vm.addTask(title, due = today, starred = star) }
+        )
         LazyColumn {
             if (overdue.isNotEmpty()) {
                 item {
@@ -437,8 +424,11 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
         2 -> nowMs - 366L * 86400000L
         else -> 0L
     }
-    val groups = remember(tasks, range) {
+    val groups = remember(tasks, range, listMap) {
         tasks.filter { it.done }
+            // §94 F8：只显示未归档清单里的任务（实机「未完了リストのタスクが表示されます」）——
+            // 说明文字写了就要做到，不然是撒谎
+            .filter { listMap[it.listUid]?.archived != true }
             .filter { range == 3 || (if (it.doneAt > 0) it.doneAt else it.updatedAt) >= cutoff }
             .groupBy {
                 val ms = if (it.doneAt > 0) it.doneAt else it.updatedAt
@@ -451,7 +441,7 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("已完成任务"), onBack = { nav.popBackStack() })
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(tr("近1月"), tr("近3月"), tr("近1年"), tr("全部")).forEachIndexed { i, label ->
                 Box(
                     Modifier
@@ -464,6 +454,10 @@ fun DoneTasksScreen(vm: LookaViewModel, nav: NavHostController) {
                     Text(label, fontSize = 12.sp, color = if (range == i) Color.White else Ink)
                 }
             }
+            Spacer(Modifier.width(4.dp))
+            // §94 F8：说明文字（实机「未完了リストのタスクが表示されます」放右侧）——
+            // 用户不知道已归档清单的任务不在这里，是真的会困惑
+            Text(tr("只显示未归档清单里的任务"), fontSize = 10.sp, color = GrayText)
         }
         Hairline()
         LazyColumn {
@@ -551,7 +545,54 @@ fun DoneListsScreen(vm: LookaViewModel, nav: NavHostController) {
     }
 }
 
-// ==================== 共用：任务行 / 编辑弹窗 / 清单弹窗 ====================
+// ==================== 共用：任务行 / 快速添加行 / 编辑弹窗 / 清单弹窗 ====================
+
+/**
+ * §94 F3/F4：ToDo 子页统一的「顶部快速添加行」（实机图 58-63 每个子页都有）：
+ * `＋  输入框  ☆` + 通栏 hairline。无底色、无圆角。
+ *
+ * - 右侧 ☆ **可先点亮再输入** —— 建任务时就带星；星标页默认亮（defaultStarred = true）
+ * - 回车即提交且不收键盘 —— 连续加多条是核心场景
+ * - 不跳页、不弹窗，就地变输入框
+ */
+@Composable
+fun QuickAddTaskRow(
+    placeholder: String,
+    defaultStarred: Boolean,
+    onSubmit: (title: String, starred: Boolean) -> Unit
+) {
+    var input by remember { mutableStateOf("") }
+    var starOn by remember { mutableStateOf(defaultStarred) }
+    Column {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Add, tr("添加"), tint = GrayText, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            TextField(
+                value = input, onValueChange = { input = it },
+                placeholder = { Text(placeholder, fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
+                colors = clearFieldColors(),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = {
+                    if (input.isNotBlank()) { onSubmit(input.trim(), starOn); input = "" }
+                }),
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                if (starOn) Icons.Default.Star else Icons.Outlined.StarOutline,
+                tr("星标"),
+                tint = if (starOn) StarAmber else Color(0xFFC0C3C0),
+                modifier = Modifier.size(22.dp).plainClick { starOn = !starOn }
+            )
+        }
+        Hairline()
+    }
+}
 
 @Composable
 fun TaskRowV2(
@@ -833,6 +874,9 @@ fun ListEditDialog(
 ) {
     var name by remember(existing) { mutableStateOf(existing?.name ?: "") }
     var color by remember(existing) { mutableStateOf(existing?.colorHex ?: LIST_PALETTE[30]) }
+    // §94 F7：色盘**默认折叠**（实机「色 ● ⌄」，点开展开 48 色）——
+    // 绝大多数人建清单只想打个名字，常驻色盘把对话框撑满屏、输入框被挤到角落
+    var showPalette by remember(existing) { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -845,9 +889,42 @@ fun ListEditDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(12.dp))
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    LIST_PALETTE.chunked(6).forEach { row ->
+                Spacer(Modifier.height(4.dp))
+                if (!showPalette) {
+                    // 折叠态：一行「色 ● ⌄」
+                    Row(
+                        Modifier.fillMaxWidth().plainClick { showPalette = true }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(tr("色"), fontSize = 15.sp)
+                        Spacer(Modifier.weight(1f))
+                        Box(
+                            Modifier.size(18.dp).clip(CircleShape)
+                                .background(parseHex(color))
+                                .border(0.8.dp, Color(0xFFD8D8D8), CircleShape)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Icon(
+                            Icons.Default.KeyboardArrowDown, tr("色"),
+                            tint = GrayText, modifier = Modifier.size(20.dp)
+                        )
+                    }
+                } else {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        Row(
+                            Modifier.fillMaxWidth().plainClick { showPalette = false }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(tr("色"), fontSize = 15.sp)
+                            Spacer(Modifier.weight(1f))
+                            Icon(
+                                Icons.Default.KeyboardArrowUp, tr("色"),
+                                tint = GrayText, modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        LIST_PALETTE.chunked(6).forEach { row ->
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 3.dp),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -878,7 +955,8 @@ fun ListEditDialog(
                             repeat(6 - row.size) { Spacer(Modifier.size(30.dp)) }
                         }
                     }
-                }
+                    }   // 色盘滚动 Column
+                }   // else（色盘展开态）
             }
         },
         confirmButton = {

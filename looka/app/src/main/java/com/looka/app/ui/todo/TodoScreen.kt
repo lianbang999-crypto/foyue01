@@ -15,10 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
@@ -54,8 +52,10 @@ import com.looka.app.vm.LookaViewModel
 import com.looka.app.util.tr
 
 /**
- * ToDo 中枢页（对齐 Lifebear ToDo 结构，§77 N4/N5 调序后）：
- * 搜索（页首）→ 星标 / 未来7天 → 清单（带色/计数）→ 已完成任务 / 已完成清单
+ * ToDo 中枢页（§94 批 F1/F2 对齐 Lifebear 图 64）：
+ * 搜索（页首）→ 默认清单（置顶）→ 星标 / 未来7天 → 「清单」标题 → 用户清单 → ＋新建
+ * → 「已完成」标题 → 已完成任务 / 已完成清单。
+ * §94 F2：行尾无 `>` 箭头、行间无分隔线（实机就没有）；星标计数 0 不显示。
  */
 @Composable
 fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
@@ -67,6 +67,13 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     var searching by rememberSaveable { mutableStateOf(false) }
 
     val active = remember(lists) { lists.filter { !it.archived } }
+    // §94 F1：默认清单（不可删 / 固定 uid）置顶，与用户清单分开 —— 实机マイリスト排在星标之前
+    val defaultList = remember(active) {
+        active.firstOrNull { !it.deletable || it.uid == "list-default" }
+    }
+    val userLists = remember(active, defaultList) {
+        active.filter { it.uid != defaultList?.uid }
+    }
     val archived = remember(lists) { lists.filter { it.archived } }
     val activeUids = remember(active) { active.map { it.uid }.toSet() }
     val openCount = remember(tasks) {
@@ -75,8 +82,8 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     val starredCount = remember(tasks, activeUids) {
         tasks.count { !it.done && it.starred && it.listUid in activeUids }
     }
-    val reorder = com.looka.app.ui.common.rememberReorderState(active.map { it.uid })
-    val byUid = remember(active) { active.associateBy { it.uid } }
+    val reorder = com.looka.app.ui.common.rememberReorderState(userLists.map { it.uid })
+    val byUid = remember(userLists) { userLists.associateBy { it.uid } }
     val rowPx = with(androidx.compose.ui.platform.LocalDensity.current) { 52.dp.toPx() }
     val today = Fmt.today()
     val next7Count = remember(tasks, activeUids) {
@@ -130,22 +137,52 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
         }
 
         LazyColumn {
-            // §77 N4：顺序对齐 Lifebear —— 星标/未来7天 在清单之前
-            //（Lifebear：搜索 → マイリスト/星付き/次の7日間 → リスト → ラベル → 完了済み。
-            //  ラベル 是标签体系，我们还没有，见 P4-8）
+            // §94 F1：默认清单置顶（实机マイリスト在星标之前）；不可删，不参与拖拽
+            defaultList?.let { dl ->
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .rowClick { nav.navigate("list/${dl.uid}") }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        ColorDot(parseHex(dl.colorHex), 13.dp)
+                        Spacer(Modifier.width(14.dp))
+                        Text(dl.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        val c = openCount[dl.uid] ?: 0
+                        if (c > 0) Text("$c", fontSize = 13.sp, color = GrayText)
+                    }
+                }
+            }
+
+            // §94 F2：星标计数 0 不显示（实机如此）
             item {
-                HubRow(Icons.Filled.Star, Color(0xFFF2B23D), tr("星标"), "$starredCount") {
+                HubRow(
+                    icon = { Icon(Icons.Filled.Star, null, tint = Color(0xFFF2B23D), modifier = Modifier.size(20.dp)) },
+                    title = tr("星标"),
+                    trailing = if (starredCount > 0) "$starredCount" else null
+                ) {
                     nav.navigate("starred")
                 }
             }
             item {
-                HubRow(Icons.Outlined.Event, Ink, tr("未来 7 天"), "$next7Count") {
+                // §94 F9：未来7天图标 = 带数字 7 的日历（实机如此），不再是普通日历
+                HubRow(
+                    icon = { com.looka.app.ui.calendar.CalendarGlyph("7", size = 20.dp) },
+                    title = tr("未来 7 天"),
+                    trailing = if (next7Count > 0) "$next7Count" else null
+                ) {
                     nav.navigate("next7")
                 }
             }
-            item { Spacer(Modifier.height(8.dp)) }
 
-            // 清单（§99 I6：长按拖排序 / 左滑删除，与全站同一套手势）
+            // §94 F1：灰色分组标题（实机 リスト / 完了済み）
+            item {
+                GroupTitle(tr("清单"))
+            }
+
+            // 用户清单（§99 I6：长按拖排序 / 左滑删除，与全站同一套手势）
             items(reorder.order.toList(), key = { it }) { luid ->
                 val l = byUid[luid] ?: return@items
                 androidx.compose.foundation.layout.Box(Modifier.animateItem()) {
@@ -168,13 +205,8 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                     Text(l.name, fontSize = 15.sp, modifier = Modifier.weight(1f))
                     val c = openCount[l.uid] ?: 0
                     if (c > 0) Text("$c", fontSize = 13.sp, color = GrayText)
-                    Icon(
-                        Icons.Default.ChevronRight, null,
-                        tint = Color(0xFFC9CCC9), modifier = Modifier.size(20.dp)
-                    )
                 }
                 }
-                Hairline(Modifier.padding(start = 16.dp))
             }
             item {
                 Row(
@@ -188,19 +220,24 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
                     Spacer(Modifier.width(14.dp))
                     Text(tr("新建清单"), fontSize = 15.sp, color = GrayText)
                 }
-                Hairline()
             }
 
-            item { Spacer(Modifier.height(8.dp)) }
+            // §94 F1：「已完成」分组标题
+            item { GroupTitle(tr("已完成")) }
             item {
-                HubRow(Icons.Outlined.CheckCircle, GrayText, tr("已完成任务"), null) {
+                HubRow(
+                    icon = { Icon(Icons.Default.CheckCircle, null, tint = GrayText, modifier = Modifier.size(20.dp)) },
+                    title = tr("已完成任务"),
+                    trailing = null
+                ) {
                     nav.navigate("doneTasks")
                 }
             }
             item {
                 HubRow(
-                    Icons.Outlined.Inventory2, GrayText, tr("已完成清单"),
-                    if (archived.isNotEmpty()) "${archived.size}" else null
+                    icon = { Icon(Icons.Outlined.Inventory2, null, tint = GrayText, modifier = Modifier.size(20.dp)) },
+                    title = tr("已完成清单"),
+                    trailing = if (archived.isNotEmpty()) "${archived.size}" else null
                 ) { nav.navigate("doneLists") }
             }
             item { Spacer(Modifier.height(70.dp)) }
@@ -214,10 +251,18 @@ fun TodoScreen(vm: LookaViewModel, nav: NavHostController) {
     )
 }
 
+/** §94 F1：灰色分组小标题（实机 リスト / ラベル / 完了済み 那种） */
+@Composable
+private fun GroupTitle(text: String) {
+    Text(
+        text, fontSize = 12.sp, color = GrayText,
+        modifier = Modifier.padding(start = 16.dp, top = 14.dp, bottom = 4.dp)
+    )
+}
+
 @Composable
 private fun HubRow(
-    icon: ImageVector,
-    tint: Color,
+    icon: @Composable () -> Unit,
     title: String,
     trailing: String?,
     onClick: () -> Unit
@@ -229,11 +274,10 @@ private fun HubRow(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+        icon()
         Spacer(Modifier.width(14.dp))
         Text(title, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        // §94 F2：行尾无 `>` 箭头（实机就没有）
         if (trailing != null) Text(trailing, fontSize = 13.sp, color = GrayText)
-        Icon(Icons.Default.ChevronRight, null, tint = Color(0xFFC9CCC9), modifier = Modifier.size(20.dp))
     }
-    Hairline(Modifier.padding(start = 16.dp))
 }
