@@ -9,9 +9,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         Category::class, EventSeries::class, EventException::class, Reminder::class,
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
-        Template::class, ConflictLog::class, Attachment::class, ChatMessage::class
+        Template::class, ConflictLog::class, Attachment::class, ChatMessage::class,
+        AgentProposal::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -27,6 +28,7 @@ abstract class LookaDb : RoomDatabase() {
     abstract fun conflictDao(): ConflictDao
     abstract fun attachmentDao(): AttachmentDao
     abstract fun chatDao(): ChatMessageDao
+    abstract fun agentProposalDao(): AgentProposalDao
 
     companion object {
         /**
@@ -135,6 +137,22 @@ abstract class LookaDb : RoomDatabase() {
                         imageFile TEXT NOT NULL DEFAULT '',
                         targetKind TEXT NOT NULL DEFAULT '', targetId INTEGER NOT NULL DEFAULT -1,
                         error INTEGER NOT NULL DEFAULT 0, createdAt INTEGER NOT NULL DEFAULT 0
+                    )""".trimIndent()
+                )
+            }
+        }
+
+        /** v11 → v12（§131 R4）：Agent 提案表（Durable HITL）。纯新增表，不动旧数据；不进同步 */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS AgentProposal (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        kind TEXT NOT NULL, payload TEXT NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'pending',
+                        createdAt INTEGER NOT NULL DEFAULT 0,
+                        expiresAt INTEGER NOT NULL DEFAULT 0,
+                        resolvedAt INTEGER NOT NULL DEFAULT 0
                     )""".trimIndent()
                 )
             }

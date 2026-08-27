@@ -1472,6 +1472,15 @@ fun DeerSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
                 subtitle = tr("作为对话上下文，才能回答「今天有什么安排」")
             ) { readAgenda = it; Prefs.setAiReadAgenda(ctx, it) }
             Hairline()
+            // §131 R5：多步查询开关（生命周期停用通道）。上面的读取授权关掉时它自然失效
+            if (readAgenda) {
+                var multiStep by remember { mutableStateOf(Prefs.aiMultiStep(ctx)) }
+                SwitchRow(
+                    tr("多步查询"), multiStep,
+                    subtitle = tr("回答前小鹿可按需查更远的日程、任务和笔记（只读，最多查 3 次）")
+                ) { multiStep = it; Prefs.setAiMultiStep(ctx, it) }
+                Hairline()
+            }
             SwitchRow(
                 tr("允许日记润色上传正文"), diaryUpload,
                 subtitle = tr("日记最私密，默认关闭；开启后才能使用 AI 润色")

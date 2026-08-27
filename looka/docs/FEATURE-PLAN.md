@@ -11449,3 +11449,104 @@ L3a 聊天生成主题（先通「色」）+ 评测集与动作合同（准确�
 报告已升 **v1.1**：零适配→低适配、checkpoint=EngineSnapshot、GPL clean-room 措辞、
 ADK 理由改写、Context Gateway 收窄、路线升级 R0-R6（边界锁定/影子集成/Durable HITL 拆阶）、
 R1 Go/No-Go 门（副作用与权限安全 100% 通过，与总体 90% 分离）。
+
+## 一百三十一、§131（2026-08-27）：Looka Agent v1「小鹿内核」——引擎裁决 + 多步查询 + 提案持久化（R0/R1/R2/R4/R5 落地）
+
+用户拍板：「直接开工，直到把 AGENT 产品完整做出来。」本章按 §130 v1.1 路线 R0-R6 落地
+v1 能力面。R6（端上小模型）明确不在本章（独立后续）。
+
+### 现状盘点（写码前实读代码得出，不凭记忆）
+
+已有：单发聊天 + 预注入上下文（过去 7 天/未来 14 天日程 ≤50、未完成任务 ≤30、笔记 ≤10、
+统计、分类名单、deerFacts 记忆）；11 类动作 + remember（Prefs，UI 可看可删 §52）+
+category（K2）+ theme 草稿卡；删除/≥3 条必确认 + 5 秒撤销；聊天 Room v11 持久化；
+评测集 30 例 100%。**缺口**：① 模型只能看预注入窗口，窗口外（「9 月 15 号那周」「上个月」）
+只能编或拒答；② 提案卡/主题卡是内存态，杀进程即丢（R4）；③ 无引擎边界（R0）。
+
+### R1 引擎裁决（纸面 spike，ADR-001 记录）
+
+结论：**v1 自研微内核，Koog 不引入**。三条实证依据（非猜测）：
+1. **工具链硬不兼容**：Looka Kotlin **2.0.21**（build.gradle.kts:4），Koog 1.1.1 主线
+   Kotlin **2.3.10** + Ktor **3.3.3**（其 libs.versions.toml:17/25）。消费 2.3 编译的库需
+   全项目升级 Kotlin/AGP/Compose 编译器 —— spike 的第一道门（依赖可解析）纸面即 No-Go。
+2. **wire 层错位**：Looka 的 LLM 走自家 worker 自定义信封（鹿角计量/三级降级/带图清洗/
+   X-Lk-Fallback 都在服务端，worker.js:1181-）；Koog 客户端说 OpenRouter 原生格式，引入
+   必须自写 LLMClient 适配 —— 框架收益缩水成「循环库」，而循环本身 ~150 行。
+3. **体积/R8 面**：ktor3 全家桶 + kotlinx-serialization 对一个手帐 App 是净负担。
+诚实声明：这不是设备 spike，是纸面裁决 —— 但第 1 条是版本事实不是概率。重评触发条件：
+Looka 升 Kotlin ≥2.3 时代再评（ADR 写明）。Port 隔离保证可换。
+
+### R0 边界锁定（agent/ 包，Looka 域零依赖引擎类型）
+
+新包 `app/.../agent/`：
+- `AgentContracts.kt`：ToolRisk(READ/WRITE/DESTRUCTIVE)、AgentToolSpec、AgentTool 接口、
+  AgentDataSource 接口（内核只见此口，不见 ViewModel）、AgentRuntimePort、EngineSnapshotPort
+  （v1 空实现，注释声明真相层=Room）。
+- `LookaAgentKernel.kt`：实现 AgentRuntimePort。循环：调传输层 → 严格解析工具调用块
+  （单对象 {"tool":...}，与动作块互斥）→ **risk==READ 才执行**（非 READ 直接拒，纵深防御）
+  → 结果以 [工具结果] user 消息回填 → 再调，≤3 轮封顶 → 返最终 raw + usedTools。
+- `AgentTools.kt`：v1 四个只读工具（全部 risk=READ，合同门自动核验）：
+  query_events(from,to,keyword?)（范围钳 ≤92 天，[e id] 标注同上下文格式，≤60 行）、
+  query_tasks(scope=open|done|all,keyword?)（≤40 行）、query_notes(keyword)（标题+40 字摘要，
+  ≤20 行，不倒全文）、month_stats(month)。空结果返回明确「（该范围无数据）」防重查。
+
+### R5 协议与提示词（Context Gateway v1 = 预注入窗口 + 按需工具）
+
+- AiActions.kt 新增静态 `PROTOCOL_TOOLS` raw string（评测/合同脚本可抽取，单一真源）：
+  数据不够先查；工具块**单独输出**（不带正文、不带动作块）；结果回来再答；同参不重查；
+  窗口内数据直接答不调工具；工具结果里的 [e/t/n id] 可用于改/删定位。
+- 注入条件：Prefs.aiReadAgenda && Prefs.aiMultiStep（新开关，默认开）。关任一 → 不注入、
+  不循环 → 行为回落今天的单发链（R3 影子：旧链就是回退路径，同端点零服务端改动）。
+- looksLikePayload 补认 "tool" 载荷 —— 未知工具块也绝不能漏给用户看（协议同哲学）。
+- 周总结等专用载荷已声明「不要输出 json」，天然不触发工具，不冲突。
+
+### R2/R4 持久提案（Room v11→v12，杀进程不丢）
+
+- 新表 AgentProposal(kind='actions'|'theme', payload=**wire 格式 JSON**（复用 parseActions
+  回读，不造第二格式）, status=pending/applied/dismissed/expired, createdAt/expiresAt/resolvedAt)。
+- VM：staged 时入库（新提案顶掉旧 pending）；init 恢复（未过期才上卡，勾选态按默认规则重建，
+  过期行标 expired）；confirm/cancel/applyTheme/cancelTheme → 状态跃迁 **仅 pending→***
+  （UPDATE ... WHERE status='pending'，双击/双端幂等）；clearChat 一并 dismiss；过期 24h。
+- AiActions 增 toWire(AiAction)（day→date ISO、min→HH:mm 反向映射）。
+
+### UI（克制，三处）
+
+① 思考态：工具轮进行中显示「小鹿查了{范围}…」（aiToolNote，瞬态）；② 最终答案尾注
+「已查真实数据」（ChatMsg.usedTools，UI 态不入库，与 viaFallback 同型）；③ AI 与隐私页
+「读取授权」下加一行开关「多步查询」——生命周期闭环：开关即停用通道；READ 工具不落任何
+数据故无删除项；提案行随聊天清空物理删（FEATURE-LIFECYCLE §6 对照完）。
+
+### 评测与合同（门禁先于发版）
+
+- ai_eval.py 升级多轮 harness：用例带 fixture（events/tasks/notes，相对日偏移），python 侧
+  镜像执行工具并回填，≤3 轮；**全局不变量**：任何一轮工具块与动作块同出 = 该例直接判负。
+- 新增「工具循环」组 8-10 例：窗口外查询（+20 天）、跨月、笔记关键词、统计、窗口内不调
+  工具（效率例）、查后改/删链（id 取自工具结果）、空结果不编造、闲聊不调用。
+- 门槛：总体 ≥90%，且**安全组 100%**（查后删除仍确认、空结果零编造、工具/动作互斥）——
+  §130 v1.1 的 Gate 分离原则。原 30 例在带工具协议下**不许回归**。
+- ai-actions.v1.json 增 "tools" 节；check_contracts.py 增三方对账：合同 tools ↔
+  AgentTools.kt 注册表 ↔ PROTOCOL_TOOLS 文本，且**逐个核验 risk=READ**（副作用安全进 CI）。
+
+### 明确不做（克制）
+
+- 不改服务端（无状态代理天然支持多轮；40 条消息上限足够）。鹿角计费：每工具轮=1 次聊天
+  扣费，≤3 轮封顶 —— 记为已知取舍，如需按轮折扣属经济学变更，等用户拍板。
+- 不做主动推送/催促（persona 边界）；「主动理解与分类」由既有 remember+category 承担，
+  本章贡献是「答前先查」让理解落在真数据上。
+- 不迁 deerFacts 进 Room（Prefs 版已有查看/删除 UI + 云同步，动它是净风险）。
+- 七张 canonical 表不齐上，v1 只加 AgentProposal —— 研究报告的表清单是目标态，按需增。
+
+### 版本与验收
+
+v1.29.0(52)。验收：合同门 + 评测门（90/100 双线）+ assembleDebug + release 上线 version.json
+核验；实机项（提案卡杀进程恢复、工具轮观感）待用户设备回执，表内 [~]。
+
+### §131 验收记录（2026-08-27）
+
+评测门五轮迭代实录（诚实记账，防"一次就过"的假象）：73% → 80% → 73%（尾注实验有害，
+撤）→ 80% → **97% + 安全组 4/4 满分**。三个关键转折：① 「说查不查」是提示词治不到位的
+顽固病灶（三轮加压仍 ~50% 犯）→ 内核加**补救轮**工程兜底（说了要查却无块 → 系统追问强制
+出块，至多一次）；② A7 用例设计不真实（未完成任务真机全量注入）→ 改考已完成任务；
+③ harness 与客户端解析口径差（裸 JSON 动作）导致 U18 误判 → 对齐。唯一残败 T5 为温度
+抖动（多轮中通过）。合同门全绿含新增副作用安全门（4 工具 risk=READ 机器核验）。
+编译通过（Room v12 DAO 校验含在内）。实机验证项挂 P67 [~]。

@@ -343,7 +343,11 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                         com.looka.app.ui.common.DeerBadge(20.dp)
                         Spacer(Modifier.width(8.dp))
                         ThinkingDots()
-                        if (showTxt) {
+                        // §131：工具轮进行中 —— 状态行立刻明说小鹿在查什么（诚实优先，不等 3 秒）
+                        if (vm.aiToolNote.isNotBlank()) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(vm.aiToolNote, fontSize = 12.sp, color = GrayText)
+                        } else if (showTxt) {
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 if (vm.lastSendHadImage) tr("小鹿在看图…") else tr("小鹿在想…"),
@@ -783,6 +787,11 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null, bubbleNav: 
                     // §126 A5（4.4）：线路降级尾注 —— 11sp 灰，不打扰
                     if (m.viaFallback && !m.error) {
                         Text(tr("本次走了备用线路"), fontSize = 11.sp, color = GrayText,
+                            modifier = Modifier.padding(top = 2.dp))
+                    }
+                    // §131：查过真实数据的答案标出来 —— 用户能分清「查了」与「凭印象说」
+                    if (m.usedTools && !m.error) {
+                        Text(tr("已查你的真实数据"), fontSize = 11.sp, color = GrayText,
                             modifier = Modifier.padding(top = 2.dp))
                     }
                 }

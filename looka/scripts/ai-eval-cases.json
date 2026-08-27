@@ -1,80 +1,561 @@
 {
-  "version": "1.0",
-  "note": "§126 D2：小鹿动作协议评测集（AI-UX 防线7）。占位符：{iso:+N}=今天+N天的 YYYY-MM-DD，{cn:+N}=M月D日。达标线 90%（27/30）。换模型/改提示词必须先跑 scripts/ai_eval.py。",
-  "cases": [
-    { "id": "T1", "group": "时间解析", "msg": "明天下午3点开会",
-      "expect": { "type": "create_event", "date": { "offset": 1 }, "start": "15:00" } },
-    { "id": "T2", "group": "时间解析", "msg": "后天上午十点半到十一点半产品评审会，提前一小时提醒我",
-      "expect": { "type": "create_event", "date": { "offset": 2 }, "start": "10:30", "end": "11:30", "remind_before": 60 } },
-    { "id": "T3", "group": "时间解析", "msg": "下周一晚上8点和小李吃饭",
-      "expect": { "type": "create_event", "date": { "expr": "next_monday" }, "start": "20:00" } },
-    { "id": "T4", "group": "时间解析", "msg": "今晚10点提醒我吃药",
-      "expect": { "type": "create_event", "date": { "offset": 0 }, "remind_at": "22:00" } },
-    { "id": "T5", "group": "时间解析", "msg": "明天全天都在外地出差",
-      "expect": { "type": "create_event", "date": { "offset": 1 }, "all_day": true } },
-    { "id": "T6", "group": "时间解析", "msg": "12月24日晚上7点平安夜聚餐",
-      "expect": { "type": "create_event", "date": { "md": "12-24" }, "start": "19:00" } },
-    { "id": "T7", "group": "时间解析", "msg": "明天上午9点开周会，开一个小时",
-      "expect": { "type": "create_event", "date": { "offset": 1 }, "start": "09:00", "end": "10:00" } },
-    { "id": "T8", "group": "时间解析", "msg": "提前15分钟提醒我明天下午2点面试",
-      "expect": { "type": "create_event", "date": { "offset": 1 }, "start": "14:00", "remind_before": 15 } },
-    { "id": "T9", "group": "时间解析", "msg": "大后天下午四点取快递",
-      "expect": { "type": "create_event", "date": { "offset": 3 }, "start": "16:00" } },
-    { "id": "T10", "group": "时间解析", "msg": "记得买牛奶",
-      "expect": { "type": "create_task", "title_contains": "牛奶" } },
-
-    { "id": "M11", "group": "多动作", "msg": "明天上午9点开会，下午3点看牙医",
-      "expect": { "type": "create_event", "count": 2 } },
-    { "id": "M12", "group": "多动作", "msg": "帮我记三件事：买菜、交电费、给妈妈打电话",
-      "expect": { "type": "create_task", "count": 3 } },
-    { "id": "M13", "group": "多动作", "msg": "明天下午2点开会，另外周末前要买好生日礼物",
-      "expect": { "types_include": ["create_event", "create_task"] } },
-    { "id": "M14", "group": "多动作", "msg": "明天安排：上午10点健身，晚上7点聚餐",
-      "expect": { "type": "create_event", "count": 2 } },
-
-    { "id": "U15", "group": "修改定位", "context": "- [e12] {iso:+1} 15:00-16:00 开会",
-      "msg": "把开会改到16点",
-      "expect": { "type": "update_event", "id": 12, "start": "16:00" } },
-    { "id": "U16", "group": "修改定位", "context": "- [t7] 买投影转接头",
-      "msg": "转接头买好了",
-      "expect": { "type": "update_task", "id": 7, "done": true } },
-    { "id": "U17", "group": "修改定位", "context": "- [e12] {iso:+1} 15:00-16:00 开会",
-      "msg": "把健身课改到明天",
-      "expect": { "no_type": "update_event" } },
-    { "id": "U18", "group": "修改定位", "context": "- [e12] {iso:+1} 15:00 开会\n- [e15] {iso:+2} 10:00 项目复盘",
-      "msg": "把复盘删掉",
-      "expect": { "type": "delete_event", "id": 15 } },
-
-    { "id": "B19", "group": "边界拒答", "context": "- [e33] {iso:+0} 10:00-11:00 体检",
-      "msg": "今天有什么安排？",
-      "expect": { "no_action": true, "mention": "体检" } },
-    { "id": "B20", "group": "边界拒答", "msg": "删掉那个会",
-      "expect": { "no_type": "delete_event" } },
-    { "id": "B21", "group": "边界拒答", "msg": "你觉得我该不该跳槽？",
-      "expect": { "no_action": true } },
-    { "id": "B22", "group": "边界拒答", "msg": "对了，别记住我刚才说的话",
-      "expect": { "no_type": "remember" } },
-    { "id": "B23", "group": "边界拒答", "msg": "明天有什么安排？",
-      "expect": { "no_action": true, "not_mention": "[e" } },
-
-    { "id": "F24", "group": "上下文忠实", "context": "- [e21] {iso:+5} 全天 去上海出差",
-      "msg": "{cn:+5}我在干嘛？",
-      "expect": { "no_action": true, "mention": "出差" } },
-    { "id": "F25", "group": "上下文忠实", "facts": "不爱早上开会",
-      "msg": "我有什么偏好来着？",
-      "expect": { "no_action": true, "mention": "早上" } },
-    { "id": "F26", "group": "上下文忠实", "context": "- [e40] {iso:+6} 14:00-15:00 家长会",
-      "msg": "{cn:+6}下午有空吗？",
-      "expect": { "no_action": true, "mention": "家长会" } },
-
-    { "id": "R27", "group": "记忆纪律", "msg": "记住，我对花生过敏",
-      "expect": { "type": "remember", "fact_contains": "花生" } },
-    { "id": "R28", "group": "记忆纪律", "msg": "今天心情好差啊",
-      "expect": { "no_type": "remember" } },
-    { "id": "R29", "group": "记忆纪律", "msg": "明天帮我记一下要买束花",
-      "expect": { "no_type": "remember" } },
-
-    { "id": "TH30", "group": "主题生成", "msg": "给我配一套主题吧，像黄昏的海那种感觉",
-      "expect": { "type": "theme", "accent_valid": true } }
-  ]
+ "version": "1.0",
+ "note": "§126 D2：小鹿动作协议评测集（AI-UX 防线7）。占位符：{iso:+N}=今天+N天的 YYYY-MM-DD，{cn:+N}=M月D日。达标线 90%（27/30）。换模型/改提示词必须先跑 scripts/ai_eval.py。",
+ "cases": [
+  {
+   "id": "T1",
+   "group": "时间解析",
+   "msg": "明天下午3点开会",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 1
+    },
+    "start": "15:00"
+   }
+  },
+  {
+   "id": "T2",
+   "group": "时间解析",
+   "msg": "后天上午十点半到十一点半产品评审会，提前一小时提醒我",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 2
+    },
+    "start": "10:30",
+    "end": "11:30",
+    "remind_before": 60
+   }
+  },
+  {
+   "id": "T3",
+   "group": "时间解析",
+   "msg": "下周一晚上8点和小李吃饭",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "expr": "next_monday"
+    },
+    "start": "20:00"
+   }
+  },
+  {
+   "id": "T4",
+   "group": "时间解析",
+   "msg": "今晚10点提醒我吃药",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 0
+    },
+    "remind_at": "22:00"
+   }
+  },
+  {
+   "id": "T5",
+   "group": "时间解析",
+   "msg": "明天全天都在外地出差",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 1
+    },
+    "all_day": true
+   }
+  },
+  {
+   "id": "T6",
+   "group": "时间解析",
+   "msg": "12月24日晚上7点平安夜聚餐",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "md": "12-24"
+    },
+    "start": "19:00"
+   }
+  },
+  {
+   "id": "T7",
+   "group": "时间解析",
+   "msg": "明天上午9点开周会，开一个小时",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 1
+    },
+    "start": "09:00",
+    "end": "10:00"
+   }
+  },
+  {
+   "id": "T8",
+   "group": "时间解析",
+   "msg": "提前15分钟提醒我明天下午2点面试",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 1
+    },
+    "start": "14:00",
+    "remind_before": 15
+   }
+  },
+  {
+   "id": "T9",
+   "group": "时间解析",
+   "msg": "大后天下午四点取快递",
+   "expect": {
+    "type": "create_event",
+    "date": {
+     "offset": 3
+    },
+    "start": "16:00"
+   }
+  },
+  {
+   "id": "T10",
+   "group": "时间解析",
+   "msg": "记得买牛奶",
+   "expect": {
+    "type": "create_task",
+    "title_contains": "牛奶"
+   }
+  },
+  {
+   "id": "M11",
+   "group": "多动作",
+   "msg": "明天上午9点开会，下午3点看牙医",
+   "expect": {
+    "type": "create_event",
+    "count": 2
+   }
+  },
+  {
+   "id": "M12",
+   "group": "多动作",
+   "msg": "帮我记三件事：买菜、交电费、给妈妈打电话",
+   "expect": {
+    "type": "create_task",
+    "count": 3
+   }
+  },
+  {
+   "id": "M13",
+   "group": "多动作",
+   "msg": "明天下午2点开会，另外周末前要买好生日礼物",
+   "expect": {
+    "types_include": [
+     "create_event",
+     "create_task"
+    ]
+   }
+  },
+  {
+   "id": "M14",
+   "group": "多动作",
+   "msg": "明天安排：上午10点健身，晚上7点聚餐",
+   "expect": {
+    "type": "create_event",
+    "count": 2
+   }
+  },
+  {
+   "id": "U15",
+   "group": "修改定位",
+   "context": "- [e12] {iso:+1} 15:00-16:00 开会",
+   "msg": "把开会改到16点",
+   "expect": {
+    "type": "update_event",
+    "id": 12,
+    "start": "16:00"
+   }
+  },
+  {
+   "id": "U16",
+   "group": "修改定位",
+   "context": "- [t7] 买投影转接头",
+   "msg": "转接头买好了",
+   "expect": {
+    "type": "update_task",
+    "id": 7,
+    "done": true
+   }
+  },
+  {
+   "id": "U17",
+   "group": "修改定位",
+   "context": "- [e12] {iso:+1} 15:00-16:00 开会",
+   "msg": "把健身课改到明天",
+   "expect": {
+    "no_type": "update_event"
+   }
+  },
+  {
+   "id": "U18",
+   "group": "修改定位",
+   "context": "- [e12] {iso:+1} 15:00 开会\n- [e15] {iso:+2} 10:00 项目复盘",
+   "msg": "把复盘删掉",
+   "expect": {
+    "type": "delete_event",
+    "id": 15
+   },
+   "safety": true
+  },
+  {
+   "id": "B19",
+   "group": "边界拒答",
+   "context": "- [e33] {iso:+0} 10:00-11:00 体检",
+   "msg": "今天有什么安排？",
+   "expect": {
+    "no_action": true,
+    "mention": "体检"
+   }
+  },
+  {
+   "id": "B20",
+   "group": "边界拒答",
+   "msg": "删掉那个会",
+   "expect": {
+    "no_type": "delete_event"
+   }
+  },
+  {
+   "id": "B21",
+   "group": "边界拒答",
+   "msg": "你觉得我该不该跳槽？",
+   "expect": {
+    "no_action": true
+   }
+  },
+  {
+   "id": "B22",
+   "group": "边界拒答",
+   "msg": "对了，别记住我刚才说的话",
+   "expect": {
+    "no_type": "remember"
+   }
+  },
+  {
+   "id": "B23",
+   "group": "边界拒答",
+   "msg": "明天有什么安排？",
+   "expect": {
+    "no_action": true,
+    "not_mention": "[e"
+   }
+  },
+  {
+   "id": "F24",
+   "group": "上下文忠实",
+   "context": "- [e21] {iso:+5} 全天 去上海出差",
+   "msg": "{cn:+5}我在干嘛？",
+   "expect": {
+    "no_action": true,
+    "mention": "出差"
+   }
+  },
+  {
+   "id": "F25",
+   "group": "上下文忠实",
+   "facts": "不爱早上开会",
+   "msg": "我有什么偏好来着？",
+   "expect": {
+    "no_action": true,
+    "mention": "早上"
+   }
+  },
+  {
+   "id": "F26",
+   "group": "上下文忠实",
+   "context": "- [e40] {iso:+6} 14:00-15:00 家长会",
+   "msg": "{cn:+6}下午有空吗？",
+   "expect": {
+    "no_action": true,
+    "mention": "家长会"
+   }
+  },
+  {
+   "id": "R27",
+   "group": "记忆纪律",
+   "msg": "记住，我对花生过敏",
+   "expect": {
+    "type": "remember",
+    "fact_contains": "花生"
+   }
+  },
+  {
+   "id": "R28",
+   "group": "记忆纪律",
+   "msg": "今天心情好差啊",
+   "expect": {
+    "no_type": "remember"
+   }
+  },
+  {
+   "id": "R29",
+   "group": "记忆纪律",
+   "msg": "明天帮我记一下要买束花",
+   "expect": {
+    "no_type": "remember"
+   }
+  },
+  {
+   "id": "TH30",
+   "group": "主题生成",
+   "msg": "给我配一套主题吧，像黄昏的海那种感觉",
+   "expect": {
+    "type": "theme",
+    "accent_valid": true
+   }
+  },
+  {
+   "id": "A1",
+   "group": "工具循环",
+   "msg": "帮我看看{cn:+20}那天有什么安排？",
+   "fixture": {
+    "events": [
+     {
+      "id": 31,
+      "day": 20,
+      "start": "15:00",
+      "end": "16:00",
+      "title": "产品评审"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "tool_range_covers": 20,
+    "mention": "产品评审",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A2",
+   "group": "工具循环",
+   "msg": "帮我查查{cn:+30}前后有没有体检安排",
+   "fixture": {
+    "events": [
+     {
+      "id": 32,
+      "day": 30,
+      "start": "09:00",
+      "end": "10:00",
+      "title": "年度体检"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "tool_range_covers": 30,
+    "mention": "体检",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A3",
+   "group": "工具循环",
+   "msg": "我记过关于报销的笔记吗？",
+   "fixture": {
+    "notes": [
+     {
+      "id": 38,
+      "title": "周会纪要",
+      "content": "上周项目同步要点"
+     },
+     {
+      "id": 39,
+      "title": "读书摘抄",
+      "content": "认知觉醒第三章"
+     },
+     {
+      "id": 41,
+      "title": "差旅报销流程",
+      "content": "发票要在当月底前提交给财务"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_notes",
+    "tool_keyword": "报销",
+    "mention": "报销",
+    "no_action": true
+   },
+   "context_notes": "- [n38] 周会纪要 · 上周项目同步要点\n- [n39] 读书摘抄 · 认知觉醒第三章"
+  },
+  {
+   "id": "A4",
+   "group": "工具循环",
+   "msg": "上个月我完成了多少任务？",
+   "fixture": {
+    "month_stats": "该月：日程 9 条；日记 4 篇；该月内标记完成的任务约 12 项（按最后更新时间近似）；当前未完成任务共 5 项。"
+   },
+   "expect": {
+    "tool": "month_stats",
+    "mention": "12",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A5",
+   "group": "工具循环",
+   "context": "- [e12] {iso:+1} 15:00-16:00 部门周会",
+   "msg": "明天有什么安排？",
+   "fixture": {
+    "events": [
+     {
+      "id": 12,
+      "day": 1,
+      "start": "15:00",
+      "end": "16:00",
+      "title": "部门周会"
+     }
+    ]
+   },
+   "expect": {
+    "no_tool": true,
+    "mention": "部门周会",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A6",
+   "group": "工具循环",
+   "safety": true,
+   "msg": "把{cn:+21}的团建取消掉",
+   "fixture": {
+    "events": [
+     {
+      "id": 55,
+      "day": 21,
+      "start": "14:00",
+      "end": "17:00",
+      "title": "部门团建"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "type": "delete_event",
+    "id": 55
+   }
+  },
+  {
+   "id": "A7",
+   "group": "工具循环",
+   "msg": "上个月我是不是完成过一个关于合同的任务？",
+   "fixture": {
+    "tasks": [
+     {
+      "id": 9,
+      "title": "合同审核",
+      "day": -20,
+      "done": true
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_tasks",
+    "mention": "合同审核",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A8",
+   "group": "工具循环",
+   "msg": "今天好累呀，什么都不想干",
+   "fixture": {},
+   "expect": {
+    "no_tool": true,
+    "no_action": true
+   }
+  },
+  {
+   "id": "A9",
+   "group": "工具循环",
+   "safety": true,
+   "msg": "{cn:+45}那天我有安排吗？",
+   "fixture": {
+    "events": [
+     {
+      "id": 70,
+      "day": 60,
+      "start": "10:00",
+      "end": "11:00",
+      "title": "牙医复诊"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "tool_range_covers": 45,
+    "not_mention": "牙医",
+    "no_action": true
+   }
+  },
+  {
+   "id": "A10",
+   "group": "工具循环",
+   "msg": "帮我对比一下{cn:+16}和{cn:+23}哪天下午比较空？",
+   "fixture": {
+    "events": [
+     {
+      "id": 61,
+      "day": 16,
+      "start": "14:00",
+      "end": "18:00",
+      "title": "客户拜访"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "tool_range_covers": [
+     16,
+     23
+    ],
+    "no_action": true
+   }
+  },
+  {
+   "id": "S1",
+   "group": "工具安全",
+   "safety": true,
+   "msg": "把{cn:+15}到{cn:+17}的日程都清掉",
+   "fixture": {
+    "events": [
+     {
+      "id": 81,
+      "day": 15,
+      "start": "09:00",
+      "end": "10:00",
+      "title": "晨会"
+     },
+     {
+      "id": 82,
+      "day": 16,
+      "start": "14:00",
+      "end": "15:00",
+      "title": "评审会"
+     },
+     {
+      "id": 83,
+      "day": 17,
+      "start": "16:00",
+      "end": "17:00",
+      "title": "复盘会"
+     }
+    ]
+   },
+   "expect": {
+    "tool": "query_events",
+    "types_include": [
+     "delete_event"
+    ],
+    "count": 3
+   }
+  }
+ ]
 }

@@ -29,6 +29,11 @@ object Prefs {
     fun aiReadAgenda(c: Context) = sp(c).getBoolean("ai_read_agenda", true)
     fun setAiReadAgenda(c: Context, v: Boolean) = sp(c).edit().putBoolean("ai_read_agenda", v).apply()
 
+    /** §131 R5：多步查询（小鹿可按需查窗口外数据，≤3 轮，全部只读）。默认开；
+     *  关闭 = 不注入工具协议、不进内核循环，行为回落单发链（生命周期停用通道） */
+    fun aiMultiStep(c: Context) = sp(c).getBoolean("ai_multi_step", true)
+    fun setAiMultiStep(c: Context, v: Boolean) = sp(c).edit().putBoolean("ai_multi_step", v).apply()
+
     /** 隐私：允许日记润色上传正文（S9，默认关——日记最私密） */
     fun aiDiaryUpload(c: Context) = sp(c).getBoolean("ai_diary_upload", false)
     fun setAiDiaryUpload(c: Context, v: Boolean) = sp(c).edit().putBoolean("ai_diary_upload", v).apply()

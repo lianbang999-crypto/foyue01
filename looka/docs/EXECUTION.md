@@ -1606,3 +1606,19 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 |---|---|---|
 | Y1 | 贴纸转面板死锁修（homeTab 提升+强制回日历+防御清理） | [~] |
 | Y2 | AI 卡打开日程 startDay=-1 修（prepareEditDraft 落回系列日期+结束日双保险）——数据级 | [~] |
+
+## P67 · §131 Agent v1 小鹿内核（v1.29.0(52)，2026-08-27）
+
+| | 项 | 状态 |
+|---|---|---|
+| K1 | R0 边界：agent/ 包（ToolRisk/AgentTool/AgentDataSource/AgentRuntimePort/EngineSnapshotPort）+ ADR-001 引擎裁决（Koog 纸面 No-Go：Kotlin 2.3.10 vs 2.0.21 工具链 + worker 信封错位；重评触发条件已写明） | [x] |
+| K2 | 微内核：≤3 轮工具循环 + risk=READ 纵深防御 + 同参断路 + 补救轮（说查不查→系统追问强制出块，评测实证的顽固病灶工程兜底） | [x] |
+| K3 | 四只读工具：query_events(≤92天钳)/query_tasks/query_notes(标题+40字摘要)/month_stats，[e/t/n id] 标注与预注入同格式 | [x] |
+| K4 | 协议：PROTOCOL_TOOLS（双示例+5规则）前置注入、动作协议保持句末；PROTOCOL 规则1改本体（找不到id→有工具先查）；规则3增告知已完成直接update；日期参照补大后天 | [x] |
+| K5 | R4 持久提案：AgentProposal 表（Room v11→v12）+ 状态跃迁守卫（仅 pending→*）+ 24h过期 + 启动恢复 + 五个了结点接线 + toWire 单一序列化（parseActions 原路回读） | [~] |
+| K6 | UI：工具轮状态行（小鹿查了…）+ 答案尾注（已查你的真实数据）+ 小鹿设置「多步查询」开关（读取授权下挂）；生命周期册两行登记 | [~] |
+| K7 | 评测门：harness 升多轮（fixture 镜像执行+补救轮镜像+裸JSON口径对齐）；41 例含工具循环组10例+安全4例；五轮迭代 73%→80%→73%→80%→**97%，安全组 4/4=100%** | [x] |
+| K8 | 合同门：ai-actions.v1 增 tools 节；三方对账（合同↔注册表↔PROTOCOL_TOOLS）+ **risk=READ 机器核验**进 CI | [x] |
+| K9 | i18n 9 词条（缺译 0）；服务端零改动（无状态代理天然支持多轮；鹿角每轮计费≤3轮为已知取舍） | [x] |
+
+[~] 实机项：提案卡杀进程恢复、工具轮观感、Room v12 迁移、多步开关，待用户设备回执。

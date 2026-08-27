@@ -97,7 +97,7 @@ object AiActions {
     private fun dateAnchors(): String {
         val t = LocalDate.now()
         val mon = t.plusDays((8 - t.dayOfWeek.value).toLong())   // 下周一
-        return "今天=$t，明天=${t.plusDays(1)}，后天=${t.plusDays(2)}，" +
+        return "今天=$t，明天=${t.plusDays(1)}，后天=${t.plusDays(2)}，大后天=${t.plusDays(3)}，" +
             "本周末=${t.plusDays((6 - t.dayOfWeek.value).toLong())}，下周一=$mon"
     }
 
@@ -128,16 +128,46 @@ theme 规则：**仅当用户明确要求生成/更换主题或配色**时输出
 accent 必须是 6 位 HEX；选克制耐看的中饱和色，避免荧光色。其余情况绝不输出 theme。
 create_event 可带 "category":"分类名"（只能用上面列出的分类名，猜不到就省略）。
 三条规则（S1 §64 精简 + §126 评测集实测补强）：
-1. 改/删的 id 只能用上面数据里方括号标注的数字（如 [e123] → 123）；找不到就问用户，不要猜。
+1. 改/删的 id 只能用数据里方括号标注的数字（如 [e123] → 123）；预给数据里找不到时，
+   有查询工具就先查（查到 id 后下一轮再改/删），没有查询工具才问用户 —— 无论如何不要猜。
 2. 用户只是提问时不要输出 json 代码块，用真实数据回答即可。
 3. 只要你在回复里答应了「记下/安排/提醒/改好/删掉」，就**必须**同时输出对应的 json 动作块 ——
    只在文字里说做了而不输出动作，等于什么都没发生，这是最严重的错误。
    信息不全就按用户原话先建（标题就用他的说法），不要为追问细节而不输出动作。
+   用户**告知**某事已完成/已变动（如「转接头买好了」）时，直接输出对应 update 动作，
+   不要反问「需要我标记吗」—— App 会给他撤销机会。
 4. 文字里承诺的提醒必须落进字段：说了「会提醒你」，动作里就必须带 remind_at 或 remind_before。
 5. 删除请求直接输出 delete 动作，不要在文字里反问「要删吗」——
    App 收到后会先向用户弹确认卡，不会直接删，你反问只是让用户多说一遍。
 （remind_at = 在那个时刻提醒；remind_before = 提前 N 分钟。带具体时刻的提醒请求
 「X点提醒我做某事」是 create_event：date=那天、remind_at="X:00"、start 没另说就等于它，不要用 create_task。）"""
+
+    /**
+     * §131 R5：只读查询工具协议。仅当「多步查询」开关开着才注入（chatSystemPrompt tools 参）。
+     * 静态 raw string —— 评测脚本与合同门按名抽取（与 PROTOCOL 同机制，单一真源不抄本）。
+     */
+    private val PROTOCOL_TOOLS = """你还可以查询用户的真实数据。上面预给的数据**只覆盖近 7 天与未来 14 天**；用户问到这个窗口之外的日程、更早或更晚的安排、按关键词找任务或笔记、要某个月的统计时，**不要回答「查不到/我看不到」**——先输出一个 ```json 工具调用块去查，从下面四种里选**一种**：
+{"tool":"query_events","from":"YYYY-MM-DD","to":"YYYY-MM-DD","keyword":"可选，按标题筛"}
+{"tool":"query_tasks","scope":"open|done|all","keyword":"可选"}
+{"tool":"query_notes","keyword":"关键词"}
+{"tool":"month_stats","month":"YYYY-MM"}
+用法示例 —— 用户问「9月20日我有安排吗？」（超出预给窗口），你的**整条回复就只有一个块**：
+```json
+{"tool":"query_events","from":"2026-09-20","to":"2026-09-20"}
+```
+再例 —— 用户要改/删窗口外的内容「把9月20日的会取消」：本轮你**同样只回一个查询块**（同上），
+系统返回 [工具结果]（如 [e88] 例会）后，下一轮你再输出 delete_event 88 的动作块。
+工具规则：
+1. 工具调用块必须**单独发**：块前块后都不写正文，也绝不与 actions 动作块同发。
+2. 要查就**直接输出工具块**，禁止只写「我去查一下/我先确认下」这类过渡话 ——
+   过渡话而无块 = 什么都没发生。你的每条回复要么是一个工具块（本轮去查），
+   要么是最终回答或动作块，二选一。
+3. 系统会以「[工具结果]」消息返回真实数据，你再基于它回答或输出动作；结果里的
+   [e/t/n数字] 同样可用作改/删的 id。「先查后改/删」= 本轮只发工具块，拿到结果后下一轮再发动作块。
+4. 预给窗口内能答的直接答，不要调工具；同样的查询不要重复调；一次对话最多查 3 次；
+   查到为空就如实说没有，绝不编造。注意：预给的笔记列表只有最近几条、任务列表只含
+   未完成的 —— 用户问「记过没有/做完过没有」这类，先 query_notes/query_tasks 再下结论。
+5. 工具只管「查」，不改变下面的动作协议：答应了记/安排/提醒/改/删，仍必须输出 json 动作块。"""
 
     /** 聊天系统提示词（带用户真实日程上下文） */
     /** 小鹿人格（2026-08-21）：与网页端 aiSystemPrompt 必须同步（第十五节①类文案） */
@@ -154,7 +184,7 @@ create_event 可带 "category":"分类名"（只能用上面列出的分类名�
 
 你的名字来自敦煌壁画《鹿王本生图》里的九色鹿 —— 那个故事讲的是善良与守信。"""
 
-    fun chatSystemPrompt(agenda: String, nickname: String = ""): String = """
+    fun chatSystemPrompt(agenda: String, nickname: String = "", tools: Boolean = false): String = """
 $PERSONA${if (nickname.isBlank()) "" else "\n用户的昵称是「$nickname」。偶尔这样称呼他，但别每句都叫，那样很生硬。"}
 当前时间：${nowLine()}
 日期参照（直接使用，不要自己加减）：${dateAnchors()}
@@ -162,7 +192,7 @@ $PERSONA${if (nickname.isBlank()) "" else "\n用户的昵称是「$nickname」�
 $agenda
 ${langLine()}
 回答日程问题时优先引用上面的真实数据，不要编造。
-$PROTOCOL
+${if (tools) PROTOCOL_TOOLS + "\n" else ""}$PROTOCOL
 """.trimIndent()
 
     /** 自然语言快速创建：只输出 JSON */
@@ -257,6 +287,8 @@ $PROTOCOL
     /** 含动作特征字段才认定为载荷，避免误删用户正文里的花括号 */
     private fun looksLikePayload(s: String): Boolean =
         s.contains("\"actions\"") || s.contains("\"subtasks\"") ||
+            // §131：工具调用块也是载荷 —— 循环封顶后模型仍在要工具时，绝不能漏给用户看
+            s.contains("\"tool\"") ||
             (s.contains("\"type\"") &&
                 (s.contains("create_") || s.contains("update_") || s.contains("delete_")))
 
@@ -348,6 +380,31 @@ $PROTOCOL
         }
     } catch (_: Exception) {
         emptyList()
+    }
+
+    /**
+     * §131 R4：AiAction → wire 格式 JSON（date ISO / start "HH:mm"，与模型输出同一格式）。
+     * 提案持久化只存 wire 格式，恢复时走 parseActions 原路回读 —— 不造第二种序列化格式，
+     * 解析规则（HEX 校验/年份校验/id 必填）自动对恢复数据同样生效。
+     */
+    fun toWire(a: AiAction): JSONObject = JSONObject().apply {
+        put("type", a.type)
+        if (a.type == "remember") { put("fact", a.fact); return@apply }
+        if (a.type == "theme") { put("name", a.title); put("accent", a.accentHex); return@apply }
+        if (a.targetId > 0) put("id", a.targetId)
+        if (a.title.isNotBlank()) put("title", a.title)
+        if (a.category.isNotBlank()) put("category", a.category)
+        if (a.day >= 0) put(if (a.type == "create_task" || a.type == "update_task") "due" else "date", Fmt.iso(a.day))
+        if (a.endDay >= 0 && a.endDay != a.day) put("end_date", Fmt.iso(a.endDay))
+        if (a.startMin >= 0) put("start", Fmt.hm(a.startMin))
+        if (a.endMin >= 0) put("end", Fmt.hm(a.endMin))
+        if (a.allDay) put("all_day", true)
+        if (a.done >= 0) put("done", a.done == 1)
+        if (a.location.isNotBlank()) put("location", a.location)
+        if (a.memo.isNotBlank()) put("memo", a.memo)
+        if (a.content.isNotBlank()) put("content", a.content)
+        if (a.remindAtMin >= 0) put("remind_at", Fmt.hm(a.remindAtMin))
+        if (a.remindMinBefore >= 0) put("remind_before", a.remindMinBefore)
     }
 
     fun parseSubtasks(raw: String): List<String> = try {

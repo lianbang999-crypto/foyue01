@@ -146,6 +146,15 @@ independently implemented"（审计项 10 措辞采纳）。
 
 ## 6. 落地路线 R0-R6（v1.1 采纳审计版：R4 拆两阶、新增边界锁定与影子集成）
 
+> **执行状态（2026-08-27，§131 落地）**：R0 ✅（agent/ 包端口 + ADR-001）；
+> R1 ✅ **No-Go →自研微内核**（纸面裁决：Koog 1.1.1 要求 Kotlin 2.3.10/Ktor 3.3.3，
+> Looka 在 Kotlin 2.0.21，依赖门版本层面即失败；另有 worker 信封 wire 错位与体积负担。
+> 设备 spike 因此未跑也无从跑 —— 依据与重评触发条件见 docs/adr/ADR-001-agent-engine.md）；
+> R2 部分 ✅（v1 只加 AgentProposal 表，七表是目标态按需增）；R3 ✅（旧单发链 = 开关关闭
+> 与异常时的回退路径，同端点零服务端改动）；R4 ✅（提案卡 Room 持久化 + 状态跃迁守卫）；
+> R5 v1 ✅（预注入窗口 + 四只读工具按需查询，Context Gateway 独立模块留待迭代）；R6 未开。
+
+
 > 原则：canonical domain state（Conversation/Invocation/AgentRun/AgentEvent/ToolInvocation/
 > ApprovalRequest/Artifact/Context/Audit）**永远归 Looka**；Koog 只出现在 adapter 与
 > EngineSnapshot 层——两年后换掉 Koog，用户资产完整可用。

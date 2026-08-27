@@ -60,7 +60,9 @@ data class ChatMsg(val role: Int, val text: String, val error: Boolean = false,
                    val dbId: Long = 0L, val imageFile: String = "",
                    val createdAt: Long = System.currentTimeMillis(),
                    /** §126 A5：本次走了备用线路（气泡尾注 11sp 灰） */
-                   val viaFallback: Boolean = false)
+                   val viaFallback: Boolean = false,
+                   /** §131：本条答案经过了工具查询（尾注「已查真实数据」；UI 态不入库） */
+                   val usedTools: Boolean = false)
 
 /** 日程编辑草稿：编辑器与重复编辑器之间共享（规格 CAL-010/011/013） */
 class EventDraft {
@@ -115,6 +117,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     private val stampDao = db.stampDao()
     private val templateDao = db.templateDao()
     private val taskListDao = db.taskListDao()
+    private val agentDao = db.agentProposalDao()
     private val chatDao = db.chatDao()   // §126 B：聊天记录（本地持久、不上云）
 
     val categories = categoryDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -994,6 +997,12 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var pendingTheme by mutableStateOf<Pair<Long, String>?>(null)
     // A5 重试：上一次请求的 (显示文, 载荷, 图) —— 失败内联「重试」不重复追加用户消息
     private var lastPayload: Triple<String, String, String>? = null
+    /** §131：工具轮进行中的状态行（「小鹿查了…」，瞬态；"" = 无） */
+    var aiToolNote by mutableStateOf("")
+        private set
+    // §131 R4：当前活卡对应的 AgentProposal 行号（-1 = 无持久行，如恢复失败的老内存卡）
+    private var actionsProposalId = -1L
+    private var themeProposalId = -1L
 
     init {
         // §126 B3/B4：启动先滚动清理（>30 天或超 500 条，连图片文件删），再载入最近一页
@@ -1007,7 +1016,51 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             val page = chatDao.latest(50)
             chatHasMore = page.size >= 50
             chat.addAll(0, page.reversed().map { it.toMsg() })
+            restoreProposals()
         }
+    }
+
+    /**
+     * §131 R4：启动恢复未过期的 pending 提案（Durable HITL —— 草稿卡杀进程不丢）。
+     * 回读走 parseActions 原路（wire 格式单一真源）；回读失败的行标 dismissed 防僵尸。
+     * 勾选态按默认规则重建（删除类默认不勾），不持久化勾选 —— 那是瞬时 UI 态。
+     */
+    private suspend fun restoreProposals() {
+        val nowMs = System.currentTimeMillis()
+        agentDao.expireOld(nowMs)
+        agentDao.purgeResolved(nowMs - 30L * 86400_000)
+        agentDao.latestPending("actions", nowMs)?.let { row ->
+            val acts = AiActions.parseActions(row.payload).filter { it.type != "theme" }
+            if (acts.isNotEmpty() && pendingAiActions.isEmpty()) {
+                pendingAiActions.addAll(acts)
+                pendingChecked.clear(); acts.forEach { pendingChecked.add(!it.isDelete) }
+                actionsProposalId = row.id
+            } else agentDao.resolve(row.id, "dismissed", nowMs)
+        }
+        agentDao.latestPending("theme", nowMs)?.let { row ->
+            val t = AiActions.parseActions(row.payload).firstOrNull { it.type == "theme" }
+            val argb = t?.let { runCatching { android.graphics.Color.parseColor(it.accentHex) }.getOrNull() }
+            if (t != null && argb != null && pendingTheme == null) {
+                pendingTheme = (argb.toLong() and 0xFFFFFFFFL) to t.title
+                themeProposalId = row.id
+            } else agentDao.resolve(row.id, "dismissed", nowMs)
+        }
+    }
+
+    /** §131 R4：提案入库（同类旧 pending 先顶掉 —— 一类只留一张活卡），返回行号 */
+    private suspend fun stageProposal(kind: String, acts: List<AiAction>): Long {
+        val nowMs = System.currentTimeMillis()
+        agentDao.dismissPendingOfKind(kind, nowMs)
+        val arr = JSONArray(); acts.forEach { arr.put(AiActions.toWire(it)) }
+        return agentDao.insert(com.looka.app.data.AgentProposal(
+            kind = kind, payload = JSONObject().put("actions", arr).toString(),
+            createdAt = nowMs, expiresAt = nowMs + 24 * 3600_000L))
+    }
+
+    /** §131 R4：了结提案行（仅 pending→*，幂等） */
+    private fun resolveProposal(id: Long, status: String) {
+        if (id <= 0) return
+        viewModelScope.launch { agentDao.resolve(id, status, System.currentTimeMillis()) }
     }
 
     private fun com.looka.app.data.ChatMessage.toMsg() = ChatMsg(
@@ -1105,7 +1158,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     /** 请求主体（§126 A5：重试走这里 —— 不再追加用户消息） */
     private suspend fun requestAi(payload: String, imageB64: String) {
         try {
-            val sys = AiActions.chatSystemPrompt(agendaContext(), Prefs.nickname(getApplication()))
+            val c0 = getApplication<Application>()
             val history = ArrayList<Pair<String, String>>()
             chat.filter { !it.error && it.role != ROLE_ACTION }.takeLast(12).forEach {
                 history += (if (it.role == ROLE_USER) "user" else "assistant") to it.text
@@ -1120,14 +1173,37 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             var idx = -1
             val sb = StringBuilder()
             AiClient.lastWasFallback = false
-            val raw = AiClient.chat(getApplication(), sys, history, imageB64 = imageB64) { delta ->
+            val onDelta: (String) -> Unit = { delta ->
                 sb.append(delta)
-                val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
+                var visible = sb.toString().substringBefore("```").trimEnd('`', '{')
                     .replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "")
+                // §131：裸 JSON 开头（动作/工具载荷没打代码块）同样不给用户看
+                if (visible.trimStart().startsWith("{")) visible = ""
                 if (visible.isNotBlank()) {
                     if (idx < 0) { idx = chat.size; chat += ChatMsg(ROLE_AI, visible) }
                     else chat[idx] = chat[idx].copy(text = visible)
                 }
+            }
+            // §131 R5：多步查询 —— 读日程授权 && 多步开关；带图轮除外（图只随首条消息，
+            // 多轮转发会让图错挂到 [工具结果] 消息上）。关任一开关 = 回落单发老链（R3 影子）
+            val toolsOn = imageB64.isBlank() && Prefs.aiReadAgenda(c0) && Prefs.aiMultiStep(c0)
+            val sys = AiActions.chatSystemPrompt(agendaContext(), Prefs.nickname(c0), tools = toolsOn)
+            var usedTools = false
+            val raw: String
+            if (toolsOn) {
+                val transport: suspend (List<Pair<String, String>>) -> String = { hist ->
+                    idx = -1; sb.clear()   // 每轮新气泡态
+                    AiClient.chat(c0, sys, hist, onDelta = onDelta)
+                }
+                val res = com.looka.app.agent.LookaAgentKernel.run(history, transport, agentData) { note ->
+                    // 工具轮：模型违规闪出的正文占位撤掉，换成状态行
+                    if (idx >= 0 && idx < chat.size) { chat.removeAt(idx); idx = -1 }
+                    aiToolNote = note
+                }
+                raw = res.raw
+                usedTools = res.usedTools
+            } else {
+                raw = AiClient.chat(c0, sys, history, imageB64 = imageB64, onDelta = onDelta)
             }
             val (text, allActions) = AiActions.split(raw)
             // §126 C4：theme 动作不进执行队列 —— 走独立主题草稿卡（生成→确认→应用，
@@ -1136,14 +1212,15 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             themes.lastOrNull()?.let { t ->
                 runCatching { android.graphics.Color.parseColor(t.accentHex) }.getOrNull()?.let { argb ->
                     pendingTheme = (argb.toLong() and 0xFFFFFFFFL) to t.title
+                    themeProposalId = stageProposal("theme", listOf(t))   // §131 R4：杀进程不丢
                 }
             }
             val fb = AiClient.lastWasFallback
             when {
                 text.isNotBlank() && idx >= 0 -> {
-                    chat[idx] = chat[idx].copy(text = text, viaFallback = fb); persistAt(idx)
+                    chat[idx] = chat[idx].copy(text = text, viaFallback = fb, usedTools = usedTools); persistAt(idx)
                 }
-                text.isNotBlank() -> addPersist(ChatMsg(ROLE_AI, text, viaFallback = fb))   // 非流式（自带 Key）
+                text.isNotBlank() -> addPersist(ChatMsg(ROLE_AI, text, viaFallback = fb, usedTools = usedTools))   // 非流式（自带 Key）
                 idx >= 0 -> chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
             }
             if (actions.isNotEmpty()) {
@@ -1152,6 +1229,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     pendingAiActions.clear(); pendingAiActions.addAll(actions)
                     // §126 A1（AI-UX 4.2 硬规则 2）：默认全勾，**删除类默认不勾**
                     pendingChecked.clear(); actions.forEach { pendingChecked.add(!it.isDelete) }
+                    actionsProposalId = stageProposal("actions", actions)   // §131 R4
                 } else {
                     execActions(actions).forEachIndexed { i2, msg ->
                         val tg = lastActionTargets.getOrNull(i2)
@@ -1173,6 +1251,57 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             if (chat.isNotEmpty() && chat.last().role == ROLE_AI && chat.last().text.isBlank())
                 chat.removeAt(chat.size - 1)
             addPersist(ChatMsg(ROLE_AI, tr("小鹿出错了：{0}", e.message ?: tr("网络异常")), error = true))
+        } finally {
+            aiToolNote = ""   // §131：异常中断也不许状态行滞留
+        }
+    }
+
+    /**
+     * §131 R0：内核数据口 —— 内核与工具只见这四个方法，不见 Room/ViewModel。
+     * 行格式与 agendaContext 预注入一致（[e/t/n id] 标注），改/删定位铁律对工具结果同样成立。
+     * 隐私边界与预注入相同（S9 总开关在 requestAi 处已把门）；笔记只给标题+40 字摘要。
+     */
+    private val agentData = object : com.looka.app.agent.AgentDataSource {
+        override fun eventLines(fromDay: Long, toDay: Long, keyword: String): List<String> =
+            RecurrenceEngine.expand(seriesAll.value, exceptionsAll.value, fromDay, toDay)
+                .sortedWith(compareBy({ it.day }, { if (it.allDay) -1 else it.startMin }))
+                .filter { keyword.isBlank() || it.title.contains(keyword, ignoreCase = true) }
+                .map { o ->
+                    val t = if (o.allDay) tr("全天") else "${Fmt.hm(o.startMin)}-${Fmt.hm(o.endMin)}"
+                    "- [e${o.seriesId}] ${Fmt.iso(o.day)} ${Fmt.dateCn(o.day)} $t ${o.title}" +
+                        if (o.recurring) tr("（重复）") else ""
+                }
+
+        override fun taskLines(scope: String, keyword: String): List<String> =
+            tasks.value.asSequence()
+                .filter { when (scope) { "done" -> it.done; "all" -> true; else -> !it.done } }
+                .filter { keyword.isBlank() || it.title.contains(keyword, ignoreCase = true) }
+                .map {
+                    "- [t${it.id}] ${it.title}" +
+                        (if (it.dueDay >= 0) tr("（截止{0}）", Fmt.dateCn(it.dueDay)) else "") +
+                        (if (it.done) " ✓" else "")
+                }.toList()
+
+        override fun noteLines(keyword: String): List<String> =
+            notes.value.filter {
+                it.title.contains(keyword, ignoreCase = true) ||
+                    it.content.contains(keyword, ignoreCase = true)
+            }.map {
+                "- [n${it.id}] ${it.title.ifBlank { it.content.take(12) }} · " +
+                    it.content.replace('\n', ' ').take(40)
+            }
+
+        override fun monthStats(month: String): String {
+            val parts = month.split("-")
+            val start = java.time.LocalDate.of(parts[0].toInt(), parts[1].toInt(), 1)
+            val s = start.toEpochDay()
+            val e = start.plusMonths(1).toEpochDay() - 1
+            val evCnt = RecurrenceEngine.expand(seriesAll.value, exceptionsAll.value, s, e).size
+            // 任务无「完成时刻」字段，用最后更新时间近似（输出里明说，不冒充精确）
+            val doneApprox = tasks.value.count { it.done && it.updatedAt in s * 86400_000L..(e + 1) * 86400_000L }
+            val diaryCnt = diaries.value.count { it.day in s..e }
+            return tr("{0}：日程 {1} 条；日记 {2} 篇；该月内标记完成的任务约 {3} 项（按最后更新时间近似）；当前未完成任务共 {4} 项。",
+                month, evCnt, diaryCnt, doneApprox, tasks.value.count { !it.done })
         }
     }
 
@@ -1199,13 +1328,17 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         com.looka.app.ui.theme.Tokens.applyPack(com.looka.app.util.PhotoTheme.tokensFrom(accent))
         com.looka.app.util.PhotoTheme.save(c, accent)
         pendingTheme = null
+        resolveProposal(themeProposalId, "applied"); themeProposalId = -1L   // §131 R4
         viewModelScope.launch {
             addPersist(ChatMsg(ROLE_ACTION, tr("🎨 已换上主题{0}", if (name.isBlank()) "" else "「$name」")))
         }
         return name
     }
 
-    fun cancelPendingTheme() { pendingTheme = null }
+    fun cancelPendingTheme() {
+        pendingTheme = null
+        resolveProposal(themeProposalId, "dismissed"); themeProposalId = -1L   // §131 R4
+    }
 
     /** §126 A1（AI-2 冲突检测）：新建日程与当日现有日程时间重叠的警示行；无冲突 null */
     fun conflictOf(a: AiAction): String? {
@@ -1246,8 +1379,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     fun clearChat() {
         chat.clear(); pendingAiActions.clear(); pendingChecked.clear(); pendingTheme = null
         chatHasMore = false
+        actionsProposalId = -1L; themeProposalId = -1L
         viewModelScope.launch {
             chatDao.clearAll()
+            agentDao.dismissAllPending(System.currentTimeMillis())   // §131 R4：活卡随聊天一并了结
             com.looka.app.util.ChatStore.deleteAll(getApplication())
         }
     }
@@ -1284,6 +1419,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     fun confirmPending() {
         val picked = pendingAiActions.filterIndexed { i, _ -> pendingChecked.getOrElse(i) { true } }
         pendingAiActions.clear(); pendingChecked.clear()
+        resolveProposal(actionsProposalId, "applied"); actionsProposalId = -1L   // §131 R4
         viewModelScope.launch {
             if (picked.isEmpty()) { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))); return@launch }
             execActions(picked).forEachIndexed { i2, msg ->
@@ -1297,6 +1433,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelPending() {
         pendingAiActions.clear(); pendingChecked.clear()
+        resolveProposal(actionsProposalId, "dismissed"); actionsProposalId = -1L   // §131 R4
         viewModelScope.launch { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))) }
     }
 

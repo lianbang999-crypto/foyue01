@@ -304,3 +304,21 @@ data class ChatMessage(
     val error: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
+
+/**
+ * §131 R2/R4：Agent 提案（Durable HITL）—— 草稿卡杀进程不丢的真相层。
+ * payload 存 wire 格式 {"actions":[...]}（与模型输出同格式），恢复走 AiActions.parseActions
+ * 原路回读；不进同步（提案是过程数据，与 ChatMessage 同哲学）；过期 24h。
+ * 状态跃迁只允许 pending→applied/dismissed/expired（DAO 里 WHERE status='pending' 守卫，
+ * 双击/恢复后重复应用天然幂等）。
+ */
+@Entity
+data class AgentProposal(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val kind: String,                  // "actions" | "theme"
+    val payload: String,               // wire JSON
+    val status: String = "pending",    // pending/applied/dismissed/expired
+    val createdAt: Long = System.currentTimeMillis(),
+    val expiresAt: Long = 0,
+    val resolvedAt: Long = 0
+)

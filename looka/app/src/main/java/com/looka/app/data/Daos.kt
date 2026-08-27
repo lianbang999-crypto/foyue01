@@ -451,3 +451,31 @@ interface ChatMessageDao {
     @Query("DELETE FROM ChatMessage")
     suspend fun clearAll()
 }
+
+@Dao
+interface AgentProposalDao {
+    @Insert
+    suspend fun insert(p: AgentProposal): Long
+
+    /** 恢复：该 kind 最新一条未过期的 pending（actions 卡与 theme 卡各一张，互不顶替） */
+    @Query("SELECT * FROM AgentProposal WHERE status='pending' AND kind=:kind AND expiresAt > :now ORDER BY id DESC LIMIT 1")
+    suspend fun latestPending(kind: String, now: Long): AgentProposal?
+
+    /** 状态跃迁守卫：只动 pending 行 —— 返回 0 = 已被处理过，调用方不得重复执行副作用 */
+    @Query("UPDATE AgentProposal SET status=:st, resolvedAt=:now WHERE id=:id AND status='pending'")
+    suspend fun resolve(id: Long, st: String, now: Long): Int
+
+    /** 新提案顶掉同类旧 pending（一类只留一张活卡） */
+    @Query("UPDATE AgentProposal SET status='dismissed', resolvedAt=:now WHERE status='pending' AND kind=:kind")
+    suspend fun dismissPendingOfKind(kind: String, now: Long)
+
+    @Query("UPDATE AgentProposal SET status='dismissed', resolvedAt=:now WHERE status='pending'")
+    suspend fun dismissAllPending(now: Long)
+
+    @Query("UPDATE AgentProposal SET status='expired', resolvedAt=:now WHERE status='pending' AND expiresAt <= :now")
+    suspend fun expireOld(now: Long)
+
+    /** 已了结行留 30 天可查（与聊天保留期一致），之后物理删 */
+    @Query("DELETE FROM AgentProposal WHERE status != 'pending' AND resolvedAt < :cutoff")
+    suspend fun purgeResolved(cutoff: Long)
+}

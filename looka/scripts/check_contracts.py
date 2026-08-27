@@ -143,6 +143,31 @@ def main() -> int:
         else:
             print(f"✓ 评测集 {len(cases['cases'])} 例类型全在合同内")
 
+    # §131：工具协议三方对账 —— 合同 tools ↔ AgentTools.kt 注册表 ↔ PROTOCOL_TOOLS 文本。
+    # 另加副作用安全门：v1 注册表逐个核验 risk=READ —— 内核只许自动执行只读工具，
+    # 谁往注册表里塞了 WRITE/DESTRUCTIVE，这里直接红（结构保证，不靠口头纪律）。
+    tools_contract = set(aic.get("tools", {}).keys())
+    agt = (ROOT / "app/src/main/java/com/looka/app/agent/AgentTools.kt").read_text()
+    kt_tools = re.findall(r'AgentToolSpec\("([a-z_]+)",\s*ToolRisk\.(\w+)\)', agt)
+    kt_names = {n for n, _ in kt_tools}
+    ok &= compare("ai-actions.v1.tools ↔ AgentTools 注册表", tools_contract, kt_names)
+    bad_risk = sorted(n for n, r in kt_tools if r != "READ")
+    if bad_risk:
+        print(f"✗ 副作用安全门：注册表里有非 READ 工具 {bad_risk}（v1 内核只许只读）"); ok = False
+    else:
+        print(f"✓ 副作用安全门：{len(kt_tools)} 个工具全为 READ")
+    ptools = re.search(r'private val PROTOCOL_TOOLS = """(.*?)"""', akt, re.S)
+    assert ptools, "AiActions.kt 里找不到 PROTOCOL_TOOLS"
+    miss_pt = {t for t in tools_contract if f'"{t}"' not in ptools.group(1)}
+    if miss_pt:
+        print(f"✗ PROTOCOL_TOOLS 未声明的工具：{sorted(miss_pt)}"); ok = False
+    else:
+        print(f"✓ PROTOCOL_TOOLS 声明 ↔ ai-actions.v1.tools：{len(tools_contract)} 个齐全")
+    # 合同里声明的 risk 必须也是 READ（防有人只改合同不改代码）
+    bad_c = sorted(t for t, v in aic.get("tools", {}).items() if v.get("risk") != "READ")
+    if bad_c:
+        print(f"✗ 合同 tools 里有非 READ 声明：{bad_c}"); ok = False
+
     # §128：定价合同对账 —— pricing.v1 ↔ worker PRICING 常量 ↔ 双端页面文案。
     # 四套口径打过架（母档 §8 审计），从此只许一处出数字。
     pr = json.loads((ROOT / "docs/contracts/pricing.v1.json").read_text())

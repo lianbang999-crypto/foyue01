@@ -1,8 +1,8 @@
 {
   "$id": "https://looka.foyue.org/contracts/ai-actions.v1.json",
   "title": "Looka 小鹿 AI 动作协议 v1（§126 D1）",
-  "description": "AI 回复末尾 ```json 代码块里的 actions 数组。这是 L2 动作层的机器合同：提示词声明的类型、客户端解析白名单、评测集用例三方以此对账（check_contracts.py）。铁律：① 改/删的 id 只认上下文标注值，绝不按标题猜；② 删除必确认、一次 ≥3 条必确认；③ theme 不进执行队列，走独立草稿卡（生成→校验→确认）；④ UI 永远显示解析后的绝对日期（终审防线）。",
-  "schema_version": "1.0",
+  "description": "AI 回复末尾 ```json 代码块里的 actions 数组。这是 L2 动作层的机器合同：提示词声明的类型、客户端解析白名单、评测集用例三方以此对账（check_contracts.py）。铁律：① 改/删的 id 只认上下文标注值，绝不按标题猜；② 删除必确认、一次 ≥3 条必确认；③ theme 不进执行队列，走独立草稿卡（生成→校验→确认）；④ UI 永远显示解析后的绝对日期（终审防线）。§131 起同时约束工具协议（tools 节）：PROTOCOL_TOOLS 声明 ↔ AgentTools.kt 注册表 ↔ 本合同三方对账，且逐个核验 risk=READ（副作用安全进 CI）。",
+  "schema_version": "1.1",
   "types": [
     "create_event", "create_task", "create_note",
     "update_event", "update_task", "update_note",
@@ -21,6 +21,20 @@
     "delete_note": ["id"],
     "remember": ["fact"],
     "theme": ["name", "accent"]
+  },
+  "tools": {
+    "query_events": { "params": ["from", "to", "keyword"], "risk": "READ" },
+    "query_tasks": { "params": ["scope", "keyword"], "risk": "READ" },
+    "query_notes": { "params": ["keyword"], "risk": "READ" },
+    "month_stats": { "params": ["month"], "risk": "READ" }
+  },
+  "tool_rules": {
+    "read_only_kernel": "v1 内核只自动执行 risk=READ 工具；WRITE/DESTRUCTIVE 意图永远走 actions → 提案卡人审",
+    "exclusive_block": "工具调用块与 actions 动作块绝不同发；同发时客户端按最终答案处理，工具不执行",
+    "max_rounds": 3,
+    "range_clamp_days": 92,
+    "no_fabrication": "查询为空必须如实说无，不得编造",
+    "gating": "注入与循环仅在 aiReadAgenda && aiMultiStep 且本轮不带图时启用；关闭即回落单发链"
   },
   "rules": {
     "mutation_requires_context_id": "update_*/delete_* 缺 id 或 id 不来自上下文标注（[e12]/[t3]/[n5]）→ 客户端丢弃",
