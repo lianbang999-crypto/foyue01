@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 43,
-  "versionName": "1.23.1",
+  "versionCode": 44,
+  "versionName": "1.24.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4405621,
-  "sha256": "e7f3419f306edaf0c2b565e008bcca76216859ec89353b48d86cf5fa5720efa6",
-  "changelog": "紧急修复：打开笔记/任务/日程详情/日记会闪退的问题；「更多」页新增鹿角商店入口；小鹿 AI 换用更聪明的模型",
+  "size": 4404341,
+  "sha256": "8d4c1fcac27cb01405d8c7adeeb88673e32f7042cd0a43d7ed659f4e285868da",
+  "changelog": "全站统一整理：鹿角改为无上限不清零；商店更名「装扮商店」；「更多」页设置入口变成真正的设置中心；提醒自检更名提醒诊断；全站清理过时的权益说法",
   "minSupported": 1
 }
