@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 45,
-  "versionName": "1.25.0",
+  "versionCode": 46,
+  "versionName": "1.25.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4405493,
-  "sha256": "a267af56b1ba21275268927083c8392a41f28936b02e1e13eee9b84bba1e7480",
-  "changelog": "全站统一第二批：订阅页拆为「方案与鹿角」和「小鹿设置」；鹿角钱包可以看最近明细；解锁贴纸包前先看清余额变化；小鹿新增「记一件事」和日历里问当天安排；新建日程/任务时就能贴图片；图片未同步会有小灰点提示",
+  "size": 4406161,
+  "sha256": "5593e8541c605909f4672716f266d767f17dde8037db87cfebecfc22300b343f",
+  "changelog": "创建面板四个图标统一为极简细线风格；提醒诊断修复「上面说正常下面标红」的矛盾，状态图标更清爽",
   "minSupported": 1
 }
