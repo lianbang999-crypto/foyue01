@@ -1079,12 +1079,13 @@ async function route(request, env, ctx) {
     } : {
       base: 'https://openrouter.ai/api/v1',
       key: env.OPENROUTER_KEY,
-      // §118b（用户拍板「选聪明的」）：主 DeepSeek V4-flash（$0.08/M，聪明且极便宜）、
-      // 备 Qwen3.6；openrouter/free 只做最后兜底 —— 实测它会路由到
-      // cohere/north-mini-code:free 这类代码向 mini 模型，聊天质量不可控。
+      // §122（用户要求换掉 V4）：主 Qwen3.6-plus —— 阿里旗舰档、中文最强一档、
+      // 与现有提示词同家族（实测 JSON 输出最干净，2184ms）；备 MiniMax-M3
+      //（实测 1798ms、更便宜，质量同样能出正确结构）；openrouter/free 只做最后兜底。
+      // glm-5.2:free 实测 429 上游限流，不入链。
       models: [
-        env.OR_CHAT_MODEL || 'deepseek/deepseek-v4-flash',
-        env.OR_CHAT_MODEL_FALLBACK || 'qwen/qwen3.6-35b-a3b',
+        env.OR_CHAT_MODEL || 'qwen/qwen3.6-plus',
+        env.OR_CHAT_MODEL_FALLBACK || 'minimax/minimax-m3',
         'openrouter/free'
       ]
     };
