@@ -1640,10 +1640,12 @@ private fun PanelIcon(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String, selected: Boolean, onClick: () -> Unit
 ) {
+    // §121：与编辑器 ModeIcon 统一 —— 44dp 热区（touch.min）、选中底 #D0D0D0（实机量值；
+    // 原 PanelBg #F7F8F7 在白纸上等于隐形，选中态形同虚设）
     Box(
-        Modifier.padding(horizontal = 4.dp).size(38.dp)
+        Modifier.padding(horizontal = 4.dp).size(44.dp)
             .clip(androidx.compose.foundation.shape.CircleShape)
-            .background(if (selected) com.looka.app.ui.theme.PanelBg else Color.Transparent)
+            .background(if (selected) Color(0xFFD0D0D0) else Color.Transparent)
             .plainClick(onClick),
         contentAlignment = Alignment.Center
     ) {

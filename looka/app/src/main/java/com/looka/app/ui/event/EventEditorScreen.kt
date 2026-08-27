@@ -317,7 +317,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
                     vm.createPanel = true
                     nav.popBackStack()
                 }
-                ModeIcon(Icons.Outlined.AutoAwesome, "AI", mode == 3) { mode = 3 }
+                // §121：AutoAwesome（Material 三星填充）→ LkIcons.Sparkle —— 四枚同一种笔触
+                ModeIcon(LkIcons.Sparkle, "AI", mode == 3) { mode = 3 }
             }
         }
     }

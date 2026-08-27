@@ -67,6 +67,9 @@ import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
 import com.looka.app.ui.common.NavRow
 import com.looka.app.ui.common.ConfirmDialog
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 import com.looka.app.ui.common.SwitchRow
 import com.looka.app.ui.common.plainClick
 import com.looka.app.ui.common.toast
@@ -505,13 +508,20 @@ fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
         (ctx.getSystemService(PowerManager::class.java))
             ?.isIgnoringBatteryOptimizations(ctx.packageName) == true
     }
+    // §121（用户报 bug）：闹钟渠道原在列表中段才定义，**没计入顶部结论** ——
+    // 渠道被降级时上面写着「提醒状态正常」，下面一行标红，自相矛盾。提前并计入。
+    val alarmChOk = remember(tick) {
+        val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
+        val ch = nm?.getNotificationChannel(NotifyScheduler.ALARM_CHANNEL)
+        ch == null || ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("提醒诊断"), onBack = { nav.popBackStack() })   // §120 P1：A2 术语
         Column(Modifier.verticalScroll(rememberScrollState())) {
             // §120 P1（B3 状态分层）：先给一句状态结论，用户不用逐项读完才知道有没有事。
             // 「自启动」无法程序化判断（null），不计入结论 —— 不确定的事不写成确定的。
-            val allOk = notifOk && exactOk && batteryOk
+            val allOk = notifOk && exactOk && batteryOk && alarmChOk
             Text(
                 if (allOk) tr("提醒状态正常。") else tr("有设置可能影响提醒，请处理下方标红的项。"),
                 fontSize = 15.sp,
@@ -555,11 +565,7 @@ fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             Hairline()
             // A2-6：第 5 关 —— 闹钟渠道被用户手动静音/降级时，闹钟会退化成安静通知
-            val alarmChOk = remember(tick) {
-                val nm = ctx.getSystemService(android.app.NotificationManager::class.java)
-                val ch = nm?.getNotificationChannel(NotifyScheduler.ALARM_CHANNEL)
-                ch == null || ch.importance >= android.app.NotificationManager.IMPORTANCE_HIGH
-            }
+            //（§121：定义已提前到顶部，与结论共用同一次判定）
             CheckRow(tr("闹钟渠道"), alarmChOk, tr("被手动调低后闹钟不会全屏弹出；点击恢复为「紧急」")) {
                 runCatching {
                     ctx.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
@@ -639,11 +645,18 @@ private fun CheckRow(title: String, ok: Boolean?, sub: String, onFix: () -> Unit
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            when (ok) { true -> "✅"; false -> "⚠️"; null -> "🔍" },
-            fontSize = 18.sp
+        // §121：emoji（✅⚠️🔍）→ 状态点 —— emoji 逐厂商渲染不一、且与全站细线稿语言脱节。
+        // 颜色 + 右侧文字双证据（J2：任何状态不能只靠颜色）
+        Box(
+            Modifier.size(10.dp).clip(CircleShape).background(
+                when (ok) {
+                    true -> MaterialTheme.colorScheme.primary
+                    false -> HolidayRed
+                    null -> Color(0xFFC0C3C0)
+                }
+            )
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 15.sp)
             Text(sub, fontSize = 11.sp, color = GrayText)
