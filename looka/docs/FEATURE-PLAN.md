@@ -11390,3 +11390,26 @@ L3a 聊天生成主题（先通「色」）+ 评测集与动作合同（准确�
 | S2 | **Paddle 外跳支付定案**（M8/M9）：App 点升级 → 系统浏览器/Custom Tab 开 looka.foyue.org/pay?session={短期签名}；Webhook 验签幂等开通；Customer Portal 管订阅；禁 WebView；支付宝可订阅（审批后）、微信只一次性 | 定案入 pricing.v1 channel_rules；**实链路挂账**：需用户开通 Paddle 账号（API Key/Webhook Secret/Price ID）后接 /pay 页 + session 签名 + webhook 路由，不做假实现 |
 | S3 | **生命周期 L 章**（十阶段/六动作分离/退场五步/feature.lifecycle.v1 字段） | FEATURE-LIFECYCLE.md 升 v2 收编（L 章为正式规格） |
 | S4 | v1.1/v1.2 的 A-K 章与 P0-P6 批次 | 绝大部分即 v1.0 已执行内容（§119-§120/§126-§128）；未尽项（Free 60/Pro 300 旧上限迁移已于 §119 完成、check_* 检查器族 = 现 check_contracts 的扩展方向）随后续批次 |
+
+## 一百二十九、§129（2026-08-27）：用户实机两 bug —— 贴纸转面板死锁 + AI 卡打开日程的 1970 哨兵泄露
+
+### 一、根因
+
+1. **更多页点＋→选贴纸→底栏消失（死锁）**：编辑器模式排点「表情」会 `createPanel=true` 并退回主壳，
+   但贴纸停靠面板只在日历 tab 渲染，而底栏隐藏条件是全局的 —— 从更多/待办/笔记 tab 进来就变成
+   「底栏被藏 + 面板不出现」，唯一出路是杀进程。tab 是 HomeScreen 私有 state，编辑器根本没法把人带回日历。
+2. **重复结束日弹窗显示 1970**：AI 动作卡「打开」走 `prepareEditDraft(id, occDay=-1)`，
+   `mergeOcc` 把 -1 直接当日期 → 草稿 startDay=-1 → 结束日选择器 `-1+30=29` → **1970-01-30**（截图吻合）。
+   且此状态下保存会把日程写坏 —— 是数据级 bug，不只是显示。
+
+### 二、修复
+
+| # | 内容 |
+|---|---|
+| Y1 | tab 提升为 vm.homeTab；编辑器转贴纸面板时强制 `homeTab=0`（语义修：点表情=回日历贴）；HomeScreen 防御：非日历 tab 残留 createPanel 一律清 |
+| Y2 | prepareEditDraft：occDay<0 时 startDay/endDay 落回系列自身（AI 卡/无具体发生日入口全覆盖）；RecurrenceEditor 结束日初值双保险下界钉今天 |
+
+### 三、§127 命名撞号说明
+
+《Looka Mobile Agent 产品与技术方案 v1.1》内部用「§127」命名 Agent Kernel —— 与本计划 §127
+（功能生命周期）撞号。该方案落地时按本计划顺延编号（§130 起），方案原文编号视为其内部章节号。

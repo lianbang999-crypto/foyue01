@@ -190,8 +190,14 @@ fun LookaRoot() {
 /** 主壳：四个 Tab + 中央黑色 +（规格 CAL-001 底部结构） */
 @Composable
 fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    // §129：tab 提升到 vm.homeTab —— 编辑器"转贴纸面板"要能把人带回日历 tab
+    val tab = vm.homeTab
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    // §129 防御：贴纸停靠面板只在日历 tab 渲染；任何路径在其它 tab 留下 createPanel=true
+    // 都会变成"底栏被藏 + 面板不出现"的死锁，这里兜底清掉
+    androidx.compose.runtime.LaunchedEffect(tab, vm.createPanel) {
+        if (tab != 0 && vm.createPanel) vm.createPanel = false
+    }
 
     // 逾期任务次日转移询问（每天最多一次，避免任务凑数堆积）
     // §87 D1：这是全项目**唯一**的系统主动弹层，必须守 §13「等页面稳定 + 用户静止」——
@@ -271,7 +277,7 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
             // §75 C2（图48）：Composer 打开时全局底栏隐藏 —— 面板临时取代它
             if (!vm.createPanel) LookaBottomBar(
                 tab = tab,
-                onTab = { tab = it },
+                onTab = { vm.homeTab = it },
                 onPlus = {
                     // §77 N9（真 bug 修复）：中央 ＋ 是 Context Composer，必须按所在 tab 分流。
                     // 此前只分「贴纸面板 / 其它」，站在笔记页按 ＋ 弹出来的是新建日程 ——

@@ -314,6 +314,10 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
                     vm.pendingStampBind = -1L
                     vm.pendingStampAsset = ""
                     vm.calView = 0
+                    // §129（用户实机）：从更多/待办/笔记页点＋进来的编辑器转贴纸面板时，
+                    // 必须同时切回日历 tab —— 面板只在日历页渲染，不切回去就是
+                    // "底栏被藏 + 面板不出现"的死锁（唯一出路是杀进程）
+                    vm.homeTab = 0
                     vm.createPanel = true
                     nav.popBackStack()
                 }

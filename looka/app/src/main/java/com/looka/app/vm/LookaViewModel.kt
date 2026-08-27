@@ -142,6 +142,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
      */
     var calScrollReq by mutableStateOf<Long?>(null)
 
+    // §129（用户实机：更多页点＋选贴纸后底栏消失）：主壳 tab 提升到 vm ——
+    // 编辑器"转贴纸停靠面板"必须能把人带回日历 tab，否则面板无处渲染而底栏被藏（死锁）
+    var homeTab by mutableIntStateOf(0)
     // N1（§71）→ §75 C：贴纸 Composer 面板（三面模型中唯一留在月历上的面）
     var createPanel by mutableStateOf(false)
     // 表情连续盖章模式：非空 = 已选中贴纸，点月历日期直接贴
@@ -246,8 +249,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         d.title = o.title
         d.categoryId = o.categoryId
         d.allDay = o.allDay
-        d.startDay = o.day
-        d.endDay = o.endDay
+        // §129（用户实机：重复结束日弹窗显示 1970）：occDay=-1（AI 动作卡「打开」、
+        // 无具体发生日的入口）时 mergeOcc 会把 -1 当日期落进 o.day —— 草稿 startDay=-1，
+        // 结束日选择器 -1+30=29 → 1970-01-30，保存还会把日程写坏。落回系列自身日期。
+        d.startDay = if (occDay >= 0) o.day else s.startDay
+        d.endDay = if (occDay >= 0) o.endDay else s.endDay
         d.startMin = o.startMin
         d.endMin = o.endMin
         d.location = o.location

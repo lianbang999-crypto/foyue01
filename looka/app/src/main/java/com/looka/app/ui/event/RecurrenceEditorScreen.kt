@@ -195,7 +195,10 @@ fun RecurrenceEditorScreen(vm: LookaViewModel, nav: NavHostController) {
             ) {
                 Column {
                     com.looka.app.ui.common.LookaMonthPanel(
-                        sel = if (d.untilDay >= 0) d.untilDay else d.startDay + 30,
+                        // §129 双保险：startDay 万一仍是 -1（哨兵泄露），-1+30=29 会把面板
+                        // 甩到 1970-01 —— 下界钉在今天，任何脏草稿都不会再看到 1970
+                        sel = if (d.untilDay >= 0) d.untilDay
+                              else maxOf(d.startDay + 30, com.looka.app.util.Fmt.today() + 30),
                         // 内联变体：点一下即回填（同上下文可见，不需要二次确认）
                         onSelect = { d.untilDay = maxOf(it, d.startDay) },
                         modifier = Modifier.padding(horizontal = 12.dp)
