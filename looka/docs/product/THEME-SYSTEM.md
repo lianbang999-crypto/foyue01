@@ -89,3 +89,58 @@ AI 配色=生成式付费,两者并列不互替。
 | T-3 | 商品详情页 + 整套预览 |
 | T-4 | L3a AI 配色 |
 | T-5 | 「四季」系列 + Web 导航图标槽 |
+
+---
+
+## 附录 A:主题生成 SKILL 对接规格(§125 · 用户自训 SKILL 的输出合同)
+
+> 场景:用户在小鹿聊天里发一张图 → SKILL 自动设计整套主题包 → 输出给用户一键替换。
+> SKILL 可以在任何环境训练/运行,但**输出必须严格符合本附录**,否则装载端直接拒。
+
+### A.1 交付物结构
+
+```
+theme-<id>/                     id: 小写字母数字连字符 ≤40
+├─ theme.json                   按 contracts/theme-package.v1.json
+└─ assets/
+   ├─ cover.png                 900×1200 (3:4 商店封面)
+   ├─ top_banner.png            1440×500 (顶栏主题带;安全区:左 1/3 放插画,右 2/3 留浅色让日期文字可读)
+   ├─ bottom_bg.png             1440×360 (底栏背景带;五个图标位上方留浅色)
+   ├─ nav_calendar.png          144×144 透明底
+   ├─ nav_todo.png              144×144
+   ├─ nav_plus.png              144×144 (中央+,可做主题化容器如 Horse 的木牌)
+   ├─ nav_notes.png             144×144
+   ├─ nav_more.png              144×144
+   └─ lock_bg.png               1179×2556 (可选)
+```
+
+格式:PNG(照片类可 WebP);单文件 ≤500KB,整包 ≤3MB。
+
+### A.2 theme.json 色彩约束(硬规则,装载端校验)
+
+- `tokens.semantic` 16 槽必须齐全(theme-tokens.schema v1)
+- **可读性槽必须用出厂值,SKILL 不得改**:
+  `text_primary #1B1B1F` · `text_secondary #727776` · `text_tertiary #B9BBB9` ·
+  `divider #D8DBD8` · `weekend #4A7DDC` · `holiday #E0504A` ·
+  `danger #E0504A` · `scrim #66000000` · `today #1B1B1F` · `surface #FFFFFF`
+- SKILL 只允许设计氛围槽:`accent` `selection` `surface_variant` `event_all_day`
+  `event_timed` `event_external`
+- `selection` 必须 = accent 与白 88-92% 混合(保证选中态浅底可读)
+
+### A.3 装载链路(App 端,T 批次实现)
+
+```
+聊天发图 → SKILL 产包 → App 拉取/接收
+  → 合同校验(缺槽/超尺寸/动可读性槽 → 拒,报具体原因)
+  → 主题草稿卡(封面 + 三枚色卡 + 「应用」/「先看看」)
+  → 用户点应用 → Tokens.applyPack + 资产落本地 + 持久化
+  → 随时可在主题面板一键换回
+```
+
+与 AI 动作同哲学:**生成 → 合同校验 → 用户确认,三步缺一不可**;
+SKILL 的产出永远不能"直接已应用"。
+
+### A.4 阶段划分
+
+- 先通「色」:SKILL 只出 theme.json(无图像资产)→ 走 L3a 链路,App 现有 Tokens 总线即可应用(工程量最小,先跑通闭环)
+- 再通「画」:图像资产随包 → 依赖 T-1 皮肤渲染层完成后接入

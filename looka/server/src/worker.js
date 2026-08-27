@@ -1079,13 +1079,12 @@ async function route(request, env, ctx) {
     } : {
       base: 'https://openrouter.ai/api/v1',
       key: env.OPENROUTER_KEY,
-      // §122（用户要求换掉 V4）：主 Qwen3.6-plus —— 阿里旗舰档、中文最强一档、
-      // 与现有提示词同家族（实测 JSON 输出最干净，2184ms）；备 MiniMax-M3
-      //（实测 1798ms、更便宜，质量同样能出正确结构）；openrouter/free 只做最后兜底。
-      // glm-5.2:free 实测 429 上游限流，不入链。
+      // §125（用户点名 Luna）：主 GPT-5.6 Luna —— $0.20/$1.20 比 Qwen3.6-plus 便宜 38%，
+      // 实测 1858ms 且"后天/十点半/提前一小时"全解析正确、零废话（对比记录见 §122/§125）；
+      // 备 Qwen3.6-plus（中文强，Luna 拥挤时顶上）；openrouter/free 兜底。
       models: [
-        env.OR_CHAT_MODEL || 'qwen/qwen3.6-plus',
-        env.OR_CHAT_MODEL_FALLBACK || 'minimax/minimax-m3',
+        env.OR_CHAT_MODEL || 'openai/gpt-5.6-luna',
+        env.OR_CHAT_MODEL_FALLBACK || 'qwen/qwen3.6-plus',
         'openrouter/free'
       ]
     };
