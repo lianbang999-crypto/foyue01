@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 44,
-  "versionName": "1.24.0",
+  "versionCode": 45,
+  "versionName": "1.25.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4404341,
-  "sha256": "8d4c1fcac27cb01405d8c7adeeb88673e32f7042cd0a43d7ed659f4e285868da",
-  "changelog": "全站统一整理：鹿角改为无上限不清零；商店更名「装扮商店」；「更多」页设置入口变成真正的设置中心；提醒自检更名提醒诊断；全站清理过时的权益说法",
+  "size": 4405493,
+  "sha256": "a267af56b1ba21275268927083c8392a41f28936b02e1e13eee9b84bba1e7480",
+  "changelog": "全站统一第二批：订阅页拆为「方案与鹿角」和「小鹿设置」；鹿角钱包可以看最近明细；解锁贴纸包前先看清余额变化；小鹿新增「记一件事」和日历里问当天安排；新建日程/任务时就能贴图片；图片未同步会有小灰点提示",
   "minSupported": 1
 }
