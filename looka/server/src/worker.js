@@ -1065,7 +1065,21 @@ async function route(request, env, ctx) {
   // ===== AI 代理（§55：鹿角是唯一额度口径；模型统一 Qwen，§53 M0 用户拍板） =====
   // premium/DeepSeek 分支已下线（§53 M6）：完整实现见 git 历史 v1.8.2（tag 可整段恢复）。
   if (p === '/api/ai/chat' && m === 'POST') {
-    if (!env.SILICONFLOW_KEY) return json({ error: '服务端未配置 AI Key，请联系管理员' }, 500);
+    // §118：AI 后端自动选择 —— SiliconFlow 优先，OpenRouter 兜底（2026-08-27：
+    // 用户给的硅基流动 Key 官方验证 invalid，OpenRouter Key 实测有效；
+    // 两平台同有 Qwen3.5-35B-A3B，OpenRouter 需显式关思考 reasoning.enabled=false，
+    // 请求体两种关法参数都带，各自忽略不认识的字段）。
+    if (!env.SILICONFLOW_KEY && !env.OPENROUTER_KEY)
+      return json({ error: '服务端未配置 AI Key，请联系管理员' }, 500);
+    const AI = env.SILICONFLOW_KEY ? {
+      base: env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1',
+      key: env.SILICONFLOW_KEY,
+      models: [env.CHAT_MODEL || 'Qwen/Qwen3.5-35B-A3B', env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3.5-9B']
+    } : {
+      base: 'https://openrouter.ai/api/v1',
+      key: env.OPENROUTER_KEY,
+      models: [env.OR_CHAT_MODEL || 'qwen/qwen3.5-35b-a3b', env.OR_CHAT_MODEL_FALLBACK || 'qwen/qwen3.5-9b']
+    };
     const plan = (await planOf(env, user.id)).plan;
     // 防滥用限速保留（正常用户碰不到）
     if (!await rateLimit(env, `ai:m:${user.id}`, Number(env.AI_RPM || 10), 60_000)) {
@@ -1097,10 +1111,7 @@ async function route(request, env, ctx) {
     }
 
     // ── 模型：统一 Qwen（免费池），主模型重试 + 备用模型（拥挤时段兜底）
-    const models = [
-      env.CHAT_MODEL || 'Qwen/Qwen3.5-35B-A3B',
-      env.CHAT_MODEL_FALLBACK || 'Qwen/Qwen3.5-9B'
-    ];
+    const models = AI.models;
 
     // ── T1（§53）：真流式。SSE 直通透传上游（OpenAI 兼容格式），客户端自行解析 delta。
     //   计量在开流前完成（流中无法再回头扣）；上游连不上则不扣、退回错误 JSON。
@@ -1110,15 +1121,15 @@ async function route(request, env, ctx) {
       let resp = null, streamErr = '';
       for (const model of models) {
         try {
-          const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+          const r = await fetch(`${AI.base}/chat/completions`, {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${env.SILICONFLOW_KEY}`,
+              'Authorization': `Bearer ${AI.key}`,
               'Content-Type': 'application/json',
               'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)'
             },
             body: JSON.stringify({ model, messages, temperature, max_tokens: 2048,
-              enable_thinking: false, stream: true }),
+              enable_thinking: false, reasoning: { enabled: false }, stream: true }),
             signal: AbortSignal.timeout(25_000)      // X1：25 秒拿不到响应头就换模型
           });
           if (r.ok && r.body) { resp = r; break; }   // X3：确认可用才继续（扣费在此之后）
@@ -1158,16 +1169,16 @@ async function route(request, env, ctx) {
     let data = null, ok = false, lastMsg = 'AI 上游异常';
     outer: for (const model of models) {
       for (let attempt = 0; attempt < 3; attempt++) {
-        const resp = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+        const resp = await fetch(`${AI.base}/chat/completions`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${env.SILICONFLOW_KEY}`,
+            'Authorization': `Bearer ${AI.key}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'User-Agent': 'Looka/1.9 (+https://looka.foyue.org)'
           },
           // enable_thinking:false —— Qwen3 系是思考型模型，默认会把正文写进 reasoning_content
-          body: JSON.stringify({ model, messages, temperature, max_tokens: 2048, enable_thinking: false })
+          body: JSON.stringify({ model, messages, temperature, max_tokens: 2048, enable_thinking: false, reasoning: { enabled: false } })
         });
         data = await resp.json().catch(() => ({}));
         // 200 但正文为空同样算失败（2026-08-21 实测的坑）
@@ -1329,7 +1340,7 @@ async function route(request, env, ctx) {
       const t0 = Date.now();
       try {
         const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/models?sub_type=speech`, {
-          headers: { 'Authorization': `Bearer ${env.SILICONFLOW_KEY}` }
+          headers: { 'Authorization': `Bearer ${AI.key}` }
         });
         const d = await r.json().catch(() => ({}));
         const ids = (d?.data || []).map(x => x.id);
@@ -1345,10 +1356,10 @@ async function route(request, env, ctx) {
       const t0 = Date.now();
       const mdl = String(b.model || 'deepseek-ai/DeepSeek-V3.2');
       try {
-        const r = await fetch(`${env.SILICONFLOW_BASE || 'https://api.siliconflow.cn/v1'}/chat/completions`, {
+        const r = await fetch(`${AI.base}/chat/completions`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${env.SILICONFLOW_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: mdl, max_tokens: 40, enable_thinking: false,
+          headers: { 'Authorization': `Bearer ${AI.key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: mdl, max_tokens: 40, enable_thinking: false, reasoning: { enabled: false },
             messages: [{ role: 'user', content: '用一句中文回答：你是谁？' }] })
         });
         const d = await r.json().catch(() => ({}));

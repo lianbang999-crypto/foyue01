@@ -1509,4 +1509,4 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | D3 | DeerLoading 统一加载态(替换 3 处转圈,清 4 处孤儿 import) | [~] |
 | C5 | Web 贴纸 Popover:pointer-events 打开+登记日程/编辑/复合删除(对齐图30语义) | [~] |
 | C挂 | 周/日视图、待办中枢、日记同级、全页编辑器、已完成清单页 —— 页面级重构,下轮专章 | [ ] |
-| F | 小鹿 AI:代码全通,wrangler secret list=[] 实证无 SILICONFLOW_KEY,等用户提供 | 等用户 |
+| F | 小鹿 AI 上线:硅基流动 Key 官方验证 invalid(已删);OpenRouter Key 有效,worker 改双后端自动选择(SiliconFlow 优先/OpenRouter 兜底,reasoning 显式关);端到端实测通(注册→对话→Qwen3.5 回复) | [x] |
