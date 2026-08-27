@@ -150,6 +150,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             SectionLabel(tr("小鹿"))
             NavRow(tr("小鹿 AI"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
             Hairline()
+            // §118：商店独立入口 —— v42 只嵌在贴纸选择器里，用户根本找不到（实机反馈）
+            NavRow(tr("鹿角商店"), icon = LkIcons.Sticker, value = tr("用鹿角解锁贴纸包")) { nav.navigate("shop") }
+            Hairline()
 
             SectionLabel(tr("外观"))
             NavRow(

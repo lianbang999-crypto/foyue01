@@ -10862,3 +10862,37 @@ Lifebear 着せかえ实机图）+ 「网站要改造吗以对接皮肤主题」
 | F | 小鹿 AI：等用户提供 SILICONFLOW_KEY，一条命令配上即通 | 用户 |
 
 视频附件：明确不在本章（第二步单独评估，用户已同意）。
+
+## 一百一十八、§118（2026-08-27）：v42 崩溃热修 + 商店独立入口 + AI 模型链定稿
+
+### 一、背景
+
+用户实机三条 + 模型指令：①Looka 点开笔记/写好笔记点开就**崩溃**；②商店更新了没看到；
+③统一用一个 LOOKA（卸 dev）；④模型"选聪明的"（OpenRouter 免费新模型 + DeepSeek V4 / Qwen3.6 备用）。
+
+### 二、🔴 根因
+
+**① 崩溃（P0，v42 由我引入）**：AttachmentSection 的拍照临时文件指向 `cacheDir`，
+但 `file_paths.xml` 只声明了 `external-files-path Download/` —— `FileProvider.getUriForFile`
+对未声明的根**当场抛 IllegalArgumentException**，且调用在 remember 块（组合期），
+等于打开任何带附件区的页面（笔记编辑/任务详情/日程详情/日记）必崩。
+用户复现「写好笔记点开就崩」= 保存后 noteUid 非空 → 挂附件区 → 崩。**教训：[~] 未实测
+的组件挂了四个页面，崩溃面放大四倍 —— 挂载面大的新组件应先单点灰度。**
+
+**② 商店没看到**：v42 把解锁卡只嵌在贴纸选择器锁定 tab 里 —— 入口太深，用户找不到。
+（崩溃在发生 = v42 确已装上，商店确实在但发现不了。）
+
+**③ 双版本**：debug（com.looka.app.debug）与正式并存，用户拍板只留正式版。
+
+**④ 模型**：OpenRouter 无字面 "OX" 模型；grok 全付费、gpt-oss 付费且旧。
+`openrouter/free`（官方免费路由）实测会路由到 cohere/north-mini-code:free 这类
+代码向 mini 模型 —— 与「选聪明的」矛盾，只配兜底。
+
+### 三、处置
+
+| # | 处置 |
+|---|---|
+| S1 | file_paths.xml 声明 `cache-path`；capUri 包 runCatching 降级（provider 意外只隐藏拍照入口，不崩页） |
+| S2 | 商店独立页 ShopScreen（更多→小鹿组「鹿角商店」行；封面+张数+价格红字骨架对齐图 119）；选择器内嵌解锁卡保留 |
+| S3 | 模型链：主 `deepseek/deepseek-v4-flash`（$0.08/M 入，聪明且极便宜）→ 备 `qwen/qwen3.6-35b-a3b` → 兜底 `openrouter/free`；reasoning 关闭参数三处齐 |
+| S4 | 双版本：无代码改动，回复引导（先确认数据在哪边再卸 dev） |

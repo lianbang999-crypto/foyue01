@@ -65,13 +65,19 @@ fun AttachmentSection(vm: LookaViewModel, ownerType: String, ownerUid: String) {
     var preview by remember { mutableStateOf<Attachment?>(null) }
     var refresh by remember { mutableStateOf(0) }
 
-    // 相机：拍到 cache 临时文件，成功后走统一导入（压缩+落盘+建记录）
+    // 相机：拍到 cache 临时文件，成功后走统一导入（压缩+落盘+建记录）。
+    // §118 P0：getUriForFile 包 runCatching —— v42 因 cache 根未声明在这里
+    // 组合期抛异常，四个页面全崩。现在根已声明；再有任何 provider 配置意外，
+    // 降级为隐藏拍照入口（相册仍可用），不再拖垮整页。
     val capFile = remember { File(ctx.cacheDir, "capture_${ownerUid.hashCode()}.jpg") }
     val capUri = remember {
-        FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", capFile)
+        runCatching {
+            FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", capFile)
+        }.getOrNull()
     }
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        if (ok) vm.addAttachment(ownerType, ownerUid, capUri) { done ->
+        val u = capUri
+        if (ok && u != null) vm.addAttachment(ownerType, ownerUid, u) { done ->
             if (!done) toast(ctx, tr("图片读取失败"))
         }
     }
@@ -135,14 +141,16 @@ fun AttachmentSection(vm: LookaViewModel, ownerType: String, ownerUid: String) {
             title = { DlgTitle(tr("添加图片")) },
             text = {
                 Column {
-                    Row(
-                        Modifier.fillMaxWidth().rowClick {
-                            addMenu = false
-                            runCatching { takePicture.launch(capUri) }
-                                .onFailure { toast(ctx, tr("无法打开相机")) }
-                        }.padding(vertical = 14.dp)
-                    ) { Text(tr("拍照"), fontSize = 16.sp) }
-                    Hairline()
+                    if (capUri != null) {
+                        Row(
+                            Modifier.fillMaxWidth().rowClick {
+                                addMenu = false
+                                runCatching { takePicture.launch(capUri) }
+                                    .onFailure { toast(ctx, tr("无法打开相机")) }
+                            }.padding(vertical = 14.dp)
+                        ) { Text(tr("拍照"), fontSize = 16.sp) }
+                        Hairline()
+                    }
                     Row(
                         Modifier.fillMaxWidth().rowClick {
                             addMenu = false

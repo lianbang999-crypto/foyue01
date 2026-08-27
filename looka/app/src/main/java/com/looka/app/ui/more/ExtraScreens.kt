@@ -868,3 +868,120 @@ fun DeerMemorySection(vm: LookaViewModel) {
         }
     }
 }
+
+// ==================== §118：鹿角商店（独立页） ====================
+
+/**
+ * 商店独立页 —— v42 只把解锁卡嵌在贴纸选择器锁定 tab 里，用户根本找不到（实机反馈）。
+ * 形态对齐 Lifebear 着せかえショップ的骨架（图 119/120：列表卡 + 名称 + 价格红字），
+ * v1 只有两个贴纸包，不做三页签 —— 商品多了再加（克制）。
+ */
+@Composable
+fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.NavHostController) {
+    val ctx = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val authed = remember { com.looka.app.net.Api.authed(ctx) }
+    var antler by remember { mutableStateOf(-1) }
+    var isPro by remember { mutableStateOf(false) }
+    var owned by remember { mutableStateOf(com.looka.app.data.Prefs.ownedPacks(ctx)) }
+    var prices by remember { mutableStateOf(mapOf<String, Int>()) }
+    var busyId by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        if (!authed) return@LaunchedEffect
+        runCatching {
+            val r = com.looka.app.net.Api.shopItems(ctx)
+            antler = r.optInt("antler", -1)
+            isPro = r.optString("plan") == "pro"
+            val its = r.optJSONArray("items")
+            val pm = mutableMapOf<String, Int>()
+            for (i in 0 until (its?.length() ?: 0)) {
+                val o = its!!.getJSONObject(i)
+                pm[o.optString("id").removePrefix("pack:")] = o.optInt("price")
+            }
+            prices = pm
+            val ow = r.optJSONArray("owned")
+            val set = mutableSetOf<String>()
+            for (i in 0 until (ow?.length() ?: 0)) set.add(ow!!.getString(i).removePrefix("pack:"))
+            com.looka.app.data.Prefs.setOwnedPacks(ctx, set)
+            owned = set
+        }
+    }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("鹿角商店"), onBack = { nav.popBackStack() }) {
+            if (antler >= 0 && !isPro) Text(
+                "🦌 $antler", fontSize = 14.sp, color = Ink,
+                modifier = Modifier.padding(end = 14.dp)
+            )
+        }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            if (!authed) {
+                Text(
+                    tr("登录后可用鹿角解锁贴纸包（每天签到送 10 🦌）"),
+                    fontSize = 13.sp, color = GrayText,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            val packs = remember { com.looka.app.util.StampAssets.packs(ctx) }
+            packs.filter { it.id != "daily" }.forEach { pk ->
+                val has = pk.id in owned
+                val price = prices[pk.id] ?: if (pk.id == "dunhuang") 30 else 20
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 封面 = 包内第一枚
+                    val cover = pk.stamps.firstOrNull()?.let { com.looka.app.util.StampAssets.bitmap(ctx, it.id) }
+                    if (cover != null) androidx.compose.foundation.Image(
+                        cover, pk.name(), modifier = Modifier.size(52.dp)
+                    ) else Text("🦌", fontSize = 34.sp)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(pk.name(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            tr("{0} 枚贴纸", pk.stamps.size.toString()),
+                            fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    when {
+                        has -> Text(tr("已解锁"), fontSize = 13.sp, color = GrayText)
+                        else -> androidx.compose.material3.Button(
+                            onClick = {
+                                if (!authed) { com.looka.app.ui.common.toast(ctx, tr("请先在「更多 → 账号」登录")); return@Button }
+                                if (busyId.isNotBlank()) return@Button
+                                busyId = pk.id
+                                scope.launch {
+                                    runCatching {
+                                        val r = com.looka.app.net.Api.shopBuy(ctx, "pack:" + pk.id)
+                                        if (r.optBoolean("ok")) {
+                                            owned = owned + pk.id
+                                            com.looka.app.data.Prefs.setOwnedPacks(ctx, owned)
+                                            antler = r.optInt("antler", antler)
+                                            com.looka.app.ui.common.toast(ctx, tr("已解锁「{0}」🦌", pk.name()))
+                                        } else com.looka.app.ui.common.toast(ctx, r.optString("error", tr("解锁失败，请稍后再试")))
+                                    }.onFailure { com.looka.app.ui.common.toast(ctx, it.message ?: tr("解锁失败，请稍后再试")) }
+                                    busyId = ""
+                                }
+                            },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = com.looka.app.ui.theme.SaveDark),
+                            shape = RoundedCornerShape(5.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            if (busyId == pk.id) com.looka.app.ui.common.DeerLoading(13.sp)
+                            else Text(
+                                if (isPro) tr("免费领取") else tr("{0} 鹿角", price.toString()),
+                                fontSize = 13.sp, color = Color.White
+                            )
+                        }
+                    }
+                }
+                Hairline()
+            }
+            Text(
+                tr("「日常」包 42 枚永久免费 · Pro 会员全部免费 · 每天签到送 10 🦌"),
+                fontSize = 12.sp, color = GrayText,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}

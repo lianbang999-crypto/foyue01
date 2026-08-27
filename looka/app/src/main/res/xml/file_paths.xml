@@ -2,4 +2,8 @@
 <paths>
     <!-- 自更新 APK 落在应用私有下载目录 -->
     <external-files-path name="downloads" path="Download/"/>
+    <!-- §118 P0：拍照临时文件在 cacheDir。v42 忘了声明这个根 ——
+         getUriForFile 对未声明的根直接抛 IllegalArgumentException，
+         而调用在 AttachmentSection 组合期，等于打开笔记/任务/日程详情/日记就崩。 -->
+    <cache-path name="capture" path="/"/>
 </paths>

@@ -1510,3 +1510,12 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | C5 | Web 贴纸 Popover:pointer-events 打开+登记日程/编辑/复合删除(对齐图30语义) | [~] |
 | C挂 | 周/日视图、待办中枢、日记同级、全页编辑器、已完成清单页 —— 页面级重构,下轮专章 | [ ] |
 | F | 小鹿 AI 上线:硅基流动 Key 官方验证 invalid(已删);OpenRouter Key 有效,worker 改双后端自动选择(SiliconFlow 优先/OpenRouter 兜底,reasoning 显式关);端到端实测通(注册→对话→Qwen3.5 回复) | [x] |
+
+## P58 · §118 崩溃热修+商店入口+模型链(v1.23.1(43),2026-08-27)
+
+| | 项 | 状态 |
+|---|---|---|
+| S1 | cache-path 声明 + capUri runCatching 降级(四页面崩溃修复) | [~] |
+| S2 | ShopScreen 独立商店页 + 更多页入口行 | [~] |
+| S3 | AI 模型链:deepseek-v4-flash → qwen3.6-35b → openrouter/free(worker 已部署实测) | [x] |
+| F2 | 小鹿 AI 端到端通(§118 前半):OpenRouter Key 有效,双后端自动选择 | [x] |
