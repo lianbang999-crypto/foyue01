@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 47,
-  "versionName": "1.26.0",
+  "versionCode": 48,
+  "versionName": "1.27.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4406705,
-  "sha256": "343f3964d782c6802df91106ee1fbbde34598fb1f1a012843c86f660b49639d8",
-  "changelog": "邮箱验证可以用了；小鹿支持发图片（拍的课表、海报发给它，帮你记成日程）；主题新玩法：挑一张自己的照片，取它的颜色一键换成你的专属主题",
+  "size": 4441309,
+  "sha256": "caf49ba3f58ced690925a151a481c2c9b8c2adbd088355627b940638610d5d80",
+  "changelog": "小鹿全面升级:草稿卡看得更清楚(绝对日期加粗/删除默认不勾/冲突提醒)、聊天记录保留在本机(30天)、失败可重试;聊天里让小鹿直接给你配主题;商店可看整套贴纸;皮肤渲染层就绪",
   "minSupported": 1
 }
