@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 /**
  * AI 调用三级路由：
  * 1) 用户填了自己的硅基流动 Key → 直连（走用户自己的账单）
- * 2) 已登录 Looka 账号 → 服务端代理（Key 不进客户端；对话不限次，公平限速）
+ * 2) 已登录 Looka 账号 → 服务端代理（Key 不进客户端；按鹿角计次，见 economy.v1）
  * 3) 都没有 → 抛出引导性错误
  */
 object AiClient {

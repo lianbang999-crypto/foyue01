@@ -6,7 +6,7 @@ import android.content.SharedPreferences
 /** 应用偏好：AI / 日历显示 / 新建默认值 / 账号同步 / 主题 / 语言 / 提醒 / 更新 */
 object Prefs {
 
-    // 自定义 Key 默认为空：默认走 Looka 服务端代理（对话不限次，Key 不进客户端）
+    // 自定义 Key 默认为空：默认走 Looka 服务端代理（按鹿角计次，Key 不进客户端）
     const val DEFAULT_API_KEY = ""
     const val DEFAULT_BASE_URL = "https://api.siliconflow.cn/v1"
     const val DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"

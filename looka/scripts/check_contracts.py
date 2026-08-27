@@ -85,6 +85,37 @@ def main() -> int:
     css_semantic = {v for v in css_semantic if v not in ("skin_top", "skin_bottom")}
     ok &= compare("Web --lk-* ↔ theme-tokens.schema", need, css_semantic)
 
+    # §119 T1：经济合同对账 —— worker 的 ANTLER 常量必须与 economy.v1.json 一致
+    #（文案与页面读合同，服务端读常量，两边漂移 = 用户看到的数字与实际扣的不一样）
+    eco = json.loads((ROOT / "docs/contracts/economy.v1.json").read_text())
+    wk = (ROOT / "server/src/worker.js").read_text()
+    m = re.search(r"const ANTLER = \{(.*?)\n\};", wk, re.S)
+    assert m, "worker 里找不到 ANTLER 常量"
+    seg = m.group(1)
+    ok2 = True
+    gm = re.search(r"grant:\s*\{\s*free:\s*(\d+),\s*pro:\s*(\d+)", seg)
+    if not gm or int(gm.group(1)) != eco["grant_daily"]["free"] or int(gm.group(2)) != eco["grant_daily"]["pro"]:
+        print("✗ 每日发放：worker ≠ economy.v1"); ok2 = False
+    cm = re.search(r"chat:\s*(\d+)", seg)
+    if not cm or int(cm.group(1)) != eco["cost"]["chat"]:
+        print("✗ 对话成本：worker ≠ economy.v1"); ok2 = False
+    if "cap:" in seg and eco["balance_cap"] is None:
+        print("✗ economy.v1 已定无上限，worker 仍有 cap"); ok2 = False
+    if ok2: print("✓ ANTLER ↔ economy.v1：发放/成本/无上限一致")
+    ok &= ok2
+
+    # §119 T1：商品对账 —— worker SHOP_ITEMS 与 catalog.v1.json 一致
+    cat = json.loads((ROOT / "docs/contracts/catalog.v1.json").read_text())
+    ok3 = True
+    for it in cat["items"]:
+        pm = re.search(r"id:\s*'%s'[^}]*price:\s*(\d+)[^}]*count:\s*(\d+)" % re.escape(it["id"]), wk)
+        if not pm:
+            print(f"✗ 商品 {it['id']} 不在 worker SHOP_ITEMS"); ok3 = False
+        elif int(pm.group(1)) != it["price_antler"] or int(pm.group(2)) != it["count"]:
+            print(f"✗ 商品 {it['id']} 价格/数量：worker ≠ catalog.v1"); ok3 = False
+    if ok3: print(f"✓ SHOP_ITEMS ↔ catalog.v1：{len(cat['items'])} 件商品一致")
+    ok &= ok3
+
     if ok:
         print("\n全部一致。")
     else:

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://looka.foyue.org/contracts/economy.v1.json",
+  "title": "Looka 鹿角经济合同 v1（全站 UIUX 统一规划 D2 冻结）",
+  "description": "鹿角 = Looka 内的通用使用额度。核心记录能力永不消耗鹿角。发放是『当天实际使用后获得』的惰性到账（无签到、不连签、断签无惩罚、不补发）。此文件是 App/网页/服务端/文案的唯一数字来源——页面不得手写这些数字。",
+  "schema_version": "1.0",
+  "grant_daily": { "free": 10, "pro": 50 },
+  "grant_semantics": "当天使用后获得；未使用日期不补发",
+  "balance_cap": null,
+  "balance_cap_note": "无上限、不过期、不清零（文档 K 拍板；2026-08-27 前旧值 free 60 / pro 300 已迁移移除）",
+  "cost": {
+    "chat": 1,
+    "theme": 2,
+    "ocr": 3,
+    "stickers": 20
+  },
+  "zero_balance_fallback": { "per_day": 3, "note": "余额为 0 后每日保底次数，不扣费" },
+  "buckets": {
+    "granted": "赠送桶（每日到账进这里，先消耗）",
+    "paid": "购买桶（未来开放；不过期）",
+    "order": "granted 先消耗，paid 后消耗"
+  },
+  "never_costs": [
+    "日程", "任务", "笔记", "日记", "提醒", "贴已有贴纸", "同步", "搜索", "备份", "导出"
+  ]
+}

@@ -128,7 +128,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                     Modifier.weight(1f)
                 ) { nav.navigate("subscription") }
                 BlackTopEntry(LkIcons.Settings, tr("设置"), Modifier.weight(1f)) {
-                    nav.navigate("calSettings")
+                    // §119 T5：原来直跳 calSettings —— 名义总设置实际只有日历设置，
+                    //《全站统一规划》点名的假总入口。现在进真正的设置中心。
+                    nav.navigate("settingsHub")
                 }
             }
             // 品牌区
@@ -151,7 +153,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             NavRow(tr("小鹿 AI"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
             Hairline()
             // §118：商店独立入口 —— v42 只嵌在贴纸选择器里，用户根本找不到（实机反馈）
-            NavRow(tr("鹿角商店"), icon = LkIcons.Sticker, value = tr("用鹿角解锁贴纸包")) { nav.navigate("shop") }
+            NavRow(tr("装扮商店"), icon = LkIcons.Sticker, value = tr("贴纸包与主题")) { nav.navigate("shop") }
             Hairline()
 
             SectionLabel(tr("外观"))
@@ -164,9 +166,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             Hairline()
 
             SectionLabel(tr("设置"))
-            NavRow(tr("日历设置"), icon = LkIcons.Settings) { nav.navigate("calSettings") }
+            NavRow(tr("日历与显示"), icon = LkIcons.Settings) { nav.navigate("calSettings") }   // §119 术语对齐
             Hairline()
-            NavRow(tr("提醒自检"), icon = LkIcons.Bell) { nav.navigate("selfcheck") }
+            NavRow(tr("提醒诊断"), icon = LkIcons.Bell) { nav.navigate("selfcheck") }   // §119 T6 改名(A2 术语冻结)
             Hairline()
             NavRow(
                 tr("语言 / Language"), icon = Icons.Outlined.Translate,
@@ -288,7 +290,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                             tr("· 灵感来自敦煌壁画「九色鹿」：一鹿九色，故有九套主题\n") +
                             tr("· 日历为中心：日程、任务、日记、印章围绕日期组织\n") +
                             tr("· 数据本机优先，登录后云同步\n") +
-                            tr("· 小鹿 AI 助手（免费每天 10 次，Pro 不限次）\n") +
+                            tr("· 小鹿 AI 助手（鹿角计次：每天使用即获鹿角）\n") +   // §119 T3：原「每天10次/Pro不限次」是过时承诺
                             tr("· 独立原创品牌与设计"),
                     fontSize = 13.sp, lineHeight = 21.sp
                 )

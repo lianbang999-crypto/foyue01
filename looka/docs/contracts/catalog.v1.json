@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://looka.foyue.org/contracts/catalog.v1.json",
+  "title": "Looka 装扮商店商品目录 v1",
+  "description": "商品的唯一事实源：服务端 SHOP_ITEMS、App 商店页、网页与帮助页共同读取。页面禁止兜底手写价格。取得类型：free=免费领 / antler=鹿角解锁 / pro_free=Pro 0 鹿角永久领取。",
+  "schema_version": "1.0",
+  "store_name": "装扮商店",
+  "items": [
+    {
+      "id": "pack:dunhuang",
+      "kind": "sticker_pack",
+      "name_key": "敦煌",
+      "count": 38,
+      "price_antler": 30,
+      "acquire": { "free_user": "antler", "pro_user": "pro_free" },
+      "permanent": true
+    },
+    {
+      "id": "pack:cow",
+      "kind": "sticker_pack",
+      "name_key": "牛来",
+      "count": 24,
+      "price_antler": 20,
+      "acquire": { "free_user": "antler", "pro_user": "pro_free" },
+      "permanent": true
+    }
+  ],
+  "always_free": [
+    { "id": "pack:daily", "kind": "sticker_pack", "name_key": "日常", "count": 42, "note": "基础表达不设墙" }
+  ]
+}

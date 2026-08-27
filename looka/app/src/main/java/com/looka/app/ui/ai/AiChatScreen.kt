@@ -415,7 +415,7 @@ private fun ChatBubble(m: ChatMsg, bubbleVm: LookaViewModel? = null, bubbleNav: 
 }
 
 /**
- * 模型档位条：标准（不限次）/ 高级（Pro 不限量·免费档每月 60 次体验）。
+ * 模型档位条（§53 已下线的历史设计；现行统一鹿角计次）。
  * 2026-08-21 决定：旗舰档下线、鹿角撤出 UI —— 对用户只有「次数」，没有代币概念。
  */
 

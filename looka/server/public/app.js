@@ -1731,7 +1731,7 @@ async function refreshMe() {
     localStorage.setItem('lk_nick', S.nickname);
     // 有昵称就显示昵称 —— 用户看到的是自己起的名字
     const who = S.nickname || S.account;
-    $('#menuPlan').textContent = `${who} · ${me.plan === 'pro' ? 'Pro · AI ' + t('不限次') : t('免费版') + ' · AI ' + t('每天 10 次')}`;
+    $('#menuPlan').textContent = `${who} · ${me.plan === 'pro' ? 'Pro' : t('免费版')}`   /* §119 T3：AI 权益改鹿角计次，菜单不再写死旧口径 */;
     // P2-A9（网页版）：付款等待中 → 开通即提示并清除等待
     if (me.plan === 'pro' && +localStorage.getItem('lk_pay_pending')) {
       localStorage.removeItem('lk_pay_pending');
@@ -1933,9 +1933,9 @@ async function boot() {
   // F-7（§50 六）：开通前把权益与「到期后会怎样」说清楚 ——「你保留了」在前
   if (mPro) mPro.onclick = () => {
     modal(`<h3>Looka Pro</h3>
-      <p class="dim-note">${t('AI 不限次 · 更聪明的小鹿 · 生成主题与表情包（规划中）· 标签与年度回顾（规划中）')}</p>
+      <p class="dim-note">${t('每天 50 枚鹿角 · 官方装扮 0 鹿角领取 · 更多个性化（规划中）')}</p>
       <p style="font-size:12px;margin:8px 0 2px"><b>${t('到期后你保留')}</b>：${t('全部内容和数据 · 做过的主题 · 云同步与导出 · 提醒闹钟')}</p>
-      <p style="font-size:12px;margin:2px 0 8px"><b>${t('到期后暂停')}</b>：${t('AI 不限次（改回每天 10 次）· 生成新主题 / 表情包')}</p>
+      <p style="font-size:12px;margin:2px 0 8px"><b>${t('到期后')}</b>：${t('每日鹿角回到 10 枚 · 已领取的装扮永久保留')}</p>
       <p class="dim-note">${t('不偷偷扣钱：可随时取消，取消后立即不再扣款。')}</p>
       <div class="modal-btns"><button class="btn-mini" id="proCancel">${t('再想想')}</button>
       <button class="btn-dark" id="proGo">${t('去开通 · 12元/月')}</button></div>`);
@@ -2195,7 +2195,7 @@ async function boot() {
 
 
   // AI
-  // 模型档位（与 App 同构：标准不限次 / 高级 GPT）
+  // 模型档位（§53 已下线的历史设计；现行统一鹿角计次）
   const tierBar = document.getElementById('tierBar');
   if (tierBar) {
     const setTier = v => {

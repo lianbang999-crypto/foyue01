@@ -168,16 +168,18 @@ function pickText(data) {
 // 保护用户真金白银买的那部分。余额表是流水的冗余缓存，两者必须在同一个 batch 里原子更新。
 // §55（2026-08-22 定案）：鹿角是唯一额度口径（取代按天次数），按动作计价、每日到账。
 // 红线：写日记/建日程/贴表情/同步/导出/闹钟 永不消耗。
+// §119 T1/T4：数字与 docs/contracts/economy.v1.json 一一对应（check_contracts 对账）。
+// cap 已按《全站统一规划》K 表拍板移除 —— 无上限、不过期、不清零；
+// 旧数据无需迁移：移除上限只会让余额可以更多，不会动已有余额。
 const ANTLER = {
-  grant: { free: 10, pro: 50 },       // 每日到账（进 App 自动领，无签到感：不连签、断签无惩罚）
-  cap:   { free: 60, pro: 300 },      // 赠送桶累计上限（攒得住但不无限；paid 桶不受限）
+  grant: { free: 10, pro: 50 },       // 每日到账（当天使用后获得，无签到感：不连签、断签无惩罚、不补发）
   cost:  { chat: 1, theme: 2, ocr: 3, stickers: 20 }  // 按动作：对话/生成主题/截图识别/表情包
 };
 
 const ymNow = () => new Date().toISOString().slice(0, 7);   // YYYY-MM
 const dayNow = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD（鹿角日发周期）
 
-/** 读余额；顺带做「惰性月度发放」——不用定时任务，用户来了才结算，天然幂等 */
+/** 读余额；顺带做「惰性**日**发放」——不用定时任务，用户来了才结算，天然幂等（§119 T2：原注释写"月度"是 §54 月发时代的残留） */
 async function antlerOf(env, userId, plan) {
   let row = await env.DB.prepare('SELECT * FROM antler_balance WHERE user_id = ?1').bind(userId).first();
   if (!row) {
@@ -192,10 +194,9 @@ async function antlerOf(env, userId, plan) {
   let grantedToday = 0;
   if (row.grant_cycle !== cycle) {
     const add = ANTLER.grant[plan] || ANTLER.grant.free;
-    const cap = ANTLER.cap[plan] || ANTLER.cap.free;
-    // 上限之上不再发，但已有余额不清零
-    const next = Math.min(row.granted + add, Math.max(cap, row.granted));
-    const real = next - row.granted;
+    // §119 T4：cap 移除（economy.v1：无上限、不清零）——每天足额到账
+    const next = row.granted + add;
+    const real = add;
     await env.DB.batch([
       env.DB.prepare(
         'UPDATE antler_balance SET granted = ?2, grant_cycle = ?3, updated_at = ?4 WHERE user_id = ?1'
@@ -854,8 +855,8 @@ async function route(request, env, ctx) {
     ).bind(user.id).all();
     return json({
       ok: true, plan: pl.plan, ...bal,
-      grant_monthly: ANTLER.grant[pl.plan] || ANTLER.grant.free,
-      cap: ANTLER.cap[pl.plan] || ANTLER.cap.free,
+      // §119 T2：字段名对齐日发语义（原 grant_monthly 名不副实；App/Web 零消费方，直接改名）
+      grant_daily: ANTLER.grant[pl.plan] || ANTLER.grant.free,
       cost: ANTLER.cost,
       ledger: rows?.results || []
     });
@@ -949,7 +950,7 @@ async function route(request, env, ctx) {
     let paid = 0;
     if (plan !== 'pro') {   // Pro 免费领取；普通用户扣鹿角（antlerSpend 自带余额校验+账本）
       const r = await antlerSpend(env, user.id, plan, item.price, 'shop', item.id);
-      if (!r) return json({ error: '鹿角不够啦，明天签到还有 🦌', need: item.price }, 402);
+      if (!r) return json({ error: '鹿角不够啦，明天使用 Looka 还会获得 🦌', need: item.price }, 402);
       paid = item.price;
     }
     await env.DB.prepare(

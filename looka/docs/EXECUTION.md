@@ -1519,3 +1519,19 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | S2 | ShopScreen 独立商店页 + 更多页入口行 | [~] |
 | S3 | AI 模型链:deepseek-v4-flash → qwen3.6-35b → openrouter/free(worker 已部署实测) | [x] |
 | F2 | 小鹿 AI 端到端通(§118 前半):OpenRouter Key 有效,双后端自动选择 | [x] |
+
+## P59 · §119 全站统一规划 P0+I2 首批(v1.24.0(44),2026-08-27)
+
+| | 项 | 状态 |
+|---|---|---|
+| T0 | 《全站UIUX统一规划v1.0》逐条核查:现状声称全部属实,文档无事实性错误 | [x] |
+| T1 | economy.v1.json + catalog.v1.json 合同入库;check_contracts 挂 ANTLER/SHOP_ITEMS 对账(全绿) | [x] |
+| T2 | "签到"口径清零(worker 1 处文案+App 2 处);grant_monthly→grant_daily;惰性注释修正 | [~] |
+| T3 | "不限次"清零:App 1 处可见承诺+4 处注释+Web 3 处可见+1 注释;词典 32 条承诺类孤儿 key 删除 | [~] |
+| T4 | 鹿角 cap 移除(无上限、不清零,economy.v1 冻结;旧数据无需迁移) | [~] |
+| T5 | SettingsHubScreen 设置中心;黑区"设置"假入口改指真中心 | [~] |
+| T6 | "提醒自检"→"提醒诊断"、"日历设置"→"日历与显示"(A2 术语冻结) | [~] |
+| T7 | 购买逻辑收一套:选择器锁定卡改 LockedPackHint 引导,PackUnlockCard 退役;商店改名"装扮商店" | [~] |
+| T8 | 附件灰度收缩:任务/日程/日记三处下线,只留笔记页真机闭环(H2 纪律) | [~] |
+| T9 | DlgTitle 19→20sp(C2 对齐实机) | [~] |
+| 留 | P1 拆"订阅与小鹿AI"两页、P2 组件注册、P3 钱包、P4 小鹿三模式、P5 AI拍照、P6 全站迁移 | [ ] |

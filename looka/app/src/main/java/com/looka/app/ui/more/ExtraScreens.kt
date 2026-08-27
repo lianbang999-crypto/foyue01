@@ -65,6 +65,7 @@ import com.looka.app.ui.calendar.SectionLabel
 import com.looka.app.ui.common.EmptyDeer
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
+import com.looka.app.ui.common.NavRow
 import com.looka.app.ui.common.SwitchRow
 import com.looka.app.ui.common.plainClick
 import com.looka.app.ui.common.toast
@@ -907,7 +908,7 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
         }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("鹿角商店"), onBack = { nav.popBackStack() }) {
+        LookaTopBar(tr("装扮商店"), onBack = { nav.popBackStack() }) {
             if (antler >= 0 && !isPro) Text(
                 "🦌 $antler", fontSize = 14.sp, color = Ink,
                 modifier = Modifier.padding(end = 14.dp)
@@ -916,7 +917,7 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             if (!authed) {
                 Text(
-                    tr("登录后可用鹿角解锁贴纸包（每天签到送 10 🦌）"),
+                    tr("登录后可用鹿角解锁贴纸包（当天使用 Looka 即获 10 🦌）"),
                     fontSize = 13.sp, color = GrayText,
                     modifier = Modifier.padding(16.dp)
                 )
@@ -978,10 +979,39 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
                 Hairline()
             }
             Text(
-                tr("「日常」包 42 枚永久免费 · Pro 会员全部免费 · 每天签到送 10 🦌"),
+                tr("「日常」包 42 枚永久免费 · Pro 会员 0 鹿角永久领取 · 当天使用 Looka 即获鹿角"),
                 fontSize = 12.sp, color = GrayText,
                 modifier = Modifier.padding(16.dp)
             )
+        }
+    }
+}
+
+// ==================== §119 T5：设置中心 ====================
+
+/**
+ * 真正的设置总入口 —— 此前黑区「设置」直跳日历设置（《全站统一规划》点名的假总入口）。
+ * 按规划 B1 的设置域分层：日历与显示 / 提醒诊断 / 语言与地区。
+ * 「小鹿设置」在 P1 批拆出「订阅与小鹿 AI」后加入。
+ */
+@Composable
+fun SettingsHubScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.NavHostController) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("设置"), onBack = { nav.popBackStack() })
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            NavRow(tr("日历与显示"), value = tr("周起始、农历、节日、已完成任务"), icon = LkIcons.Calendar) {
+                nav.navigate("calSettings")
+            }
+            Hairline()
+            NavRow(tr("提醒诊断"), value = tr("提醒与系统权限检查"), icon = LkIcons.Bell) {
+                nav.navigate("selfcheck")
+            }
+            Hairline()
+            NavRow(
+                tr("语言 / Language"), icon = LkIcons.Help,
+                value = com.looka.app.util.I18n.choiceLabel(com.looka.app.data.Prefs.language(LocalContext.current))
+            ) { nav.navigate("language") }
+            Hairline()
         }
     }
 }

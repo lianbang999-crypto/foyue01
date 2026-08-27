@@ -102,7 +102,9 @@ fun DialogDim(fraction: Float = 0.6f) {
 @Composable
 fun DlgTitle(text: String) {
     DialogDim()
-    Text(text, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+    // §119 T9：19→20sp —— 《全站统一规划》C2 定 title.dialog=20sp，与实机证据一致
+    //（§113 记录里实机就量得 20sp 粗，当时取 19 没写理由，回归实机值）
+    Text(text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
 }
 
 /** 顶栏：左返回 / 标题 / 右操作（规格 §12 App Bar 语言） */

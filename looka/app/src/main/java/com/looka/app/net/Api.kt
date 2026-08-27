@@ -97,7 +97,7 @@ object Api {
 
     /**
      * AI 代理（服务端持 Key）。
-     * tier: standard 标准模型不限次不计费 / premium 高级模型(Pro 免费·免费用户 1 鹿角) /
+     * tier: 历史字段（§53 档位已下线；现行为统一鹿角计次，见 economy.v1） /
      *       flagship 旗舰模型 5 鹿角。余额不足服务端自动回落标准模型并回传 fell_back。
      */
     suspend fun aiChat(c: Context, messages: JSONArray, temperature: Double): JSONObject =
