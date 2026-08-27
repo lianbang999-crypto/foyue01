@@ -33,6 +33,14 @@ object Prefs {
     fun aiDiaryUpload(c: Context) = sp(c).getBoolean("ai_diary_upload", false)
     fun setAiDiaryUpload(c: Context, v: Boolean) = sp(c).edit().putBoolean("ai_diary_upload", v).apply()
 
+    /** §126 A3：空态教学页只教到第一次发送为止（AI-UX 4.1「用过一次永不再教」） */
+    fun deerTaught(c: Context) = sp(c).getBoolean("deer_taught", false)
+    fun setDeerTaught(c: Context) = sp(c).edit().putBoolean("deer_taught", true).apply()
+
+    /** §126 C1：当前激活的官方皮肤包 id（"" = 未装） */
+    fun skinPackId(c: Context) = sp(c).getString("skin_pack_id", "")!!
+    fun setSkinPackId(c: Context, v: String) = sp(c).edit().putString("skin_pack_id", v).apply()
+
     // ---- 语言（I 批） ----
     /** system / zh-CN / zh-TW / en */
     fun language(c: Context) = sp(c).getString("language", "system")!!

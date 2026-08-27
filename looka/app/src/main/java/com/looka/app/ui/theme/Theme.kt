@@ -133,12 +133,15 @@ object ThemeCtl {
         syncTokens()
         // §123：照片皮肤持久化恢复 —— pack 优先级高于九色（Tokens.active = pack ?: derived）
         com.looka.app.util.PhotoTheme.load(c)?.let { Tokens.applyPack(it) }
+        // §126 C1：官方皮肤包恢复（互斥由 set 时机保证，这里最后装 —— 皮肤包 > 照片 > 九色）
+        com.looka.app.util.SkinPacks.init(c)
     }
 
     fun set(c: Context, i: Int) {
-        // §123：手选九色 = 明确要换回九色主题 —— 卸下照片皮肤，否则 pack 永远盖着选不动
+        // §123：手选九色 = 明确要换回九色主题 —— 卸下照片皮肤与皮肤包，否则 pack 永远盖着选不动
         Tokens.applyPack(null)
         com.looka.app.util.PhotoTheme.clear(c)
+        com.looka.app.util.SkinPacks.clear(c)   // §126 C1：手选九色卸一切（规格 §1 互斥）
         index = if (i == CUSTOM_THEME) CUSTOM_THEME else i.coerceIn(0, DEER_THEMES.size - 1)
         Prefs.setThemeIndex(c, index)
         Prefs.markSettingsDirty(c)   // B1：主题随 settings 实体上云

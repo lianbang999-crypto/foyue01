@@ -302,21 +302,18 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             title = { DlgTitle(tr("用这个颜色做主题？")) },
             text = {
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(acc))
-                        Spacer(Modifier.width(10.dp))
-                        Box(Modifier.size(44.dp).clip(CircleShape).background(tokens.selection)
-                            .border(0.8.dp, Color(0xFFE2E5E2), CircleShape))
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(tr("主色与选中底色预览"), fontSize = 13.sp)
-                            Text(tr("文字与周末红蓝保持不变，阅读不受影响"), fontSize = 11.sp, color = GrayText)
-                        }
-                    }
+                    // §126 C3：两枚色卡升级为迷你月历 —— 用户看到的是"他的日历套上新色"
+                    com.looka.app.ui.common.MiniThemePreview(tokens)
+                    Text(
+                        tr("文字与周末红蓝保持不变，阅读不受影响"),
+                        fontSize = 11.sp, color = GrayText,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
+                    com.looka.app.util.SkinPacks.clear(ctx)   // §126 C1：照片主题上位 = 卸皮肤包
                     com.looka.app.ui.theme.Tokens.applyPack(tokens)
                     com.looka.app.util.PhotoTheme.save(ctx, acc)
                     photoAccent = null; themeSheet = false

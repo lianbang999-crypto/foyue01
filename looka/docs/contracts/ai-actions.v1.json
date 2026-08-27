@@ -1,0 +1,33 @@
+{
+  "$id": "https://looka.foyue.org/contracts/ai-actions.v1.json",
+  "title": "Looka 小鹿 AI 动作协议 v1（§126 D1）",
+  "description": "AI 回复末尾 ```json 代码块里的 actions 数组。这是 L2 动作层的机器合同：提示词声明的类型、客户端解析白名单、评测集用例三方以此对账（check_contracts.py）。铁律：① 改/删的 id 只认上下文标注值，绝不按标题猜；② 删除必确认、一次 ≥3 条必确认；③ theme 不进执行队列，走独立草稿卡（生成→校验→确认）；④ UI 永远显示解析后的绝对日期（终审防线）。",
+  "schema_version": "1.0",
+  "types": [
+    "create_event", "create_task", "create_note",
+    "update_event", "update_task", "update_note",
+    "delete_event", "delete_task", "delete_note",
+    "remember", "theme"
+  ],
+  "fields": {
+    "create_event": ["title", "date", "end_date", "start", "end", "all_day", "location", "memo", "category", "remind_at", "remind_before"],
+    "create_task": ["title", "due"],
+    "create_note": ["title", "content"],
+    "update_event": ["id", "title", "date", "start", "end", "all_day", "location", "memo"],
+    "update_task": ["id", "title", "due", "done"],
+    "update_note": ["id", "title", "content"],
+    "delete_event": ["id"],
+    "delete_task": ["id"],
+    "delete_note": ["id"],
+    "remember": ["fact"],
+    "theme": ["name", "accent"]
+  },
+  "rules": {
+    "mutation_requires_context_id": "update_*/delete_* 缺 id 或 id 不来自上下文标注（[e12]/[t3]/[n5]）→ 客户端丢弃",
+    "delete_must_confirm": "删除类动作永远先出草稿卡确认，且默认不勾选",
+    "batch_must_confirm": "一次 ≥3 条动作先出草稿卡确认",
+    "theme_never_direct": "theme 动作不落库不执行，只生成主题草稿卡；应用前强制可读性槽出厂值",
+    "theme_accent_format": "^#[0-9a-fA-F]{6}$",
+    "absolute_date_in_ui": "草稿卡与结果卡永远显示解析后的绝对日期时间并加粗"
+  }
+}

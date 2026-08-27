@@ -29,6 +29,8 @@ object AiClient {
     /** §55：鹿角余额（-1 = 未知）与今日到账数（G3 轻提示用，展示一次后清零） */
     var lastAntler by mutableStateOf(-1); private set
     var grantedToday by mutableStateOf(0)
+    /** §126 A5：上一次请求是否走了备用线路（vm 每次请求前清零） */
+    var lastWasFallback = false
 
     private val client by lazy {
         OkHttpClient.Builder()
@@ -71,7 +73,7 @@ object AiClient {
             if (onDelta != null) {
                 val raw = Api.aiChatStream(ctx, msgs, temperature, { total, granted ->
                     lastAntler = total; if (granted > 0) grantedToday = granted
-                }, onDelta)
+                }, onDelta, onFallback = { lastWasFallback = it })
                 val content = raw.replace(Regex("(?s)<think>.*?</think>"), "").trim()
                 if (content.isBlank()) throw IOException(tr("AI 返回为空，请重试"))
                 return content

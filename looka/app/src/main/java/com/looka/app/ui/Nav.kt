@@ -314,52 +314,74 @@ fun HomeScreen(vm: LookaViewModel, nav: androidx.navigation.NavHostController) {
 
 @Composable
 private fun LookaBottomBar(tab: Int, onTab: (Int) -> Unit, onPlus: () -> Unit) {
+    // §126 C2（T-1）：皮肤包的底栏背景带与导航图标位图 —— 缺哪张哪处原样回退（零回归）
+    val skin = com.looka.app.util.SkinPacks.active
     Column(Modifier.background(Color.White)) {
         // §106 B：广告槽在导航条**上方**、且画在所有装饰之上（皮肤不得覆盖广告位）。
         // 没接 SDK 时这行什么都不画、也不占高度。
         com.looka.app.ui.common.AdSlot(com.looka.app.ui.common.AdPlacement.BOTTOM_NAV)
         Hairline()
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .height(58.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            BarItem(LkIcons.Calendar, tr("日历"), tab == 0) { onTab(0) }
-            BarItem(LkIcons.Check, tr("待办"), tab == 1) { onTab(1) }
-            // 中央黑色圆形 +（规格 §12：全局最强操作锚点）
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                val pressed by press.collectIsPressedAsState()
-                val plusScale by animateFloatAsState(
-                    if (pressed) 0.9f else 1f, spring(dampingRatio = 0.5f, stiffness = 700f),
-                    label = "plusScale"
+        Box {
+            skin?.bottomBg?.let {
+                androidx.compose.foundation.Image(
+                    it, null, modifier = Modifier.matchParentSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
-                Box(
-                    Modifier
-                        // §113 E3：去掉 -8dp 上浮 —— 实机中央 + 完全嵌在 58dp 栏内（图 01/10/21），
-                        // 不凸出。凸出是 M3 FAB 的语言，不是 Lifebear 的。
-                        .size(48.dp)
-                        .scale(plusScale)
-                        .clip(CircleShape)
-                        .background(Ink)
-                        .clickable(
-                            interactionSource = press, indication = null, onClick = onPlus
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(LkIcons.Plus, tr("新建"), tint = Color.White, modifier = Modifier.size(26.dp))
-                }
             }
-            BarItem(LkIcons.Book, tr("笔记·日记"), tab == 2) { onTab(2) }
-            BarItem(LkIcons.More, tr("更多"), tab == 3) { onTab(3) }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .height(58.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BarItem(LkIcons.Calendar, tr("日历"), tab == 0, skin?.nav?.get("calendar")) { onTab(0) }
+                BarItem(LkIcons.Check, tr("待办"), tab == 1, skin?.nav?.get("todo")) { onTab(1) }
+                // 中央黑色圆形 +（规格 §12：全局最强操作锚点）
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val pressed by press.collectIsPressedAsState()
+                    val plusScale by animateFloatAsState(
+                        if (pressed) 0.9f else 1f, spring(dampingRatio = 0.5f, stiffness = 700f),
+                        label = "plusScale"
+                    )
+                    val plusSkin = skin?.nav?.get("plus")
+                    if (plusSkin != null) {
+                        // 皮肤化的 + 容器（Lifebear Horse 的木牌形态）：整图即按钮
+                        androidx.compose.foundation.Image(
+                            plusSkin, tr("新建"),
+                            modifier = Modifier.size(48.dp).scale(plusScale)
+                                .clickable(interactionSource = press, indication = null, onClick = onPlus)
+                        )
+                    } else Box(
+                        Modifier
+                            // §113 E3：去掉 -8dp 上浮 —— 实机中央 + 完全嵌在 58dp 栏内（图 01/10/21），
+                            // 不凸出。凸出是 M3 FAB 的语言，不是 Lifebear 的。
+                            .size(48.dp)
+                            .scale(plusScale)
+                            .clip(CircleShape)
+                            .background(Ink)
+                            .clickable(
+                                interactionSource = press, indication = null, onClick = onPlus
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(LkIcons.Plus, tr("新建"), tint = Color.White, modifier = Modifier.size(26.dp))
+                    }
+                }
+                BarItem(LkIcons.Book, tr("笔记·日记"), tab == 2, skin?.nav?.get("notes")) { onTab(2) }
+                BarItem(LkIcons.More, tr("更多"), tab == 3, skin?.nav?.get("more")) { onTab(3) }
+            }
         }
     }
 }
 
 @Composable
-private fun RowScope.BarItem(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+private fun RowScope.BarItem(
+    icon: ImageVector, label: String, selected: Boolean,
+    skinIcon: androidx.compose.ui.graphics.ImageBitmap? = null,
+    onClick: () -> Unit
+) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     // 选中时图标弹性放大一档，文字加重 —— 轻手感反馈，不喧宾夺主
     val scale by animateFloatAsState(
@@ -380,7 +402,15 @@ private fun RowScope.BarItem(icon: ImageVector, label: String, selected: Boolean
             },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
+        if (skinIcon != null) {
+            // §126 C2：皮肤图标整图替换（IconId 决定功能，图形不决定功能 —— Skin.kt 合同）；
+            // 未选中压暗一档保住选中语义
+            androidx.compose.foundation.Image(
+                skinIcon, label,
+                modifier = Modifier.size(24.dp).scale(scale),
+                alpha = if (selected) 1f else 0.55f
+            )
+        } else Icon(
             icon, label, tint = tint,
             modifier = Modifier.size(24.dp).scale(scale)
         )

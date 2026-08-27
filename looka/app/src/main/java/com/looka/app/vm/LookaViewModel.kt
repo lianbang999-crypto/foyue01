@@ -51,10 +51,16 @@ const val ROLE_ACTION = 2
 
 data class ChatMsg(val role: Int, val text: String, val error: Boolean = false,
                    val tier: String = "standard",
-                   /** L1（§62）：动作卡片可点开的目标（event/task/note + 本地 id），"" = 不可点 */
+                   /** L1（§62）：动作卡片可打开的目标（event/task/note + 本地 id），"" = 不可点 */
                    val targetKind: String = "", val targetId: Long = -1L,
                    /** §123：随消息发出的图（jpeg base64，仅气泡回显用；识别按 3 🦌 计） */
-                   val imageB64: String = "")
+                   val imageB64: String = "",
+                   // §126 B：持久化 —— dbId=库行号（0=未入库）；imageFile=files/chat/ 文件名
+                   //（历史回显走文件，base64 不入库）；createdAt 供按天分段头
+                   val dbId: Long = 0L, val imageFile: String = "",
+                   val createdAt: Long = System.currentTimeMillis(),
+                   /** §126 A5：本次走了备用线路（气泡尾注 11sp 灰） */
+                   val viaFallback: Boolean = false)
 
 /** 日程编辑草稿：编辑器与重复编辑器之间共享（规格 CAL-010/011/013） */
 class EventDraft {
@@ -109,6 +115,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     private val stampDao = db.stampDao()
     private val templateDao = db.templateDao()
     private val taskListDao = db.taskListDao()
+    private val chatDao = db.chatDao()   // §126 B：聊天记录（本地持久、不上云）
 
     val categories = categoryDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val seriesAll = eventDao.allSeries().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -968,6 +975,68 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     val chat = mutableStateListOf<ChatMsg>()
     var aiBusy by mutableStateOf(false)
+    // §126 A5：思考态文案分流（带图 →「小鹿在看图…」）
+    var lastSendHadImage = false
+        private set
+    /** §126 A5：鹿角不足内联条（服务端文案直显，可关；"" = 不显示） */
+    var antlerNotice by mutableStateOf("")
+    /** §126 B3：还有更早的记录可翻 */
+    var chatHasMore by mutableStateOf(false)
+    /** §126 C4：聊天生成主题草稿（accent ARGB + 主题名）——独立草稿卡，不进执行队列 */
+    var pendingTheme by mutableStateOf<Pair<Long, String>?>(null)
+    // A5 重试：上一次请求的 (显示文, 载荷, 图) —— 失败内联「重试」不重复追加用户消息
+    private var lastPayload: Triple<String, String, String>? = null
+
+    init {
+        // §126 B3/B4：启动先滚动清理（>30 天或超 500 条，连图片文件删），再载入最近一页
+        viewModelScope.launch {
+            val c = getApplication<Application>()
+            val cutoff = System.currentTimeMillis() - 30L * 86400_000
+            chatDao.listStale(cutoff, 500).forEach {
+                if (it.imageFile.isNotBlank()) com.looka.app.util.ChatStore.delete(c, it.imageFile)
+            }
+            chatDao.purgeStale(cutoff, 500)
+            val page = chatDao.latest(50)
+            chatHasMore = page.size >= 50
+            chat.addAll(0, page.reversed().map { it.toMsg() })
+        }
+    }
+
+    private fun com.looka.app.data.ChatMessage.toMsg() = ChatMsg(
+        role = role, text = text, error = error,
+        targetKind = targetKind, targetId = targetId,
+        dbId = id, imageFile = imageFile, createdAt = createdAt
+    )
+
+    /** 入库并进流（定稿消息才走这里；草稿卡是过程数据不入库） */
+    private suspend fun addPersist(m: ChatMsg) {
+        val id = chatDao.insert(com.looka.app.data.ChatMessage(
+            role = m.role, text = m.text, imageFile = m.imageFile,
+            targetKind = m.targetKind, targetId = m.targetId,
+            error = m.error, createdAt = m.createdAt
+        ))
+        chat += m.copy(dbId = id)
+    }
+
+    /** 流式占位在 idx 定稿后补入库 */
+    private suspend fun persistAt(i: Int) {
+        if (i !in chat.indices) return
+        val m = chat[i]
+        val id = chatDao.insert(com.looka.app.data.ChatMessage(
+            role = m.role, text = m.text, imageFile = m.imageFile,
+            targetKind = m.targetKind, targetId = m.targetId,
+            error = m.error, createdAt = m.createdAt
+        ))
+        if (i in chat.indices) chat[i] = chat[i].copy(dbId = id)
+    }
+
+    /** §126 B3：顶部「查看更早」翻页（每页 50） */
+    fun loadOlderChat() = viewModelScope.launch {
+        val anchor = chat.firstOrNull { it.dbId > 0 }?.dbId ?: return@launch
+        val page = chatDao.before(anchor, 50)
+        chatHasMore = page.size >= 50
+        chat.addAll(0, page.reversed().map { it.toMsg() })
+    }
 
     private fun agendaContext(): String {
         // S9：用户可关闭「允许小鹿读取日程」
@@ -1011,62 +1080,134 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun sendChat(display: String, payload: String = display, imageB64: String = "") {
         if (aiBusy || (display.isBlank() && imageB64.isBlank())) return
-        chat += ChatMsg(ROLE_USER, display.ifBlank { tr("[图片]") }, imageB64 = imageB64)
         aiBusy = true
+        lastSendHadImage = imageB64.isNotBlank()
+        lastPayload = Triple(display, payload, imageB64)
         viewModelScope.launch {
-            try {
-                val sys = AiActions.chatSystemPrompt(agendaContext(), Prefs.nickname(getApplication()))
-                val history = ArrayList<Pair<String, String>>()
-                chat.filter { !it.error && it.role != ROLE_ACTION }.takeLast(12).forEach {
-                    history += (if (it.role == ROLE_USER) "user" else "assistant") to it.text
-                }
-                if (history.isNotEmpty() && payload != display) {
-                    history[history.size - 1] = "user" to payload
-                }
-                // T1（§53）真流式 + E2（§57）：**首个可见增量到达才插消息** ——
-                // 提前挂空占位会渲染出一个空白小气泡（用户截图实锤）。
-                // T2：渲染在 ``` 处截断，动作 JSON 逐字冒出也绝不给用户看（线上踩过的坑）
-                var idx = -1
-                val sb = StringBuilder()
-                val raw = AiClient.chat(getApplication(), sys, history, imageB64 = imageB64) { delta ->
-                    sb.append(delta)
-                    val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
-                        .replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "")
-                    if (visible.isNotBlank()) {
-                        if (idx < 0) { idx = chat.size; chat += ChatMsg(ROLE_AI, visible) }
-                        else chat[idx] = chat[idx].copy(text = visible)
-                    }
-                }
-                val (text, actions) = AiActions.split(raw)
-                when {
-                    text.isNotBlank() && idx >= 0 -> chat[idx] = chat[idx].copy(text = text)
-                    text.isNotBlank() -> chat += ChatMsg(ROLE_AI, text)   // 非流式路径（自带 Key）
-                    idx >= 0 -> chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
-                }
-                if (actions.isNotEmpty()) {
-                    // A3/A1-4（§48）：删除一律先确认；一次 ≥3 条也先确认（批量误建就是这么来的）
-                    if (actions.any { it.isDelete } || actions.size >= 3) {
-                        pendingAiActions.clear(); pendingAiActions.addAll(actions)
-                        pendingChecked.clear(); repeat(actions.size) { pendingChecked.add(true) }
-                        chat += ChatMsg(ROLE_AI, tr("共 {0} 件事，你勾选确认后我再动手 👇", actions.size))
-                    } else {
-                        execActions(actions).forEachIndexed { i2, msg ->
-                            val tg = lastActionTargets.getOrNull(i2)
-                            chat += ChatMsg(ROLE_ACTION, msg,
-                                targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L)
-                        }
-                    }
-                }
-                if (text.isBlank() && actions.isEmpty()) chat += ChatMsg(ROLE_AI, tr("小鹿没想好怎么回答，换个说法试试？"))
-            } catch (e: Exception) {
-                // 流式中断留下的空占位撤掉，别让用户看到空气泡
-                if (chat.isNotEmpty() && chat.last().role == ROLE_AI && chat.last().text.isBlank())
-                    chat.removeAt(chat.size - 1)
-                chat += ChatMsg(ROLE_AI, tr("小鹿出错了：{0}", e.message ?: tr("网络异常")), error = true)
-            } finally {
-                aiBusy = false
-            }
+            // §126 B2：图片字节落 files/chat/，库里只存文件名（base64 不入库）
+            val imgFile = if (imageB64.isNotBlank())
+                com.looka.app.util.ChatStore.saveBase64(getApplication(), imageB64) else ""
+            addPersist(ChatMsg(ROLE_USER, display.ifBlank { tr("[图片]") },
+                imageB64 = imageB64, imageFile = imgFile))
+            requestAi(payload, imageB64)
+            aiBusy = false
         }
+    }
+
+    /** 请求主体（§126 A5：重试走这里 —— 不再追加用户消息） */
+    private suspend fun requestAi(payload: String, imageB64: String) {
+        try {
+            val sys = AiActions.chatSystemPrompt(agendaContext(), Prefs.nickname(getApplication()))
+            val history = ArrayList<Pair<String, String>>()
+            chat.filter { !it.error && it.role != ROLE_ACTION }.takeLast(12).forEach {
+                history += (if (it.role == ROLE_USER) "user" else "assistant") to it.text
+            }
+            // 快捷指令的专用载荷（如周总结注入真实数据）：替换掉最后一条 user 的显示文
+            if (history.isNotEmpty() && history.last().first == "user") {
+                history[history.size - 1] = "user" to payload
+            }
+            // T1（§53）真流式 + E2（§57）：**首个可见增量到达才插消息** ——
+            // 提前挂空占位会渲染出一个空白小气泡（用户截图实锤）。
+            // T2：渲染在 ``` 处截断，动作 JSON 逐字冒出也绝不给用户看（线上踩过的坑）
+            var idx = -1
+            val sb = StringBuilder()
+            AiClient.lastWasFallback = false
+            val raw = AiClient.chat(getApplication(), sys, history, imageB64 = imageB64) { delta ->
+                sb.append(delta)
+                val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
+                    .replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "")
+                if (visible.isNotBlank()) {
+                    if (idx < 0) { idx = chat.size; chat += ChatMsg(ROLE_AI, visible) }
+                    else chat[idx] = chat[idx].copy(text = visible)
+                }
+            }
+            val (text, allActions) = AiActions.split(raw)
+            // §126 C4：theme 动作不进执行队列 —— 走独立主题草稿卡（生成→确认→应用，
+            // 与 SKILL 附录 A 同一条装载哲学：永不直接"已应用"）
+            val (themes, actions) = allActions.partition { it.type == "theme" }
+            themes.lastOrNull()?.let { t ->
+                runCatching { android.graphics.Color.parseColor(t.accentHex) }.getOrNull()?.let { argb ->
+                    pendingTheme = (argb.toLong() and 0xFFFFFFFFL) to t.title
+                }
+            }
+            val fb = AiClient.lastWasFallback
+            when {
+                text.isNotBlank() && idx >= 0 -> {
+                    chat[idx] = chat[idx].copy(text = text, viaFallback = fb); persistAt(idx)
+                }
+                text.isNotBlank() -> addPersist(ChatMsg(ROLE_AI, text, viaFallback = fb))   // 非流式（自带 Key）
+                idx >= 0 -> chat.removeAt(idx)   // 纯动作回复：正文占位撤掉
+            }
+            if (actions.isNotEmpty()) {
+                // A3/A1-4（§48）：删除一律先确认；一次 ≥3 条也先确认（批量误建就是这么来的）
+                if (actions.any { it.isDelete } || actions.size >= 3) {
+                    pendingAiActions.clear(); pendingAiActions.addAll(actions)
+                    // §126 A1（AI-UX 4.2 硬规则 2）：默认全勾，**删除类默认不勾**
+                    pendingChecked.clear(); actions.forEach { pendingChecked.add(!it.isDelete) }
+                } else {
+                    execActions(actions).forEachIndexed { i2, msg ->
+                        val tg = lastActionTargets.getOrNull(i2)
+                        addPersist(ChatMsg(ROLE_ACTION, msg,
+                            targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L))
+                    }
+                    showUndoFor5s()
+                }
+            }
+            if (text.isBlank() && actions.isEmpty() && themes.isEmpty())
+                addPersist(ChatMsg(ROLE_AI, tr("小鹿没想好怎么回答，换个说法试试？")))
+        } catch (e: com.looka.app.net.AntlerEmptyException) {
+            // §126 A5：鹿角不足不是错误 —— 不进消息流，输入栏上方内联条（服务端文案直显）
+            if (chat.isNotEmpty() && chat.last().role == ROLE_AI && chat.last().text.isBlank())
+                chat.removeAt(chat.size - 1)
+            antlerNotice = e.message ?: tr("今天的鹿角用完啦")
+        } catch (e: Exception) {
+            // 流式中断留下的空占位撤掉，别让用户看到空气泡
+            if (chat.isNotEmpty() && chat.last().role == ROLE_AI && chat.last().text.isBlank())
+                chat.removeAt(chat.size - 1)
+            addPersist(ChatMsg(ROLE_AI, tr("小鹿出错了：{0}", e.message ?: tr("网络异常")), error = true))
+        }
+    }
+
+    /** §126 A5：错误行内联「重试」——撤下错误行（含库行），按原载荷重发 */
+    fun retryLast() {
+        if (aiBusy) return
+        val lp = lastPayload ?: return
+        val last = chat.lastOrNull()
+        if (last != null && last.error) {
+            chat.removeAt(chat.size - 1)
+            if (last.dbId > 0) viewModelScope.launch { chatDao.delete(last.dbId) }
+        }
+        aiBusy = true
+        lastSendHadImage = lp.third.isNotBlank()
+        viewModelScope.launch { requestAi(lp.second, lp.third); aiBusy = false }
+    }
+
+    /** §126 C4：主题草稿卡「应用」——复用照片主题全套机制（推 16 槽/持久化/选九色自动卸） */
+    fun applyPendingTheme(): String {
+        val (argb, name) = pendingTheme ?: return ""
+        val c = getApplication<Application>()
+        val accent = androidx.compose.ui.graphics.Color((0xFF000000L or argb).toInt())
+        com.looka.app.util.SkinPacks.clear(c)   // 互斥：个人色包上位 = 卸下官方皮肤包
+        com.looka.app.ui.theme.Tokens.applyPack(com.looka.app.util.PhotoTheme.tokensFrom(accent))
+        com.looka.app.util.PhotoTheme.save(c, accent)
+        pendingTheme = null
+        viewModelScope.launch {
+            addPersist(ChatMsg(ROLE_ACTION, tr("🎨 已换上主题{0}", if (name.isBlank()) "" else "「$name」")))
+        }
+        return name
+    }
+
+    fun cancelPendingTheme() { pendingTheme = null }
+
+    /** §126 A1（AI-2 冲突检测）：新建日程与当日现有日程时间重叠的警示行；无冲突 null */
+    fun conflictOf(a: AiAction): String? {
+        if (a.type != "create_event" || a.allDay || a.startMin < 0) return null
+        val day = if (a.day >= 0) a.day else Fmt.today()
+        val end = if (a.endMin > a.startMin) a.endMin else a.startMin + 60
+        val hit = RecurrenceEngine.expand(seriesAll.value, exceptionsAll.value, day, day)
+            .firstOrNull { !it.allDay && it.day == day && a.startMin < it.endMin && it.startMin < end }
+            ?: return null
+        return tr("与「{0}」时间重叠（{1}）", hit.title, "${Fmt.hm(hit.startMin)}-${Fmt.hm(hit.endMin)}")
     }
 
     fun sendWeeklySummary() {
@@ -1093,7 +1234,15 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         sendChat(tr("帮我总结一下本周 📋"), sb.toString())
     }
 
-    fun clearChat() = chat.clear()
+    /** §126 B4：清空 = 物理删除（含 files/chat/ 图片）。确认弹窗在 UI 层做 */
+    fun clearChat() {
+        chat.clear(); pendingAiActions.clear(); pendingChecked.clear(); pendingTheme = null
+        chatHasMore = false
+        viewModelScope.launch {
+            chatDao.clearAll()
+            com.looka.app.util.ChatStore.deleteAll(getApplication())
+        }
+    }
 
     // ── A3：批量确认 + 一键撤销（§48）─────────────────────────────
     /** AI 一次给出的待确认动作（删除必确认；≥3 条必确认） */
@@ -1109,23 +1258,38 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     private val lastUndo = ArrayList<UndoRec>()
     var canUndo by mutableStateOf(false)
         private set
+    /** §126 A2（AI-UX 4.2 规则 4）：执行后 5 秒撤销条 */
+    var showUndoBar by mutableStateOf(false)
+        private set
+    private var undoBarToken = 0
+
+    private fun showUndoFor5s() {
+        if (!canUndo) return
+        showUndoBar = true
+        val tk = ++undoBarToken
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(5000)
+            if (tk == undoBarToken) showUndoBar = false
+        }
+    }
 
     fun confirmPending() {
         val picked = pendingAiActions.filterIndexed { i, _ -> pendingChecked.getOrElse(i) { true } }
         pendingAiActions.clear(); pendingChecked.clear()
-        if (picked.isEmpty()) { chat += ChatMsg(ROLE_AI, tr("好，都不动 🦌")); return }
         viewModelScope.launch {
+            if (picked.isEmpty()) { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))); return@launch }
             execActions(picked).forEachIndexed { i2, msg ->
                 val tg = lastActionTargets.getOrNull(i2)
-                chat += ChatMsg(ROLE_ACTION, msg,
-                    targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L)
+                addPersist(ChatMsg(ROLE_ACTION, msg,
+                    targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L))
             }
+            showUndoFor5s()
         }
     }
 
     fun cancelPending() {
         pendingAiActions.clear(); pendingChecked.clear()
-        chat += ChatMsg(ROLE_AI, tr("好，都不动 🦌"))
+        viewModelScope.launch { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))) }
     }
 
     /** 撤销上一批 AI 修改（逆序回放账本） */
@@ -1145,9 +1309,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 else noteDao.update(r.snapshot.copy(dirty = true, updatedAt = n))
         }
         val cnt = lastUndo.size
-        lastUndo.clear(); canUndo = false
+        lastUndo.clear(); canUndo = false; showUndoBar = false
         afterChange()
-        chat += ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt))
+        addPersist(ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt)))
     }
 
     /** L1（§62）：每条动作反馈对应的可打开目标（kind,id），与 execActions 返回值按索引对齐 */

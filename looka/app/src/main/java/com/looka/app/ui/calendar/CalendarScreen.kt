@@ -178,6 +178,16 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
         // 顶栏：大字年月（点击跳转）+ 今天 + 小鹿 AI + 视图菜单
+        // §126 C2（T-1）：皮肤包顶栏横幅带 —— 画在顶栏底下（Lifebear 图 114 形态），
+        // 安全区约定见 THEME-SYSTEM 附录 A：右 2/3 浅色保日期文字可读。没装包 = 无此层。
+        androidx.compose.foundation.layout.Box {
+        com.looka.app.util.SkinPacks.active?.topBanner?.let {
+            androidx.compose.foundation.Image(
+                it, null,
+                modifier = Modifier.matchParentSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+        }
         Row(
             Modifier.fillMaxWidth().padding(start = 18.dp, end = 4.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -214,7 +224,8 @@ fun CalendarScreen(vm: LookaViewModel, nav: NavHostController) {
             IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(40.dp)) {
                 CalendarGlyph(when (vm.calView) { 0 -> "31"; 1 -> "7"; else -> "1" })
             }
-                    }
+        }
+        }   // §126 C2：顶栏横幅 Box 收口
 
         val occRangeStart: Long
         val occRangeEnd: Long

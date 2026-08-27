@@ -116,6 +116,33 @@ def main() -> int:
     if ok3: print(f"✓ SHOP_ITEMS ↔ catalog.v1：{len(cat['items'])} 件商品一致")
     ok &= ok3
 
+    # §126 D1：AI 动作协议三方对账 —— 合同 types ↔ AiActions.parseActions 白名单
+    # ↔ 提示词 PROTOCOL 声明 ↔ 评测集用例。动作协议是模型按提示词生成、客户端按白名单
+    # 解析的，三边漂移的后果是"模型输出了、客户端默默丢了"，用户只看到"小鹿没反应"。
+    aic = json.loads((ROOT / "docs/contracts/ai-actions.v1.json").read_text())
+    types = set(aic["types"])
+    akt = (ROOT / "app/src/main/java/com/looka/app/ai/AiActions.kt").read_text()
+    wl = re.search(r"if \(type !in setOf\((.*?)\)\s*\n?\s*\)", akt, re.S)
+    assert wl, "AiActions.kt 里找不到解析白名单 setOf(...)"
+    kt_types = set(re.findall(r'"([a-z_]+)"', wl.group(1)))
+    ok &= compare("ai-actions.v1 ↔ AiActions 解析白名单", types, kt_types)
+    proto = re.search(r'private val PROTOCOL = """(.*?)"""', akt, re.S)
+    assert proto, "AiActions.kt 里找不到 PROTOCOL"
+    missing_in_proto = {t for t in types if f'"{t}"' not in proto.group(1)}
+    if missing_in_proto:
+        print(f"✗ PROTOCOL 未声明的动作类型：{sorted(missing_in_proto)}"); ok = False
+    else:
+        print(f"✓ PROTOCOL 声明 ↔ ai-actions.v1：{len(types)} 类齐全")
+    cases_p = ROOT / "scripts/ai-eval-cases.json"
+    if cases_p.exists():
+        cases = json.loads(cases_p.read_text())
+        bad = {c["expect"].get("type") for c in cases["cases"]
+               if c["expect"].get("type") and c["expect"]["type"] not in types}
+        if bad:
+            print(f"✗ 评测集里有合同外类型：{sorted(bad)}"); ok = False
+        else:
+            print(f"✓ 评测集 {len(cases['cases'])} 例类型全在合同内")
+
     if ok:
         print("\n全部一致。")
     else:

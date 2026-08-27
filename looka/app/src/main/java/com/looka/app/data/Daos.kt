@@ -414,3 +414,40 @@ interface AttachmentDao {
     @Query("SELECT COUNT(*) FROM Attachment WHERE ownerType = :type AND ownerUid = :owner AND deleted = 0")
     suspend fun countOf(type: String, owner: String): Int
 }
+
+// ── §126 B：聊天记录（本地持久、不上云，AI-UX §5）──
+@Dao
+interface ChatMessageDao {
+    /** 最近一页（倒序取，UI 端 reversed() 还原时间序） */
+    @Query("SELECT * FROM ChatMessage ORDER BY id DESC LIMIT :n")
+    suspend fun latest(n: Int): List<ChatMessage>
+
+    /** 翻页：比 beforeId 更早的一页 */
+    @Query("SELECT * FROM ChatMessage WHERE id < :beforeId ORDER BY id DESC LIMIT :n")
+    suspend fun before(beforeId: Long, n: Int): List<ChatMessage>
+
+    @Insert
+    suspend fun insert(m: ChatMessage): Long
+
+    @Query("DELETE FROM ChatMessage WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM ChatMessage")
+    suspend fun count(): Int
+
+    /** 滚动清理要删的行（>30 天或超出最新 500 之外），先取出来删图片文件再删行 */
+    @Query(
+        "SELECT * FROM ChatMessage WHERE createdAt < :cutoff OR id NOT IN " +
+            "(SELECT id FROM ChatMessage ORDER BY id DESC LIMIT :keep)"
+    )
+    suspend fun listStale(cutoff: Long, keep: Int): List<ChatMessage>
+
+    @Query(
+        "DELETE FROM ChatMessage WHERE createdAt < :cutoff OR id NOT IN " +
+            "(SELECT id FROM ChatMessage ORDER BY id DESC LIMIT :keep)"
+    )
+    suspend fun purgeStale(cutoff: Long, keep: Int)
+
+    @Query("DELETE FROM ChatMessage")
+    suspend fun clearAll()
+}

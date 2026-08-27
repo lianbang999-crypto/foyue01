@@ -9,9 +9,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         Category::class, EventSeries::class, EventException::class, Reminder::class,
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
-        Template::class, ConflictLog::class, Attachment::class
+        Template::class, ConflictLog::class, Attachment::class, ChatMessage::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -26,6 +26,7 @@ abstract class LookaDb : RoomDatabase() {
     abstract fun templateDao(): TemplateDao
     abstract fun conflictDao(): ConflictDao
     abstract fun attachmentDao(): AttachmentDao
+    abstract fun chatDao(): ChatMessageDao
 
     companion object {
         /**
@@ -119,6 +120,21 @@ abstract class LookaDb : RoomDatabase() {
                         size INTEGER NOT NULL DEFAULT 0, remote INTEGER NOT NULL DEFAULT 0,
                         deleted INTEGER NOT NULL DEFAULT 0, dirty INTEGER NOT NULL DEFAULT 1,
                         updatedAt INTEGER NOT NULL DEFAULT 0
+                    )""".trimIndent()
+                )
+            }
+        }
+
+        /** v10 → v11（§126 B1）：聊天记录表。纯新增表，不动旧数据；不进同步 */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS ChatMessage (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        role INTEGER NOT NULL, text TEXT NOT NULL,
+                        imageFile TEXT NOT NULL DEFAULT '',
+                        targetKind TEXT NOT NULL DEFAULT '', targetId INTEGER NOT NULL DEFAULT -1,
+                        error INTEGER NOT NULL DEFAULT 0, createdAt INTEGER NOT NULL DEFAULT 0
                     )""".trimIndent()
                 )
             }

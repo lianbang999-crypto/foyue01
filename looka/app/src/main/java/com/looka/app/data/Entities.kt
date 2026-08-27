@@ -286,3 +286,21 @@ data class Attachment(
     val dirty: Boolean = true,
     val updatedAt: Long = System.currentTimeMillis()
 )
+
+/**
+ * §126 B1（AI-UX §5 定案）：聊天记录 —— **本地持久、不上云**。
+ * 聊天是过程性数据不是用户资产（区别于日记）：无 uid/dirty/deleted 三件套，
+ * 不进 SyncEngine；滚动保留最近 30 天且 ≤500 条，清空=物理删除。
+ * 图片字节落 files/chat/<名>.jpg，这里只存文件名（imageFile）。
+ */
+@Entity
+data class ChatMessage(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val role: Int,                    // 0=用户 1=小鹿 2=动作卡（与 vm ROLE_* 同值）
+    val text: String,
+    val imageFile: String = "",       // files/chat/ 下的文件名；"" = 无图
+    val targetKind: String = "",      // 动作卡可打开目标："event"|"task"|"note"
+    val targetId: Long = -1L,
+    val error: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)

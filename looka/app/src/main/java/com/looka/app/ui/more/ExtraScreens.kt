@@ -917,6 +917,29 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
     var busyId by remember { mutableStateOf("") }
     // §120 P3（D4 购买确认）：确认弹窗先看清「余额 42 → 12」再扣
     var confirmPack by remember { mutableStateOf<com.looka.app.util.StampAssets.Pack?>(null) }
+    // §126 C5（T-3）：商品详情页 —— 买前看整套（对齐 Lifebear 图 119 详情形态）
+    var detailPack by remember { mutableStateOf<com.looka.app.util.StampAssets.Pack?>(null) }
+    // 购买入口收一套：列表按钮与详情页按钮走同一条路
+    val startBuy: (com.looka.app.util.StampAssets.Pack) -> Unit = startBuy@{ pk ->
+        if (!authed) { com.looka.app.ui.common.toast(ctx, tr("请先在「更多 → 账号」登录")); return@startBuy }
+        if (busyId.isNotBlank()) return@startBuy
+        // §120 P3：免费领取（Pro）直接走；花鹿角的先确认
+        if (!isPro) { confirmPack = pk; return@startBuy }
+        busyId = pk.id
+        scope.launch {
+            runCatching {
+                val r = com.looka.app.net.Api.shopBuy(ctx, "pack:" + pk.id)
+                if (r.optBoolean("ok")) {
+                    owned = owned + pk.id
+                    com.looka.app.data.Prefs.setOwnedPacks(ctx, owned)
+                    antler = r.optInt("antler", antler)
+                    com.looka.app.ui.common.toast(ctx, tr("已解锁「{0}」🦌", pk.name()))
+                } else com.looka.app.ui.common.toast(ctx, r.optString("error", tr("解锁失败，请稍后再试")))
+            }.onFailure { com.looka.app.ui.common.toast(ctx, it.message ?: tr("解锁失败，请稍后再试")) }
+            busyId = ""
+        }
+    }
+    androidx.activity.compose.BackHandler(enabled = detailPack != null) { detailPack = null }
     LaunchedEffect(Unit) {
         if (!authed) return@LaunchedEffect
         runCatching {
@@ -938,13 +961,77 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
         }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("装扮商店"), onBack = { nav.popBackStack() }) {
+        val dp = detailPack
+        LookaTopBar(
+            if (dp == null) tr("装扮商店") else dp.name(),
+            onBack = { if (dp == null) nav.popBackStack() else detailPack = null }
+        ) {
             if (antler >= 0 && !isPro) Text(
                 "🦌 $antler", fontSize = 14.sp, color = Ink,
                 modifier = Modifier.padding(end = 14.dp)
             )
         }
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        if (dp != null) {
+            // §126 C5：详情 —— 整套贴纸网格 + 同一套购买入口。
+            // 皮肤包上架后（T-2）同页放封面大图 + MiniThemePreview 整套预览
+            val has = dp.id in owned
+            val price = prices[dp.id] ?: if (dp.id == "dunhuang") 30 else 20
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Text(
+                    tr("{0} 枚贴纸 · 解锁后永久拥有", dp.stamps.size.toString()),
+                    fontSize = 12.sp, color = GrayText,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+                dp.stamps.chunked(4).forEach { row ->
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        row.forEach { st ->
+                            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                val bm = com.looka.app.util.StampAssets.bitmap(ctx, st.id)
+                                if (bm != null) androidx.compose.foundation.Image(
+                                    bm, st.id, modifier = Modifier.size(64.dp)
+                                ) else Text("🦌", fontSize = 30.sp)
+                            }
+                        }
+                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Hairline()
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            when {
+                                has -> tr("已解锁")
+                                isPro -> tr("Pro 会员 0 鹿角")
+                                else -> tr("{0} 鹿角", price.toString())
+                            },
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                            color = if (has) GrayText else Ink
+                        )
+                        if (!has && antler >= 0 && !isPro) Text(
+                            tr("余额 {0} 🦌", antler.toString()),
+                            fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    if (!has) androidx.compose.material3.Button(
+                        onClick = { startBuy(dp) },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = com.looka.app.ui.theme.SaveDark),
+                        shape = RoundedCornerShape(5.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        if (busyId == dp.id) com.looka.app.ui.common.DeerLoading(13.sp)
+                        else Text(
+                            if (isPro) tr("免费领取") else tr("解锁"),
+                            fontSize = 13.sp, color = Color.White
+                        )
+                    }
+                }
+            }
+        } else Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             if (!authed) {
                 Text(
                     tr("登录后可用鹿角解锁贴纸包（当天使用 Looka 即获 10 🦌）"),
@@ -957,7 +1044,10 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
                 val has = pk.id in owned
                 val price = prices[pk.id] ?: if (pk.id == "dunhuang") 30 else 20
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth()
+                        // §126 C5：整行点开详情（买前先看整套）；右侧按钮仍可直接买
+                        .plainClick { detailPack = pk }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // 封面 = 包内第一枚
@@ -969,32 +1059,14 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
                     Column(Modifier.weight(1f)) {
                         Text(pk.name(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Text(
-                            tr("{0} 枚贴纸", pk.stamps.size.toString()),
+                            tr("{0} 枚贴纸 · 点击查看整套", pk.stamps.size.toString()),
                             fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                     when {
                         has -> Text(tr("已解锁"), fontSize = 13.sp, color = GrayText)
                         else -> androidx.compose.material3.Button(
-                            onClick = {
-                                if (!authed) { com.looka.app.ui.common.toast(ctx, tr("请先在「更多 → 账号」登录")); return@Button }
-                                if (busyId.isNotBlank()) return@Button
-                                // §120 P3：免费领取（Pro）直接走；花鹿角的先确认
-                                if (!isPro) { confirmPack = pk; return@Button }
-                                busyId = pk.id
-                                scope.launch {
-                                    runCatching {
-                                        val r = com.looka.app.net.Api.shopBuy(ctx, "pack:" + pk.id)
-                                        if (r.optBoolean("ok")) {
-                                            owned = owned + pk.id
-                                            com.looka.app.data.Prefs.setOwnedPacks(ctx, owned)
-                                            antler = r.optInt("antler", antler)
-                                            com.looka.app.ui.common.toast(ctx, tr("已解锁「{0}」🦌", pk.name()))
-                                        } else com.looka.app.ui.common.toast(ctx, r.optString("error", tr("解锁失败，请稍后再试")))
-                                    }.onFailure { com.looka.app.ui.common.toast(ctx, it.message ?: tr("解锁失败，请稍后再试")) }
-                                    busyId = ""
-                                }
-                            },
+                            onClick = { startBuy(pk) },
                             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                                 containerColor = com.looka.app.ui.theme.SaveDark),
                             shape = RoundedCornerShape(5.dp),

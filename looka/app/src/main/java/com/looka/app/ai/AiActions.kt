@@ -32,7 +32,9 @@ data class AiAction(
     // 「10:55 提醒我」只能被翻成"10:55 的日程 + 默认提前 15 分钟" —— 提醒落在 10:40，
     // 而 10:40 已过就被调度器静默丢弃，用户什么都收不到。
     val remindAtMin: Int = -1,       // 当天提醒时刻（分钟）。"X点提醒我" → 就是 X 点
-    val remindMinBefore: Int = -1    // 提前 N 分钟。"提前半小时提醒" → 30
+    val remindMinBefore: Int = -1,   // 提前 N 分钟。"提前半小时提醒" → 30
+    // §126 C4（L3a）：theme 专用 —— 主色 HEX。不进执行队列，走独立主题草稿卡
+    val accentHex: String = ""
 ) {
     /** 预览文案 */
     fun label(): String = when (type) {
@@ -62,6 +64,7 @@ data class AiAction(
             "${tr("删除")}$what #$targetId${if (title.isNotBlank()) " · $title" else ""}"
         }
         "remember" -> "${tr("记住")} · $fact"
+        "theme" -> "${tr("主题")} · ${title.ifBlank { accentHex }}"
         else -> "${tr("笔记")} · ${title.ifBlank { content.take(12) }}"
     }
 
@@ -112,18 +115,29 @@ object AiActions {
  {"type":"create_note","title":"标题","content":"内容"},
  {"type":"update_event","id":123,"date":"YYYY-MM-DD","start":"HH:mm","end":"HH:mm","title":"新标题"},
  {"type":"update_task","id":45,"due":"YYYY-MM-DD","title":"新标题","done":true},
+ {"type":"update_note","id":7,"title":"新标题","content":"新内容"},
  {"type":"delete_event","id":123},
  {"type":"delete_task","id":45},
  {"type":"delete_note","id":7},
- {"type":"remember","fact":"用户告诉你的一条长期偏好"}
+ {"type":"remember","fact":"用户告诉你的一条长期偏好"},
+ {"type":"theme","name":"主题名(≤6字)","accent":"#RRGGBB"}
 ]}
 remember 规则：只记**长期有效的偏好或事实**（如「不爱早上开会」「女儿叫小雨」）；
 一次性安排、情绪、秘密**不要记**；用户说「别记/忘掉」时不要输出 remember。
+theme 规则：**仅当用户明确要求生成/更换主题或配色**时输出（可依据描述或所发图片选主色）；
+accent 必须是 6 位 HEX；选克制耐看的中饱和色，避免荧光色。其余情况绝不输出 theme。
 create_event 可带 "category":"分类名"（只能用上面列出的分类名，猜不到就省略）。
-两条规则（S1 §64：其余 10 条弱模型补丁已删）：
+三条规则（S1 §64 精简 + §126 评测集实测补强）：
 1. 改/删的 id 只能用上面数据里方括号标注的数字（如 [e123] → 123）；找不到就问用户，不要猜。
 2. 用户只是提问时不要输出 json 代码块，用真实数据回答即可。
-（remind_at = 在那个时刻提醒；remind_before = 提前 N 分钟。）"""
+3. 只要你在回复里答应了「记下/安排/提醒/改好/删掉」，就**必须**同时输出对应的 json 动作块 ——
+   只在文字里说做了而不输出动作，等于什么都没发生，这是最严重的错误。
+   信息不全就按用户原话先建（标题就用他的说法），不要为追问细节而不输出动作。
+4. 文字里承诺的提醒必须落进字段：说了「会提醒你」，动作里就必须带 remind_at 或 remind_before。
+5. 删除请求直接输出 delete 动作，不要在文字里反问「要删吗」——
+   App 收到后会先向用户弹确认卡，不会直接删，你反问只是让用户多说一遍。
+（remind_at = 在那个时刻提醒；remind_before = 提前 N 分钟。带具体时刻的提醒请求
+「X点提醒我做某事」是 create_event：date=那天、remind_at="X:00"、start 没另说就等于它，不要用 create_task。）"""
 
     /** 聊天系统提示词（带用户真实日程上下文） */
     /** 小鹿人格（2026-08-21）：与网页端 aiSystemPrompt 必须同步（第十五节①类文案） */
@@ -288,12 +302,18 @@ $PROTOCOL
             if (type !in setOf(
                     "create_event", "create_task", "create_note",
                     "update_event", "update_task", "update_note",
-                    "delete_event", "delete_task", "delete_note", "remember"
+                    "delete_event", "delete_task", "delete_note", "remember", "theme"
                 )
             ) return@mapNotNull null
             if (type == "remember") {
                 val fact = o.optString("fact").trim().take(60)
                 return@mapNotNull if (fact.isBlank()) null else AiAction(type = "remember", fact = fact)
+            }
+            if (type == "theme") {
+                // §126 C4：HEX 不合法整条丢弃 —— 宁缺不猜（与日期年份校验同哲学）
+                val hex = o.optString("accent").trim()
+                return@mapNotNull if (!Regex("^#[0-9a-fA-F]{6}$").matches(hex)) null
+                else AiAction(type = "theme", title = o.optString("name").trim().take(12), accentHex = hex)
             }
             val isMut = type.startsWith("update_") || type.startsWith("delete_")
             // 改/删必须带定位 id；模型没给就丢弃（执行层还有一道"找不到"兜底）

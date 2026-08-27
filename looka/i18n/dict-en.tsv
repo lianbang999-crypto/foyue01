@@ -1041,3 +1041,46 @@ Pro 到期后	When Pro expires
 识别这张图将使用 3 枚鹿角	Reading this photo costs 3 antlers
 这张照片颜色太素啦，换一张试试	This photo is too muted — try another
 从照片生成主题	Theme from a photo
+8月	Aug
+Pro 会员 0 鹿角	Free with Pro
+theme.json 不是合法 JSON	theme.json is not valid JSON
+{0} 枚贴纸 · 点击查看整套	{0} stickers · tap to view all
+{0} 枚贴纸 · 解锁后永久拥有	{0} stickers · yours forever once unlocked
+⏰ {0} 提醒你	⏰ Reminder at {0}
+⏰ 提前 {0} 分钟提醒	⏰ Remind {0} min before
+下载失败：{0}	Download failed: {0}
+不用了	No thanks
+与「{0}」时间重叠（{1}）	Overlaps with "{0}" ({1})
+主题包不存在或超限	Theme pack not found or too large
+今天的鹿角用完啦	Out of antlers for today
+余额 {0} 🦌	Balance {0} 🦌
+修改笔记	Edit note
+删除任务	Delete task
+删除日程	Delete event
+删除笔记	Delete note
+包 id 不合法	Invalid pack id
+包不完整：缺 theme.json	Pack incomplete: missing theme.json
+包格式版本不对（需要 1.0）	Wrong pack schema version (need 1.0)
+可读性槽「{0}」不允许修改（应为 {1}，包里是 {2}）	Readability slot "{0}" must not change (expected {1}, got {2})
+小鹿准备做 {0} 件事，确认后我再动手	Deer plans {0} thing(s) — confirm before I act
+小鹿在想…	Deer is thinking…
+小鹿在看图…	Deer is reading the photo…
+小鹿配了一套主题「{0}」，看看喜欢吗？	Deer made you a theme "{0}" — like it?
+小鹿配了一套主题，看看喜欢吗？	Deer made you a theme — like it?
+已换上你的主题 🦌	Your theme is on 🦌
+打开	Open
+执行勾选的 {0} 件	Do {0} checked
+本次走了备用线路	Served by backup route
+查看更早的记录	View earlier messages
+标记完成	Mark done
+清空对话？	Clear chat?
+缺少主题名	Missing theme name
+缺少色彩令牌（tokens.semantic）	Missing color tokens (tokens.semantic)
+缺少色彩槽：{0}	Missing color slot: {0}
+聊天记录只在这台手机上。清空后将彻底删除（含图片），不可恢复。	Chat history lives only on this phone. Clearing deletes it permanently (incl. photos).
+色彩令牌不完整（16 槽必须齐全）	Color tokens incomplete (all 16 slots required)
+色彩令牌解析失败	Failed to parse color tokens
+记住：我不爱把会排在周一上午	Remember: I don't like Monday-morning meetings
+说一句话，我帮你记进手帐	Say one line — I'll put it in your planner
+重试	Retry
+🎨 已换上主题{0}	🎨 Theme applied{0}

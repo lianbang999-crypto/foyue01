@@ -1153,8 +1153,8 @@ async function route(request, env, ctx) {
     if (b.stream === true) {
       // X1~X4（§58）：此前这里**没有任何超时保护** —— 上游挂起就一直等，
       // 客户端 120 秒后抛 timeout（线上故障根因）。现在对齐非流式路径的韧性。
-      let resp = null, streamErr = '';
-      for (const model of models) {
+      let resp = null, streamErr = '', usedIdx = 0;
+      for (let mi = 0; mi < models.length; mi++) { const model = models[mi];
         try {
           const r = await fetch(`${AI.base}/chat/completions`, {
             method: 'POST',
@@ -1167,7 +1167,7 @@ async function route(request, env, ctx) {
               enable_thinking: false, reasoning: { enabled: false }, stream: true }),
             signal: AbortSignal.timeout(25_000)      // X1：25 秒拿不到响应头就换模型
           });
-          if (r.ok && r.body) { resp = r; break; }   // X3：确认可用才继续（扣费在此之后）
+          if (r.ok && r.body) { resp = r; usedIdx = mi; break; }   // X3：确认可用才继续（扣费在此之后）
           const eo = await r.json().catch(() => ({}));
           streamErr = eo?.error?.message || eo?.message || `上游 ${r.status}`;
           console.log('stream fail', model, streamErr);
@@ -1195,14 +1195,16 @@ async function route(request, env, ctx) {
           // 客户端要在流开始前知道账面（G3 到账提示 / G4 低额提示）
           'X-Antler-Total': String(after.total),
           'X-Antler-Granted-Today': String(bal.granted_today || 0),
+          // §126 A5：非主力模型接单 → 客户端气泡尾注「本次走了备用线路」
+          'X-Lk-Fallback': usedIdx > 0 ? '1' : '0',
           ...cors
         }
       });
     }
 
     // ── 非流式（兼容旧客户端）
-    let data = null, ok = false, lastMsg = 'AI 上游异常';
-    outer: for (const model of models) {
+    let data = null, ok = false, lastMsg = 'AI 上游异常', usedIdx2 = 0;
+    outer: for (let mi = 0; mi < models.length; mi++) { const model = models[mi];
       for (let attempt = 0; attempt < 3; attempt++) {
         const resp = await fetch(`${AI.base}/chat/completions`, {
           method: 'POST',
@@ -1217,7 +1219,7 @@ async function route(request, env, ctx) {
         });
         data = await resp.json().catch(() => ({}));
         // 200 但正文为空同样算失败（2026-08-21 实测的坑）
-        if (resp.ok && pickText(data)) { ok = true; break outer; }
+        if (resp.ok && pickText(data)) { ok = true; usedIdx2 = mi; break outer; }
         if (resp.ok) { lastMsg = '上游返回空内容'; break; }
         lastMsg = data?.error?.message || data?.message || `AI 上游错误 ${resp.status}`;
         const busy = resp.status === 429 || /busy|rate|overload/i.test(lastMsg);
@@ -1242,7 +1244,8 @@ async function route(request, env, ctx) {
       ok: true, content: pickText(data),
       antler: { total: after.total, granted: after.granted, paid: after.paid },
       granted_today: bal.granted_today || 0,
-      spent: fallbackMode ? 0 : need
+      spent: fallbackMode ? 0 : need,
+      fell_back: usedIdx2 > 0
     });
   }
 

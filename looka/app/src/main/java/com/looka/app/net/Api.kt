@@ -14,6 +14,12 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import com.looka.app.util.tr
 
+/**
+ * §126 A5：鹿角保底也用完（服务端 antler_empty）——不是故障，是额度状态。
+ * 单列类型让 vm 走内联条而不是错误气泡（AI-UX 4.4：不弹窗、可关）。
+ */
+class AntlerEmptyException(msg: String) : IOException(msg)
+
 /** Looka 服务端（looka.foyue.org）API 客户端 */
 object Api {
 
@@ -114,7 +120,9 @@ object Api {
         messages: JSONArray,
         temperature: Double,
         onAntler: (Int, Int) -> Unit,
-        onDelta: (String) -> Unit
+        onDelta: (String) -> Unit,
+        /** §126 A5：本次是否走了备用线路（X-Lk-Fallback 头，气泡尾注用） */
+        onFallback: (Boolean) -> Unit = {}
     ): String = withContext(Dispatchers.IO) {
         val payload = JSONObject()
             .put("messages", messages).put("temperature", temperature).put("stream", true)
@@ -126,12 +134,16 @@ object Api {
                 val txt = resp.body?.string().orEmpty()
                 val o = try { JSONObject(txt) } catch (_: Exception) { JSONObject() }
                 if (resp.code == 401) Prefs.setAuthToken(c, null)
-                throw IOException(o.optString("error").ifBlank { tr("请求失败（HTTP {0}）", resp.code) })
+                val err = o.optString("error").ifBlank { tr("请求失败（HTTP {0}）", resp.code) }
+                // §126 A5：额度用尽单列 —— vm 走内联条，不进错误气泡
+                if (o.optBoolean("antler_empty")) throw AntlerEmptyException(err)
+                throw IOException(err)
             }
             onAntler(
                 resp.header("X-Antler-Total")?.toIntOrNull() ?: -1,
                 resp.header("X-Antler-Granted-Today")?.toIntOrNull() ?: 0
             )
+            onFallback(resp.header("X-Lk-Fallback") == "1")
             val src = resp.body?.source() ?: throw IOException(tr("AI 返回为空，请重试"))
             val sb = StringBuilder()
             while (true) {
