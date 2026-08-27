@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 48,
-  "versionName": "1.27.0",
+  "versionCode": 49,
+  "versionName": "1.27.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4441309,
-  "sha256": "caf49ba3f58ced690925a151a481c2c9b8c2adbd088355627b940638610d5d80",
-  "changelog": "小鹿全面升级:草稿卡看得更清楚(绝对日期加粗/删除默认不勾/冲突提醒)、聊天记录保留在本机(30天)、失败可重试;聊天里让小鹿直接给你配主题;商店可看整套贴纸;皮肤渲染层就绪",
+  "size": 4441601,
+  "sha256": "f1d69a83b6753c457ffa98d69c864e619207f68e0fa39411323e70a86ef4db97",
+  "changelog": "解锁的贴纸包现在可以收起来了(所有权保留,随时打开);主题面板能一键卸下皮肤换回九色;修掉日期偶尔显示 1969 的问题",
   "minSupported": 1
 }
