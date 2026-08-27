@@ -52,7 +52,9 @@ const val ROLE_ACTION = 2
 data class ChatMsg(val role: Int, val text: String, val error: Boolean = false,
                    val tier: String = "standard",
                    /** L1（§62）：动作卡片可点开的目标（event/task/note + 本地 id），"" = 不可点 */
-                   val targetKind: String = "", val targetId: Long = -1L)
+                   val targetKind: String = "", val targetId: Long = -1L,
+                   /** §123：随消息发出的图（jpeg base64，仅气泡回显用；识别按 3 🦌 计） */
+                   val imageB64: String = "")
 
 /** 日程编辑草稿：编辑器与重复编辑器之间共享（规格 CAL-010/011/013） */
 class EventDraft {
@@ -1007,9 +1009,9 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         return sb.toString()
     }
 
-    fun sendChat(display: String, payload: String = display) {
-        if (aiBusy || display.isBlank()) return
-        chat += ChatMsg(ROLE_USER, display)
+    fun sendChat(display: String, payload: String = display, imageB64: String = "") {
+        if (aiBusy || (display.isBlank() && imageB64.isBlank())) return
+        chat += ChatMsg(ROLE_USER, display.ifBlank { tr("[图片]") }, imageB64 = imageB64)
         aiBusy = true
         viewModelScope.launch {
             try {
@@ -1026,7 +1028,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                 // T2：渲染在 ``` 处截断，动作 JSON 逐字冒出也绝不给用户看（线上踩过的坑）
                 var idx = -1
                 val sb = StringBuilder()
-                val raw = AiClient.chat(getApplication(), sys, history) { delta ->
+                val raw = AiClient.chat(getApplication(), sys, history, imageB64 = imageB64) { delta ->
                     sb.append(delta)
                     val visible = sb.toString().substringBefore("```").trimEnd('`', '{')
                         .replace(Regex("""[（(]?\[[etn]\d+\][）)]?"""), "")

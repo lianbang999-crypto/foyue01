@@ -84,6 +84,17 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     var aboutDlg by remember { mutableStateOf(false) }
     var themeSheet by remember { mutableStateOf(false) }
+    // §123（用户拍板恢复照片主题；§112 曾撤,此为主动变更）：选照片 → 本机取色 → 预览应用
+    var photoAccent by remember { mutableStateOf<androidx.compose.ui.graphics.Color?>(null) }
+    val pickThemePhoto = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            val c = com.looka.app.util.PhotoTheme.extractAccent(ctx, it)
+            if (c == null) com.looka.app.ui.common.toast(ctx, tr("这张照片颜色太素啦，换一张试试"))
+            else photoAccent = c
+        }
+    }
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.looka.app.util.UpdateManager.Info?>(null) }
     var updateMsg by remember { mutableStateOf<String?>(null) }
@@ -258,11 +269,65 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
 
-            // §112（用户拍板）：**主题只留九色，自创色盘与照片取色已撤。**
-            // 「一鹿九色」本来就是品牌 —— 九个之外再给 48 个，等于自己稀释自己。
-            // 撤掉的是一个 Pro 卖点（§48 C4 / B6-lite），代价在 §112 记账；
-            // 已设自定义主题的老用户不受影响（ThemeCtl 仍认 index=-1，直到他换成九色之一）。
+            // §112 曾拍板「只留九色、照片取色撤」；§123 用户拍板**恢复照片路线** ——
+            // 形态换了：不是 48 色盘，而是「拿一张自己的照片生成皮肤」（本机取色，
+            // 照片不上传）。九色仍是主线，这是第十种：你自己的颜色。
+            Hairline()
+            Row(
+                Modifier.fillMaxWidth()
+                    .plainClick {
+                        pickThemePhoto.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(com.looka.app.ui.theme.LkIcons.Image, null, tint = GrayText,
+                    modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr("从照片生成主题"), fontSize = 14.sp)
+                    Text(tr("取照片里的主色做成你的皮肤，照片不上传"), fontSize = 11.sp, color = GrayText)
+                }
+            }
         }
+    }
+
+    // §123：取色预览 —— 色卡 + 应用/取消（一键替换现有主题皮肤）
+    photoAccent?.let { acc ->
+        val tokens = remember(acc) { com.looka.app.util.PhotoTheme.tokensFrom(acc) }
+        AlertDialog(
+            onDismissRequest = { photoAccent = null },
+            title = { DlgTitle(tr("用这个颜色做主题？")) },
+            text = {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(acc))
+                        Spacer(Modifier.width(10.dp))
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(tokens.selection)
+                            .border(0.8.dp, Color(0xFFE2E5E2), CircleShape))
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(tr("主色与选中底色预览"), fontSize = 13.sp)
+                            Text(tr("文字与周末红蓝保持不变，阅读不受影响"), fontSize = 11.sp, color = GrayText)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.looka.app.ui.theme.Tokens.applyPack(tokens)
+                    com.looka.app.util.PhotoTheme.save(ctx, acc)
+                    photoAccent = null; themeSheet = false
+                    com.looka.app.ui.common.toast(ctx, tr("已换上你的颜色 🦌"))
+                }) { Text(tr("应用"), color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { photoAccent = null }) { Text(tr("取消"), color = GrayText) }
+            },
+            containerColor = Color.White
+        )
     }
 
 

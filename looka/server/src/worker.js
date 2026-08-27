@@ -1095,16 +1095,37 @@ async function route(request, env, ctx) {
       return json({ error: '说得太快啦，休息几秒再问小鹿 🦌' }, 429);
     }
     const b = await body();
+    // §123：支持带图消息（OpenAI vision 格式：content = [{type:'text'},{type:'image_url'}]）。
+    // 约束：每条最多 2 图、单图 base64 ≤2MB、总带图消息只认最后 3 条 —— 防滥用也防超长。
+    let hasImage = false;
+    const cleanContent = (c) => {
+      if (Array.isArray(c)) {
+        const parts = [];
+        let imgs = 0;
+        for (const p of c.slice(0, 6)) {
+          if (p && p.type === 'text') parts.push({ type: 'text', text: String(p.text || '').slice(0, 16000) });
+          else if (p && p.type === 'image_url' && imgs < 2) {
+            const u = String(p.image_url?.url || '');
+            if (u.startsWith('data:image/') && u.length <= 2 * 1024 * 1024 * 1.4) {
+              parts.push({ type: 'image_url', image_url: { url: u } }); imgs++; hasImage = true;
+            }
+          }
+        }
+        return parts.length ? parts : '';
+      }
+      return String(c || '').slice(0, 16000);
+    };
     const messages = Array.isArray(b.messages) ? b.messages.slice(0, 40).map(x => ({
       role: ['system', 'user', 'assistant'].includes(x.role) ? x.role : 'user',
-      content: String(x.content || '').slice(0, 16000)
-    })) : [];
+      content: cleanContent(x.content)
+    })).filter(m => m.content && m.content.length) : [];
     if (!messages.length) return json({ error: '消息为空' }, 400);
+    if (hasImage && !env.OPENROUTER_KEY) return json({ error: '图片理解暂不可用' }, 503);
     const temperature = Math.min(Math.max(Number(b.temperature ?? 0.6), 0), 1.5);
 
     // ── 鹿角结算（G0：取代按天次数）。读余额顺带完成当日到账（惰性日发）。
     const bal = await antlerOf(env, user.id, plan);
-    const need = ANTLER.cost.chat;
+    const need = hasImage ? ANTLER.cost.ocr : ANTLER.cost.chat;   // §123：带图=识别，3 枚
     let fallbackMode = false;
     if (bal.total < need) {
       // G7：余额 0 不硬停 —— 每天保底 3 次（0 次 = 用户再也想不起这个功能）
@@ -1120,7 +1141,13 @@ async function route(request, env, ctx) {
     }
 
     // ── 模型：统一 Qwen（免费池），主模型重试 + 备用模型（拥挤时段兜底）
-    const models = AI.models;
+    // §123：带图消息切视觉模型（qwen3.5-flash：$0.065/M、支持 image，比 V4-vision 便宜 7 倍）。
+    // 视觉恒走 OpenRouter —— 将来 SILICONFLOW_KEY 配回后文本走 SF，带图仍须用 OR 的
+    // 模型名与端点，直接覆盖 AI.base/key，否则 SF 端点上调 OR 模型名必 404。
+    if (hasImage) { AI.base = 'https://openrouter.ai/api/v1'; AI.key = env.OPENROUTER_KEY; }
+    const models = hasImage
+      ? [env.OR_VISION_MODEL || 'qwen/qwen3.5-flash-02-23', 'qwen/qwen3-vl-32b-instruct']
+      : AI.models;
 
     // ── T1（§53）：真流式。SSE 直通透传上游（OpenAI 兼容格式），客户端自行解析 delta。
     //   计量在开流前完成（流中无法再回头扣）；上游连不上则不扣、退回错误 JSON。

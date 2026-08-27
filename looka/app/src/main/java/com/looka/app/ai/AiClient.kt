@@ -47,6 +47,7 @@ object AiClient {
         system: String,
         history: List<Pair<String, String>>,
         temperature: Double = 0.6,
+        imageB64: String = "",   // §123：随最后一条 user 消息带一张图（jpeg base64，服务端切视觉模型）
         onDelta: ((String) -> Unit)? = null
     ): String {
         val customKey = Prefs.apiKey(ctx).trim()
@@ -54,8 +55,18 @@ object AiClient {
         if (Api.authed(ctx)) {
             val msgs = JSONArray()
             msgs.put(JSONObject().put("role", "system").put("content", system))
-            for ((role, content) in history) {
-                msgs.put(JSONObject().put("role", role).put("content", content))
+            history.forEachIndexed { i, (role, content) ->
+                val isLastUser = i == history.lastIndex && role == "user" && imageB64.isNotBlank()
+                if (isLastUser) {
+                    // OpenAI vision 格式：text + image_url(data URI)
+                    val parts = org.json.JSONArray()
+                        .put(JSONObject().put("type", "text").put("text", content))
+                        .put(JSONObject().put("type", "image_url").put("image_url",
+                            JSONObject().put("url", "data:image/jpeg;base64," + imageB64)))
+                    msgs.put(JSONObject().put("role", role).put("content", parts))
+                } else {
+                    msgs.put(JSONObject().put("role", role).put("content", content))
+                }
             }
             if (onDelta != null) {
                 val raw = Api.aiChatStream(ctx, msgs, temperature, { total, granted ->

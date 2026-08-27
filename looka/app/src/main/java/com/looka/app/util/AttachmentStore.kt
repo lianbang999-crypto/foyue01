@@ -64,4 +64,21 @@ object AttachmentStore {
     fun delete(c: Context, fileName: String) {
         if (fileName.isNotBlank()) fileOf(c, fileName).delete()
     }
+
+    /** §123：对话识图用 —— 压到 1024px/q80 转 base64（识别够用，1024px 一般 <300KB） */
+    fun toChatBase64(c: Context, uri: android.net.Uri): String? = runCatching {
+        val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        c.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
+        if (opts.outWidth <= 0) return null
+        var sample = 1
+        while (maxOf(opts.outWidth, opts.outHeight) / sample > 2048) sample *= 2
+        val bmp = c.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: return null
+        val scaled = scaleDown(bmp, 1024)
+        val out = java.io.ByteArrayOutputStream()
+        scaled.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        if (scaled !== bmp) bmp.recycle()
+        android.util.Base64.encodeToString(out.toByteArray(), android.util.Base64.NO_WRAP)
+    }.getOrNull()
 }

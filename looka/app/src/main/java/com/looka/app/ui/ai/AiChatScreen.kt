@@ -7,6 +7,7 @@ import com.looka.app.ui.theme.LkIcons
 import androidx.compose.material3.MaterialTheme
 
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -93,12 +94,25 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
     // 四个 chip 挨得近，误触即扣钱）。chipAction 记住「这条 chip 要走的专用动作」——
     // 周总结需要注入本地真实日程/任务/日记，不能退化成普通文本；用户一改文字就作废。
     var chipAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    // §123：随消息带一张图（相册选 → 压到 1024px/q80 → base64；识别计 3 🦌）
+    var pendingImage by remember { mutableStateOf("") }
+    val ctxImg = androidx.compose.ui.platform.LocalContext.current
+    val pickChatImage = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            val b64 = com.looka.app.util.AttachmentStore.toChatBase64(ctxImg, it)
+            if (b64 == null) com.looka.app.ui.common.toast(ctxImg, tr("图片读取失败"))
+            else pendingImage = b64
+        }
+    }
     val send = {
         val v = input.trim()
         val act = chipAction
-        if (!vm.aiBusy && (act != null || v.isNotEmpty())) {
-            input = ""; chipAction = null
-            if (act != null) act() else vm.sendChat(v)
+        if (!vm.aiBusy && (act != null || v.isNotEmpty() || pendingImage.isNotEmpty())) {
+            val img = pendingImage
+            input = ""; chipAction = null; pendingImage = ""
+            if (act != null) act() else vm.sendChat(v, imageB64 = img)
         }
     }
 
@@ -276,11 +290,41 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
         }
         Hairline()
 
+        // §123：待发送的图预览（点 × 撤下）
+        if (pendingImage.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val bmp = remember(pendingImage) {
+                    runCatching {
+                        val by = android.util.Base64.decode(pendingImage, android.util.Base64.NO_WRAP)
+                        android.graphics.BitmapFactory.decodeByteArray(by, 0, by.size)
+                    }.getOrNull()
+                }
+                bmp?.let {
+                    Image(it.asImageBitmap(), null, modifier = Modifier.size(52.dp)
+                        .clip(RoundedCornerShape(4.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(tr("识别这张图将使用 3 枚鹿角"), fontSize = 11.sp, color = GrayText,
+                    modifier = Modifier.weight(1f))
+                IconButton(onClick = { pendingImage = "" }) {
+                    Icon(LkIcons.Close, tr("移除图片"), tint = GrayText, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
         // 输入栏
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
+            IconButton(onClick = {
+                pickChatImage.launch(androidx.activity.result.PickVisualMediaRequest(
+                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }, modifier = Modifier.size(44.dp)) {
+                Icon(LkIcons.Image, tr("发图片"), tint = GrayText, modifier = Modifier.size(21.dp))
+            }
             TextField(
                 // 用户一动文字，chip 的专用动作就作废，退化成普通对话
                 value = input, onValueChange = { input = it; chipAction = null },

@@ -131,9 +131,14 @@ object ThemeCtl {
         index = if (i == CUSTOM_THEME && customColor != 0L) CUSTOM_THEME
                 else i.coerceIn(0, DEER_THEMES.size - 1)
         syncTokens()
+        // §123：照片皮肤持久化恢复 —— pack 优先级高于九色（Tokens.active = pack ?: derived）
+        com.looka.app.util.PhotoTheme.load(c)?.let { Tokens.applyPack(it) }
     }
 
     fun set(c: Context, i: Int) {
+        // §123：手选九色 = 明确要换回九色主题 —— 卸下照片皮肤，否则 pack 永远盖着选不动
+        Tokens.applyPack(null)
+        com.looka.app.util.PhotoTheme.clear(c)
         index = if (i == CUSTOM_THEME) CUSTOM_THEME else i.coerceIn(0, DEER_THEMES.size - 1)
         Prefs.setThemeIndex(c, index)
         Prefs.markSettingsDirty(c)   // B1：主题随 settings 实体上云
