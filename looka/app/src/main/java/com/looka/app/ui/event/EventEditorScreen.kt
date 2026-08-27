@@ -136,6 +136,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
     var taskDone by rememberSaveable { mutableStateOf(taskPrefill?.done ?: false) }
     var taskStarred by rememberSaveable { mutableStateOf(taskPrefill?.starred ?: false) }
     var taskListUid by rememberSaveable { mutableStateOf(taskPrefill?.listUid ?: "list-default") }
+    // §120 P5（F4）：任务面附件宿主 —— 编辑用原任务 uid，新建预生成 draft uid（保存同键入库）
+    val taskDraftUid = rememberSaveable { taskPrefill?.uid ?: com.looka.app.data.newUid() }
     var taskDueDlg by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.editorTaskPrefill = null }
 
@@ -246,7 +248,8 @@ fun EventEditorScreen(vm: LookaViewModel, nav: NavHostController) {
                         toast(ctx, tr("已保存"))
                     } else {
                         vm.addTask(taskTitle, taskDue, taskMemo, taskListUid,
-                            starred = taskStarred, done = taskDone)
+                            starred = taskStarred, done = taskDone,
+                            uidOverride = taskDraftUid)   // §120 P5：与已挂附件同键
                         toast(ctx, tr("已添加任务"))
                     }
                     close()
@@ -594,6 +597,12 @@ private fun EventForm(
             Hairline()
             }
         }
+        // §120 P5（F4）：日程面可加图 —— 编辑挂原系列 uid；新建挂 d.uid
+        //（saveCreate 已改为同键入库，不会产生孤儿附件）
+        com.looka.app.ui.common.AttachmentSection(
+            vm, "event",
+            if (d.editingSeriesId >= 0) (d.originalSeries?.uid ?: d.uid) else d.uid
+        )
         Spacer(Modifier.height(32.dp))
     }
 

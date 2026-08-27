@@ -191,7 +191,8 @@ fun EventDetailScreen(vm: LookaViewModel, nav: NavHostController, sid: Long, occ
                 DetailRow(LkIcons.Note, o.memo)
                 Hairline()
             }
-            // §119 T8：附件区暂时下线（同 TaskDetailScreen 处注释；笔记页灰度通过后恢复）
+            // §120 P5：恢复挂载（崩溃根因已修 + 防御降级兜底）
+            s?.let { com.looka.app.ui.common.AttachmentSection(vm, "event", it.uid) }
         }
     }
 

@@ -112,6 +112,13 @@ fun AttachmentSection(vm: LookaViewModel, ownerType: String, ownerUid: String) {
                                 bmp.asImageBitmap(), tr("图片"),
                                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
                             )
+                            // §120 P5（F4 状态可见化）：本地有、云端还没有 → 右上角小灰点。
+                            // 同步器每轮 sync 自动补传（单轮 ≤10 张），传完点自己消失。
+                            if (!a.remote) Box(
+                                Modifier.align(Alignment.TopEnd).padding(3.dp)
+                                    .size(8.dp).clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFFB9BBB9))
+                            )
                         } else {
                             // 云端有、本地还没拉到：占位 + 触发按需下载
                             androidx.compose.runtime.LaunchedEffect(a.uid) {

@@ -66,6 +66,7 @@ import com.looka.app.ui.common.EmptyDeer
 import com.looka.app.ui.common.Hairline
 import com.looka.app.ui.common.LookaTopBar
 import com.looka.app.ui.common.NavRow
+import com.looka.app.ui.common.ConfirmDialog
 import com.looka.app.ui.common.SwitchRow
 import com.looka.app.ui.common.plainClick
 import com.looka.app.ui.common.toast
@@ -99,7 +100,7 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
     var diaryUpload by remember { mutableStateOf(Prefs.aiDiaryUpload(ctx)) }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("订阅与小鹿 AI"), onBack = { nav.popBackStack() })
+        LookaTopBar(tr("方案与鹿角"), onBack = { nav.popBackStack() })   // §120 P1：B2 拆页后本页只管方案与钱
         Column(Modifier.verticalScroll(rememberScrollState())) {
 
             // 当前版本
@@ -146,9 +147,8 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
             Hairline()
-            // D4（§52）：小鹿记事本 —— 可看可删
-            DeerMemorySection(vm)
-            Hairline()
+            // §120 P1：小鹿记事本已迁「小鹿设置」（记忆属行为偏好域，不属方案页）
+
             Text(
                 tr("内测期注册即送 Pro 试用。\n有建议或问题请联系：looka01@qq.com"),
                 fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
@@ -257,55 +257,12 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             Hairline()
 
-            SectionLabel(tr("AI 与隐私"))
-            SwitchRow(
-                tr("允许小鹿读取日程与任务"), readAgenda,
-                subtitle = tr("作为对话上下文，才能回答「今天有什么安排」")
-            ) { readAgenda = it; Prefs.setAiReadAgenda(ctx, it) }
-            Hairline()
-            SwitchRow(
-                tr("允许日记润色上传正文"), diaryUpload,
-                subtitle = tr("日记最私密，默认关闭；开启后才能使用 AI 润色")
-            ) { diaryUpload = it; Prefs.setAiDiaryUpload(ctx, it) }
-            Hairline()
-
-            // 高级：自带 Key 直连
-            Text(
-                if (advanced) tr("收起高级选项") else tr("高级：使用自己的 AI Key 直连"),
-                fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.plainClick { advanced = !advanced }
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            )
-            if (advanced) {
-                var key by remember { mutableStateOf(Prefs.apiKey(ctx)) }
-                var base by remember { mutableStateOf(Prefs.baseUrl(ctx)) }
-                var model by remember { mutableStateOf(Prefs.model(ctx)) }
-                Column(Modifier.padding(horizontal = 16.dp)) {
-                    OutlinedTextField(value = key, onValueChange = { key = it },
-                        label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = base, onValueChange = { base = it },
-                        label = { Text("Base URL") }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                    OutlinedTextField(value = model, onValueChange = { model = it },
-                        label = { Text(tr("模型")) }, singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
-                    Row(Modifier.padding(vertical = 8.dp)) {
-                        TextButton(onClick = {
-                            Prefs.setApiKey(ctx, key.trim()); Prefs.setBaseUrl(ctx, base.trim())
-                            Prefs.setModel(ctx, model.trim())
-                            toast(ctx, tr("已保存"))
-                        }) { Text(tr("保存")) }
-                        TextButton(onClick = {
-                            key = ""; Prefs.setApiKey(ctx, "")
-                            toast(ctx, tr("已清除，恢复走 Looka 服务端"))
-                        }) { Text(tr("清除 Key"), color = GrayText) }
-                    }
-                    Text(
-                        tr("填入后 AI 请求直连服务商、走你自己的账单，不再经过 Looka 服务端。兼容 OpenAI 格式接口（如硅基流动 siliconflow.cn，在其官网申请 Key）。"),
-                        fontSize = 11.sp, color = GrayText
-                    )
-                }
+            // §120 P1：原「AI 与隐私 + 自有 Key」整段迁往「小鹿设置」（设置中心可达）——
+            //《全站统一规划》B2：方案页管钱与权益，AI 行为偏好归设置域
+            NavRow(tr("小鹿设置"), value = tr("上下文授权、日记隐私、自有 Key、小鹿的记忆")) {
+                nav.navigate("deerSettings")
             }
+            Hairline()
             Spacer(Modifier.height(40.dp))
         }
     }
@@ -550,11 +507,21 @@ fun SelfCheckScreen(vm: LookaViewModel, nav: NavHostController) {
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
-        LookaTopBar(tr("提醒自检"), onBack = { nav.popBackStack() })
+        LookaTopBar(tr("提醒诊断"), onBack = { nav.popBackStack() })   // §120 P1：A2 术语
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            // §120 P1（B3 状态分层）：先给一句状态结论，用户不用逐项读完才知道有没有事。
+            // 「自启动」无法程序化判断（null），不计入结论 —— 不确定的事不写成确定的。
+            val allOk = notifOk && exactOk && batteryOk
             Text(
-                tr("提醒不响？逐项检查下面四关。改完回到本页会自动刷新。"),
-                fontSize = 13.sp, color = GrayText, modifier = Modifier.padding(16.dp)
+                if (allOk) tr("提醒状态正常。") else tr("有设置可能影响提醒，请处理下方标红的项。"),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (allOk) Ink else HolidayRed,
+                modifier = Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp)
+            )
+            Text(
+                tr("改完回到本页会自动刷新。"),
+                fontSize = 13.sp, color = GrayText, modifier = Modifier.padding(start = 16.dp, top = 4.dp, bottom = 12.dp, end = 16.dp)
             )
             CheckRow(tr("通知权限"), notifOk, tr("没有它任何提醒都发不出来")) {
                 ctx.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
@@ -795,10 +762,21 @@ fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     var bal by remember { mutableStateOf(-1) }
     var invite by remember { mutableStateOf("") }
+    var grantDaily by remember { mutableStateOf(0) }
+    // §120 P3（D3 钱包）：最近流水 —— 只要发生扣费，就给最基本的可核对能力
+    var ledger by remember { mutableStateOf(listOf<Triple<Int, String, Long>>()) }
     LaunchedEffect(Unit) {
         runCatching {
             val r = Api.antler(ctx)
             bal = r.optJSONObject("antler")?.optInt("total", -1) ?: r.optInt("total", -1)
+            grantDaily = r.optInt("grant_daily", 0)
+            val arr = r.optJSONArray("ledger")
+            val out = mutableListOf<Triple<Int, String, Long>>()
+            for (i in 0 until minOf(arr?.length() ?: 0, 10)) {
+                val o = arr!!.getJSONObject(i)
+                out.add(Triple(o.optInt("delta"), o.optString("reason"), o.optLong("created_at")))
+            }
+            ledger = out
         }
         runCatching { invite = Api.me(ctx).optString("invite_code") }
     }
@@ -809,11 +787,48 @@ fun AntlerScreen(vm: LookaViewModel, nav: NavHostController) {
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
                 Text(if (bal >= 0) "🦌 $bal" else "🦌 …", fontSize = 30.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    tr("每天自动到账，和小鹿聊天用 1 枚"),
+                    if (grantDaily > 0) tr("当天使用后获得 {0} 枚；和小鹿聊天用 1 枚", grantDaily.toString())
+                    else tr("当天使用后获得；和小鹿聊天用 1 枚"),
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
+                )
+                Text(
+                    tr("不过期、不清零、无上限"),
+                    fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp)
                 )
             }
             Hairline()
+            // §120 P3：最近明细（D3：今天获得 +10 / 小鹿对话 −1 / 装扮 −30）
+            if (ledger.isNotEmpty()) {
+                SectionLabel(tr("最近明细"))
+                ledger.forEach { (delta, reason, ts) ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            when (reason) {
+                                "daily_grant" -> tr("每日到账")
+                                "chat" -> tr("小鹿对话")
+                                "shop" -> tr("装扮解锁")
+                                "invite" -> tr("邀请奖励")
+                                else -> reason
+                            },
+                            fontSize = 13.sp, modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            Fmt.dateCn(java.time.Instant.ofEpochMilli(ts)
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate().toEpochDay()),
+                            fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(end = 10.dp)
+                        )
+                        Text(
+                            (if (delta > 0) "+" else "") + delta,
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            color = if (delta > 0) MaterialTheme.colorScheme.primary else Ink
+                        )
+                    }
+                }
+                Hairline()
+            }
             if (invite.isNotBlank()) {
                 val clip = LocalClipboardManager.current
                 Row(
@@ -887,6 +902,8 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
     var owned by remember { mutableStateOf(com.looka.app.data.Prefs.ownedPacks(ctx)) }
     var prices by remember { mutableStateOf(mapOf<String, Int>()) }
     var busyId by remember { mutableStateOf("") }
+    // §120 P3（D4 购买确认）：确认弹窗先看清「余额 42 → 12」再扣
+    var confirmPack by remember { mutableStateOf<com.looka.app.util.StampAssets.Pack?>(null) }
     LaunchedEffect(Unit) {
         if (!authed) return@LaunchedEffect
         runCatching {
@@ -949,6 +966,8 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
                             onClick = {
                                 if (!authed) { com.looka.app.ui.common.toast(ctx, tr("请先在「更多 → 账号」登录")); return@Button }
                                 if (busyId.isNotBlank()) return@Button
+                                // §120 P3：免费领取（Pro）直接走；花鹿角的先确认
+                                if (!isPro) { confirmPack = pk; return@Button }
                                 busyId = pk.id
                                 scope.launch {
                                     runCatching {
@@ -985,6 +1004,40 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
             )
         }
     }
+
+    // §120 P3（D4/A3 文案主稿）：购买确认 —— 价格、当前余额、购后余额三个数都亮出来
+    confirmPack?.let { pk ->
+        val price = prices[pk.id] ?: if (pk.id == "dunhuang") 30 else 20
+        val after = antler - price
+        ConfirmDialog(
+            title = tr("解锁「{0}」贴纸包？", pk.name()),
+            text = if (antler >= 0)
+                tr("需要 {0} 枚鹿角。余额 {1} → {2}。", price.toString(), antler.toString(), after.toString()) +
+                    if (after < 0) "\n" + tr("还差 {0} 枚鹿角。下次使用 Looka 时还会获得鹿角。", (-after).toString()) else ""
+            else tr("需要 {0} 枚鹿角。", price.toString()),
+            confirmText = tr("解锁"),
+            onConfirm = {
+                confirmPack = null
+                if (antler in 0 until price) {
+                    com.looka.app.ui.common.toast(ctx, tr("鹿角不够啦，明天使用 Looka 还会获得 🦌")); return@ConfirmDialog
+                }
+                busyId = pk.id
+                scope.launch {
+                    runCatching {
+                        val r = com.looka.app.net.Api.shopBuy(ctx, "pack:" + pk.id)
+                        if (r.optBoolean("ok")) {
+                            owned = owned + pk.id
+                            com.looka.app.data.Prefs.setOwnedPacks(ctx, owned)
+                            antler = r.optInt("antler", antler)
+                            com.looka.app.ui.common.toast(ctx, tr("已解锁「{0}」🦌", pk.name()))
+                        } else com.looka.app.ui.common.toast(ctx, r.optString("error", tr("解锁失败，请稍后再试")))
+                    }.onFailure { com.looka.app.ui.common.toast(ctx, it.message ?: tr("解锁失败，请稍后再试")) }
+                    busyId = ""
+                }
+            },
+            onDismiss = { confirmPack = null }
+        )
+    }
 }
 
 // ==================== §119 T5：设置中心 ====================
@@ -1007,11 +1060,87 @@ fun SettingsHubScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigat
                 nav.navigate("selfcheck")
             }
             Hairline()
+            NavRow(tr("小鹿设置"), value = tr("上下文授权、隐私与记忆"), icon = LkIcons.Smile) {
+                nav.navigate("deerSettings")
+            }
+            Hairline()
             NavRow(
                 tr("语言 / Language"), icon = LkIcons.Help,
                 value = com.looka.app.util.I18n.choiceLabel(com.looka.app.data.Prefs.language(LocalContext.current))
             ) { nav.navigate("language") }
             Hairline()
+        }
+    }
+}
+
+
+// ==================== §120 P1：小鹿设置（B2 拆页） ====================
+
+/**
+ * 小鹿的行为偏好域 —— 从「订阅与小鹿 AI」拆出（《全站统一规划》B2）。
+ * 管：上下文授权、日记隐私、自有 Key、小鹿的记忆。不管：方案、鹿角、付款。
+ */
+@Composable
+fun DeerSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
+    val ctx = LocalContext.current
+    var readAgenda by remember { mutableStateOf(Prefs.aiReadAgenda(ctx)) }
+    var diaryUpload by remember { mutableStateOf(Prefs.aiDiaryUpload(ctx)) }
+    var advanced by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("小鹿设置"), onBack = { nav.popBackStack() })
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            SectionLabel(tr("AI 与隐私"))
+            SwitchRow(
+                tr("允许小鹿读取日程与任务"), readAgenda,
+                subtitle = tr("作为对话上下文，才能回答「今天有什么安排」")
+            ) { readAgenda = it; Prefs.setAiReadAgenda(ctx, it) }
+            Hairline()
+            SwitchRow(
+                tr("允许日记润色上传正文"), diaryUpload,
+                subtitle = tr("日记最私密，默认关闭；开启后才能使用 AI 润色")
+            ) { diaryUpload = it; Prefs.setAiDiaryUpload(ctx, it) }
+            Hairline()
+
+            // 高级：自带 Key 直连
+            Text(
+                if (advanced) tr("收起高级选项") else tr("高级：使用自己的 AI Key 直连"),
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.plainClick { advanced = !advanced }
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+            if (advanced) {
+                var key by remember { mutableStateOf(Prefs.apiKey(ctx)) }
+                var base by remember { mutableStateOf(Prefs.baseUrl(ctx)) }
+                var model by remember { mutableStateOf(Prefs.model(ctx)) }
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    OutlinedTextField(value = key, onValueChange = { key = it },
+                        label = { Text("API Key") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = base, onValueChange = { base = it },
+                        label = { Text("Base URL") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    OutlinedTextField(value = model, onValueChange = { model = it },
+                        label = { Text(tr("模型")) }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                    Row(Modifier.padding(vertical = 8.dp)) {
+                        TextButton(onClick = {
+                            Prefs.setApiKey(ctx, key.trim()); Prefs.setBaseUrl(ctx, base.trim())
+                            Prefs.setModel(ctx, model.trim())
+                            toast(ctx, tr("已保存"))
+                        }) { Text(tr("保存")) }
+                        TextButton(onClick = {
+                            key = ""; Prefs.setApiKey(ctx, "")
+                            toast(ctx, tr("已清除，恢复走 Looka 服务端"))
+                        }) { Text(tr("清除 Key"), color = GrayText) }
+                    }
+                    Text(
+                        tr("填入后 AI 请求直连服务商、走你自己的账单，不再经过 Looka 服务端。兼容 OpenAI 格式接口（如硅基流动 siliconflow.cn，在其官网申请 Key）。"),
+                        fontSize = 11.sp, color = GrayText
+                    )
+                }
+            }
+            // 小鹿的记忆（§52 D4 组件平移至此 —— 记忆属于行为偏好域）
+            DeerMemorySection(vm)
+            Spacer(Modifier.height(40.dp))
         }
     }
 }

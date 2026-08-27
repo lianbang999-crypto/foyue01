@@ -1373,6 +1373,26 @@ private fun DaySheet(
                     }
                     Hairline(Modifier.padding(start = 18.dp))
                 }
+                // §120 P4（E2 场景入口）：从日历问小鹿，**带着当前日期上下文**进对话 ——
+                // 不是把用户扔进空白聊天页（《全站统一规划》E2 的硬要求）
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .plainClick {
+                                vm.aiPrefill = tr("{0} 有什么安排？帮我看看。", Fmt.dateCn(day))
+                                nav.navigate("aiChat")
+                            }
+                            .padding(horizontal = 18.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(tr("小鹿"), fontSize = 12.sp, color = GrayText, modifier = Modifier.width(52.dp))
+                        Text("🦌", fontSize = 15.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("问问这天的安排"), fontSize = 14.sp, color = GrayText)
+                    }
+                    Hairline(Modifier.padding(start = 18.dp))
+                }
                 if (stampList.isNotEmpty()) {
                     item {
                         Row(

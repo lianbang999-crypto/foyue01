@@ -169,10 +169,9 @@ fun TaskDetailScreen(vm: LookaViewModel, nav: NavHostController, taskId: Long) {
                 }
                 Hairline()
             }
-            // §119 T8（《全站统一规划》H2：大面积挂载先单页灰度）：附件区暂时下线 ——
-            // v42 因 FileProvider 根未声明在这里崩过一轮（§118 已修但未真机闭环）。
-            // 按规划先在**笔记页**单点完成真机状态闭环，验过再逐页恢复。数据层不动，
-            // 已存的附件记录与字节安好，恢复挂载即重新可见。
+            // §120 P5：恢复挂载（用户拍板 P1-P6 一起做完；§118 崩溃根因已修 + runCatching 降级兜底）
+            com.looka.app.ui.common.AttachmentSection(vm, "task", t.uid)
+            Hairline()
             if (t.done && t.doneAt > 0) {
                 DetailField(tr("完成于")) {
                     // 毫秒 → 本地日：与已完成列表同一换算（直接 /86400000 是 UTC 日，CST 早晨会错一天）

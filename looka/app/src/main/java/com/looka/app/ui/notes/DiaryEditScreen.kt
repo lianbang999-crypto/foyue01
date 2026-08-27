@@ -165,7 +165,8 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp)
                 .verticalScroll(rememberScrollState())
         )
-        // §119 T8：附件区暂时下线（笔记页灰度通过后恢复；宿主键 day:<epochDay> 设计不变）
+        // §120 P5：恢复挂载（宿主键 day:<epochDay>，全端稳定）
+        com.looka.app.ui.common.AttachmentSection(vm, "diary", "day:" + day)
 
         // §110：**正在打字的时候，屏幕上只有你的字。**
         //

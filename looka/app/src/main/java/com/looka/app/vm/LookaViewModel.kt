@@ -144,6 +144,8 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     // §114 P7：任务模式的预填截止日。日历上下文进入=选中日（§75 T1 实机图47），
     // 待办页进入=-1 无日期 —— selectedDay 是"上次在日历点的那天"，对待办页毫无意义
     var editorTaskDue: Long = -1L
+    // §120 P4（E2 场景入口）：小鹿对话的一次性预填 —— 从日历等场景进入时带上下文
+    var aiPrefill: String = ""
     // §114 P14：任务编辑/复制的全页入口预填。id>0=编辑既有任务，id==0=复制出的新草稿，
     // null=普通新建。消费一次即清 —— 任务对象从此只有一套容器（全页编辑器）
     var editorTaskPrefill: com.looka.app.data.Task? = null
@@ -265,8 +267,10 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var pendingStampAsset by mutableStateOf("")
 
     fun saveCreate(d: EventDraft, onDone: () -> Unit) = viewModelScope.launch {
-        val uid = newUid()
-        val id = eventDao.insertSeries(d.toSeries(uidOverride = uid))
+        // §120 P5（F4：预生成 draft UID）：不再另造 uid —— 用 draft 自带的。
+        // 编辑器新建态挂的附件以 d.uid 为宿主，保存时必须是同一个键，否则附件成孤儿。
+        val uid = d.uid
+        val id = eventDao.insertSeries(d.toSeries())
         d.reminders.forEach { eventDao.insertReminder(it.copy(id = 0, seriesId = id)) }
         if (pendingStampBind >= 0) {
             stampDao.bindEvent(pendingStampBind, uid, now())
@@ -507,13 +511,16 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     // ================= 任务 / 笔记 / 日记 / 印章 =================
 
     fun addTask(title: String, due: Long = -1L, memo: String = "", listUid: String = "list-default",
-                starred: Boolean = false, done: Boolean = false) =
+                starred: Boolean = false, done: Boolean = false,
+                uidOverride: String = "") =
         viewModelScope.launch {
             if (title.isNotBlank()) {
                 val order = taskDao.maxSortOrder() + 1
                 // §75 T1：创建页左上 ○ / 右上 ☆（图47）—— 建时即可标完成/星标
+                // §120 P5：uidOverride —— 编辑器任务面预生成的 draft uid，附件先挂它，保存必须同键
                 taskDao.insert(Task(title = title.trim(), dueDay = due, memo = memo,
                     listUid = listUid, sortOrder = order,
+                    uid = uidOverride.ifBlank { com.looka.app.data.newUid() },
                     starred = starred, done = done, doneAt = if (done) now() else -1L))
                 afterChange()
             }

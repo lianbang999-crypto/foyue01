@@ -147,6 +147,7 @@ fun LookaRoot() {
         composable("antler") { com.looka.app.ui.more.AntlerScreen(vm, nav) }
         composable("shop") { com.looka.app.ui.more.ShopScreen(vm, nav) }   // §118 装扮商店
         composable("settingsHub") { com.looka.app.ui.more.SettingsHubScreen(vm, nav) }   // §119 T5 设置中心
+        composable("deerSettings") { com.looka.app.ui.more.DeerSettingsScreen(vm, nav) }   // §120 P1 小鹿设置
         composable("backup") { com.looka.app.ui.more.BackupScreen(vm, nav) }
         composable("selfcheck") { com.looka.app.ui.more.SelfCheckScreen(vm, nav) }
         composable("conflicts") { com.looka.app.ui.more.ConflictScreen(vm, nav) }

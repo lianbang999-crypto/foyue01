@@ -124,7 +124,7 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 ) { nav.navigate("account") }
                 BlackTopEntry(
                     Icons.Outlined.WorkspacePremium,
-                    if (plan == "pro") "Pro" else tr("订阅"),
+                    if (plan == "pro") "Pro" else tr("方案"),   // §120 P1：A2 术语（方案=免费版/Looka Pro）
                     Modifier.weight(1f)
                 ) { nav.navigate("subscription") }
                 BlackTopEntry(LkIcons.Settings, tr("设置"), Modifier.weight(1f)) {
@@ -133,16 +133,27 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                     nav.navigate("settingsHub")
                 }
             }
-            // 品牌区
+            // §120 P1：品牌口号区改为**账户状态卡**（《全站统一规划》B1：
+            // 口号不承载管理价值，这里显示"当前真正需要管理的状态"——
+            // 未登录引导登录；已登录显示 方案 · 同步状态。点击进账号页。文案按 A3 主稿。
             Row(
-                Modifier.fillMaxWidth().padding(20.dp),
+                Modifier.fillMaxWidth().plainClick { nav.navigate("account") }.padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 com.looka.app.ui.common.DeerBadge(52.dp)   // B3：随主题变色
                 Spacer(Modifier.width(14.dp))
                 Column {
-                    Text("Looka", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text(tr("把生活，轻轻收进日历里"), fontSize = 12.sp, color = GrayText)
+                    Text(
+                        if (loggedIn) email.ifBlank { "Looka" } else tr("登录 Looka"),
+                        fontSize = 18.sp, fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        if (!loggedIn) tr("同步并恢复你的记录")
+                        else (if (plan == "pro") "Pro" else tr("免费版")) + " · " +
+                            (com.looka.app.net.SyncEngine.lastMsg.ifBlank { tr("已同步") }),
+                        fontSize = 12.sp, color = GrayText, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                 }
             }
             Hairline()

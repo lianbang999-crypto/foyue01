@@ -81,9 +81,14 @@ import com.looka.app.util.tr
 /** 小鹿 AI 助手：带真实日程上下文的对话 + 自然语言创建 + 周总结 */
 @Composable
 fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
+    // §120 P4（E2）：场景入口带上下文进来 —— 预填一次性消费，全局入口不受影响
+
     val ctx = LocalContext.current
     val listState = rememberLazyListState()
     var input by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        if (vm.aiPrefill.isNotBlank()) { input = vm.aiPrefill; vm.aiPrefill = "" }
+    }
     // E3（§79 / AC LOOKA-107）：快捷指令只填意图，发送由用户明确触发（一次对话扣 1 鹿角，
     // 四个 chip 挨得近，误触即扣钱）。chipAction 记住「这条 chip 要走的专用动作」——
     // 周总结需要注入本地真实日程/任务/日记，不能退化成普通文本；用户一改文字就作废。
@@ -254,7 +259,10 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
-            // 点 chip = 把话填进输入框（可再改），按发送才真正提交
+            // 点 chip = 把话填进输入框（可再改），按发送才真正提交。
+            // §120 P4（E1 三模式）：chip 按「记录 / 安排 / 回看」三个任务组织 ——
+            // 一只小鹿三件事，入口先把心智立起来
+            QuickChip(tr("记一件事")) { input = tr("明天下午 3 点开会，提前半小时提醒我"); chipAction = null }
             QuickChip(tr("今天安排")) { input = tr("今天有什么安排？"); chipAction = null }
             QuickChip(tr("明天安排")) { input = tr("明天有什么安排？"); chipAction = null }
             QuickChip(tr("本周总结")) {
