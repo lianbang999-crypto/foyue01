@@ -1090,3 +1090,104 @@ theme.json 不是合法 JSON	theme.json is not valid JSON
 在贴纸选择器中显示	Show in sticker picker
 已换回九色 🦌	Back to the nine colors 🦌
 当前皮肤	Current skin
+AI 设置	AI settings
+Pro 增益	Pro perks
+主题、皮肤、语言	Theme, skin, language
+从相册识别	Recognize from album
+付款页请选 1 个月（¥12），付完回来自动开通	Choose 1 month (¥12) on the payment page — activates automatically when you return
+付款页请选 12 个月（¥98），付完回来自动开通	Choose 12 months (¥98) on the payment page — activates automatically when you return
+你的日记、AI 对话原文和照片永远不会被自动附带。	Your diary, AI chat transcripts and photos are never attached automatically.
+例如：下午 3 点开会	e.g. Meeting at 3 PM
+例如：保存后日程没有出现	e.g. Event didn't appear after saving
+例如：周五前交报告	e.g. Submit the report by Friday
+例如：团队 5 人想共用一套清单，下月要用	e.g. A team of 5 wants shared lists, needed next month
+例如：想在周视图里直接拖动任务	e.g. Drag tasks directly in week view
+偶尔	Sometimes
+先评估范围、时间和费用，确认后再开始；评估免费，开发单独报价。	We scope range, time and cost first; evaluation is free, development is quoted separately.
+全部手帐数据 · 已领取的装扮 · 已购鹿角余额	All planner data · claimed dress-ups · purchased antlers
+其他	Other
+写下今天…	Write about today…
+创始计划 · 剩 {0} 席	Founder program · {0} seats left
+创始赠送	Founding gift
+到期后保留	Kept after expiry
+发生了什么？	What happened?
+发生在哪？	Where did it happen?
+只有一次	Just once
+可以再次发生吗？	Does it happen again?
+可以提前试用	Early access available
+周起始、农历、节日、默认提醒	Week start, lunar, holidays, default reminders
+和哪块有关？	Which part is it about?
+哪里不方便？希望得到什么结果？	What's inconvenient? What outcome do you hope for?
+哪里不顺手、报错或数据异常	Anything clunky, broken or data issues
+回复：{0}	Reply: {0}
+基础手帐（免费就有）	Core planner (free for everyone)
+备份、导入导出、维护	Backup, import/export, maintenance
+外观与语言	Appearance & language
+定制	Custom
+定制申请需要联系方式，评估后好回复你	Custom requests need contact info so we can reply after evaluation
+已收到	Received
+已收到，我们会认真查看。	Received — we'll look into it carefully.
+已经可以使用	Now available
+已进入计划	Planned
+帮助 Looka 变得更好	Help Looka get better
+年付 ¥98	Yearly ¥98
+年付省 ¥46（约 32%）	Yearly saves ¥46 (about 32%)
+建议	Idea
+开通年付 Pro · ¥98	Go Pro yearly · ¥98
+开通月付 Pro · ¥12	Go Pro monthly · ¥12
+当前不会安排	Not planned for now
+当天使用后获得 10 枚鹿角；Pro 为 50 枚	10 antlers on days you use Looka; Pro gets 50
+当天使用后获得 50 枚鹿角	50 antlers on days you use Looka
+想在什么场景用？希望得到什么结果？	What scenario, and what outcome do you hope for?
+我的提交	My submissions
+报告问题	Report a problem
+报告问题、提出建议或申请定制。报错与建议永久免费，严重问题按影响处理，不看是否付费。	Report problems, suggest ideas or request custom work. Reports and ideas are always free; serious issues are handled by impact, not by payment.
+报错与建议	Reports & ideas
+拍照识别	Snap & recognize
+描述你想安排的事…	Describe what you want to plan…
+提交内容私密，不会公开正文。日记、AI 对话原文和照片永远不会被自动附带。	Submissions are private. Your diary, AI transcripts and photos are never attached automatically.
+提交失败，稍后再试	Submit failed, try again later
+提交建议	Submit idea
+提交申请	Submit request
+提交问题	Submit problem
+提出建议	Suggest an idea
+提醒与通知	Reminders & notifications
+撤回	Withdraw
+日历 · 待办 · 笔记 · 日记 · 提醒 · 云同步 · 数据导出 · 每天 10 枚鹿角	Calendar · tasks · notes · diary · reminders · sync · export · 10 antlers daily
+日历与任务	Calendar & tasks
+早鸟买断	Early-bird buyout
+月付 ¥12	Monthly ¥12
+有建议或问题请到「更多 → 帮助 Looka 变得更好」，或联系：looka01@qq.com	For ideas or problems, go to More → Help Looka get better, or email looka01@qq.com
+权限诊断、提醒不响时来这里	Permission checks — start here if reminders don't ring
+查看提交	View submission
+欢迎你，创始鹿 #{0} 🦌	Welcome, founding deer #{0} 🦌
+正在制作	In development
+正在看：{0}	Looking at: {0}
+每天 50 枚鹿角 · 官方装扮 0 鹿角领取 · 普通咨询优先回复	50 antlers daily · official dress-ups free to claim · priority replies
+每次	Every time
+永久 · {0} · 创始席位 #{1}	Forever · {0} · founding seat #{1}
+版本号 v{0}	Version v{0}
+申请定制	Request custom work
+相机不可用	Camera unavailable
+编号 #{0}	No. #{0}
+联系方式（必填，评估后回复你）	Contact (required — we reply after evaluation)
+联系方式（选填，方便追问）	Contact (optional, for follow-up)
+记下想法…	Write a note…
+设备与系统（{0}）	Device & OS ({0})
+评估中	Evaluating
+评估范围、时间和费用后再开始	We scope range, time and cost before starting
+说说不方便和希望的结果	Tell us what's inconvenient and what you hope for
+读取授权、记忆、自带 Key	Read access, memory, own API key
+账号与数据	Account & data
+贴纸与主题	Stickers & themes
+还剩 {0} 枚鹿角（下次使用 Looka 时还会获得）	{0} antlers left (you'll get more next time you use Looka)
+还有 {0} 项…	{0} more…
+还没有提交过。	Nothing submitted yet.
+还需要一点信息	Needs a bit more info
+邮箱或其他联系方式	Email or other contact
+问题	Problem
+附加内容	Attach
+随单附带（可关）	Attached with report (optional)
+领取	Claim
+领取失败，稍后再试	Claim failed, try again later
+验证邮箱后免费领取永久 Founder Pro（全球共 100 席）	Verify your email to claim permanent Founder Pro free (100 seats worldwide)

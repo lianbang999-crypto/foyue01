@@ -147,6 +147,14 @@ fun LookaRoot() {
         composable("antler") { com.looka.app.ui.more.AntlerScreen(vm, nav) }
         composable("shop") { com.looka.app.ui.more.ShopScreen(vm, nav) }   // §118 装扮商店
         composable("settingsHub") { com.looka.app.ui.more.SettingsHubScreen(vm, nav) }   // §119 T5 设置中心
+        composable("appearance") { com.looka.app.ui.more.AppearanceScreen(vm, nav) }   // §128 M2 外观与语言
+        // §128 F2：用户共建中心
+        composable("feedbackHub") { com.looka.app.ui.more.FeedbackHubScreen(vm, nav) }
+        composable(
+            "feedback/{kind}",
+            arguments = listOf(navArgument("kind") { type = NavType.StringType })
+        ) { e -> com.looka.app.ui.more.FeedbackFormScreen(vm, nav, e.arguments!!.getString("kind")!!) }
+        composable("feedbackMine") { com.looka.app.ui.more.FeedbackMineScreen(vm, nav) }
         composable("deerSettings") { com.looka.app.ui.more.DeerSettingsScreen(vm, nav) }   // §120 P1 小鹿设置
         composable("backup") { com.looka.app.ui.more.BackupScreen(vm, nav) }
         composable("selfcheck") { com.looka.app.ui.more.SelfCheckScreen(vm, nav) }

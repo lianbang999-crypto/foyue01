@@ -1,0 +1,83 @@
+{
+  "$id": "https://looka.foyue.org/contracts/pricing.v1.json",
+  "title": "Looka 定价合同 v1（§128 · 母档 v2.1 + 全站规划 v1.2 固化）",
+  "description": "三阶段资格、CNY/USD SKU 与鹿角包的唯一真值。不按汇率每日改价：中国与美国为基准市场，其它地区用商店等价价位。App 按钮 / Web Modal / worker 常量与本合同对账（check_contracts）。同一用户只看到一个有效报价。",
+  "schema_version": "1.0",
+  "stages": [
+    {
+      "id": "founder_100",
+      "name_zh": "创始 100 人",
+      "price_cny": 0,
+      "grant": "永久 Founder Pro",
+      "gate": "账号已验证邮箱；全球合计 100 席；不可转让",
+      "open_flag": "FOUNDER_100_OPEN"
+    },
+    {
+      "id": "founder_buyout",
+      "name_zh": "限量买断",
+      "price_cny": 19.9,
+      "grant": "永久 Founder Pro",
+      "gate": "按 100 席分批；上一批 30 天成本/崩溃/同步/支持 SLA 达标才开下一批",
+      "open_flag": "FOUNDER_BUYOUT_OPEN",
+      "seats_per_batch": 100,
+      "total_seats": 1000
+    },
+    {
+      "id": "regular",
+      "name_zh": "常规订阅",
+      "gate": "至少 3 项稳定 Pro 增益上线；恢复购买与退款闭环通过"
+    }
+  ],
+  "subscription": {
+    "cny": {
+      "month": 12,
+      "year": 98,
+      "year_saves": 46,
+      "year_discount_pct": 32
+    },
+    "usd": {
+      "month": 5,
+      "year": 50,
+      "year_discount_pct": 17
+    },
+    "note": "海外用商店/渠道本地化价位，非实时汇率换算；US$50 年付约等于赠 2 个月（折扣比中国克制，主价值来自产品）；Paddle 标准费率下月付约 15%、年付约 6%"
+  },
+  "antler_packs": [
+    {
+      "id": "antler_300",
+      "amount": 300,
+      "price_cny": 6,
+      "price_usd": 0.99,
+      "position_zh": "偶尔识图或解锁装扮"
+    },
+    {
+      "id": "antler_1000",
+      "amount": 1000,
+      "price_cny": 18,
+      "price_usd": 2.99,
+      "position_zh": "默认推荐；不含 Pro 权益"
+    },
+    {
+      "id": "antler_3000",
+      "amount": 3000,
+      "price_cny": 48,
+      "price_usd": 6.99,
+      "position_zh": "重度用量；不自动续订"
+    }
+  ],
+  "channel_rules": [
+    "全球 Web 主通道 = Paddle（Merchant of Record）；App 外跳 https://looka.foyue.org/pay?session={短期签名会话}，系统浏览器/Custom Tab，禁止内嵌 WebView",
+    "付款确认只认可信 Paddle Webhook（验签+幂等）；前端完成事件不制造假开通；App 恢复时重读统一权益",
+    "订阅管理走 Paddle Customer Portal；购买页不兼任取消与付款方式管理",
+    "支付宝审批后可承担 CNY 订阅；微信支付只用于一次性商品（Founder/鹿角包），不作自动续费",
+    "低价 SKU（¥6 鹿角包 / 小额月付）未取得低价报价前不用 Paddle 标准费率出售",
+    "Ko-fi「金额 ≥ $7 给 31 天」逻辑退出，改由明确 SKU、周期与订单合同驱动",
+    "购买桶鹿角永不过期；失败按幂等键退还",
+    "对外显示含税与否、取消、退款、续订规则跟随实际支付渠道（Paddle Checkout 为准）"
+  ],
+  "ui_rules": [
+    "¥19.9 不是常规第三档：只在符合资格时显示；售罄后完全退出页面",
+    "鹿角包在支付渠道打通前不进入任何购买按钮",
+    "不在 More 常驻促销；营销视觉只出现在活动/详情/预览"
+  ]
+}

@@ -84,18 +84,7 @@ import com.looka.app.util.tr
 fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
     val ctx = LocalContext.current
     var aboutDlg by remember { mutableStateOf(false) }
-    var themeSheet by remember { mutableStateOf(false) }
-    // §123（用户拍板恢复照片主题；§112 曾撤,此为主动变更）：选照片 → 本机取色 → 预览应用
-    var photoAccent by remember { mutableStateOf<androidx.compose.ui.graphics.Color?>(null) }
-    val pickThemePhoto = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        uri?.let {
-            val c = com.looka.app.util.PhotoTheme.extractAccent(ctx, it)
-            if (c == null) com.looka.app.ui.common.toast(ctx, tr("这张照片颜色太素啦，换一张试试"))
-            else photoAccent = c
-        }
-    }
+    // §128 M2：主题面板整体迁入设置中心「外观与语言」（唯一编辑位置），本页不再持主题状态
     var checkingUpdate by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<com.looka.app.util.UpdateManager.Info?>(null) }
     var updateMsg by remember { mutableStateOf<String?>(null) }
@@ -124,27 +113,9 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         }
         Hairline()
         Column(Modifier.verticalScroll(rememberScrollState())) {
-            // §113 E4：**黑色顶区三主入口**（实机图 32：アカウント/プラン/設定，
-            // 白线稿图标 + 白字三等分，是 More 页最显著的视觉锚）。
-            // 与 §68 的关系：§68 撤回的是「把一切入口做成宫格黑块」；这次只把
-            // 账户/订阅/设置三个身份级入口收进一条黑区，下方仍是分组列表 —— 不冲突。
-            Row(Modifier.fillMaxWidth().background(Ink).padding(vertical = 16.dp)) {
-                BlackTopEntry(
-                    LkIcons.User,
-                    if (loggedIn) email.ifBlank { tr("账号") } else tr("账号"),
-                    Modifier.weight(1f)
-                ) { nav.navigate("account") }
-                BlackTopEntry(
-                    Icons.Outlined.WorkspacePremium,
-                    if (plan == "pro") "Pro" else tr("方案"),   // §120 P1：A2 术语（方案=免费版/Looka Pro）
-                    Modifier.weight(1f)
-                ) { nav.navigate("subscription") }
-                BlackTopEntry(LkIcons.Settings, tr("设置"), Modifier.weight(1f)) {
-                    // §119 T5：原来直跳 calSettings —— 名义总设置实际只有日历设置，
-                    //《全站统一规划》点名的假总入口。现在进真正的设置中心。
-                    nav.navigate("settingsHub")
-                }
-            }
+            // §128 M1（图鉴 §11-12 图 C）：黑区三入口撤除 —— §113 E4 曾按当时实机反馈补建，
+            // 本轮两份文档一致拍板"More 不照搬三等分黑条，改安静身份摘要"（用户方向变更，记账）。
+            // 账号入口 = 身份摘要卡；方案入口收进方案页（身份卡点进账号页内有）；设置唯一入口在下方。
             // §120 P1：品牌口号区改为**账户状态卡**（《全站统一规划》B1：
             // 口号不承载管理价值，这里显示"当前真正需要管理的状态"——
             // 未登录引导登录；已登录显示 方案 · 同步状态。点击进账号页。文案按 A3 主稿。
@@ -169,46 +140,21 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
                 }
             }
             Hairline()
-            // §68 四：宫格方案撤回（大黑块太重、分组逻辑错）。
-            // 按语义分组列表 —— Lifebear More 的下半部本来也是入口列表/宫格混排。
-            // §113 E4：原「我」组两行（账号与同步/订阅·鹿角）已上移进黑区，组撤销。
-            SectionLabel(tr("小鹿"))
+            // §128 M1（图 C）：More = 产品入口与状态摘要，**不再复制设置目录** ——
+            // 主题/语言/日历与显示/提醒诊断/备份 五条重复直达全部收进设置中心
+            //（"同一状态可以摘要一次，同一配置只能有一个正式编辑位置"）。
             NavRow(tr("小鹿 AI"), icon = Icons.Outlined.AutoAwesome) { nav.navigate("aiChat") }
             Hairline()
-            // §118：商店独立入口 —— v42 只嵌在贴纸选择器里，用户根本找不到（实机反馈）
-            NavRow(tr("装扮商店"), icon = LkIcons.Sticker, value = tr("贴纸包与主题")) { nav.navigate("shop") }
+            NavRow(tr("装扮商店"), icon = LkIcons.Sticker, value = tr("贴纸与主题")) { nav.navigate("shop") }
             Hairline()
-
-            SectionLabel(tr("外观"))
-            NavRow(
-                tr("主题"), icon = LkIcons.Palette,
-                // §112：老用户可能还停在自定义主题（入口已撤但设置仍有效），别把它标成"森绿"
-                value = if (ThemeCtl.index == com.looka.app.ui.theme.CUSTOM_THEME) tr("自定义")
-                        else DEER_THEMES[ThemeCtl.index.coerceIn(0, 8)].name
-            ) { themeSheet = true }
+            NavRow(tr("设置"), icon = LkIcons.Settings) { nav.navigate("settingsHub") }
             Hairline()
-
-            SectionLabel(tr("设置"))
-            NavRow(tr("日历与显示"), icon = LkIcons.Settings) { nav.navigate("calSettings") }   // §119 术语对齐
+            // §128 F2：用户共建中心（报告问题/提出建议/申请定制）
+            NavRow(tr("帮助 Looka 变得更好"), icon = LkIcons.Help, value = tr("报错与建议")) {
+                nav.navigate("feedbackHub")
+            }
             Hairline()
-            NavRow(tr("提醒诊断"), icon = LkIcons.Bell) { nav.navigate("selfcheck") }   // §119 T6 改名(A2 术语冻结)
-            Hairline()
-            NavRow(
-                tr("语言 / Language"), icon = Icons.Outlined.Translate,
-                value = com.looka.app.util.I18n.choiceLabel(Prefs.language(ctx))
-            ) { nav.navigate("language") }
-            Hairline()
-
-            SectionLabel(tr("数据"))
-            // §77 N2（减法）：撤掉这里的「搜索」行 —— 搜索是内容操作，不是产品设置，
-            // 放在「数据」组本身就是归类错误（母档 §24.1：More 只承载产品/设置/个性化/数据管理）。
-            // 删前已查全部可达路径：日历页 CalendarScreen:1362 与待办页页首 TodoScreen:89 仍在，
-            // 删后剩 2 条，不会重演 §67 那次「AI 入口被合理删除两次直到删没」。
-            NavRow(tr("备份与维护"), icon = Icons.Outlined.SaveAlt) { nav.navigate("backup") }
-            Hairline()
-
-            SectionLabel(tr("帮助"))
-            NavRow(tr("关于 Looka"), icon = LkIcons.Help,
+            NavRow(tr("关于 Looka"), icon = LkIcons.Smile,
                 value = "v" + com.looka.app.BuildConfig.VERSION_NAME) { aboutDlg = true }
             Hairline()
             // §106 B：更多页运营 Banner 位（对照 0826 参考图更多页宫格下方那块）。
@@ -219,144 +165,6 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
             )
             Spacer(Modifier.height(60.dp))
         }
-    }
-
-
-    // 九色主题选择
-    if (themeSheet) ModalBottomSheet(
-        // §62 圆角档：底部面板 16dp 顶角
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        onDismissRequest = { themeSheet = false },
-        containerColor = Color.White
-    ) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 20.dp)) {
-            // §127（FEATURE-LIFECYCLE §6-2）：**卸载通道** —— 当前套着皮肤包/照片主题时，
-            // 面板顶部亮明"你现在用的是什么"并给一条退路。此前只能靠"随便点一个九色"
-            // 间接卸下 —— 那不是通道，是副作用（规则 §2 第 4 问）。
-            // 卸下 = 回九色，包与照片色都留着（是卸载不是删除，随时能再装）。
-            val skinOn = com.looka.app.util.SkinPacks.active
-            val photoOn = remember(vm.settingsVersion, themeSheet) {
-                com.looka.app.util.PhotoTheme.load(ctx) != null
-            }
-            if (skinOn != null || photoOn) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("当前皮肤"), fontSize = 11.sp, color = GrayText)
-                        Text(
-                            skinOn?.name ?: tr("你的照片主题"),
-                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Text(
-                        tr("卸下"), fontSize = 13.sp, color = LinkBlue,
-                        modifier = Modifier.plainClick {
-                            // 与 ThemeCtl.set 同一套互斥语义：卸皮肤包 + 卸照片色 → 回九色
-                            ThemeCtl.set(ctx, ThemeCtl.index)
-                            com.looka.app.ui.common.toast(ctx, tr("已换回九色 🦌"))
-                        }.padding(8.dp)
-                    )
-                }
-                Hairline()
-            }
-            Text(
-                tr("一鹿九色，选一个今天的颜色 🦌"),
-                fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-            )
-            DEER_THEMES.chunked(3).forEachIndexed { rowIdx, row ->
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    row.forEachIndexed { colIdx, t ->
-                        val i = rowIdx * 3 + colIdx
-                        val sel = ThemeCtl.index == i
-                        Column(
-                            Modifier.plainClick { ThemeCtl.set(ctx, i) },
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                Modifier.size(52.dp).clip(CircleShape)
-                                    .background(t.container)
-                                    .border(
-                                        width = if (sel) 2.5.dp else 0.8.dp,
-                                        color = if (sel) Ink else Color(0xFFE2E5E2),
-                                        shape = CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(Modifier.size(26.dp).clip(CircleShape).background(t.primary))
-                            }
-                            Text(
-                                t.name, fontSize = 12.sp,
-                                color = if (sel) Ink else GrayText,
-                                fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // §112 曾拍板「只留九色、照片取色撤」；§123 用户拍板**恢复照片路线** ——
-            // 形态换了：不是 48 色盘，而是「拿一张自己的照片生成皮肤」（本机取色，
-            // 照片不上传）。九色仍是主线，这是第十种：你自己的颜色。
-            Hairline()
-            Row(
-                Modifier.fillMaxWidth()
-                    .plainClick {
-                        pickThemePhoto.launch(
-                            androidx.activity.result.PickVisualMediaRequest(
-                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    }
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(com.looka.app.ui.theme.LkIcons.Image, null, tint = GrayText,
-                    modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(tr("从照片生成主题"), fontSize = 14.sp)
-                    Text(tr("取照片里的主色做成你的皮肤，照片不上传"), fontSize = 11.sp, color = GrayText)
-                }
-            }
-        }
-    }
-
-    // §123：取色预览 —— 色卡 + 应用/取消（一键替换现有主题皮肤）
-    photoAccent?.let { acc ->
-        val tokens = remember(acc) { com.looka.app.util.PhotoTheme.tokensFrom(acc) }
-        AlertDialog(
-            onDismissRequest = { photoAccent = null },
-            title = { DlgTitle(tr("用这个颜色做主题？")) },
-            text = {
-                Column {
-                    // §126 C3：两枚色卡升级为迷你月历 —— 用户看到的是"他的日历套上新色"
-                    com.looka.app.ui.common.MiniThemePreview(tokens)
-                    Text(
-                        tr("文字与周末红蓝保持不变，阅读不受影响"),
-                        fontSize = 11.sp, color = GrayText,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    com.looka.app.util.SkinPacks.clear(ctx)   // §126 C1：照片主题上位 = 卸皮肤包
-                    com.looka.app.ui.theme.Tokens.applyPack(tokens)
-                    com.looka.app.util.PhotoTheme.save(ctx, acc)
-                    photoAccent = null; themeSheet = false
-                    com.looka.app.ui.common.toast(ctx, tr("已换上你的颜色 🦌"))
-                }) { Text(tr("应用"), color = MaterialTheme.colorScheme.primary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { photoAccent = null }) { Text(tr("取消"), color = GrayText) }
-            },
-            containerColor = Color.White
-        )
     }
 
 
@@ -478,23 +286,4 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
 }
 
 
-/** §113 E4：黑色顶区单项 —— 白线稿图标 + 白字，等分三列（实机图 32） */
-@Composable
-private fun BlackTopEntry(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Column(
-        modifier.plainClick(onClick).padding(vertical = 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(26.dp))
-        Spacer(Modifier.height(6.dp))
-        Text(
-            label, fontSize = 12.sp, color = Color.White,
-            maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
-    }
-}
+// §128 M1：BlackTopEntry 已随黑区三入口一并撤除（图鉴 §11 拍板，§113 E4 反转记账）

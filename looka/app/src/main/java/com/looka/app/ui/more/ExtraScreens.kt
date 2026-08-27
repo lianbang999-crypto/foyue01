@@ -12,7 +12,10 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.looka.app.ui.common.DeerLoading
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -102,20 +105,45 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
     var readAgenda by remember { mutableStateOf(Prefs.aiReadAgenda(ctx)) }
     var diaryUpload by remember { mutableStateOf(Prefs.aiDiaryUpload(ctx)) }
 
+    // §128 B1（母档图 8）：先看当前身份，再做一个决定 —— 两档会员，月/年切换
+    var yearly by remember { mutableStateOf(true) }
+    // Founder 资格（母档 §9-10：只显示有效报价；售罄完全退出页面）
+    var founderOpen by remember { mutableStateOf(false) }
+    var founderLeft by remember { mutableStateOf(0) }
+    var founderMine by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var founderBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(loggedIn) {
+        if (!loggedIn) return@LaunchedEffect
+        runCatching {
+            val r = Api.founderStatus(ctx)
+            founderOpen = r.optBoolean("open")
+            founderLeft = (100 - r.optInt("used", 100)).coerceAtLeast(0)
+            r.optJSONObject("mine")?.let { founderMine = it.optString("kind") to it.optInt("seq") }
+        }
+    }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("方案与鹿角"), onBack = { nav.popBackStack() })   // §120 P1：B2 拆页后本页只管方案与钱
         Column(Modifier.verticalScroll(rememberScrollState())) {
 
-            // 当前版本
+            // 当前身份卡：身份 + 来源 + 期限（可解释，母档验收"权益"条）
             Column(Modifier.fillMaxWidth().padding(20.dp)) {
                 Text(
-                    if (plan == "pro") "Pro 🦌" else tr("免费版"),
+                    when {
+                        founderMine != null -> "Founder Pro 🦌"
+                        plan == "pro" -> "Looka Pro 🦌"
+                        else -> tr("免费版")
+                    },
                     fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                    color = if (plan == "pro") MaterialTheme.colorScheme.primary else Ink
+                    color = if (plan == "pro" || founderMine != null) MaterialTheme.colorScheme.primary else Ink
                 )
                 Text(
-                    if (plan == "pro") tr("每天自动到账 50 枚鹿角")
-                    else tr("每天自动到账 10 枚鹿角；Pro 每天 50 枚，攒着还能生成表情包"),
+                    when {
+                        founderMine != null -> tr("永久 · {0} · 创始席位 #{1}",
+                            if (founderMine!!.first == "gift") tr("创始赠送") else tr("早鸟买断"),
+                            founderMine!!.second.toString())
+                        plan == "pro" -> tr("当天使用后获得 50 枚鹿角")
+                        else -> tr("当天使用后获得 10 枚鹿角；Pro 为 50 枚")
+                    },
                     fontSize = 12.sp, color = GrayText, modifier = Modifier.padding(top = 6.dp)
                 )
                 if (!loggedIn) Text(
@@ -135,25 +163,100 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
             }
             Hairline()
 
-            // R2（§60）：权益两句话。🚧 规划中的不写 —— 做出来了自然会看见。
-            SectionLabel(tr("免费就有"))
+            // §128 B2：创始计划（阶段 A）——只在开放且有余席且自己还不是时出现；
+            // 售罄完全退出页面（pricing.v1 ui_rules）
+            if (loggedIn && founderMine == null && founderOpen && founderLeft > 0 && plan != "pro") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("创始计划 · 剩 {0} 席", founderLeft.toString()),
+                            fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(tr("验证邮箱后免费领取永久 Founder Pro（全球共 100 席）"),
+                            fontSize = 11.sp, color = GrayText, modifier = Modifier.padding(top = 2.dp))
+                    }
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            if (founderBusy) return@Button
+                            founderBusy = true
+                            scope.launch {
+                                runCatching {
+                                    val r = Api.founderClaim(ctx)
+                                    if (r.optBoolean("ok")) {
+                                        toast(ctx, tr("欢迎你，创始鹿 #{0} 🦌", r.optInt("seq").toString()))
+                                        com.looka.app.data.PlanState.refresh(ctx, force = true)
+                                        founderMine = "gift" to r.optInt("seq")
+                                    } else toast(ctx, r.optString("error", tr("领取失败，稍后再试")))
+                                }.onFailure { toast(ctx, it.message ?: tr("领取失败，稍后再试")) }
+                                founderBusy = false
+                            }
+                        },
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = com.looka.app.ui.theme.SaveDark),
+                        shape = RoundedCornerShape(5.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        if (founderBusy) DeerLoading(13.sp)
+                        else Text(tr("领取"), fontSize = 13.sp, color = Color.White)
+                    }
+                }
+                Hairline()
+            }
+
+            // §128 B1：月 / 年切换（数字与 pricing.v1 同源；年付省 ¥46 约 32%）
+            if (plan != "pro") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    listOf(false to tr("月付 ¥12"), true to tr("年付 ¥98")).forEach { (isYear, label) ->
+                        val sel = yearly == isYear
+                        Box(
+                            Modifier.padding(horizontal = 6.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (sel) MaterialTheme.colorScheme.primaryContainer else Color.White)
+                                .border(
+                                    if (sel) 1.2.dp else 0.8.dp,
+                                    if (sel) MaterialTheme.colorScheme.primary else Color(0xFFDDE0DD),
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .plainClick { yearly = isYear }
+                                .padding(horizontal = 18.dp, vertical = 8.dp)
+                        ) { Text(label, fontSize = 13.sp, color = Ink) }
+                    }
+                }
+                if (yearly) Text(
+                    tr("年付省 ¥46（约 32%）"),
+                    fontSize = 11.sp, color = Color(0xFFB8860B),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // 权益分组（plans.v1：基础手帐 / Pro 增益 / 到期后保留）——只写已上线的
+            SectionLabel(tr("基础手帐（免费就有）"))
             Text(
-                tr("手帐全部功能 · 云同步 · 数据导出 · 每天 10 枚鹿角"),
+                tr("日历 · 待办 · 笔记 · 日记 · 提醒 · 云同步 · 数据导出 · 每天 10 枚鹿角"),
                 fontSize = 13.sp, lineHeight = 20.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
-            SectionLabel(tr("Pro"))
-            // §112：「做自己的主题」权益随自创色盘一并撤下（主题只留九色）
+            SectionLabel(tr("Pro 增益"))
             Text(
-                tr("更多鹿角（每天 50 枚）"),
+                tr("每天 50 枚鹿角 · 官方装扮 0 鹿角领取 · 普通咨询优先回复"),
+                fontSize = 13.sp, lineHeight = 20.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+            )
+            SectionLabel(tr("到期后保留"))
+            Text(
+                tr("全部手帐数据 · 已领取的装扮 · 已购鹿角余额"),
                 fontSize = 13.sp, lineHeight = 20.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
             )
             Hairline()
-            // §120 P1：小鹿记事本已迁「小鹿设置」（记忆属行为偏好域，不属方案页）
 
             Text(
-                tr("内测期注册即送 Pro 试用。\n有建议或问题请联系：looka01@qq.com"),
+                tr("有建议或问题请到「更多 → 帮助 Looka 变得更好」，或联系：looka01@qq.com"),
                 fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             )
@@ -202,26 +305,39 @@ fun SubscriptionScreen(vm: LookaViewModel, nav: NavHostController) {
                         }
                     }
                 }
-                if (!isPro) OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            val zh = com.looka.app.util.I18n.lang.startsWith("zh")
-                            val url = if (zh) {
-                                runCatching { Api.payIntent(ctx).optString("url") }
-                                    .getOrNull()?.takeIf { it.isNotBlank() }
-                                    // 服务端不可达时退回无备注的裸链接（还有订单号认领兜底）
-                                    ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
-                            } else "https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a"
-                            Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
-                            payTick++
-                            runCatching {
-                                ctx.startActivity(android.content.Intent(
-                                    android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                            }.onFailure { toast(ctx, tr("打不开浏览器")) }
+                // §128 B1：按钮跟随月/年选择（¥12/¥98 与 pricing.v1 同源）；
+                // 爱发电页面按月数下单，这里提示选对应档，金额校验在服务端
+                if (!isPro) Column(Modifier.padding(horizontal = 16.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                val zh = com.looka.app.util.I18n.lang.startsWith("zh")
+                                val url = if (zh) {
+                                    runCatching { Api.payIntent(ctx).optString("url") }
+                                        .getOrNull()?.takeIf { it.isNotBlank() }
+                                        // 服务端不可达时退回无备注的裸链接（还有订单号认领兜底）
+                                        ?: "https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0"
+                                } else "https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a"
+                                Prefs.setPayPendingSince(ctx, System.currentTimeMillis())
+                                payTick++
+                                runCatching {
+                                    ctx.startActivity(android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                }.onFailure { toast(ctx, tr("打不开浏览器")) }
+                            }
                         }
-                    },
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                ) { Text(tr("支持小鹿 · 开通 Pro"), fontSize = 13.sp) }
+                    ) {
+                        Text(
+                            if (yearly) tr("开通年付 Pro · ¥98") else tr("开通月付 Pro · ¥12"),
+                            fontSize = 13.sp
+                        )
+                    }
+                    Text(
+                        if (yearly) tr("付款页请选 12 个月（¥98），付完回来自动开通")
+                        else tr("付款页请选 1 个月（¥12），付完回来自动开通"),
+                        fontSize = 11.sp, color = GrayText
+                    )
+                }
             }
 
             // A12：兑换码收进折叠区（主流程是自动开通，码只服务"送人"场景）
@@ -1153,25 +1269,184 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
 fun SettingsHubScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.NavHostController) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
         LookaTopBar(tr("设置"), onBack = { nav.popBackStack() })
+        // §128 M2（图鉴 §13-14 图 D）：设置域分层 —— 每个配置只有一个正式编辑位置。
+        // 图 D 为六域；「关于」留在 More（检查更新是高频动作不宜埋深），本页五域，偏离已记账。
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            NavRow(tr("日历与显示"), value = tr("周起始、农历、节日、已完成任务"), icon = LkIcons.Calendar) {
+            NavRow(tr("外观与语言"), value = tr("主题、皮肤、语言"), icon = LkIcons.Palette) {
+                nav.navigate("appearance")
+            }
+            Hairline()
+            NavRow(tr("日历与任务"), value = tr("周起始、农历、节日、默认提醒"), icon = LkIcons.Calendar) {
                 nav.navigate("calSettings")
             }
             Hairline()
-            NavRow(tr("提醒诊断"), value = tr("提醒与系统权限检查"), icon = LkIcons.Bell) {
+            NavRow(tr("提醒与通知"), value = tr("权限诊断、提醒不响时来这里"), icon = LkIcons.Bell) {
                 nav.navigate("selfcheck")
             }
             Hairline()
-            NavRow(tr("小鹿设置"), value = tr("上下文授权、隐私与记忆"), icon = LkIcons.Smile) {
+            NavRow(tr("AI 与隐私"), value = tr("读取授权、记忆、自带 Key"), icon = LkIcons.Smile) {
                 nav.navigate("deerSettings")
             }
             Hairline()
+            NavRow(tr("账号与数据"), value = tr("备份、导入导出、维护"), icon = LkIcons.User) {
+                nav.navigate("backup")
+            }
+            Hairline()
+        }
+    }
+}
+
+// ==================== §128 M2：外观与语言（主题面板唯一编辑位置） ====================
+
+/**
+ * 主题从 More 的 BottomSheet 整体迁入（图 C"从根页移走重复直达"）。
+ * 内容不变：当前皮肤 + 卸下（§127 卸载通道）→ 九色宫格 → 照片生成主题 → 语言。
+ */
+@Composable
+fun AppearanceScreen(vm: LookaViewModel, nav: NavHostController) {
+    val ctx = LocalContext.current
+    var photoAccent by remember { mutableStateOf<androidx.compose.ui.graphics.Color?>(null) }
+    val pickThemePhoto = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let {
+            val c = com.looka.app.util.PhotoTheme.extractAccent(ctx, it)
+            if (c == null) toast(ctx, tr("这张照片颜色太素啦，换一张试试"))
+            else photoAccent = c
+        }
+    }
+    // 让「卸下/应用」后本页跟着刷新
+    var tick by remember { mutableStateOf(0) }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("外观与语言"), onBack = { nav.popBackStack() })
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+            // §127（FEATURE-LIFECYCLE §6-2）：卸载通道 —— 亮明当前皮肤并给退路
+            val skinOn = com.looka.app.util.SkinPacks.active
+            val photoOn = remember(tick) { com.looka.app.util.PhotoTheme.load(ctx) != null }
+            if (skinOn != null || photoOn) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("当前皮肤"), fontSize = 11.sp, color = GrayText)
+                        Text(
+                            skinOn?.name ?: tr("你的照片主题"),
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        tr("卸下"), fontSize = 13.sp, color = com.looka.app.ui.theme.LinkBlue,
+                        modifier = Modifier.plainClick {
+                            // 与 ThemeCtl.set 同一套互斥语义：卸皮肤包 + 卸照片色 → 回九色
+                            com.looka.app.ui.theme.ThemeCtl.set(ctx, com.looka.app.ui.theme.ThemeCtl.index)
+                            tick++
+                            toast(ctx, tr("已换回九色 🦌"))
+                        }.padding(8.dp)
+                    )
+                }
+                Hairline()
+            }
+            Text(
+                tr("一鹿九色，选一个今天的颜色 🦌"),
+                fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+            )
+            com.looka.app.ui.theme.DEER_THEMES.chunked(3).forEachIndexed { rowIdx, row ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    row.forEachIndexed { colIdx, t ->
+                        val i = rowIdx * 3 + colIdx
+                        val sel = com.looka.app.ui.theme.ThemeCtl.index == i &&
+                            skinOn == null && !photoOn
+                        Column(
+                            Modifier.plainClick {
+                                com.looka.app.ui.theme.ThemeCtl.set(ctx, i); tick++
+                            },
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                Modifier.size(52.dp).clip(CircleShape)
+                                    .background(t.container)
+                                    .border(
+                                        width = if (sel) 2.5.dp else 0.8.dp,
+                                        color = if (sel) Ink else Color(0xFFE2E5E2),
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(Modifier.size(26.dp).clip(CircleShape).background(t.primary))
+                            }
+                            Text(
+                                t.name, fontSize = 12.sp,
+                                color = if (sel) Ink else GrayText,
+                                fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            Hairline()
+            Row(
+                Modifier.fillMaxWidth()
+                    .plainClick {
+                        pickThemePhoto.launch(
+                            androidx.activity.result.PickVisualMediaRequest(
+                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(com.looka.app.ui.theme.LkIcons.Image, null, tint = GrayText,
+                    modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(tr("从照片生成主题"), fontSize = 14.sp)
+                    Text(tr("取照片里的主色做成你的皮肤，照片不上传"), fontSize = 11.sp, color = GrayText)
+                }
+            }
+            Hairline()
             NavRow(
-                tr("语言 / Language"), icon = LkIcons.Help,
-                value = com.looka.app.util.I18n.choiceLabel(com.looka.app.data.Prefs.language(LocalContext.current))
+                tr("语言 / Language"),
+                value = com.looka.app.util.I18n.choiceLabel(com.looka.app.data.Prefs.language(ctx))
             ) { nav.navigate("language") }
             Hairline()
         }
+    }
+
+    // §123：取色预览 —— 迷你月历 + 应用/取消
+    photoAccent?.let { acc ->
+        val tokens = remember(acc) { com.looka.app.util.PhotoTheme.tokensFrom(acc) }
+        AlertDialog(
+            onDismissRequest = { photoAccent = null },
+            title = { DlgTitle(tr("用这个颜色做主题？")) },
+            text = {
+                Column {
+                    com.looka.app.ui.common.MiniThemePreview(tokens)
+                    Text(
+                        tr("文字与周末红蓝保持不变，阅读不受影响"),
+                        fontSize = 11.sp, color = GrayText,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.looka.app.util.SkinPacks.clear(ctx)   // §126 C1：照片主题上位 = 卸皮肤包
+                    com.looka.app.ui.theme.Tokens.applyPack(tokens)
+                    com.looka.app.util.PhotoTheme.save(ctx, acc)
+                    photoAccent = null; tick++
+                    toast(ctx, tr("已换上你的颜色 🦌"))
+                }) { Text(tr("应用"), color = MaterialTheme.colorScheme.primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { photoAccent = null }) { Text(tr("取消"), color = GrayText) }
+            },
+            containerColor = Color.White
+        )
     }
 }
 

@@ -155,6 +155,8 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     var editorTaskDue: Long = -1L
     // §120 P4（E2 场景入口）：小鹿对话的一次性预填 —— 从日历等场景进入时带上下文
     var aiPrefill: String = ""
+    // §128 A7（母档图 2-02）：场景上下文条文案（"正在看：8月28日"）；可关闭，全局进入为空
+    var aiContextLabel by mutableStateOf("")
     // §114 P14：任务编辑/复制的全页入口预填。id>0=编辑既有任务，id==0=复制出的新草稿，
     // null=普通新建。消费一次即清 —— 任务对象从此只有一套容器（全页编辑器）
     var editorTaskPrefill: com.looka.app.data.Task? = null

@@ -948,7 +948,7 @@ private fun TaskForm(
             )
             TextField(
                 value = title, onValueChange = onTitle,
-                placeholder = { Text(tr("任务名"), fontSize = 18.sp, color = Color(0xFFB9BBB9)) },
+                placeholder = { Text(tr("例如：周五前交报告"), fontSize = 18.sp, color = Color(0xFFB9BBB9)) },
                 textStyle = TextStyle(fontSize = 18.sp),
                 colors = clearFieldColors(), singleLine = true,
                 modifier = Modifier.weight(1f)
@@ -1070,7 +1070,7 @@ private fun StampForm(
         if (bind) {
             TextField(
                 value = bindTitle, onValueChange = onBindTitle,
-                placeholder = { Text(tr("日程名，例：健身打卡"), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
+                placeholder = { Text(tr("例如：下午 3 点开会"), fontSize = 14.sp, color = Color(0xFFB9BBB9)) },
                 textStyle = TextStyle(fontSize = 14.sp),
                 colors = clearFieldColors(), singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(start = 12.dp)

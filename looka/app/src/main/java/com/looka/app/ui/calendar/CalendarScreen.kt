@@ -1392,6 +1392,8 @@ private fun DaySheet(
                             .fillMaxWidth()
                             .plainClick {
                                 vm.aiPrefill = tr("{0} 有什么安排？帮我看看。", Fmt.dateCn(day))
+                            // §128 A7：场景入口带上下文条（对话页顶部"正在看：X"，可关闭）
+                            vm.aiContextLabel = tr("正在看：{0}", Fmt.dateCn(day))
                                 nav.navigate("aiChat")
                             }
                             .padding(horizontal = 18.dp, vertical = 10.dp),

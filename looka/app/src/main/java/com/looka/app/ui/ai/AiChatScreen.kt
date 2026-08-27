@@ -112,6 +112,28 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             else pendingImage = b64
         }
     }
+    // §128 A8：拍照识别（复用附件系统的 capture 缓存 FileProvider 通道；
+    // TakePicture 走系统相机，不需要 CAMERA 权限）
+    var plusMenu by remember { mutableStateOf(false) }
+    val capFile = remember {
+        java.io.File(ctx.cacheDir, "capture").apply { mkdirs() }
+            .let { java.io.File(it, "ai_capture.jpg") }
+    }
+    val capUri = remember {
+        runCatching {
+            androidx.core.content.FileProvider.getUriForFile(
+                ctx, ctx.packageName + ".fileprovider", capFile)
+        }.getOrNull()
+    }
+    val takeShot = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.TakePicture()
+    ) { ok ->
+        if (ok && capUri != null) {
+            val b64 = com.looka.app.util.AttachmentStore.toChatBase64(ctx, capUri)
+            if (b64 == null) com.looka.app.ui.common.toast(ctx, tr("图片读取失败"))
+            else pendingImage = b64
+        }
+    }
     val send = {
         val v = input.trim()
         val act = chipAction
@@ -124,22 +146,52 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
         }
     }
 
-    // §126 B3：只有**尾部**变化（新消息/思考态）才贴底滚动 —— 顶部翻历史不能把人拽回底部
+    // §126 B3：只有**尾部**变化（新消息/思考态/草稿卡）才贴底滚动 —— 顶部翻历史不拽人
     val lastKey = vm.chat.lastOrNull()?.let { "${it.dbId}:${it.role}:${it.text.length}" } ?: ""
-    LaunchedEffect(lastKey, vm.aiBusy) {
-        if (vm.chat.isNotEmpty() || vm.aiBusy) listState.animateScrollToItem(vm.chat.size + 2)
+    LaunchedEffect(lastKey, vm.aiBusy, vm.pendingAiActions.size, vm.pendingTheme) {
+        // items = 翻页 + 空态 + chat + 卡片 + 思考，贴底 = 最后一个固定 item
+        if (vm.chat.isNotEmpty() || vm.aiBusy) listState.animateScrollToItem(vm.chat.size + 3)
     }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .systemBarsPadding().imePadding()
     ) {
+        // §128 A3（母档图 2-01）：顶栏只留返回/标题/More —— 清空与设置收进锚定菜单；
+        // 「AI 设置」改指小鹿设置（修母档审计出的路由错位：原来指到订阅页）
+        var topMenu by remember { mutableStateOf(false) }
         LookaTopBar(tr("小鹿 AI"), onBack = { nav.popBackStack() }) {
-            IconButton(onClick = { clearDlg = true }) {
-                Icon(LkIcons.Trash, tr("清空对话"), tint = GrayText)
+            Box {
+                IconButton(onClick = { topMenu = true }) {
+                    Icon(LkIcons.More, tr("更多"), tint = GrayText)
+                }
+                androidx.compose.material3.DropdownMenu(
+                    expanded = topMenu, onDismissRequest = { topMenu = false }
+                ) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(tr("AI 设置"), fontSize = 14.sp) },
+                        onClick = { topMenu = false; nav.navigate("deerSettings") }
+                    )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(tr("清空对话"), fontSize = 14.sp) },
+                        onClick = { topMenu = false; clearDlg = true }
+                    )
+                }
             }
-            IconButton(onClick = { nav.navigate("subscription") }) {
-                Icon(LkIcons.Settings, tr("订阅与设置"), tint = GrayText)
+        }
+        // §128 A7：场景上下文条 —— 从日历/清单进入时显示一次，可关闭；全局进入不显示
+        if (vm.aiContextLabel.isNotBlank()) {
+            Row(
+                Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .border(0.8.dp, Color(0xFFDDE0DD), RoundedCornerShape(14.dp))
+                    .padding(start = 12.dp, top = 3.dp, bottom = 3.dp, end = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(vm.aiContextLabel, fontSize = 12.sp, color = GrayText)
+                IconButton(onClick = { vm.aiContextLabel = "" }, modifier = Modifier.size(24.dp)) {
+                    Icon(LkIcons.Close, tr("关闭"), tint = GrayText, modifier = Modifier.size(12.dp))
+                }
             }
         }
 
@@ -165,22 +217,23 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             )
         }
 
-        // G3（§54）：当日鹿角到账轻提示 —— 一行小字，看过即清，不弹窗不做特效
-        if (AiClient.grantedToday > 0) {
-            Text(
-                tr("+{0} 🦌 今天的鹿角到账啦", AiClient.grantedToday),
-                fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-            )
-            LaunchedEffect(Unit) {
-                kotlinx.coroutines.delay(4000)
-                AiClient.grantedToday = 0
+        // §128 A5：到账/低额两条常驻小字**合并为一条**（母档审计：反馈多但分散）。
+        // 到账优先展示 4 秒即清；低额只在余额吃紧时出现。承诺词照 P0：惰性到账，
+        // 不写"明天自动补充"（那是签到语义，与合同不符）。
+        when {
+            AiClient.grantedToday > 0 -> {
+                Text(
+                    tr("+{0} 🦌 今天的鹿角到账啦", AiClient.grantedToday),
+                    fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(4000)
+                    AiClient.grantedToday = 0
+                }
             }
-        }
-        // G4：只在余额吃紧时才提示（平时不打扰 —— 鹿角是够用的额度，不是要攒的资产）
-        if (AiClient.lastAntler in 1..9 && Prefs.apiKey(ctx).isBlank()) {
-            Text(
-                tr("还剩 {0} 枚鹿角（明天自动补充）", AiClient.lastAntler),
+            AiClient.lastAntler in 1..9 && Prefs.apiKey(ctx).isBlank() -> Text(
+                tr("还剩 {0} 枚鹿角（下次使用 Looka 时还会获得）", AiClient.lastAntler),
                 fontSize = 11.sp, color = GrayText,
                 modifier = Modifier.padding(start = 16.dp, top = 4.dp)
             )
@@ -210,29 +263,27 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     ) {
                         com.looka.app.ui.common.DeerBadge(48.dp)   // B3：随主题变色
                         Spacer(Modifier.height(10.dp))
-                        if (!Prefs.deerTaught(ctx)) {
-                            Text(tr("嗨，我是小鹿 🦌"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                            Text(
-                                tr("说一句话，我帮你记进手帐"),
-                                fontSize = 13.sp, color = GrayText,
-                                modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
-                            )
-                            listOf(
-                                tr("明天下午 3 点开会，提前半小时提醒我"),
-                                tr("今天有什么安排？"),
-                                tr("记住：我不爱把会排在周一上午")
-                            ).forEach { sample ->
-                                Box(
-                                    Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(0.8.dp, Color(0xFFE2E5E2), RoundedCornerShape(8.dp))
-                                        .plainClick { input = sample; chipAction = null }
-                                        .padding(horizontal = 14.dp, vertical = 11.dp)
-                                ) { Text(sample, fontSize = 13.sp, color = Ink) }
-                            }
-                        } else {
-                            Text(tr("和小鹿说点什么…"), fontSize = 13.sp, color = GrayText,
-                                modifier = Modifier.padding(top = 4.dp))
+                        // §128 A6（母档图 3）：空态 = 一句能力说明 + **3 条垂直建议**（≤3，
+                        // 不横向滚动）。按「记录 / 安排 / 回看」三任务心智各给一条；
+                        // 常驻 chips 行已撤 —— 建议只活在空态，对话态不再教学。
+                        Text(tr("嗨，我是小鹿 🦌"), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            tr("说一句话，我帮你记进手帐"),
+                            fontSize = 13.sp, color = GrayText,
+                            modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
+                        )
+                        listOf<Pair<String, (() -> Unit)?>>(
+                            tr("明天下午 3 点开会，提前半小时提醒我") to null,
+                            tr("今天有什么安排？") to null,
+                            tr("帮我总结一下本周 📋") to { vm.sendWeeklySummary() }
+                        ).forEach { (sample, act) ->
+                            Box(
+                                Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(0.8.dp, Color(0xFFE2E5E2), RoundedCornerShape(8.dp))
+                                    .plainClick { input = sample; chipAction = act }
+                                    .padding(horizontal = 14.dp, vertical = 11.dp)
+                            ) { Text(sample, fontSize = 13.sp, color = Ink) }
                         }
                     }
                 }
@@ -250,6 +301,35 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     )
                 }
                 ChatBubble(m, vm, nav, isLast = i == vm.chat.size - 1)
+            }
+            item(key = "cards") {
+                // §128 A4（母档图 2-03）：草稿卡/主题卡/撤销条**进消息流** ——
+                // 跟随触发它的回复，不再固定悬在输入栏上方压缩屏幕
+                Column {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = vm.pendingAiActions.isNotEmpty(),
+                        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
+                            androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(200)),
+                        exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140))
+                    ) { ProposalCard(vm) }
+                    vm.pendingTheme?.let { (argb, name) -> ThemeDraftCard(vm, argb, name) }
+                    if (vm.showUndoBar && vm.canUndo) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                                .clip(RoundedCornerShape(6.dp)).background(PanelBg)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(Modifier.size(8.dp).clip(CircleShape).background(LookaGreen))
+                            Spacer(Modifier.width(8.dp))
+                            Text(tr("已完成"), fontSize = 12.sp, color = GrayText, modifier = Modifier.weight(1f))
+                            Text(
+                                tr("撤销"), fontSize = 13.sp, color = LinkBlue,
+                                modifier = Modifier.plainClick { vm.undoLastBatch() }.padding(4.dp)
+                            )
+                        }
+                    }
+                }
             }
             item(key = "busy") {
                 // §126 A5（AI-UX 4.4）：思考态 = 头像 + 呼吸点，无文字；>3s 才补一句
@@ -275,72 +355,9 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
             }
         }
 
-        // §126 A1（AI-UX 4.2）：草稿卡 ProposalCard —— AI 的脸面
-        androidx.compose.animation.AnimatedVisibility(
-            visible = vm.pendingAiActions.isNotEmpty(),
-            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
-                androidx.compose.animation.expandVertically(androidx.compose.animation.core.tween(200)),
-            exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(140))
-        ) { ProposalCard(vm) }
-
-        // §126 C4：主题草稿卡 —— 生成 → 预览 → 确认才应用（永不直接"已换好"）
-        vm.pendingTheme?.let { (argb, name) -> ThemeDraftCard(vm, argb, name) }
-
-        // §126 A2（4.2 规则 4）：执行后 5 秒撤销条
-        if (vm.showUndoBar && vm.canUndo) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(6.dp)).background(PanelBg)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(LookaGreen))
-                Spacer(Modifier.width(8.dp))
-                Text(tr("已完成"), fontSize = 12.sp, color = GrayText, modifier = Modifier.weight(1f))
-                Text(
-                    tr("撤销"), fontSize = 13.sp, color = LinkBlue,
-                    modifier = Modifier.plainClick { vm.undoLastBatch() }.padding(4.dp)
-                )
-            }
-        }
-
-        // §126 A5（4.4）：鹿角不足 —— 输入栏上方内联条（服务端文案直显），不弹窗、可关
-        if (vm.antlerNotice.isNotBlank()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(6.dp)).background(PanelBg)
-                    .padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(vm.antlerNotice, fontSize = 12.sp, color = GrayText, modifier = Modifier.weight(1f))
-                IconButton(onClick = { vm.antlerNotice = "" }, modifier = Modifier.size(28.dp)) {
-                    Icon(LkIcons.Close, tr("关闭"), tint = GrayText, modifier = Modifier.size(14.dp))
-                }
-            }
-        }
-        // 快捷指令
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            // 点 chip = 把话填进输入框（可再改），按发送才真正提交。
-            // §120 P4（E1 三模式）：chip 按「记录 / 安排 / 回看」三个任务组织 ——
-            // 一只小鹿三件事，入口先把心智立起来
-            QuickChip(tr("记一件事")) { input = tr("明天下午 3 点开会，提前半小时提醒我"); chipAction = null }
-            QuickChip(tr("今天安排")) { input = tr("今天有什么安排？"); chipAction = null }
-            QuickChip(tr("明天安排")) { input = tr("明天有什么安排？"); chipAction = null }
-            QuickChip(tr("本周总结")) {
-                // 与 sendWeeklySummary 的 display 文案保持一致，输入框里看到什么、气泡里就是什么
-                input = tr("帮我总结一下本周 📋")
-                chipAction = { vm.sendWeeklySummary() }
-            }
-            QuickChip(tr("帮我规划明天")) {
-                input = tr("根据我的日程和未完成任务，帮我把明天规划一下"); chipAction = null
-            }
-        }
-        Hairline()
-
-        // §123：待发送的图预览（点 × 撤下）
+        // §128 A5（母档图 2-06）：输入栏上方**单一事务层** —— 同一时刻只出现一层：
+        // 附件预览 > 鹿角不足。原来草稿卡/撤销条/余额条/图预览四层可叠，屏幕被压缩
+        //（母档审计"极简美感 1 分"的主因）；卡片类已全部移入消息流。
         if (pendingImage.isNotEmpty()) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp),
@@ -363,48 +380,73 @@ fun AiChatScreen(vm: LookaViewModel, nav: NavHostController) {
                     Icon(LkIcons.Close, tr("移除图片"), tint = GrayText, modifier = Modifier.size(16.dp))
                 }
             }
+        } else if (vm.antlerNotice.isNotBlank()) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(6.dp)).background(PanelBg)
+                    .padding(start = 12.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(vm.antlerNotice, fontSize = 12.sp, color = GrayText, modifier = Modifier.weight(1f))
+                IconButton(onClick = { vm.antlerNotice = "" }, modifier = Modifier.size(28.dp)) {
+                    Icon(LkIcons.Close, tr("关闭"), tint = GrayText, modifier = Modifier.size(14.dp))
+                }
+            }
         }
-        // 输入栏
+        // 输入栏（§128 A2/A8：容器 12dp 小圆角；「+」统一附加内容入口；发送键撤弹跳）
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            IconButton(onClick = {
-                pickChatImage.launch(androidx.activity.result.PickVisualMediaRequest(
-                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
-            }, modifier = Modifier.size(44.dp)) {
-                Icon(LkIcons.Image, tr("发图片"), tint = GrayText, modifier = Modifier.size(21.dp))
+            Box {
+                IconButton(onClick = { plusMenu = true }, modifier = Modifier.size(44.dp)) {
+                    Icon(LkIcons.Plus, tr("附加内容"), tint = GrayText, modifier = Modifier.size(21.dp))
+                }
+                // §128 A8（母档图 4）：先选意图再请求能力 —— 拍照识别/相册识别分流；
+                // 普通附件与文件解析未上线，不设入口（"不制造空功能"）
+                androidx.compose.material3.DropdownMenu(
+                    expanded = plusMenu, onDismissRequest = { plusMenu = false }
+                ) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(tr("拍照识别"), fontSize = 14.sp) },
+                        onClick = {
+                            plusMenu = false
+                            capUri?.let { runCatching { takeShot.launch(it) } }
+                                ?: com.looka.app.ui.common.toast(ctx, tr("相机不可用"))
+                        }
+                    )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(tr("从相册识别"), fontSize = 14.sp) },
+                        onClick = {
+                            plusMenu = false
+                            pickChatImage.launch(androidx.activity.result.PickVisualMediaRequest(
+                                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }
+                    )
+                }
             }
             TextField(
                 // 用户一动文字，chip 的专用动作就作废，退化成普通对话
                 value = input, onValueChange = { input = it; chipAction = null },
-                placeholder = { Text(tr("和小鹿说点什么…"), fontSize = 14.sp, color = com.looka.app.ui.theme.PlaceholderText) },
+                placeholder = { Text(tr("描述你想安排的事…"), fontSize = 14.sp, color = com.looka.app.ui.theme.PlaceholderText) },
                 colors = clearFieldColors(),
                 maxLines = 4,
                 // F1：回车即发送（对齐网页端 chatText 的 Enter 行为）
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Send),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSend = { send() }),
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(PanelBg)
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(PanelBg)
             )
             Spacer(Modifier.width(8.dp))
-            val canSend = input.isNotBlank() && !vm.aiBusy
-            // U4：按压反馈 —— 与任务勾选同款 spring 手感
-            val sendPressed = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-            val isPressed by sendPressed.collectIsPressedAsState()
-            val sendScale by androidx.compose.animation.core.animateFloatAsState(
-                if (isPressed) 0.85f else 1f,
-                androidx.compose.animation.core.spring(
-                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
-                label = "send"
-            )
+            // §128 A1（母档审计真 bug）：可发送 = 文字或图任一存在 —— 原来只查文字，
+            // 只选图不打字时发送键永远点不动
+            val canSend = (input.isNotBlank() || pendingImage.isNotEmpty()) && !vm.aiBusy
             IconButton(
                 onClick = { if (canSend) send() },
-                interactionSource = sendPressed,
                 modifier = Modifier.size(44.dp)
-                    .scale(sendScale)
                     .clip(CircleShape)
-                    // §126 A4（AI-UX 4.1）：发送键灰 → Ink 黑，不用主题色实心
+                    // §126 A4（AI-UX 4.1）：发送键灰 → Ink 黑，不用主题色实心；
+                    // §128 A2：撤 0.85 弹跳（红线"没有 0.85 弹跳"）
                     .background(if (canSend) Ink else PanelBg)
             ) {
                 Icon(
@@ -439,6 +481,9 @@ private fun epochDayOf(ms: Long): Long =
 @Composable
 private fun ProposalCard(vm: LookaViewModel) {
     val n = vm.pendingAiActions.size
+    // §128 A9（母档容量规则）：默认最多显示 4 个动作，其余折叠为「还有 N 项」
+    var expanded by remember(n) { mutableStateOf(false) }
+    val visibleCount = if (expanded) n else minOf(n, 4)
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(6.dp))
@@ -451,7 +496,7 @@ private fun ProposalCard(vm: LookaViewModel) {
         )
         Spacer(Modifier.height(6.dp))
         Hairline()
-        vm.pendingAiActions.forEachIndexed { i, a ->
+        vm.pendingAiActions.take(visibleCount).forEachIndexed { i, a ->
             val checked = vm.pendingChecked.getOrElse(i) { true }
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 44.dp).plainClick {
@@ -500,6 +545,13 @@ private fun ProposalCard(vm: LookaViewModel) {
                     }
                 }
             }
+        }
+        if (!expanded && n > 4) {
+            Text(
+                tr("还有 {0} 项…", n - 4), fontSize = 13.sp, color = LinkBlue,
+                modifier = Modifier.plainClick { expanded = true }
+                    .padding(vertical = 6.dp)
+            )
         }
         Row(
             Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -626,19 +678,6 @@ private fun ThemeDraftCard(vm: LookaViewModel, argb: Long, name: String) {
                     .padding(horizontal = 14.dp, vertical = 8.dp)
             )
         }
-    }
-}
-
-@Composable
-private fun QuickChip(label: String, onClick: () -> Unit) {
-    Box(
-        Modifier.padding(horizontal = 4.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .border(0.8.dp, Color(0xFFDDE0DD), RoundedCornerShape(10.dp))
-            .plainClick(onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(label, fontSize = 12.sp, color = Ink)
     }
 }
 

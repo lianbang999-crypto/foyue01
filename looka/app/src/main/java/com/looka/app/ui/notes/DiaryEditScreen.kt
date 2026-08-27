@@ -159,7 +159,7 @@ fun DiaryEditScreen(vm: LookaViewModel, nav: NavHostController, day: Long) {
 
         TextField(
             value = content, onValueChange = { content = it },
-            placeholder = { Text(tr("今天过得怎么样？"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
+            placeholder = { Text(tr("写下今天…"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
             textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
             colors = clearFieldColors(),
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 4.dp)

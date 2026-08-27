@@ -168,7 +168,7 @@ fun NoteEditScreen(vm: LookaViewModel, nav: NavHostController, id: Long) {
         }
         TextField(
             value = content, onValueChange = { content = it },
-            placeholder = { Text(tr("开始写…"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
+            placeholder = { Text(tr("记下想法…"), fontSize = 15.sp, color = com.looka.app.ui.theme.PlaceholderText) },
             textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
             colors = clearFieldColors(),
             modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp)

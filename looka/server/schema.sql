@@ -121,3 +121,25 @@ CREATE TABLE IF NOT EXISTS entitlements (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, item_id)
 );
+
+-- §128 B2：创始席位（kind: gift=创始100赠送 / buyout=¥19.9 批次买断）
+CREATE TABLE IF NOT EXISTS founders (
+  user_id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+-- §128 F1：用户共建中心（报错/建议/定制；status: received/need_info/evaluating/planned/building/beta/shipped/declined/withdrawn）
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  body TEXT NOT NULL,
+  meta TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'received',
+  reply TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_user ON feedback(user_id, id);

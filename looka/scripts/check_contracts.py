@@ -143,6 +143,37 @@ def main() -> int:
         else:
             print(f"✓ 评测集 {len(cases['cases'])} 例类型全在合同内")
 
+    # §128：定价合同对账 —— pricing.v1 ↔ worker PRICING 常量 ↔ 双端页面文案。
+    # 四套口径打过架（母档 §8 审计），从此只许一处出数字。
+    pr = json.loads((ROOT / "docs/contracts/pricing.v1.json").read_text())
+    okp = True
+    pm = re.search(r"const PRICING = \{(.*?)\n\};", wk, re.S)
+    assert pm, "worker 里找不到 PRICING 常量"
+    seg2 = pm.group(1)
+    cm2 = re.search(r"cny:\s*\{\s*month:\s*([\d.]+),\s*year:\s*([\d.]+)", seg2)
+    sub = pr["subscription"]
+    if not cm2 or float(cm2.group(1)) != sub["cny"]["month"] or float(cm2.group(2)) != sub["cny"]["year"]:
+        print("✗ CNY 订阅价：worker ≠ pricing.v1"); okp = False
+    um = re.search(r"usd:\s*\{\s*month:\s*([\d.]+),\s*year:\s*([\d.]+)", seg2)
+    if not um or float(um.group(1)) != sub["usd"]["month"] or float(um.group(2)) != sub["usd"]["year"]:
+        print("✗ USD 订阅价：worker ≠ pricing.v1"); okp = False
+    fbm = re.search(r"founder_buyout_cny:\s*([\d.]+)", seg2)
+    buyout = next(x for x in pr["stages"] if x["id"] == "founder_buyout")
+    if not fbm or float(fbm.group(1)) != buyout["price_cny"]:
+        print("✗ 买断价：worker ≠ pricing.v1"); okp = False
+    for pk2 in pr["antler_packs"]:
+        if not re.search(r"id:\s*'%s',\s*amount:\s*%d,\s*cny:\s*%d" % (pk2["id"], pk2["amount"], pk2["price_cny"]), seg2):
+            print(f"✗ 鹿角包 {pk2['id']}：worker ≠ pricing.v1"); okp = False
+    webidx = (ROOT / "server/public/index.html").read_text()
+    if f"{sub['cny']['month']} 元/月" not in webidx or f"{sub['cny']['year']} 元/年" not in webidx:
+        print("✗ Web 定价文案 ≠ pricing.v1"); okp = False
+    app_sub = (ROOT / "app/src/main/java/com/looka/app/ui/more/ExtraScreens.kt").read_text()
+    if f"¥{sub['cny']['month']}" not in app_sub or f"¥{sub['cny']['year']}" not in app_sub:
+        print("✗ App 方案页价格 ≠ pricing.v1"); okp = False
+    if okp:
+        print("✓ PRICING ↔ pricing.v1 ↔ 双端文案：订阅/买断/鹿角包一致")
+    ok &= okp
+
     if ok:
         print("\n全部一致。")
     else:

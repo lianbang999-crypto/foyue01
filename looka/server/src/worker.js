@@ -386,6 +386,19 @@ async function afdianCall(env, path, paramsObj) {
   return r.json();
 }
 
+// §128：定价合同常量 —— 与 docs/contracts/pricing.v1.json 对账（check_contracts 门禁），
+// 页面与文案禁止另写数字。海外用商店本地化价位，不做实时汇率换算。
+const PRICING = {
+  cny: { month: 12, year: 98 },
+  usd: { month: 5, year: 50 },   // §128 v1.2 M9 定案：$5/$50（约赠两个月，折扣克制）
+  founder_buyout_cny: 19.9,
+  packs: [
+    { id: 'antler_300', amount: 300, cny: 6 },
+    { id: 'antler_1000', amount: 1000, cny: 18 },
+    { id: 'antler_3000', amount: 3000, cny: 48 }
+  ]
+};
+
 /** 按月数折算 Pro 天数：12 个月按年卡 366 天，其余每月 31 天 */
 const afdianDays = month => (month >= 12 ? 366 : month * 31);
 
@@ -399,6 +412,24 @@ async function grantPro(env, userId, days) {
      ON CONFLICT(user_id) DO UPDATE SET plan='pro', expires_at=?2`
   ).bind(userId, exp).run();
   return exp;
+}
+
+/**
+ * §128 B2：授予永久 Founder Pro。
+ * plans 过期时间写 2100-01-01（planOf 天然判 pro，不加特殊分支）；
+ * founders 表记资格来源（gift=创始赠送 / buyout=早鸟买断）与席位号。
+ * 席位判定一律 COUNT(*)，seq 只作展示 —— 并发下重复号不影响资格判定。
+ */
+async function grantFounder(env, userId, kind) {
+  const seq = (((await env.DB.prepare('SELECT MAX(seq) AS m FROM founders').first())?.m) || 0) + 1;
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO founders (user_id, kind, seq, created_at) VALUES (?1,?2,?3,?4)`
+  ).bind(userId, kind, seq, Date.now()).run();
+  await env.DB.prepare(
+    `INSERT INTO plans (user_id, plan, expires_at) VALUES (?1,'pro',4102444800000)
+     ON CONFLICT(user_id) DO UPDATE SET plan='pro', expires_at=4102444800000`
+  ).bind(userId).run();
+  return seq;
 }
 
 /**
@@ -438,6 +469,23 @@ async function afdianSettle(env, o) {
   }
   if (!uid) return { ok: true, matched: false };   // 留在 pay_orders 待自助认领
 
+  // §128 B3：¥19.9 = 限量买断 Founder Pro（批次开关 FOUNDER_BUYOUT_OPEN 默认关 ——
+  // 阶段门：上一批 30 天 SLA 达标才开下一批；关闭时该金额按普通月付处理，不额外承诺）
+  if (env.FOUNDER_BUYOUT_OPEN === '1' && Math.abs(amount - PRICING.founder_buyout_cny) < 0.01) {
+    const used = ((await env.DB.prepare("SELECT COUNT(*) AS c FROM founders WHERE kind='buyout'").first())?.c) || 0;
+    if (used < 1000) {
+      await grantFounder(env, uid, 'buyout');
+      await track(env, 'looka', 'pay', uid, null, { amt: String(o.total_amount), founder: 1 });
+      await env.DB.prepare(
+        "UPDATE pay_orders SET user_id = ?1 WHERE channel = 'afdian' AND order_no = ?2"
+      ).bind(uid, String(o.out_trade_no)).run();
+      if (lk) {
+        await env.DB.prepare("UPDATE pay_intents SET status='paid', order_no=?1 WHERE code=?2")
+          .bind(String(o.out_trade_no), lk).run();
+      }
+      return { ok: true, matched: true, founder: true, user_id: uid };
+    }
+  }
   await grantPro(env, uid, afdianDays(month));
   await track(env, 'looka', 'pay', uid, null, { amt: String(o.total_amount), mon: month });
   await env.DB.prepare(
@@ -788,14 +836,12 @@ async function route(request, env, ctx) {
           if (u) uid = u.id;
         }
         if (!uid) return;   // 留在 pay_orders 待后台手动绑定
-        // 月付订阅每次 31 天；单次打赏 ≥$7 也给 31 天（让利原则）
-        const amt = Number(d.amount || 0);
-        if (d.type === 'Subscription' || d.type === 'Commission' || amt >= 7) {
-          await grantPro(env, uid, 31);
-          await track(env, 'looka', 'pay', uid, null, { amt: String(d.amount), ch: 'kofi' });
-          await env.DB.prepare("UPDATE pay_orders SET user_id = ?1 WHERE channel='kofi' AND order_no = ?2")
-            .bind(uid, txId).run();
-        }
+        // §128 B5（母档 §14）：Ko-fi「≥$7 给 31 天」逻辑**退出** —— 权益改由明确
+        // SKU、周期与订单合同驱动（pricing.v1）。该链路 KOFI_VERIFY_TOKEN 从未配置、
+        // 从未真实开通过任何用户，退出零影响。打赏只记录归属与感谢，不再自动开通权益。
+        await track(env, 'looka', 'pay_kofi_logged', uid, null, { amt: String(d.amount) });
+        await env.DB.prepare("UPDATE pay_orders SET user_id = ?1 WHERE channel='kofi' AND order_no = ?2")
+          .bind(uid, txId).run();
       } catch (e) { console.log('kofi hook', String(e)); }
     })());
     return new Response('ok', { status: 200 });
@@ -805,6 +851,73 @@ async function route(request, env, ctx) {
   const user = await getUser(request, env);
   if (!user) return json({ error: '未登录或会话已过期' }, 401);
   ctx.waitUntil(markActive(env, user.id, request));   // P1-7：当日首次活跃（内存缓存去重）
+
+  // ── §128 B2：创始计划（pricing.v1 阶段A：验证邮箱后免费领，全球 100 席）──
+  if (p === '/api/founder/status' && m === 'GET') {
+    const open = (env.FOUNDER_100_OPEN ?? '1') !== '0';
+    const used = ((await env.DB.prepare("SELECT COUNT(*) AS c FROM founders WHERE kind='gift'").first())?.c) || 0;
+    const mine = await env.DB.prepare('SELECT kind, seq FROM founders WHERE user_id = ?1').bind(user.id).first();
+    return json({ open, total: 100, used, mine: mine || null });
+  }
+  if (p === '/api/founder/claim' && m === 'POST') {
+    if ((env.FOUNDER_100_OPEN ?? '1') === '0') return json({ error: '创始计划暂未开放' }, 403);
+    if (!await rateLimit(env, `fclaim:${user.id}`, 5, 3600_000)) {
+      return json({ error: '操作过于频繁，稍后再试' }, 429);
+    }
+    // 门槛：邮箱已验证（防批量小号占席，母档：账号已验证）
+    const be = await env.DB.prepare('SELECT verified FROM user_emails WHERE user_id = ?1').bind(user.id).first();
+    if (!be?.verified) return json({ error: '请先在「账号」里绑定并验证邮箱，再领取创始席位' }, 400);
+    const mine = await env.DB.prepare('SELECT seq FROM founders WHERE user_id = ?1').bind(user.id).first();
+    if (mine) return json({ ok: true, seq: mine.seq, already: true });
+    const used = ((await env.DB.prepare("SELECT COUNT(*) AS c FROM founders WHERE kind='gift'").first())?.c) || 0;
+    if (used >= 100) return json({ error: '创始席位已满，感谢你的关注 🦌' }, 409);
+    const seq = await grantFounder(env, user.id, 'gift');
+    ctx.waitUntil(track(env, 'looka', 'founder_claim', user.id, request, { seq: String(seq) }));
+    return json({ ok: true, seq });
+  }
+  // §128：定价只从合同常量下发（App 兜底值与 pricing.v1 由 check_contracts 对账）
+  if (p === '/api/pricing' && m === 'GET') {
+    return json({ ok: true, cny: PRICING.cny, usd: PRICING.usd });
+  }
+
+  // ── §128 F1：用户共建中心（报告问题/提出建议/申请定制）。
+  // 严重度公平：报错按影响排序，不按是否付费 —— 这里不记录任何付费字段。──
+  if (p === '/api/feedback' && m === 'POST') {
+    if (!await rateLimit(env, `fb:${user.id}`, 10, 24 * 3600_000)) {
+      return json({ error: '今天提交得够多啦，明天再来 🦌' }, 429);
+    }
+    const b = await body();
+    const kind = ['bug', 'idea', 'custom'].includes(b.kind) ? b.kind : 'bug';
+    const text = String(b.text || '').slice(0, 4000);
+    if (!text.trim()) return json({ error: '内容不能为空' }, 400);
+    // meta 只收用户明示同意的诊断字段；日记正文/AI 原文/照片/联系人永不出现在这里
+    const meta = JSON.stringify({
+      where: String(b.where || '').slice(0, 40),
+      repeat: String(b.repeat || '').slice(0, 20),
+      contact: String(b.contact || '').slice(0, 120),
+      device: String(b.device || '').slice(0, 200),
+      ver: String(b.ver || '').slice(0, 40),
+      shot: String(b.shot || '').slice(0, 64)
+    });
+    const r = await env.DB.prepare(
+      `INSERT INTO feedback (user_id, kind, body, meta, status, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, 'received', ?5, ?5)`
+    ).bind(user.id, kind, text, meta, Date.now()).run();
+    ctx.waitUntil(track(env, 'looka', 'feedback', user.id, request, { kind }));
+    return json({ ok: true, id: r.meta.last_row_id });
+  }
+  if (p === '/api/feedback/mine' && m === 'GET') {
+    const rows = (await env.DB.prepare(
+      "SELECT id, kind, body, status, reply, created_at FROM feedback WHERE user_id = ?1 AND status != 'withdrawn' ORDER BY id DESC LIMIT 50"
+    ).bind(user.id).all())?.results || [];
+    return json({ ok: true, items: rows });
+  }
+  if (p === '/api/feedback/withdraw' && m === 'POST') {
+    const b = await body();
+    await env.DB.prepare("UPDATE feedback SET status='withdrawn', updated_at=?1 WHERE id = ?2 AND user_id = ?3")
+      .bind(Date.now(), Number(b.id || 0), user.id).run();
+    return json({ ok: true });
+  }
 
   if (p === '/api/me' && m === 'GET') {
     const pl = await planOf(env, user.id);
@@ -1131,8 +1244,8 @@ async function route(request, env, ctx) {
       if (!await rateLimit(env, `ai:fb:${user.id}:${today()}`, 3, 24 * 3600_000)) {
         return json({
           error: plan === 'pro'
-            ? '今天的鹿角用完啦，明天还有 50 枚 🦌'
-            : '今天的鹿角用完啦，明天还有 10 枚 🦌（Pro 每天 50 枚，攒着还能生成表情包）',
+            ? '今天的鹿角用完啦，下次使用 Looka 时还会获得 50 枚 🦌'
+            : '今天的鹿角用完啦，下次使用 Looka 时还会获得 10 枚 🦌（Pro 每天 50 枚）',
           antler_empty: true
         }, 429);
       }

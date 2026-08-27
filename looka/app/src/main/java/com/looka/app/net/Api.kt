@@ -164,6 +164,24 @@ object Api {
     /** 鹿角余额与流水 */
     suspend fun antler(c: Context): JSONObject = call(c, "/api/antler")
 
+    // ── §128 B2：创始计划 ──
+    suspend fun founderStatus(c: Context): JSONObject = call(c, "/api/founder/status")
+    suspend fun founderClaim(c: Context): JSONObject = call(c, "/api/founder/claim", JSONObject())
+
+    /** §128：定价从服务端合同常量下发（App 内置兜底值由 check_contracts 与 pricing.v1 对账） */
+    suspend fun pricing(c: Context): JSONObject = call(c, "/api/pricing")
+
+    // ── §128 F1：用户共建中心 ──
+    suspend fun feedbackSubmit(c: Context, kind: String, text: String, meta: JSONObject): JSONObject =
+        call(c, "/api/feedback", JSONObject().put("kind", kind).put("text", text)
+            .put("where", meta.optString("where")).put("repeat", meta.optString("repeat"))
+            .put("contact", meta.optString("contact")).put("device", meta.optString("device"))
+            .put("ver", meta.optString("ver")).put("shot", meta.optString("shot")))
+
+    suspend fun feedbackMine(c: Context): JSONObject = call(c, "/api/feedback/mine")
+    suspend fun feedbackWithdraw(c: Context, id: Long): JSONObject =
+        call(c, "/api/feedback/withdraw", JSONObject().put("id", id))
+
     // ── §117 B：鹿角商店 ──
     suspend fun shopItems(c: Context): JSONObject = call(c, "/api/shop/items")
     suspend fun shopBuy(c: Context, item: String): JSONObject =
