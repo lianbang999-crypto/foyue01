@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 49,
-  "versionName": "1.27.1",
+  "versionCode": 50,
+  "versionName": "1.28.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4441601,
-  "sha256": "f1d69a83b6753c457ffa98d69c864e619207f68e0fa39411323e70a86ef4db97",
-  "changelog": "解锁的贴纸包现在可以收起来了(所有权保留,随时打开);主题面板能一键卸下皮肤换回九色;修掉日期偶尔显示 1969 的问题",
+  "size": 4462445,
+  "sha256": "4046e0f9527bd1f0bb8299d7f8a83c314d32c6851bb2e476e62b57163ec7b09f",
+  "changelog": "小鹿 AI 全面换新:界面更清爽(卡片跟着对话走)、只发图也能识别、可以拍照识别;创始计划上线:验证邮箱免费领永久 Founder Pro(全球100席);新增「帮助 Looka 变得更好」报错与建议中心;设置改为五大分区",
   "minSupported": 1
 }
