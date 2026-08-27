@@ -11413,3 +11413,28 @@ L3a 聊天生成主题（先通「色」）+ 评测集与动作合同（准确�
 
 《Looka Mobile Agent 产品与技术方案 v1.1》内部用「§127」命名 Agent Kernel —— 与本计划 §127
 （功能生命周期）撞号。该方案落地时按本计划顺延编号（§130 起），方案原文编号视为其内部章节号。
+
+## 一百三十、§130（2026-08-27）：Agent 技术栈研究（只研究不写码，用户拍板"先把成熟项目研究明白再拿来用"）
+
+浅克隆实读五个项目源码（Koog/adk-kotlin/gpt_mobile/assistant-ui + langgraph4j API 核实），
+版本/许可证/活跃度全部经 GitHub 核实。**交付物：docs/research/AGENT-STACK-RESEARCH.md v1.0**。
+
+### 核心结论
+
+1. **Runtime 选 Koog 1.1.1**（Apache-2.0，Maven Central）：官方 Android 目标 + **官方 OpenRouter
+   客户端** + @Tool 注解 + checkpoint（androidMain）+ MCP + 端上 LiteRT + 官方 Compose 四端示例
+   —— 方案 v1.1 要自建的 Runtime/Persist/Resume/MCP/On-device 五件事它全有，且与 Looka 现有
+   OpenRouter 主链路零适配。风险：1.x API 会动（薄适配层包住）、APK 体积待 spike 实测
+2. **修正方案 v1.1 的一个过时判断**：adk-kotlin 不是"未 GA 不存在"——仓库活跃（0.8.0 已上
+   Maven Central），但模型层 Gemini-only（实核无 OpenAI 兼容）→ 不作 runtime；其 androidMain
+   Room 会话持久化与 Event 字段语义是数据模型权威参考（Apache-2.0 可合规拷贝）
+3. **gpt_mobile 是 GPL-3.0 —— 法律红线**：AgentRun 表设计/双状态机/Coordinator/前台服务/迁移
+   仪器测试只学模式，禁止复制任何代码进 Looka
+4. **Context Gateway 没有现成轮子** —— 这正是 Looka 独有价值层，必须自写（与护城河判断一致）
+5. 修订落地路线 R1-R5（替代此前 K0-K4）：Koog spike 量化验证 → 自写 AgentRun 表 → 切原生
+   tool-calling → snapshot+Context Gateway → 端上小模型；每步评测集回归护航
+
+### 边界
+
+- 本章零产品代码改动；scratchpad 克隆件不入库
+- R1 spike 待用户点头再开工
