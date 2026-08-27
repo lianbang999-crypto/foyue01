@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 51,
-  "versionName": "1.28.1",
+  "versionCode": 52,
+  "versionName": "1.29.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4462445,
-  "sha256": "60af2111b5b5cabfc3aaa7a20573653430b0245cc0513bfdc317d7caa28dbd2a",
-  "changelog": "修复:从更多页点+选贴纸后底部导航栏消失;修复:AI 创建的日程设置重复时结束日显示 1970 年(该状态下保存还会写坏日期,已根治)",
+  "size": 4479529,
+  "sha256": "4d09ee39361875638ce80ecb009563b3ec91d625bfaed0c3e9033fa5d404a71c",
+  "changelog": "小鹿 AI 升级：会自己查数据了 —— 问两周外的安排、找旧笔记、要月度统计都能答真的；草稿卡不再怕退出丢失；新增「多步查询」开关（小鹿设置）",
   "minSupported": 1
 }
