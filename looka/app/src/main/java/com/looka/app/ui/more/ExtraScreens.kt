@@ -919,6 +919,8 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
     var confirmPack by remember { mutableStateOf<com.looka.app.util.StampAssets.Pack?>(null) }
     // §126 C5（T-3）：商品详情页 —— 买前看整套（对齐 Lifebear 图 119 详情形态）
     var detailPack by remember { mutableStateOf<com.looka.app.util.StampAssets.Pack?>(null) }
+    // §127：已拥有包的「在选择器中显示」状态（停用通道，见 FEATURE-LIFECYCLE §6-1）
+    var pkHidden by remember { mutableStateOf(com.looka.app.data.Prefs.hiddenPacks(ctx)) }
     // 购买入口收一套：列表按钮与详情页按钮走同一条路
     val startBuy: (com.looka.app.util.StampAssets.Pack) -> Unit = startBuy@{ pk ->
         if (!authed) { com.looka.app.ui.common.toast(ctx, tr("请先在「更多 → 账号」登录")); return@startBuy }
@@ -997,6 +999,21 @@ fun ShopScreen(vm: com.looka.app.vm.LookaViewModel, nav: androidx.navigation.Nav
                 }
                 Spacer(Modifier.height(10.dp))
                 Hairline()
+                // §127（FEATURE-LIFECYCLE §6-1）：**停用通道** —— 拥有的包可以从贴纸选择器里收起来。
+                // 用户实机反馈「解锁了怎么删除」：所有权不该被删（买过就是买过），
+                // 但"不想再看到它"必须有路。所以是隐藏开关，不是删除按钮；
+                // 文案与位置照规则 §4：退路落在管理它的地方，不进选择器主界面。
+                if (has) {
+                    SwitchRow(
+                        tr("在贴纸选择器中显示"),
+                        !(pkHidden.contains(dp.id)),
+                        subtitle = tr("关掉只是收起来，随时可以打开；已贴出的贴纸不受影响")
+                    ) { show ->
+                        com.looka.app.data.Prefs.setPackHidden(ctx, dp.id, !show)
+                        pkHidden = com.looka.app.data.Prefs.hiddenPacks(ctx)
+                    }
+                    Hairline()
+                }
                 Row(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically

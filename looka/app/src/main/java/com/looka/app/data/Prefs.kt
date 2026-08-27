@@ -254,6 +254,20 @@ object Prefs {
     fun ownedPacks(c: Context): Set<String> = sp(c).getStringSet("owned_packs", emptySet())!!
     fun setOwnedPacks(c: Context, v: Set<String>) = sp(c).edit().putStringSet("owned_packs", v).apply()
 
+    /**
+     * §127（FEATURE-LIFECYCLE §6-1）：**在贴纸选择器中隐藏的包**。
+     *
+     * 这是「停用」不是「删除」—— 所有权(owned_packs / 服务端 entitlements)一个字都不动，
+     * 随时开回来。所以它只存在本地、不回传服务端（规则 §7：停用改变的是
+     * "我现在想看到什么"，不是"我拥有什么"）。
+     */
+    fun hiddenPacks(c: Context): Set<String> = sp(c).getStringSet("hidden_packs", emptySet())!!
+    fun setPackHidden(c: Context, id: String, hidden: Boolean) {
+        val s = hiddenPacks(c).toMutableSet()
+        if (hidden) s.add(id) else s.remove(id)
+        sp(c).edit().putStringSet("hidden_packs", s).apply()
+    }
+
     // ---- 系统日历聚合 ----
     fun showSysCal(c: Context) = sp(c).getBoolean("show_sys_cal", false)
     fun setShowSysCal(c: Context, v: Boolean) = sp(c).edit().putBoolean("show_sys_cal", v).apply()

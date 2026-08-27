@@ -73,6 +73,7 @@ import com.looka.app.ui.theme.DEER_THEMES
 import com.looka.app.ui.theme.GrayText
 import com.looka.app.ui.theme.HolidayRed
 import com.looka.app.ui.theme.Ink
+import com.looka.app.ui.theme.LinkBlue
 import com.looka.app.ui.theme.ThemeCtl
 import com.looka.app.vm.LookaViewModel
 import kotlinx.coroutines.launch
@@ -229,6 +230,37 @@ fun MoreScreen(vm: LookaViewModel, nav: NavHostController) {
         containerColor = Color.White
     ) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 20.dp)) {
+            // §127（FEATURE-LIFECYCLE §6-2）：**卸载通道** —— 当前套着皮肤包/照片主题时，
+            // 面板顶部亮明"你现在用的是什么"并给一条退路。此前只能靠"随便点一个九色"
+            // 间接卸下 —— 那不是通道，是副作用（规则 §2 第 4 问）。
+            // 卸下 = 回九色，包与照片色都留着（是卸载不是删除，随时能再装）。
+            val skinOn = com.looka.app.util.SkinPacks.active
+            val photoOn = remember(vm.settingsVersion, themeSheet) {
+                com.looka.app.util.PhotoTheme.load(ctx) != null
+            }
+            if (skinOn != null || photoOn) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("当前皮肤"), fontSize = 11.sp, color = GrayText)
+                        Text(
+                            skinOn?.name ?: tr("你的照片主题"),
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        tr("卸下"), fontSize = 13.sp, color = LinkBlue,
+                        modifier = Modifier.plainClick {
+                            // 与 ThemeCtl.set 同一套互斥语义：卸皮肤包 + 卸照片色 → 回九色
+                            ThemeCtl.set(ctx, ThemeCtl.index)
+                            com.looka.app.ui.common.toast(ctx, tr("已换回九色 🦌"))
+                        }.padding(8.dp)
+                    )
+                }
+                Hairline()
+            }
             Text(
                 tr("一鹿九色，选一个今天的颜色 🦌"),
                 fontSize = 15.sp, fontWeight = FontWeight.SemiBold,

@@ -86,12 +86,14 @@ fun StickerPicker(
     // §117 B：daily 免费；dunhuang/cow 需解锁（鹿角商店）。已放置的贴纸**永远照常渲染**，
     // 锁只挡"新选择" —— 不收回用户已经在用的东西。
     var owned by remember { mutableStateOf(Prefs.ownedPacks(ctx)) }
+    // §127：用户在商店详情页隐藏掉的包不进页签（停用，不是删除 —— 所有权仍在）
+    val hidden = remember { Prefs.hiddenPacks(ctx) }
     val FREE_PACKS = setOf("daily")
     data class Tab(val id: String, val label: String, val ids: List<String>, val locked: Boolean = false)
-    val tabs = remember(packs, recent, owned) {
+    val tabs = remember(packs, recent, owned, hidden) {
         buildList {
             if (recent.isNotEmpty()) add(Tab("recent", tr("最近"), recent))
-            packs.forEach {
+            packs.filter { it.id !in hidden }.forEach {
                 add(Tab(it.id, it.name(), it.stamps.map { s -> s.id },
                     locked = it.id !in FREE_PACKS && it.id !in owned))
             }

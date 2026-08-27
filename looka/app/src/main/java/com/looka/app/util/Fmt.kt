@@ -17,7 +17,29 @@ object Fmt {
 
     fun today(): Long = LocalDate.now().toEpochDay()
 
-    fun d(day: Long): LocalDate = LocalDate.ofEpochDay(day)
+    /**
+     * §127（用户实机报「日期显示 1969 年」）：epochDay → 日期，**带哨兵值兜底**。
+     *
+     * 全项目用 `-1L` 表示「没有日期」（任务无截止日、日程未选日…）。
+     * 一旦哪个渲染点漏了 `>= 0` 守卫，`LocalDate.ofEpochDay(-1)` 就是 **1969-12-31** ——
+     * 用户看到的是"1969 年"这种荒谬结果，而不是"没设置"。
+     *
+     * 这里不是掩盖：**语义上该显示「无」的地方仍必须自己判 `>= 0`**（全站现有 81 个
+     * 渲染点里主路径都判了）。这道兜底管的是"漏网的那一个"——
+     * 与其把 1969 摆到用户面前，不如退到今天，并在 debug 构建留下堆栈以便定位。
+     *
+     * 下界取 1970-01-01（epochDay 0）：真实用户数据不可能早于 Unix 纪元。
+     */
+    fun d(day: Long): LocalDate {
+        if (day < 0) {
+            if (com.looka.app.BuildConfig.DEBUG) {
+                android.util.Log.w("Fmt", "负 epochDay=$day 进入日期渲染（应先判 >= 0）",
+                    Throwable("date-sentinel-leak"))
+            }
+            return LocalDate.now()
+        }
+        return LocalDate.ofEpochDay(day)
+    }
 
     /** 星期短名：zh「三」 / en「Wed」 */
     fun week(dowIso: Int): String =
