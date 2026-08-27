@@ -11438,3 +11438,14 @@ L3a 聊天生成主题（先通「色」）+ 评测集与动作合同（准确�
 
 - 本章零产品代码改动；scratchpad 克隆件不入库
 - R1 spike 待用户点头再开工
+
+### §130 补充：《Looka_Agent_Stack_Audit_Report_v1.0》校审（2026-08-27）
+
+用户交来对 §130 报告的独立审计（Approve with changes，14 项）。逐项校审裁决：
+**11 项接受、2 项部分接受、1 项经源码复核驳回**——
+驳回项为「@Tool 注解 JVM-only 不含 Android」：Koog 构建配置实证 `androidMain dependsOn jvmCommonMain`
+（注释原文 "share the code between JVM and Android targets"），反射工具编进 Android target，
+审计误读了文档的 "JVM-only" 语境；其保守工程建议（class-based 主路径+R8 验证）仍并入 R1 双测。
+报告已升 **v1.1**：零适配→低适配、checkpoint=EngineSnapshot、GPL clean-room 措辞、
+ADK 理由改写、Context Gateway 收窄、路线升级 R0-R6（边界锁定/影子集成/Durable HITL 拆阶）、
+R1 Go/No-Go 门（副作用与权限安全 100% 通过，与总体 90% 分离）。

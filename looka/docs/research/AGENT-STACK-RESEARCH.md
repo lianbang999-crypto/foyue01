@@ -1,9 +1,11 @@
-# Agent 技术栈研究报告 v1.0（§130）
+# Agent 技术栈研究报告 v1.1（§130）
 
 > 2026-08-27 · 用户拍板：「这次要研究，不是自己写代码——先把成熟的 GitHub 项目研究明白，
 > 学习清楚了再拿来用。研究别人已经确定性的成果，不必再走弯路去测试。」
 > 方法：全部项目**浅克隆读真实源码**（不止读 README），版本/许可证/活跃度经 GitHub API 核实。
 > 对应《Looka Mobile Agent 产品与技术方案 v1.1》§50 研究矩阵。
+> **v1.1**：经《Looka_Agent_Stack_Audit_Report_v1.0》独立复核后修订（Approve with changes）。
+> 审计 14 项裁决：11 项接受、2 项部分接受、**1 项经源码复核驳回**（见 §8 审计裁决）。
 
 ---
 
@@ -13,8 +15,8 @@
 
 | 项目 | 版本 | 许可证 | 拿什么 |
 |---|---|---|---|
-| **JetBrains Koog** | 1.1.1（Maven Central `ai.koog:koog-agents:1.1.1`） | Apache-2.0 | **整库作为 Agent Runtime**：官方 Android 目标 + **官方 OpenRouter 客户端** + @Tool 注解 + checkpoint 持久化 + 事件钩子 + MCP + 端上 LiteRT。与 Looka 现有 OpenRouter 主链路零适配 |
-| **adk-kotlin（单文件级）** | 0.8.0（`com.google.adk:google-adk-kotlin-core`） | Apache-2.0 | 不作 runtime（见 C），但 **androidMain 的 Room 会话持久化 schema** 与 **Event 数据语义**可合规参考乃至带版权头拷贝单文件 |
+| **JetBrains Koog** | 1.1.1（Maven Central `ai.koog:koog-agents:1.1.1`） | Apache-2.0 | **整库作为 Agent Runtime**：官方 Android 目标 + **官方 OpenRouter 客户端** + @Tool 注解 + checkpoint 持久化 + 事件钩子 + MCP + 端上 LiteRT。与 Looka 现有 OpenRouter 主链路适配成本极低（Luna 兼容性以 R1 spike 实测为准） |
+| **adk-kotlin（单文件级）** | 0.8.0（`com.google.adk:google-adk-kotlin-core`） | Apache-2.0 | 不作 runtime（见 C），但 **androidMain 的 Room 会话持久化 schema** 与 **Event 数据语义**作权威参考（优先按语义独立建模；确需拷贝须完整履行 LICENSE/NOTICE/修改声明义务，且避免被 Pre-GA API 绑定） |
 | **MCP kotlin-sdk** | 官方 | MIT→Apache-2.0 过渡 | 将来接 MCP 由 Koog 的 `agents-mcp` 包着用，不直接依赖 |
 | **assistant-ui** | 活跃（11.9k★） | MIT | Web 端将来若上 React 可直接用；当下**学**其 MessagePart 联合类型 / ToolInvocationTracker / external-store 适配器 |
 
@@ -22,13 +24,13 @@
 
 | 项目 | 原因 | 学什么 |
 |---|---|---|
-| **gpt_mobile**（1.2k★） | **GPL-3.0 —— 复制代码会传染 Looka 闭源仓库，法律红线** | AgentRun Room 表设计（外键级联+status 索引）、CANCELED≠INTERRUPTED 状态机、AgentRunCoordinator（独立于页面生命周期）、AgentRunForegroundService、Room V2 迁移的仪器测试写法 |
+| **gpt_mobile**（1.2k★） | **GPL-3.0 —— 对闭源 Looka 执行 clean-room 政策：允许阅读与设计对照，禁止复制实现代码/资源、禁止链接 GPL 模块**（正式法律判断留给合规流程）| AgentRun Room 表设计（外键级联+status 索引）、CANCELED≠INTERRUPTED 状态机、AgentRunCoordinator（独立于页面生命周期）、AgentRunForegroundService、Room V2 迁移的仪器测试写法 |
 
 ### C. 暂缓 / 边界参考
 
 | 项目 | 判断 |
 |---|---|
-| **adk-kotlin 作为 runtime** | 0.8.0 未到 1.0；**模型层只有 Gemini/Vertex/LiteRT-LM，没有 OpenAI 兼容客户端**（core/models 目录实核）——接 OpenRouter 要自写 Model 实现，违背"不走弯路"。数据语义参考价值 S 级，runtime 价值当前 C 级 |
+| **adk-kotlin 作为 runtime** | 0.8.0 Pre-GA；官方内置 Model 实现偏 Google 生态（core/models 实核只有 Gemini/Vertex/LiteRT）——Model 抽象可扩展，但**缺成熟官方 OpenRouter adapter**，协议/流式/工具调用/错误映射得自己长期维护＝走弯路（审计项 9 措辞采纳）。数据语义参考价值 S 级，runtime 当前暂缓 |
 | adk-java 1.x | 企业向（A2A/插件），与手机端诉求错位，补充参考 |
 | langgraph4j（MIT，1.9k★，已迁 langgraph4j org） | JVM graph/checkpoint——Koog 的 strategy graph + snapshot 已覆盖同类能力，暂缓 |
 | Open WebUI / Chatbot UI | 功能广度的**反面参考**：明确 Looka 不做的东西（多模型面板/Persona 市场/工作流编辑器） |
@@ -44,7 +46,8 @@
 
 **实核到的直接可用能力**（模块名=Maven 坐标一部分）：
 
-- **模型面**：`prompt-executor-openrouter-client`（**官方 OpenRouter**，Looka 现有主链路零适配）、
+- **模型面**：`prompt-executor-openrouter-client`（**官方 OpenRouter**——正式支持的 provider，
+  非 OpenAI 兼容绕接；Luna 的 tool-calling/reasoning/流式行为以 R1 spike 实测定版）、
   openai / anthropic / google / deepseek / dashscope / mistral / ollama / bedrock、
   **litert-client（Google LiteRT 端上模型）** —— 方案 §41 On-device 路线已内置
 - **核心 API 极简**（examples/code-agent/step-01 实读）：
@@ -54,9 +57,15 @@
       handleEvents { onToolCallStarting { ... } }   // = 方案的 AgentEvent 钩子
   }
   ```
-- **工具**：`@Tool` 注解把普通 Kotlin 函数变工具（反射收集）；ToolRegistry = 方案的 CapabilityRegistry 雏形
-- **持久化**：`agents-features-snapshot`（checkpoint/rollback，**含 androidMain 实现**）＝方案 §27 的
-  pause/persist/resume；另有 persistence-jdbc / chat-history / longterm-memory / chat-memory-sql
+- **工具**：`@Tool` 注解把普通 Kotlin 函数变工具（反射收集）；ToolRegistry = 方案的 CapabilityRegistry 雏形。
+  **审计争议已源码定案**：反射收集在 `jvmCommonMain`，而构建配置明确 `androidMain dependsOn jvmCommonMain`
+  （注释原文 "share the code between JVM and Android targets"）——**@Tool 编进 Android target**；
+  审计报告"JVM-only 不含 Android"的说法不成立。工程上仍采纳其稳健建议：
+  R1 spike **双测** class-based Tool 与 @Tool 反射（重点验 R8/ProGuard 下反射存活与体积代价）
+- **持久化**：`agents-features-snapshot`（checkpoint/rollback，**含 androidMain 实现**）——
+  覆盖方案 §27 的**执行引擎恢复**层；产品级 pause/approval/resume（审批对象/风险级/幂等/过期/审计）
+  仍由 Looka 自己的 Room 真相层负责，checkpoint 只作可替换的 EngineSnapshot（审计项 6 采纳）；
+  另有 persistence-jdbc / chat-history / longterm-memory / chat-memory-sql
 - **策略图**：strategy DSL（node/edge/onMultipleToolCalls/nodeLLMCompressHistory 历史压缩内置）
 - **MCP**：`agents-mcp` / `agents-mcp-server`（包着官方 kotlin-sdk）
 - **可观测**：opentelemetry / trace / tokenizer 模块
@@ -86,13 +95,16 @@
   端上模型聊天的完整 Android 示例——On-device 阶段的现成起点
 - `mlkit` 模块：设备端 ML 能力接入参考
 
-**为什么不选它当 runtime**：models 目录实核只有 Gemini.kt / Vertex / LiteRT——
-**没有 OpenAI 兼容客户端**，接 OpenRouter 得自写 Model 实现＝走弯路；0.8.0 破坏性变更风险也高。
+**为什么不选它当 runtime**：不是"技术上只能 Gemini"——Model 是抽象接口可自建实现；
+而是**官方没有成熟的 OpenRouter adapter**，协议、流式、tool-call、usage、错误映射都要
+自己写并长期维护（Koog 已替我们做完这些），且 0.8.0 Pre-GA 破坏性变更风险高。
 **跟踪策略**：进入 1.0 且出现 OpenAI 兼容层时重估（方案的 Framework Adapter 原则保证可换）。
 
 ## 3. gpt_mobile（S 级 Android 现实 · GPL 红线）
 
-**License GPL-3.0 —— 任何代码复制进 Looka（闭源）都不合规。只学不抄。**
+**License GPL-3.0 —— clean-room 政策：Reference only。** 架构/状态机独立重写；代码不 copy-paste；
+提交说明不写 "port from gpt_mobile"，必要时以 ADR 记 "inspired by public design pattern,
+independently implemented"（审计项 10 措辞采纳）。
 
 实核收获（包结构 data/{agent,database,context,security,backup} 已读）：
 - **AgentRun 表设计**（entity/AgentRun.kt 实读）：runId 主键 + chat/user_message/assistant_message
@@ -130,23 +142,64 @@
 | Memory 分层 | Koog longterm-memory · 方案 Memory Policy | deerFacts（用户确认制 ✓ 方向已对） |
 | MCP | Koog agents-mcp | 无 |
 | On-device | Koog litert-client · adk litertlm+Android 示例 | 无 |
-| Context Gateway | **无现成轮子——这正是 Looka 的独有价值层，必须自写** | agendaContext（一次性全量注入） |
+| Context Gateway | **本次审计的核心项目中无满足 Looka 需求者**（memory/RAG/session 不能替代 检索+授权+隐私+溯源+领域语义 的组合）——独有价值层，自建 | agendaContext（一次性全量注入） |
 
-## 6. 修订后的落地路线（研究结论版，替代此前口述的 K0-K4）
+## 6. 落地路线 R0-R6（v1.1 采纳审计版：R4 拆两阶、新增边界锁定与影子集成）
 
-> 原则：每步以评测集 30 例回归护航（<90% 即停）；Koog 永远包在薄适配层后（Framework 可换，用户资产不换）。
+> 原则：canonical domain state（Conversation/Invocation/AgentRun/AgentEvent/ToolInvocation/
+> ApprovalRequest/Artifact/Context/Audit）**永远归 Looka**；Koog 只出现在 adapter 与
+> EngineSnapshot 层——两年后换掉 Koog，用户资产完整可用。
 
 | 步 | 内容 | 性质 |
 |---|---|---|
-| R1 | **Koog spike**（独立 module，不动产品代码）：AIAgent + OpenRouterLLMClient(Luna) + 3 个 Looka 只读工具，跑通评测集；量出 APK 体积增量与冷启动影响 → **数据说话再定引入** | 验证 |
-| R2 | 自写 AgentRun/ToolEvent Room 表（照 gpt_mobile 模式 + adk 字段语义，自己的代码）——先只做记录与审计，不改执行链 | 数据层 |
-| R3 | AiClient/AiActions 切 Koog runtime：文本 JSON 协议 → 原生 tool-calling；草稿确认 = 工具 execute 前 gate 到现有 pendingAiActions（同路事务铁律不变） | 替换 |
-| R4 | snapshot 接入（草稿卡杀进程不丢）+ Context Gateway（agendaContext 拆按需 API，顺手完成 AI-3） | 增强 |
-| R5 | 端上小模型试点（Koog litert-client，参考 adk litertlmchat 示例）：意图分类/隐私过滤离线化 | 远期 |
+| R0 | **边界锁定**：RuntimePort / EngineSnapshotPort / CapabilityPolicy 接口 + clean-room 与许可证 ADR | 架构 |
+| R1 | **Koog Android spike**（独立 module）：OpenRouterLLMClient+Luna+3 只读工具；class-based Tool 主路径、@Tool 反射对照测；量 APK/AAB 增量、R8、冷启动、RAM、method count；测流式 tool-call/reasoning/cancel/process-death | 验证 |
+| R2 | **Canonical Room**：自写 Conversation/Invocation/AgentRun/AgentEvent/ToolInvocation/ApprovalRequest/EngineSnapshot 元数据表（照 gpt_mobile 模式+adk 语义，自己的代码）+ 迁移仪器测试 | 数据层 |
+| R3 | **影子集成**：KoogRuntimeAdapter 只读能力先行；AgentEvent 投影进现有 UI；旧链路保留 fallback | 集成 |
+| R4 | **Durable HITL**：pendingAiActions 内存态升格为 ApprovalRequest+ToolInvocation 状态机；杀进程/重启/拒绝/重复点击全验证；Koog checkpoint 只辅助恢复执行 | 可靠性 |
+| R5 | **Context Gateway**：agendaContext 拆按需只读 API（scope/freshness/source/audit），顺手完成 AI-3 | 差异化 |
+| R6 | 端上小模型试点（Koog litert-client，参考 adk litertlmchat）：意图分类/隐私过滤/轻摘要 | 远期 |
+
+### R1 的 Go/No-Go 门（审计版采纳：安全项与总体分离）
+
+| Gate | 标准 |
+|---|---|
+| 功能正确性 | 评测集 30+ 例总体 ≥90%（工具选择/参数 schema/流式/终答分别统计） |
+| OpenRouter/Luna | tool-calling/reasoning/流式/usage/错误恢复全通，**不许靠文本 JSON 兜底** |
+| Android 构建 | Debug/Release/R8 全过；无反射缺失崩溃 |
+| 体积与性能 | AAB/APK 增量、冷启动、首 token、峰值 RAM 记录在案，与基线对比后拍板 |
+| 取消语义 | cancel 后不得再执行新工具；UI/Room 状态一致 |
+| **副作用安全** | 重复点击/超时/进程死亡不产生重复副作用 —— **100% 通过，不适用总体百分比** |
+| **权限安全** | 未授权数据/工具 100% 拒绝 —— **100% 通过** |
+| 可替换性 | Looka domain model 零依赖 Koog 类型（只出现在 adapter/EngineSnapshot 层） |
 
 ## 7. 许可证合规备忘（一票否决项）
 
 - Koog / adk-kotlin / adk-java：Apache-2.0 —— 引库、参考、带版权头拷贝均可
 - assistant-ui / langgraph4j：MIT —— 同上
-- **gpt_mobile：GPL-3.0 —— 只允许阅读与模式学习，禁止复制任何代码/资源进 Looka**
+- **gpt_mobile：GPL-3.0 —— clean-room：只读与模式学习；不复制实现/资源，不链接 GPL 模块**
 - MCP kotlin-sdk：MIT→Apache-2.0 过渡期 —— 经 Koog 间接使用，不直接引
+
+## 8. 审计裁决记录（v1.1 · 对《Looka_Agent_Stack_Audit_Report_v1.0》的校审）
+
+审计报告结论「Approve with changes」**接受**；其 14 项审计的逐项裁决：
+
+**接受（11 项）**：Koog 版本/许可/OpenRouter 官方性确认（1/2/4）、"零适配"→"低适配、Luna 以 spike 定版"（3）、
+checkpoint=EngineSnapshot 而非业务真相层（6）、onAssistantMessage 是接入点非 durable HITL（7）、
+ADK 现状确认（8）、GPL clean-room 措辞（10）、assistant-ui/MCP 判断确认（11/12）、
+Context Gateway 表述收窄（13）、路线拆分与安全 Gate 分离（14）。
+
+**部分接受（2 项）**：
+- 项 9（ADK "只有 Gemini"）：原文本就写明"接 OpenRouter 得自写 Model 实现"（即承认可扩展），
+  但审计措辞更不易误读，采纳改写；
+- L17（Apache 拷贝单文件）：法律上可行的表述无误，采纳"优先独立建模、拷贝须履行义务"的收紧。
+
+**驳回（1 项，源码定案）**：
+- 项 5「@Tool annotation-based tools 为 JVM-only，不能作为 Android 实施指导」——
+  **与源码不符**。实证：`agents-tools` 的反射收集（ToolSet/ToolFromCallable）位于 `jvmCommonMain`；
+  `convention-plugin-ai/src/main/kotlin/ai.kotlin.multiplatform.gradle.kts` 明确
+  `androidMain { dependsOn(jvmCommonMain) }`，且该 sourceSet 注释原文为
+  *"Source set to share the code between JVM and Android targets"* —— @Tool 反射路径
+  **编译进 Android target**。审计把文档语境中的 "JVM-only"（相对 JS/Wasm/iOS 的 JVM 家族）
+  误读为"不含 Android"。其工程建议（Android 主路径偏保守用 class-based Tool、R8 下验证反射）
+  仍然稳健，已并入 R1 双测项——但结论依据必须以源码为准。
