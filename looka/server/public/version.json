@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 42,
-  "versionName": "1.23.0",
+  "versionCode": 43,
+  "versionName": "1.23.1",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4404617,
-  "sha256": "02ef360c0f95f85075447761c19d69b285b583386742d961b41d3bbdcb8d8bc3",
-  "changelog": "新增：日程/任务/笔记/日记都能贴图片了（拍照或相册，云端同步）；鹿角商店上线（敦煌、牛来贴纸包可用鹿角解锁，Pro 免费）；日程标题可一键填入最近用过的；搜索支持空格分多个关键词；网页端贴纸可以点开编辑和删除了",
+  "size": 4405621,
+  "sha256": "e7f3419f306edaf0c2b565e008bcca76216859ec89353b48d86cf5fa5720efa6",
+  "changelog": "紧急修复：打开笔记/任务/日程详情/日记会闪退的问题；「更多」页新增鹿角商店入口；小鹿 AI 换用更聪明的模型",
   "minSupported": 1
 }
