@@ -1,10 +1,10 @@
 {
   "platform": "android",
-  "versionCode": 46,
-  "versionName": "1.25.1",
+  "versionCode": 47,
+  "versionName": "1.26.0",
   "url": "https://looka.foyue.org/dl/looka-latest.apk",
-  "size": 4406161,
-  "sha256": "5593e8541c605909f4672716f266d767f17dde8037db87cfebecfc22300b343f",
-  "changelog": "创建面板四个图标统一为极简细线风格；提醒诊断修复「上面说正常下面标红」的矛盾，状态图标更清爽",
+  "size": 4406705,
+  "sha256": "343f3964d782c6802df91106ee1fbbde34598fb1f1a012843c86f660b49639d8",
+  "changelog": "邮箱验证可以用了；小鹿支持发图片（拍的课表、海报发给它，帮你记成日程）；主题新玩法：挑一张自己的照片，取它的颜色一键换成你的专属主题",
   "minSupported": 1
 }
