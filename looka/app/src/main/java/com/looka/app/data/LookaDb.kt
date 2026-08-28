@@ -10,9 +10,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         Category::class, EventSeries::class, EventException::class, Reminder::class,
         TaskList::class, Task::class, NoteList::class, Note::class, Diary::class, Stamp::class,
         Template::class, ConflictLog::class, Attachment::class, ChatMessage::class,
-        AgentProposal::class
+        AgentProposal::class, AgentOperation::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class LookaDb : RoomDatabase() {
@@ -29,6 +29,7 @@ abstract class LookaDb : RoomDatabase() {
     abstract fun attachmentDao(): AttachmentDao
     abstract fun chatDao(): ChatMessageDao
     abstract fun agentProposalDao(): AgentProposalDao
+    abstract fun agentOperationDao(): AgentOperationDao
 
     companion object {
         /**
@@ -163,6 +164,34 @@ abstract class LookaDb : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE stamp ADD COLUMN posX REAL NOT NULL DEFAULT -1")
                 db.execSQL("ALTER TABLE stamp ADD COLUMN posY REAL NOT NULL DEFAULT -1")
+            }
+        }
+
+        /**
+         * v12 → v13（§132 A1/A2）：Agent 操作账本表 + 提案表 Freshness 基线列。
+         * 纯新增，不动旧数据；两表都是本机过程数据，不进同步。
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS AgentOperation (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        batchId INTEGER NOT NULL,
+                        origin TEXT NOT NULL DEFAULT 'chat',
+                        actionType TEXT NOT NULL,
+                        riskLevel TEXT NOT NULL,
+                        targetKind TEXT NOT NULL DEFAULT '',
+                        targetId INTEGER NOT NULL DEFAULT -1,
+                        baseVersion INTEGER NOT NULL DEFAULT -1,
+                        resultVersion INTEGER NOT NULL DEFAULT -1,
+                        payload TEXT NOT NULL DEFAULT '',
+                        summary TEXT NOT NULL,
+                        result TEXT NOT NULL,
+                        undoSnapshot TEXT NOT NULL DEFAULT '',
+                        createdAt INTEGER NOT NULL DEFAULT 0
+                    )""".trimIndent()
+                )
+                db.execSQL("ALTER TABLE AgentProposal ADD COLUMN baseVersions TEXT NOT NULL DEFAULT ''")
             }
         }
     }

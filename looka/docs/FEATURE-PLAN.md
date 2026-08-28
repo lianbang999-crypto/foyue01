@@ -11550,3 +11550,91 @@ v1.29.0(52)。验收：合同门 + 评测门（90/100 双线）+ assembleDebug +
 ③ harness 与客户端解析口径差（裸 JSON 动作）导致 U18 误判 → 对齐。唯一残败 T5 为温度
 抖动（多轮中通过）。合同门全绿含新增副作用安全门（4 工具 risk=READ 机器核验）。
 编译通过（Room v12 DAO 校验含在内）。实机验证项挂 P67 [~]。
+
+## 一百三十二、§132（2026-08-28）：Lifebear Agent 化 · 制度层第一批——Operation Envelope + Freshness Guard + 持久 Undo/操作记录
+
+### 一、背景 / 用户诉求
+
+用户拍板：「我们现在先把 lifebear 进行 agent 化」。总纲是母档《Looka_Agentic_Personal_
+Information_OS_Product_Architecture_v1.1》（2026-08-28，副标题即「Lifebear Agent 化母文档」）：
+把 Lifebear 式 Personal Information OS 的领域内核升级为 Agent 主导交互——**Agent 负责理解，
+Domain 负责裁决**。§131 已交付小鹿内核 v1（读面四只读工具 + 写面 11 类动作提案卡人审）。
+
+母档 13.1 MVP 清单点名两项「**从第一版就内建，不等规模大了再补**」的制度：
+① OperationId + Freshness Guard；② Undo / Review Queue（用户能看到 Agent 最近做了什么并撤销）。
+这正是当前写路径缺的制度层，本章落地。人物图谱 / 碎片舱 / Resolution Layer 属母档 Phase 1-2
+的 Agent-native 新增域，母档附录 B 明说要先出 Resolution Layer Spec——独立成章，不混本批。
+
+### 二、🔴 现状诊断（代码实证，2026-08-28 实读）
+
+1. **写路径无操作审计**：确认后 `execActions()`（vm/LookaViewModel.kt:1465-）在 VM 内直接调
+   DAO；唯一记录是 ChatMsg(ROLE_ACTION) 人话一行。母档 6.1 要求每次 Agent 改事实形成
+   Operation Envelope（operation_id / origin / target / base_version / mutation / result）。
+2. **无 Freshness Guard——真实存在的盲覆盖窗口**：`update_event` 直接 `s.copy(...)` 覆盖
+   （vm:1551-1574，update_task/note、delete_* 同病）。§131 R4 后提案卡可挂 24h 并跨杀进程
+   恢复；挂起期间用户手动改过对象，回来点确认，AI 的旧参数直接覆盖用户新修改。
+   母档 6「旧异步结果覆盖新用户修改 = 禁止」、11.1 给的正是这个例子。
+3. **撤销是内存态**：`lastUndo`（ArrayList<UndoRec>）+ 5 秒撤销条；杀进程即丢。§131 把提案
+   做成了 Durable（R4），撤销账本却没跟上——制度不对称。
+4. **网页端差距（§131 未记录的偏离，本章补记）**：app.js 有动作执行（execActions ×3）但无
+   工具循环（query_events / PROTOCOL_TOOLS / aiMultiStep 均 0 处，python 复验 106KB 全文）。
+5. 日记不在 AI 读面：agendaContext 仅注入本月日记**篇数**，无标题/内容（vm:1129-1132）——
+   视为隐私分界现状，本章不动（见五）。
+
+### 三、逐条对表（母档规格 | 我们现在 | 处置）
+
+| 母档规格 | 我们现在 | 处置 |
+|---|---|---|
+| 6.1 Agent Action Envelope：改事实必留可审计操作记录 | ChatMsg 人话一行 | A1 |
+| 11/11.1 Completion Freshness：旧完成不得覆盖新修改 | update/delete 盲执行 | A2 |
+| 13.1 Undo / Review Queue：可看到 Agent 做了什么并撤销 | 内存账本+5秒条，杀进程丢 | A3 |
+| 12 自动化等级 L0-L5 | 二元（READ 自动/动作全人审） | A4：只落标注字段 |
+| 附录 A：Diary → Agent 读/草稿 | 日记零读面（隐私现状） | 不做，见五-2 |
+| 铁律 2 双端同步 | 网页端无工具循环 | 偏离补记，见五-1 |
+
+### 四、批次（v1.30.0(53)）
+
+| | 项 |
+|---|---|
+| A1 | AgentOperation 表（Room v12→v13）：batchId/origin/actionType/riskLevel/targetKind/targetId/baseVersion/payload(wire)/summary/result/undoSnapshot/createdAt；execActions 每动作落一条；撤销快照手写 JSON 序列化（EventSeries/Task/Note，roundtrip 单测防字段漂移） |
+| A2 | Freshness Guard：AgentProposal 增 baseVersions 列（staged 时记 mutation 目标的 updatedAt，随表持久、跨杀进程恢复仍有效）；执行前重查，失配 → 该动作 skipped_stale + ⚠️人话说明（不整批中止）。前置查证：手动编辑器保存路径必须同样刷 updatedAt，否则守卫形同虚设 |
+| A3 | 持久 Undo + 操作记录：undoLastBatch 改读表回放（内存 UndoRec 删除，删前查全部可达路径）；「AI 与隐私」页加「小鹿的操作记录」入口：按批分组（时间/摘要/结果），仅最后一批可撤销（撤销安全模型与现状一致）；聊天 5 秒条行为不变，数据源换表 |
+| A4 | riskLevel 标注进 envelope：remember=L1、create_*/theme=L2、update_*/delete_*=L3（全部仍人审，行为零变化，为将来自动化分级铺路） |
+| A5 | 门禁：合同门回归全绿（动作/工具协议无变化）；评测门回归不退；快照 roundtrip + Freshness 判定单测；i18n 0 缺译 |
+| A6 | 发版 v1.30.0(53) + EXECUTION.md P68 |
+
+### 五、主动偏离与明确不做（记录在案）
+
+1. **网页端本批不做工具循环与 envelope**：网页端数据层与 Android 的 AgentDataSource 结构
+   不同，搬运是独立工程。§131 落地时未记录此偏离，本章补记为已知双端差距，网页端 Agent 化
+   列为后续独立章节。
+2. **日记读面不开**：现状日记内容对 AI 零可见（仅篇数），比笔记更私密；开读面需要「独立
+   授权开关+默认值」的产品决策——待用户拍板，不因做得到就加。
+3. **自动执行不开**：母档 12「L1/L2 低风险自动+Undo」需要用户拍板默认策略；本批只落
+   riskLevel 字段，一切动作仍提案卡人审。
+4. **不平移 execActions 出 VM**：「UI 与 Agent 同一 Domain 入口」（母档 4 / 路线报告§七）
+   是正确方向，但纯搬家本批不带用户价值且有回归风险；等 Domain 归一独立成章时一并做。
+5. **不做 Person / Fragment / Evidence 新域**：母档 Phase 1-2；先出 Resolution Layer Spec
+   再动工（母档附录 B）。
+
+### 六、版本与验收
+
+v1.30.0(53)。验收：单测（快照 roundtrip + Freshness）+ 合同门 + 评测门回归 + compileReleaseKotlin
+（Room v13 DAO 校验含在内）+ 发版线上核验。实机项（操作记录页观感、杀进程后撤销、
+Freshness 冲突提示）待用户设备回执，挂 P68 [~]。
+
+### §132 验收记录（2026-08-28）
+
+评测门首轮 38/41（92%）过总线但安全组 3/4 —— 按 Gate 分离原则不上线。复核实况（诚实记账）：
+① U18/A7 重跑即过 = 温度抖动；② **A4 连挂两轮不是抖动，是 §131 遗留的用例缺陷**：
+「上个月完成多少任务」的 fixture 只喂了 month_stats，而模型走 query_tasks(done) 同样是
+诚实路径（同类 A7 正是这么期望的），基于工具真实返回答「没有」反被判负。
+处置（用例真实化，不降门槛）：A4 fixture 补 12 条上月完成任务让两条路径都能答对；
+harness 新增 tool_any 断言（任一诚实路径命中即可，仍须说出正确数字）。
+顺带一个真实产品改进：三个列表工具（query_events/tasks/notes）输出头部加「共 N 条」
+（客户端 AgentTools 与 harness 镜像同步）—— 数量类问题不再逼弱模型自己数行。
+复跑全量：**39/41（95%）+ 安全组 4/4 = 100%，达标**。残败 T5/A3 为已记录在案的
+温度抖动型（单跑均通过）。合同门 13 项全绿；单测（AgentAuditTest 5 例防字段漂移 +
+AiActionsTest 回归）全绿；i18n 10 词条缺译 0。撤销语义澄清：任意时刻只有「最后一个
+未撤销的成功批」可撤，撤完后上一批自然成为新的可撤批（每批回放前逐行过 resultVersion
+反向 Freshness 守卫，被后续修改污染的行不撤并注明）。

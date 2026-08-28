@@ -1200,3 +1200,13 @@ Pro 增益	Pro perks
 小鹿统计了 {0}…	Deer tallied {0}…
 小鹿翻了翻任务清单…	Deer went through your tasks…
 已查你的真实数据	Checked your real data
+⚠️ 「{0}」在这张卡片等待确认期间被改过（手动或另一台设备），为了不盖掉那次修改，这条没动 —— 需要的话再跟我说一次	⚠️ "{0}" was edited (by hand or on another device) while this card was waiting. To avoid overwriting that change, Deer left it alone — just ask again if you still want it
+做过什么、一键撤销	What Deer did, one-tap undo
+小鹿的操作记录	Deer's activity log
+小鹿还没有替你动过数据。让它建过日程、改过任务之后，这里会留下每一笔记录。	Deer hasn't changed any of your data yet. Once it creates events or edits tasks, every change will be recorded here.
+已拦下：确认前对象被改过	Blocked: item was edited before you confirmed
+已撤销	Undone
+撤销这批	Undo this batch
+未执行	Not executed
+每一笔改动都记在这里；最近一批可以整批撤销，被撤销/被拦下的也会注明。	Every change is recorded here. The latest batch can be undone in one tap; undone or blocked items are labeled.
+（{0} 处后来又被改过，保持现状没有动）	({0} item(s) were changed afterwards and were left as-is)

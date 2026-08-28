@@ -53,9 +53,10 @@ object AgentTools {
             val t = minOf(maxOf(f0, t0), f + 92)   // 范围钳 ≤92 天，防「查全年」拖垮上下文
             val lines = data.eventLines(f, t, args.optString("keyword").trim())
             if (lines.isEmpty()) return "（${Fmt.iso(f)} 至 ${Fmt.iso(t)} 无日程）"
-            return "日程（${Fmt.iso(f)} 至 ${Fmt.iso(t)}，[e数字] 是 id）：\n" +
+            // §132：头部带总数 —— 「有几条/多少个」类问题不逼模型自己数行（数行是实测弱点）
+            return "日程（${Fmt.iso(f)} 至 ${Fmt.iso(t)}，共 ${lines.size} 条，[e数字] 是 id）：\n" +
                 lines.take(60).joinToString("\n") +
-                (if (lines.size > 60) "\n（共 ${lines.size} 条，仅显示前 60 条）" else "")
+                (if (lines.size > 60) "\n（仅显示前 60 条）" else "")
         }
     }
 
@@ -65,9 +66,9 @@ object AgentTools {
             val scope = args.optString("scope").ifBlank { "open" }
             val lines = data.taskLines(scope, args.optString("keyword").trim())
             if (lines.isEmpty()) return "（没有匹配的任务）"
-            return "任务（范围=$scope，[t数字] 是 id）：\n" +
+            return "任务（范围=$scope，共 ${lines.size} 条，[t数字] 是 id）：\n" +
                 lines.take(40).joinToString("\n") +
-                (if (lines.size > 40) "\n（共 ${lines.size} 条，仅显示前 40 条）" else "")
+                (if (lines.size > 40) "\n（仅显示前 40 条）" else "")
         }
     }
 
@@ -78,9 +79,9 @@ object AgentTools {
             if (kw.isBlank()) return "（query_notes 需要 keyword）"
             val lines = data.noteLines(kw)
             if (lines.isEmpty()) return "（没有包含「$kw」的笔记）"
-            return "笔记（含「$kw」，[n数字] 是 id，仅标题与摘要）：\n" +
+            return "笔记（含「$kw」，共 ${lines.size} 条，[n数字] 是 id，仅标题与摘要）：\n" +
                 lines.take(20).joinToString("\n") +
-                (if (lines.size > 20) "\n（共 ${lines.size} 条，仅显示前 20 条）" else "")
+                (if (lines.size > 20) "\n（仅显示前 20 条）" else "")
         }
     }
 

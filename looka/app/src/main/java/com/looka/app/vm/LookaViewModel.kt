@@ -118,6 +118,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     private val templateDao = db.templateDao()
     private val taskListDao = db.taskListDao()
     private val agentDao = db.agentProposalDao()
+    private val agentOpDao = db.agentOperationDao()   // §132：Agent 操作账本（审计+持久撤销）
     private val chatDao = db.chatDao()   // §126 B：聊天记录（本地持久、不上云）
 
     val categories = categoryDao.all().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -1029,12 +1030,14 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         val nowMs = System.currentTimeMillis()
         agentDao.expireOld(nowMs)
         agentDao.purgeResolved(nowMs - 30L * 86400_000)
+        agentOpDao.purgeOld(nowMs - 90L * 86400_000)   // §132 A1：审计账本保留 90 天
         agentDao.latestPending("actions", nowMs)?.let { row ->
             val acts = AiActions.parseActions(row.payload).filter { it.type != "theme" }
             if (acts.isNotEmpty() && pendingAiActions.isEmpty()) {
                 pendingAiActions.addAll(acts)
                 pendingChecked.clear(); acts.forEach { pendingChecked.add(!it.isDelete) }
                 actionsProposalId = row.id
+                loadBaseVersions(row.baseVersions)   // §132 A2：Freshness 基线随行恢复
             } else agentDao.resolve(row.id, "dismissed", nowMs)
         }
         agentDao.latestPending("theme", nowMs)?.let { row ->
@@ -1047,14 +1050,50 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * §132 A2：staged 时各 mutation 目标的版本基线（Freshness Guard 的证据）。
+     * 内存 map 是热副本；真相随 AgentProposal.baseVersions 列持久，杀进程恢复仍有效。
+     */
+    private val pendingBaseVersions = HashMap<String, Long>()
+
+    private fun loadBaseVersions(json: String) {
+        pendingBaseVersions.clear()
+        if (json.isEmpty()) return
+        runCatching {
+            val o = JSONObject(json)
+            o.keys().forEach { k -> pendingBaseVersions[k] = o.getLong(k) }
+        }
+    }
+
+    /** 逐 mutation 动作查目标当前 updatedAt（查不到的目标不记 —— 执行时自然走 failed 分支） */
+    private suspend fun baseVersionsOf(acts: List<AiAction>): String {
+        val o = JSONObject()
+        for (a in acts) {
+            if (!a.isMutation || a.targetId <= 0) continue
+            when {
+                a.type.endsWith("_event") -> eventDao.series(a.targetId)
+                    ?.let { o.put("event:${it.id}", it.updatedAt) }
+                a.type.endsWith("_task") -> tasks.value.find { it.id == a.targetId && !it.deleted }
+                    ?.let { o.put("task:${it.id}", it.updatedAt) }
+                a.type.endsWith("_note") -> noteDao.byId(a.targetId)
+                    ?.let { o.put("note:${it.id}", it.updatedAt) }
+            }
+        }
+        return if (o.length() == 0) "" else o.toString()
+    }
+
     /** §131 R4：提案入库（同类旧 pending 先顶掉 —— 一类只留一张活卡），返回行号 */
     private suspend fun stageProposal(kind: String, acts: List<AiAction>): Long {
         val nowMs = System.currentTimeMillis()
         agentDao.dismissPendingOfKind(kind, nowMs)
         val arr = JSONArray(); acts.forEach { arr.put(AiActions.toWire(it)) }
+        // §132 A2：actions 卡记 Freshness 基线（theme 卡不动数据对象，无需基线，
+        // 也不许清 actions 卡的热副本 —— 两张卡并存）
+        val bases = if (kind == "actions") baseVersionsOf(acts) else ""
+        if (kind == "actions") loadBaseVersions(bases)
         return agentDao.insert(com.looka.app.data.AgentProposal(
             kind = kind, payload = JSONObject().put("actions", arr).toString(),
-            createdAt = nowMs, expiresAt = nowMs + 24 * 3600_000L))
+            createdAt = nowMs, expiresAt = nowMs + 24 * 3600_000L, baseVersions = bases))
     }
 
     /** §131 R4：了结提案行（仅 pending→*，幂等） */
@@ -1330,7 +1369,13 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
         pendingTheme = null
         resolveProposal(themeProposalId, "applied"); themeProposalId = -1L   // §131 R4
         viewModelScope.launch {
-            addPersist(ChatMsg(ROLE_ACTION, tr("🎨 已换上主题{0}", if (name.isBlank()) "" else "「$name」")))
+            val msg = tr("🎨 已换上主题{0}", if (name.isBlank()) "" else "「$name」")
+            // §132 A1：主题应用也入账本（不可撤——主题页随时可手动换回，undoSnapshot 空）
+            agentOpDao.insert(com.looka.app.data.AgentOperation(
+                batchId = System.currentTimeMillis(), actionType = "theme",
+                riskLevel = com.looka.app.data.riskLevelOf("theme"), targetKind = "theme",
+                summary = msg, result = "succeeded"))
+            addPersist(ChatMsg(ROLE_ACTION, msg))
         }
         return name
     }
@@ -1378,6 +1423,7 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     /** §126 B4：清空 = 物理删除（含 files/chat/ 图片）。确认弹窗在 UI 层做 */
     fun clearChat() {
         chat.clear(); pendingAiActions.clear(); pendingChecked.clear(); pendingTheme = null
+        pendingBaseVersions.clear()   // §132 A2
         chatHasMore = false
         actionsProposalId = -1L; themeProposalId = -1L
         viewModelScope.launch {
@@ -1392,13 +1438,11 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     val pendingAiActions = mutableStateListOf<AiAction>()
     val pendingChecked = mutableStateListOf<Boolean>()
 
-    /** 上一批的反向操作账本：创建→软删、修改→回写旧值、删除→复活 */
-    private sealed interface UndoRec {
-        data class Ev(val snapshot: EventSeries, val created: Boolean = false) : UndoRec
-        data class Tk(val snapshot: Task, val created: Boolean = false) : UndoRec
-        data class Nt(val snapshot: Note, val created: Boolean = false) : UndoRec
-    }
-    private val lastUndo = ArrayList<UndoRec>()
+    /**
+     * §132 A3：撤销账本从内存 ArrayList 搬进 AgentOperation 表（undoSnapshot 列）——
+     * 提案在 §131 已是 Durable，撤销跟上：杀进程后操作记录页仍可撤最后一批。
+     * canUndo 只喂执行后 5 秒条（瞬态），持久入口在「小鹿的操作记录」页。
+     */
     var canUndo by mutableStateOf(false)
         private set
     /** §126 A2（AI-UX 4.2 规则 4）：执行后 5 秒撤销条 */
@@ -1418,11 +1462,13 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
 
     fun confirmPending() {
         val picked = pendingAiActions.filterIndexed { i, _ -> pendingChecked.getOrElse(i) { true } }
-        pendingAiActions.clear(); pendingChecked.clear()
+        // §132 A2：基线拷贝随本次执行走（launch 前清空热副本，防旧基线粘到下一张卡）
+        val bases = HashMap(pendingBaseVersions)
+        pendingAiActions.clear(); pendingChecked.clear(); pendingBaseVersions.clear()
         resolveProposal(actionsProposalId, "applied"); actionsProposalId = -1L   // §131 R4
         viewModelScope.launch {
             if (picked.isEmpty()) { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))); return@launch }
-            execActions(picked).forEachIndexed { i2, msg ->
+            execActions(picked, bases).forEachIndexed { i2, msg ->
                 val tg = lastActionTargets.getOrNull(i2)
                 addPersist(ChatMsg(ROLE_ACTION, msg,
                     targetKind = tg?.first ?: "", targetId = tg?.second ?: -1L))
@@ -1432,37 +1478,79 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun cancelPending() {
-        pendingAiActions.clear(); pendingChecked.clear()
+        pendingAiActions.clear(); pendingChecked.clear(); pendingBaseVersions.clear()
         resolveProposal(actionsProposalId, "dismissed"); actionsProposalId = -1L   // §131 R4
         viewModelScope.launch { addPersist(ChatMsg(ROLE_AI, tr("好，都不动 🦌"))) }
     }
 
-    /** 撤销上一批 AI 修改（逆序回放账本） */
+    /**
+     * §132 A3：撤销最后一批 —— 从账本表读快照逆序回放。
+     * 反向 Freshness 守卫（与正向 A2 对称）：执行后对象又被用户/同步改过（updatedAt ≠
+     * 账本 resultVersion）的行不撤，不覆盖后来的修改；行内 markUndone 守卫保证双击幂等。
+     */
     fun undoLastBatch() = viewModelScope.launch {
         val n = now()
-        for (r in lastUndo.reversed()) when (r) {
-            is UndoRec.Ev ->
-                if (r.created) {
-                    eventDao.updateSeries(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
-                    eventDao.deleteRemindersOf(r.snapshot.id)
-                } else eventDao.updateSeries(r.snapshot.copy(dirty = true, updatedAt = n))
-            is UndoRec.Tk ->
-                if (r.created) taskDao.update(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
-                else taskDao.update(r.snapshot.copy(dirty = true, updatedAt = n))
-            is UndoRec.Nt ->
-                if (r.created) noteDao.update(r.snapshot.copy(deleted = true, dirty = true, updatedAt = n))
-                else noteDao.update(r.snapshot.copy(dirty = true, updatedAt = n))
+        val batch = agentOpDao.lastUndoableBatch() ?: run { canUndo = false; showUndoBar = false; return@launch }
+        var cnt = 0; var kept = 0
+        for (op in agentOpDao.undoableOfBatch(batch)) {
+            val d = com.looka.app.data.AgentOpSnapshot.decode(op.undoSnapshot) ?: continue
+            when (d.kind) {
+                "event" -> {
+                    val cur = eventDao.seriesAny(d.event!!.id)
+                    if (cur == null || (op.resultVersion > 0 && cur.updatedAt != op.resultVersion)) { kept++; continue }
+                    if (agentOpDao.markUndone(op.id) == 0) continue
+                    if (d.created) {
+                        eventDao.updateSeries(cur.copy(deleted = true, dirty = true, updatedAt = n))
+                        eventDao.deleteRemindersOf(cur.id)
+                    } else eventDao.updateSeries(d.event.copy(dirty = true, updatedAt = n))
+                    cnt++
+                }
+                "task" -> {
+                    val cur = taskDao.byIdAny(d.task!!.id)
+                    if (cur == null || (op.resultVersion > 0 && cur.updatedAt != op.resultVersion)) { kept++; continue }
+                    if (agentOpDao.markUndone(op.id) == 0) continue
+                    if (d.created) taskDao.update(cur.copy(deleted = true, dirty = true, updatedAt = n))
+                    else taskDao.update(d.task.copy(dirty = true, updatedAt = n))
+                    cnt++
+                }
+                "note" -> {
+                    val cur = noteDao.byIdAny(d.note!!.id)
+                    if (cur == null || (op.resultVersion > 0 && cur.updatedAt != op.resultVersion)) { kept++; continue }
+                    if (agentOpDao.markUndone(op.id) == 0) continue
+                    if (d.created) noteDao.update(cur.copy(deleted = true, dirty = true, updatedAt = n))
+                    else noteDao.update(d.note.copy(dirty = true, updatedAt = n))
+                    cnt++
+                }
+            }
         }
-        val cnt = lastUndo.size
-        lastUndo.clear(); canUndo = false; showUndoBar = false
+        canUndo = false; showUndoBar = false
         afterChange()
-        addPersist(ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt)))
+        addPersist(ChatMsg(ROLE_ACTION, tr("↩️ 已撤销刚才的 {0} 处修改", cnt) +
+            if (kept > 0) tr("（{0} 处后来又被改过，保持现状没有动）", kept) else ""))
+    }
+
+    // ── §132 A3：「小鹿的操作记录」页数据口 ──────────────────────
+    var agentOps by mutableStateOf<List<com.looka.app.data.AgentOperation>>(emptyList())
+        private set
+    /** 当前可撤批号（-1 = 无）；页面只在这一批上显示撤销钮 */
+    var agentOpsUndoableBatch by mutableStateOf(-1L)
+        private set
+
+    fun refreshAgentOps() = viewModelScope.launch {
+        agentOps = agentOpDao.recent(100)
+        agentOpsUndoableBatch = agentOpDao.lastUndoableBatch() ?: -1L
+    }
+
+    /** 记录页的撤销入口：复用 undoLastBatch（同一守卫），完成后刷新列表 */
+    fun undoFromOpsPage() = viewModelScope.launch {
+        undoLastBatch().join()
+        refreshAgentOps()
     }
 
     /** L1（§62）：每条动作反馈对应的可打开目标（kind,id），与 execActions 返回值按索引对齐 */
     val lastActionTargets = ArrayList<Pair<String, Long>>()
 
-    suspend fun execActions(actions: List<AiAction>): List<String> {
+    suspend fun execActions(actions: List<AiAction>, baseVersions: Map<String, Long> = emptyMap()): List<String> {
         val c = getApplication<Application>()
         val out = ArrayList<String>()
         lastActionTargets.clear()
@@ -1471,8 +1559,32 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
             while (lastActionTargets.size < out.size - 1) lastActionTargets.add("" to -1L)
             lastActionTargets.add(kind to id)
         }
-        // 新一批动作开启新账本（撤销以"批"为单位）
-        lastUndo.clear(); canUndo = false
+        // §132 A1：一次执行 = 一个批号，每动作落一行操作账本（母档 6.1 Operation Envelope v1）。
+        // 账本同时是撤销的真相层（undoSnapshot），撤销从此杀进程不丢（A3）。
+        val batch = System.currentTimeMillis()
+        var undoable = false
+        canUndo = false
+        // ⚠️ 各分支必须先 out += 再 logOp —— summary 取 out 末行（与聊天动作卡同文）
+        suspend fun logOp(a: AiAction, kind: String, id: Long, base: Long, resultVer: Long,
+                          result: String, undo: String) {
+            agentOpDao.insert(com.looka.app.data.AgentOperation(
+                batchId = batch, actionType = a.type,
+                riskLevel = com.looka.app.data.riskLevelOf(a.type),
+                targetKind = kind, targetId = id, baseVersion = base, resultVersion = resultVer,
+                payload = AiActions.toWire(a).toString(),
+                summary = out.lastOrNull() ?: "", result = result,
+                undoSnapshot = undo, createdAt = batch))
+            if (result == "succeeded" && undo.isNotEmpty()) undoable = true
+        }
+        // §132 A2 Freshness Guard：staged 基线与当前 updatedAt 不符 = 提案挂起期间对象被
+        // 用户/另一端改过 → 拦下该动作不执行（母档 11.1：旧完成没有资格覆盖新修改）。
+        // 即时执行路径 map 为空 = 天然不拦（无挂起窗口）。
+        fun staleOf(kind: String, id: Long, cur: Long): Boolean {
+            val base = baseVersions["$kind:$id"] ?: return false
+            return base != cur
+        }
+        fun staleNote(title: String): String =
+            tr("⚠️ 「{0}」在这张卡片等待确认期间被改过（手动或另一台设备），为了不盖掉那次修改，这条没动 —— 需要的话再跟我说一次", title)
         for (a in actions) {
             when (a.type) {
                 "create_event" -> {
@@ -1491,7 +1603,6 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         startMin = sm, endMin = em, location = a.location, memo = a.memo
                     )
                     val id = eventDao.insertSeries(series)
-                    lastUndo += UndoRec.Ev(series.copy(id = id), created = true)
                     // P2-D3/D4/D5（§三十八①）：提醒必须"说出来"——
                     // 用户要求的提醒时刻优先；算出的时刻已过去要明说并自动兜底，不再静默丢弃。
                     var remNote = ""
@@ -1530,21 +1641,25 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     }
                     out += tr("✅ 已添加日程：{0}", "${Fmt.dateCn(day)} ${if (allDay) tr("全天") else Fmt.hm(sm)} ${a.title}") + remNote
                     target("event", id)
+                    logOp(a, "event", id, -1L, series.updatedAt, "succeeded",
+                        com.looka.app.data.AgentOpSnapshot.ofEvent(series.copy(id = id), created = true))
                 }
                 "create_task" -> {
                     val t = Task(title = a.title.ifBlank { tr("未命名任务") }, dueDay = a.day,
                         sortOrder = taskDao.maxSortOrder() + 1)
                     val id = taskDao.insert(t)
-                    lastUndo += UndoRec.Tk(t.copy(id = id), created = true)
                     out += tr("✅ 已添加任务：{0}", a.title + if (a.day >= 0) "（${Fmt.dateCn(a.day)}）" else "")
                     target("task", id)
+                    logOp(a, "task", id, -1L, t.updatedAt, "succeeded",
+                        com.looka.app.data.AgentOpSnapshot.ofTask(t.copy(id = id), created = true))
                 }
                 "create_note" -> {
                     val nte = Note(title = a.title, content = a.content)
                     val id = noteDao.insert(nte)
-                    lastUndo += UndoRec.Nt(nte.copy(id = id), created = true)
                     out += tr("✅ 已添加笔记：{0}", a.title.ifBlank { a.content.take(10) })
                     target("note", id)
+                    logOp(a, "note", id, -1L, nte.updatedAt, "succeeded",
+                        com.looka.app.data.AgentOpSnapshot.ofNote(nte.copy(id = id), created = true))
                 }
 
                 // ── A1（§48）：改与删。只按上下文里的 id 定位，找不到就明说，绝不猜 ──
@@ -1552,8 +1667,12 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                     val s = eventDao.series(a.targetId)
                     if (s == null || s.deleted) {
                         out += tr("⚠️ 没找到要改的日程（#{0}）—— 告诉我是哪一条？", a.targetId)
+                        logOp(a, "event", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("event", s.id, s.updatedAt)) {
+                        out += staleNote(s.title)
+                        target("event", s.id)
+                        logOp(a, "event", s.id, baseVersions["event:${s.id}"] ?: -1L, s.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Ev(s)
                         // 挪日期时保住原时长（跨天日程整体平移）
                         val nd = if (a.day >= 0) a.day else s.startDay
                         val ns = s.copy(
@@ -1576,25 +1695,38 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         out += tr("✏️ 已修改：{0}",
                             "${Fmt.dateCn(ns.startDay)} ${if (ns.allDay) tr("全天") else Fmt.hm(ns.startMin)} ${ns.title}") + rec
                         target("event", ns.id)
+                        logOp(a, "event", ns.id, s.updatedAt, ns.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofEvent(s))
                     }
                 }
                 "delete_event" -> {
                     val s = eventDao.series(a.targetId)
                     if (s == null || s.deleted) {
                         out += tr("⚠️ 没找到要删的日程（#{0}），可能已经删过了", a.targetId)
+                        logOp(a, "event", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("event", s.id, s.updatedAt)) {
+                        out += staleNote(s.title)
+                        target("event", s.id)
+                        logOp(a, "event", s.id, baseVersions["event:${s.id}"] ?: -1L, s.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Ev(s)
-                        eventDao.updateSeries(s.copy(deleted = true, dirty = true, updatedAt = now()))
+                        val del = s.copy(deleted = true, dirty = true, updatedAt = now())
+                        eventDao.updateSeries(del)
                         val rec = if (s.freq != FREQ_NONE) tr("（重复日程，整个系列已删除）") else ""
                         out += tr("🗑️ 已删除日程：{0}", "${Fmt.dateCn(s.startDay)} ${s.title}") + rec
+                        logOp(a, "event", s.id, s.updatedAt, del.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofEvent(s))
                     }
                 }
                 "update_task" -> {
                     val t = tasks.value.find { it.id == a.targetId && !it.deleted }
                     if (t == null) {
                         out += tr("⚠️ 没找到要改的任务（#{0}）—— 告诉我是哪一条？", a.targetId)
+                        logOp(a, "task", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("task", t.id, t.updatedAt)) {
+                        out += staleNote(t.title)
+                        target("task", t.id)
+                        logOp(a, "task", t.id, baseVersions["task:${t.id}"] ?: -1L, t.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Tk(t)
                         val nt = t.copy(
                             title = a.title.ifBlank { t.title },
                             dueDay = if (a.day >= 0) a.day else t.dueDay,
@@ -1605,53 +1737,77 @@ class LookaViewModel(app: Application) : AndroidViewModel(app) {
                         taskDao.update(nt)
                         out += if (a.done == 1) tr("✅ 已完成任务：{0}", nt.title)
                                else tr("✏️ 已修改任务：{0}", nt.title + if (nt.dueDay >= 0) "（${Fmt.dateCn(nt.dueDay)}）" else "")
-                    target("task", nt.id)
+                        target("task", nt.id)
+                        logOp(a, "task", nt.id, t.updatedAt, nt.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofTask(t))
                     }
                 }
                 "delete_task" -> {
                     val t = tasks.value.find { it.id == a.targetId && !it.deleted }
                     if (t == null) {
                         out += tr("⚠️ 没找到要删的任务（#{0}），可能已经删过了", a.targetId)
+                        logOp(a, "task", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("task", t.id, t.updatedAt)) {
+                        out += staleNote(t.title)
+                        target("task", t.id)
+                        logOp(a, "task", t.id, baseVersions["task:${t.id}"] ?: -1L, t.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Tk(t)
-                        taskDao.update(t.copy(deleted = true, dirty = true, updatedAt = now()))
+                        val del = t.copy(deleted = true, dirty = true, updatedAt = now())
+                        taskDao.update(del)
                         out += tr("🗑️ 已删除任务：{0}", t.title)
+                        logOp(a, "task", t.id, t.updatedAt, del.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofTask(t))
                     }
                 }
                 "update_note" -> {
                     val nte = noteDao.byId(a.targetId)
                     if (nte == null || nte.deleted) {
                         out += tr("⚠️ 没找到要改的笔记（#{0}）", a.targetId)
+                        logOp(a, "note", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("note", nte.id, nte.updatedAt)) {
+                        out += staleNote(nte.title.ifBlank { nte.content.take(10) })
+                        target("note", nte.id)
+                        logOp(a, "note", nte.id, baseVersions["note:${nte.id}"] ?: -1L, nte.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Nt(nte)
-                        noteDao.update(nte.copy(
+                        val nn = nte.copy(
                             title = a.title.ifBlank { nte.title },
                             content = a.content.ifBlank { nte.content },
                             dirty = true, updatedAt = now()
-                        ))
+                        )
+                        noteDao.update(nn)
                         out += tr("✏️ 已修改笔记：{0}", a.title.ifBlank { nte.title })
-                    target("note", a.targetId)
+                        target("note", a.targetId)
+                        logOp(a, "note", nte.id, nte.updatedAt, nn.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofNote(nte))
                     }
                 }
                 "remember" -> {
                     // D2：记进小鹿记事本（可在「订阅与小鹿 AI」页查看与删除）
                     Prefs.addDeerFact(c, a.fact)
                     out += tr("🦌 记住啦：{0}", a.fact)
+                    logOp(a, "pref", -1L, -1L, -1L, "succeeded", "")
                 }
                 "delete_note" -> {
                     val nte = noteDao.byId(a.targetId)
                     if (nte == null || nte.deleted) {
                         out += tr("⚠️ 没找到要删的笔记（#{0}），可能已经删过了", a.targetId)
+                        logOp(a, "note", a.targetId, -1L, -1L, "failed", "")
+                    } else if (staleOf("note", nte.id, nte.updatedAt)) {
+                        out += staleNote(nte.title.ifBlank { nte.content.take(10) })
+                        target("note", nte.id)
+                        logOp(a, "note", nte.id, baseVersions["note:${nte.id}"] ?: -1L, nte.updatedAt, "skipped_stale", "")
                     } else {
-                        lastUndo += UndoRec.Nt(nte)
-                        noteDao.update(nte.copy(deleted = true, dirty = true, updatedAt = now()))
+                        val del = nte.copy(deleted = true, dirty = true, updatedAt = now())
+                        noteDao.update(del)
                         out += tr("🗑️ 已删除笔记：{0}", nte.title.ifBlank { nte.content.take(10) })
+                        logOp(a, "note", nte.id, nte.updatedAt, del.updatedAt, "succeeded",
+                            com.looka.app.data.AgentOpSnapshot.ofNote(nte))
                     }
                 }
             }
         }
         if (actions.isNotEmpty()) afterChange()
-        canUndo = lastUndo.isNotEmpty()
+        canUndo = undoable
         return out
     }
 

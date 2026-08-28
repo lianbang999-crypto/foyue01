@@ -215,7 +215,8 @@ def exec_tool(tc: dict, fx: dict) -> str:
                 lines.append(f'- [e{e["id"]}] {d} {d.month}月{d.day}日 {tm} {e["title"]}')
         if not lines:
             return f"（{f} 至 {to} 无日程）"
-        return f"日程（{f} 至 {to}，[e数字] 是 id）：\n" + "\n".join(lines[:60])
+        # §132：与 AgentTools 同步 —— 头部带总数，数量类问题不逼模型数行
+        return f"日程（{f} 至 {to}，共 {len(lines)} 条，[e数字] 是 id）：\n" + "\n".join(lines[:60])
     if name == "query_tasks":
         scope = tc.get("scope") or "open"
         kw = str(tc.get("keyword") or "").strip()
@@ -232,7 +233,7 @@ def exec_tool(tc: dict, fx: dict) -> str:
                 d = t + dt.timedelta(days=int(x["day"]))
                 due = f"（截止{d.month}月{d.day}日）"
             lines.append(f'- [t{x["id"]}] {x["title"]}{due}{" ✓" if x.get("done") else ""}')
-        return ("任务（范围=%s，[t数字] 是 id）：\n" % scope + "\n".join(lines[:40])) if lines else "（没有匹配的任务）"
+        return ("任务（范围=%s，共 %d 条，[t数字] 是 id）：\n" % (scope, len(lines)) + "\n".join(lines[:40])) if lines else "（没有匹配的任务）"
     if name == "query_notes":
         kw = str(tc.get("keyword") or "").strip()
         if not kw:
@@ -240,7 +241,7 @@ def exec_tool(tc: dict, fx: dict) -> str:
         lines = [f'- [n{n["id"]}] {n["title"]} · {n.get("content", "")[:40]}'
                  for n in fx.get("notes", [])
                  if kw.lower() in n["title"].lower() or kw.lower() in n.get("content", "").lower()]
-        return ("笔记（含「%s」，[n数字] 是 id，仅标题与摘要）：\n" % kw + "\n".join(lines[:20])) if lines else f"（没有包含「{kw}」的笔记）"
+        return ("笔记（含「%s」，共 %d 条，[n数字] 是 id，仅标题与摘要）：\n" % (kw, len(lines)) + "\n".join(lines[:20])) if lines else f"（没有包含「{kw}」的笔记）"
     if name == "month_stats":
         m = re.search(r"(\d{4})-(\d{1,2})", str(tc.get("month") or ""))
         if not m:
@@ -330,6 +331,10 @@ def check(case: dict, acts, text: str, tool_calls=()):
         errs.append(f"不该调工具，实调 {names}")
     if "tool" in e and e["tool"] not in names:
         errs.append(f"应调 {e['tool']}，实调 {names or '无'}")
+    # §132：tool_any —— 同一问题存在多条诚实查询路径时（如「完成多少任务」既可
+    # month_stats 也可 query_tasks(done)），任一命中即可；fixture 必须两条路都喂数据
+    if "tool_any" in e and not any(x in names for x in e["tool_any"]):
+        errs.append(f"应调 {'/'.join(e['tool_any'])} 之一，实调 {names or '无'}")
     if "tool_range_covers" in e:
         offs = e["tool_range_covers"]
         for off in (offs if isinstance(offs, list) else [offs]):

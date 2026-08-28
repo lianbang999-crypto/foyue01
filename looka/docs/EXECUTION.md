@@ -1622,3 +1622,16 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | K9 | i18n 9 词条（缺译 0）；服务端零改动（无状态代理天然支持多轮；鹿角每轮计费≤3轮为已知取舍） | [x] |
 
 [~] 实机项：提案卡杀进程恢复、工具轮观感、Room v12 迁移、多步开关，待用户设备回执。
+
+## P68 · §132 Lifebear Agent 化 · 制度层第一批（v1.30.0(53)，2026-08-28）
+
+| | 项 | 状态 |
+|---|---|---|
+| A1 | AgentOperation 操作账本（Room v12→v13）：每动作一行 envelope（batchId/actionType/riskLevel/target/baseVersion/resultVersion/payload/summary/result/undoSnapshot）；execActions 11 分支全插桩 + 主题应用入账；快照手写序列化 + roundtrip 单测防字段漂移 | [~] |
+| A2 | Freshness Guard：AgentProposal.baseVersions 列（staged 记 mutation 目标 updatedAt，随行持久跨恢复）；确认执行前重查，失配 → skipped_stale + 人话说明，不整批中止；前置查证过（手动编辑三域全部刷 updatedAt，LWW 依据） | [~] |
+| A3 | 持久 Undo + 操作记录：撤销账本内存 ArrayList → 表 undoSnapshot（杀进程不丢）；反向 Freshness（resultVersion 校验，执行后又被改的行不撤）；「小鹿设置」加「小鹿的操作记录」页（按批分组、最近批一键撤、拦截行注明原因）；5 秒条行为不变 | [~] |
+| A4 | riskLevel 标注（remember=L1、create/theme=L2、update/delete=L3），全部仍人审，行为零变化 | [x] |
+| A5 | 门禁：AgentAuditTest 5 用例 + AiActionsTest 回归全绿；合同门 13 项全绿；i18n 10 词条缺译 0；评测门 **39/41（95%）+ 安全组 4/4**（A4 用例缺陷修正 + tool_any 断言 + 工具输出加「共 N 条」，见 §132 验收记录） | [x] |
+| A6 | 发版 v1.30.0(53) | [ ] |
+
+[~] 实机项：Room v13 迁移、提案挂起期间手改对象→确认时拦截提示、操作记录页观感、杀进程后撤销最近批，待用户设备回执。

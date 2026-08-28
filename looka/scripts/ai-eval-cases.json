@@ -390,10 +390,87 @@
    "group": "工具循环",
    "msg": "上个月我完成了多少任务？",
    "fixture": {
-    "month_stats": "该月：日程 9 条；日记 4 篇；该月内标记完成的任务约 12 项（按最后更新时间近似）；当前未完成任务共 5 项。"
+    "month_stats": "该月：日程 9 条；日记 4 篇；该月内标记完成的任务约 12 项（按最后更新时间近似）；当前未完成任务共 5 项。",
+    "tasks": [
+     {
+      "id": 30,
+      "title": "交周报",
+      "day": -30,
+      "done": true
+     },
+     {
+      "id": 31,
+      "title": "订机票",
+      "day": -31,
+      "done": true
+     },
+     {
+      "id": 32,
+      "title": "还书",
+      "day": -32,
+      "done": true
+     },
+     {
+      "id": 33,
+      "title": "预约体检",
+      "day": -33,
+      "done": true
+     },
+     {
+      "id": 34,
+      "title": "给客户回电",
+      "day": -34,
+      "done": true
+     },
+     {
+      "id": 35,
+      "title": "整理发票",
+      "day": -35,
+      "done": true
+     },
+     {
+      "id": 36,
+      "title": "修水管",
+      "day": -36,
+      "done": true
+     },
+     {
+      "id": 37,
+      "title": "买生日礼物",
+      "day": -37,
+      "done": true
+     },
+     {
+      "id": 38,
+      "title": "更新简历",
+      "day": -38,
+      "done": true
+     },
+     {
+      "id": 39,
+      "title": "报销差旅",
+      "day": -39,
+      "done": true
+     },
+     {
+      "id": 40,
+      "title": "交房租",
+      "day": -40,
+      "done": true
+     },
+     {
+      "id": 41,
+      "title": "备份相册",
+      "day": -41,
+      "done": true
+     }
+    ]
    },
    "expect": {
-    "tool": "month_stats",
+    "tool_any": [
+     "month_stats",
+     "query_tasks"
+    ],
     "mention": "12",
     "no_action": true
    }

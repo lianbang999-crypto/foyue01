@@ -64,6 +64,10 @@ interface EventDao {
     @Query("SELECT * FROM event_series WHERE id = :id AND deleted = 0")
     suspend fun series(id: Long): EventSeries?
 
+    /** §132 A3：含墓碑查询 —— 撤销「删除」的回放要能看到已软删对象，series() 的过滤会误判 */
+    @Query("SELECT * FROM event_series WHERE id = :id")
+    suspend fun seriesAny(id: Long): EventSeries?
+
     @Query("SELECT * FROM event_series WHERE uid = :uid")
     suspend fun seriesByUid(uid: String): EventSeries?
 
@@ -164,6 +168,10 @@ interface TaskDao {
     @Query("SELECT COALESCE(MAX(sortOrder), 0) FROM task")
     suspend fun maxSortOrder(): Long
 
+    /** §132 A3：含墓碑查询（撤销回放用，理由同 EventDao.seriesAny） */
+    @Query("SELECT * FROM task WHERE id = :id")
+    suspend fun byIdAny(id: Long): Task?
+
     /** 逾期未完成（转移弹窗 + 任务提醒用） */
     @Query("SELECT * FROM task WHERE deleted = 0 AND done = 0 AND dueDay >= 0")
     suspend fun openDueList(): List<Task>
@@ -253,6 +261,10 @@ interface NoteDao {
 
     @Query("SELECT * FROM note WHERE id = :id AND deleted = 0")
     suspend fun byId(id: Long): Note?
+
+    /** §132 A3：含墓碑查询（撤销回放用，理由同 EventDao.seriesAny） */
+    @Query("SELECT * FROM note WHERE id = :id")
+    suspend fun byIdAny(id: Long): Note?
 
     @Query("SELECT * FROM note WHERE uid = :uid")
     suspend fun byUid(uid: String): Note?
@@ -478,4 +490,31 @@ interface AgentProposalDao {
     /** 已了结行留 30 天可查（与聊天保留期一致），之后物理删 */
     @Query("DELETE FROM AgentProposal WHERE status != 'pending' AND resolvedAt < :cutoff")
     suspend fun purgeResolved(cutoff: Long)
+}
+
+/** §132 A1/A3：Agent 操作账本 —— 结构化审计 + 持久撤销的数据口 */
+@Dao
+interface AgentOperationDao {
+    @Insert
+    suspend fun insert(op: AgentOperation): Long
+
+    /** 操作记录页：最近 N 条（页面按 batchId 分组展示） */
+    @Query("SELECT * FROM AgentOperation ORDER BY id DESC LIMIT :n")
+    suspend fun recent(n: Int): List<AgentOperation>
+
+    /** 可撤批 = 最后一个含 succeeded 行的批（更早批只读展示，撤销安全模型与 §48 一致） */
+    @Query("SELECT MAX(batchId) FROM AgentOperation WHERE result = 'succeeded' AND undoSnapshot != ''")
+    suspend fun lastUndoableBatch(): Long?
+
+    /** 撤销回放取批内成功行；倒序 = 逆序回放（后做的先撤） */
+    @Query("SELECT * FROM AgentOperation WHERE batchId = :b AND result = 'succeeded' AND undoSnapshot != '' ORDER BY id DESC")
+    suspend fun undoableOfBatch(b: Long): List<AgentOperation>
+
+    /** 状态跃迁守卫与提案同哲学：只动 succeeded 行，双击撤销幂等 */
+    @Query("UPDATE AgentOperation SET result = 'undone' WHERE id = :id AND result = 'succeeded'")
+    suspend fun markUndone(id: Long): Int
+
+    /** 审计保留 90 天（本机过程数据，不进同步） */
+    @Query("DELETE FROM AgentOperation WHERE createdAt < :cutoff")
+    suspend fun purgeOld(cutoff: Long)
 }

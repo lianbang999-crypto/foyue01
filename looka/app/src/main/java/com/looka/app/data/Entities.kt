@@ -320,5 +320,11 @@ data class AgentProposal(
     val status: String = "pending",    // pending/applied/dismissed/expired
     val createdAt: Long = System.currentTimeMillis(),
     val expiresAt: Long = 0,
-    val resolvedAt: Long = 0
+    val resolvedAt: Long = 0,
+    /**
+     * §132 A2 Freshness Guard：staged 时各 mutation 目标的 updatedAt 快照，
+     * JSON 形如 {"event:12":1724800000000}。提案可挂 24h 并跨杀进程恢复——确认执行前
+     * 逐目标重查比对，变了就拦（母档 11.1：旧完成没有资格覆盖新修改）。
+     */
+    val baseVersions: String = ""
 )

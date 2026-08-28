@@ -156,6 +156,8 @@ fun LookaRoot() {
         ) { e -> com.looka.app.ui.more.FeedbackFormScreen(vm, nav, e.arguments!!.getString("kind")!!) }
         composable("feedbackMine") { com.looka.app.ui.more.FeedbackMineScreen(vm, nav) }
         composable("deerSettings") { com.looka.app.ui.more.DeerSettingsScreen(vm, nav) }   // §120 P1 小鹿设置
+        composable("agentOps") { com.looka.app.ui.more.AgentOpsScreen(vm, nav) }   // §132 A3 操作账本
+
         composable("backup") { com.looka.app.ui.more.BackupScreen(vm, nav) }
         composable("selfcheck") { com.looka.app.ui.more.SelfCheckScreen(vm, nav) }
         composable("conflicts") { com.looka.app.ui.more.ConflictScreen(vm, nav) }

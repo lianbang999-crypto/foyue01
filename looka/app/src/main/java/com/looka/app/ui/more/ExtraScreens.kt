@@ -1481,6 +1481,11 @@ fun DeerSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
                 ) { multiStep = it; Prefs.setAiMultiStep(ctx, it) }
                 Hairline()
             }
+            // §132 A3：操作账本入口（母档 Undo/Review Queue —— 看得到小鹿做过什么，最近一批可撤）
+            NavRow(tr("小鹿的操作记录"), value = tr("做过什么、一键撤销"), icon = LkIcons.Clock) {
+                nav.navigate("agentOps")
+            }
+            Hairline()
             SwitchRow(
                 tr("允许日记润色上传正文"), diaryUpload,
                 subtitle = tr("日记最私密，默认关闭；开启后才能使用 AI 润色")
@@ -1527,6 +1532,82 @@ fun DeerSettingsScreen(vm: LookaViewModel, nav: NavHostController) {
             // 小鹿的记忆（§52 D4 组件平移至此 —— 记忆属于行为偏好域）
             DeerMemorySection(vm)
             Spacer(Modifier.height(40.dp))
+        }
+    }
+}
+
+
+// ==================== §132 A3：小鹿的操作记录 ====================
+
+/**
+ * Agent 操作账本（母档 13.1 Undo / Review Queue）：小鹿改过什么一目了然，
+ * 最近一批可一键撤销（更早批只读 —— 撤销安全模型与聊天 5 秒条一致，只是杀进程不再丢）。
+ * Freshness 拦截行（skipped_stale）也在这里可见：用户能看到「小鹿为什么没动它」。
+ */
+@Composable
+fun AgentOpsScreen(vm: LookaViewModel, nav: NavHostController) {
+    val fmt = remember { SimpleDateFormat("M-d HH:mm", Locale.US) }
+    LaunchedEffect(Unit) { vm.refreshAgentOps() }
+    val ops = vm.agentOps
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).systemBarsPadding()) {
+        LookaTopBar(tr("小鹿的操作记录"), onBack = { nav.popBackStack() })
+        if (ops.isEmpty()) {
+            Text(
+                tr("小鹿还没有替你动过数据。让它建过日程、改过任务之后，这里会留下每一笔记录。"),
+                fontSize = 13.sp, color = GrayText, lineHeight = 20.sp,
+                modifier = Modifier.padding(24.dp)
+            )
+        } else {
+            Text(
+                tr("每一笔改动都记在这里；最近一批可以整批撤销，被撤销/被拦下的也会注明。"),
+                fontSize = 12.sp, color = GrayText, lineHeight = 19.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            )
+            LazyColumn {
+                val batches = ops.groupBy { it.batchId }.toList().sortedByDescending { it.first }
+                batches.forEach { (batchId, rows) ->
+                    item(key = "b$batchId") {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(fmt.format(Date(batchId)), fontSize = 11.sp, color = GrayText,
+                                modifier = Modifier.weight(1f))
+                            if (batchId == vm.agentOpsUndoableBatch) {
+                                Text(
+                                    tr("撤销这批"), fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.plainClick { vm.undoFromOpsPage() }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                    items(rows, key = { it.id }) { op ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(op.summary.ifBlank { op.actionType }, fontSize = 13.sp,
+                                    maxLines = 2, lineHeight = 18.sp)
+                                val note = when (op.result) {
+                                    "undone" -> tr("已撤销")
+                                    "skipped_stale" -> tr("已拦下：确认前对象被改过")
+                                    "failed" -> tr("未执行")
+                                    else -> ""
+                                }
+                                if (note.isNotEmpty())
+                                    Text(note, fontSize = 11.sp, color = GrayText)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(op.riskLevel, fontSize = 10.sp, color = GrayText)
+                        }
+                        Hairline()
+                    }
+                }
+                item { Spacer(Modifier.height(40.dp)) }
+            }
         }
     }
 }
