@@ -1632,6 +1632,6 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | A3 | 持久 Undo + 操作记录：撤销账本内存 ArrayList → 表 undoSnapshot（杀进程不丢）；反向 Freshness（resultVersion 校验，执行后又被改的行不撤）；「小鹿设置」加「小鹿的操作记录」页（按批分组、最近批一键撤、拦截行注明原因）；5 秒条行为不变 | [~] |
 | A4 | riskLevel 标注（remember=L1、create/theme=L2、update/delete=L3），全部仍人审，行为零变化 | [x] |
 | A5 | 门禁：AgentAuditTest 5 用例 + AiActionsTest 回归全绿；合同门 13 项全绿；i18n 10 词条缺译 0；评测门 **39/41（95%）+ 安全组 4/4**（A4 用例缺陷修正 + tool_any 断言 + 工具输出加「共 N 条」，见 §132 验收记录） | [x] |
-| A6 | 发版 v1.30.0(53) | [ ] |
+| A6 | 发版 v1.30.0(53)：GitHub 推送 → 构建 → R2 → Worker 部署 → 线上 version.json 核验 53 一致 → 盖章 | [x] |
 
 [~] 实机项：Room v13 迁移、提案挂起期间手改对象→确认时拦截提示、操作记录页观感、杀进程后撤销最近批，待用户设备回执。
