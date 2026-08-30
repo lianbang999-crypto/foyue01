@@ -15,6 +15,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var cfg = null, cycle = 'month', priceIds = { month: '', year: '' }, isCN = false;
   var shown = {};      // priceId -> Paddle 返回的已格式化总价字符串（原样，不再加工）
+  var fallbackMode = false;   // true = Paddle 未就绪，走旧通道（见文末 fallback）
 
   function notice(msg, isErr) {
     var el = $('notice');
@@ -71,6 +72,7 @@
 
   /* ---------- 渲染 ---------- */
   function paint() {
+    if (fallbackMode) return paintFallback();
     var id = priceIds[cycle];
     $('proPrice').textContent = shown[id] || '—';
     if (isCN) {
@@ -158,14 +160,39 @@
     fallback();
   });
 
+  /**
+   * Paddle 未就绪时的旧通道（爱发电 / Ko-fi）。
+   * 月付年付**保留两个按钮**：实测服务端未配置 AFDIAN_PLAN_YEAR，年付与月付指向同一个
+   * 爱发电页面 —— 但那个页面本身可以自选购买月数，服务端也按订单真实月数发放
+   * （afdianSettle 用 o.month，不是我们的意图），所以年付是能买的，
+   * 只是**必须明确告诉用户去那边选 12 个月**，否则就成了"点了年付却买到月付"。
+   */
+  function isZh() {
+    return (navigator.language || 'zh').toLowerCase().indexOf('zh') === 0;
+  }
+
+  function paintFallback() {
+    var zh = isZh(), year = cycle === 'year';
+    $('proPrice').textContent = zh ? (year ? '¥98' : '¥12') : (year ? '$50' : '$5');
+    $('proPer').textContent = zh ? (year ? '每年' : '每月') : (year ? 'per year' : 'per month');
+    // 年付这句提示是必须的：旧通道点进去默认是按月，不说清楚就等于「点了年付买到月付」
+    $('cycleNote').textContent = year
+      ? (zh ? '⚠️ 到付款页后请把「购买时长」选成 12 个月，才是年付价。'
+            : 'Please choose 12 months on the payment page to get the annual price.')
+      : '';
+  }
+
   function fallback() {
-    var zh = (navigator.language || 'zh').toLowerCase().indexOf('zh') === 0;
+    fallbackMode = true;
     notice('新的支付通道正在开通中，先用原来的通道购买 —— 付款后回到 Looka 会自动开通。', false);
-    $('proPrice').textContent = zh ? '¥12' : '$5';
-    $('proPer').textContent = zh ? '每月' : 'per month';
+    $('proSub').textContent = '小鹿陪你更久，装扮随便挑';
     $('btnPro').textContent = '去付款';
-    $('tabYear').style.display = 'none';   // 旧通道只按月下单，别给一个点了没用的按钮
+    setCycle('month');
+    $('tabMonth').onclick = function () { setCycle('month'); };
+    $('tabYear').onclick = function () { setCycle('year'); };
+
     $('btnPro').onclick = function () {
+      var zh = isZh();
       var url = zh
         ? 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0'
         : 'https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a';
@@ -175,7 +202,7 @@
         fetch('/api/pay/intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
-          body: JSON.stringify({ plan: 'month' })
+          body: JSON.stringify({ plan: cycle })
         }).then(function (r) { return r.json(); }).then(function (d) {
           location.href = (d && d.url) ? d.url : url;
         }).catch(function () { location.href = url; });
