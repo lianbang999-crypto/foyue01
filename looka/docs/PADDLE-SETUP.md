@@ -16,6 +16,51 @@ Paddle 与我方库里的任何 customer / subscription / transaction 行。
 
 ---
 
+## ○、怎么操作 Paddle 账号：用 `paddle-live` MCP，别手写 REST
+
+Paddle 官方托管了远程 MCP。**本项目所有 Paddle 账号操作走它**，不要再手拼 curl —— 手写
+REST 容易记错参数名（全是 snake_case，写错直接抛错）也没有只读/破坏性标注。
+
+| 服务器 | 地址 | 认证 |
+| --- | --- | --- |
+| `paddle-live` | `https://mcp.paddle.com/mcp` | live API key(Bearer) 或 OAuth |
+| `paddle-docs` | `https://paddlehq.mcp.kapa.ai` | Google/GitHub 登录，无需 Paddle 账号 |
+
+安装（**必须 `--scope local`**：项目级 `.mcp.json` 会进 git，live key 绝不能提交）：
+
+```bash
+claude mcp add --scope local --transport http paddle-live \
+  https://mcp.paddle.com/mcp --header "Authorization: Bearer <LIVE_API_KEY>"
+claude mcp add --scope local --transport http paddle-docs https://paddlehq.mcp.kapa.ai
+```
+
+写进 `~/.claude.json`（项目段），不落仓库。`paddle-docs` 首次用要 `/mcp` 走浏览器登录。
+
+**codemode 接口**：不是每个 API 一个工具，只有三个 ——
+`search`（查方法名与参数形状，**写 execute 前必须先 search**）、
+`execute`（跑一段 async JS 链式调 API）、`report_missing_tool`（上报缺能力，不打 API）。
+
+分页：list 返回 `{ pagination: {hasMore, estimatedTotal}, [资源]: [...] }`，
+翻页传 `{ after: "最后一项的 id" }`，**不要**调 `.next()`。`per_page` 上限 30，超了静默截断。
+
+### 两条纪律
+
+1. **MCP 不拦破坏性操作**。服务端只在 `execute` 响应上挂个 `warning` 字段，没有硬闸门。
+   上面那条护栏（永不删除的实体）靠的是人和本文档，不是工具。执行任何 delete / archive /
+   cancel 前，先看清对象、先问。
+2. **权限收在钥匙上**，别指望工具自律。OAuth 连接默认只有**读**权限，写权限要去
+   **Paddle > Connectors > MCP** 里单独开；用 API key 连接则按 key 本身的权限来。
+   评估期建议先给只读 key。
+
+### 已知现象（2026-08-30 实测）
+
+`claude mcp list` 对 `paddle-live` 报 `Connected · tools fetch failed — 请求超时`，
+但**服务器本身是好的**：直连 JSON-RPC 实测 `initialize` 正常、`tools/list` 3–9 秒返回
+三个工具、`search` 与 `execute` 都能跑通。加大 `MCP_TIMEOUT` 无效，判断是 CLI 健康检查
+路径的问题，不是认证或网络问题。看到这条报错不用重装。
+
+---
+
 ## 零、⚠️ 上线前必做一次：建两张镜像表
 
 `scripts/release.sh` **不执行** schema —— 只有 `server/deploy.sh` 会跑 `d1 execute --file=schema.sql`，
