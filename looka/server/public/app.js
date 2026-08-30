@@ -1916,31 +1916,40 @@ async function boot() {
   };
 
   // 「更多」页里的动作：复用顶栏已有按钮，避免逻辑重复
-  // 支持入口：中文→爱发电（预填 remark=账号，避免开通时对不上人），其余→Ko-fi
+  // §133：购买统一走站内 Paddle 定价页（同域，不再新开第三方站点）。
+  // 爱发电旧链路（/api/pay/intent + 订单号认领）**代码保留** —— 存量用户的历史订单
+  // 还要能对账，只是不再作为新购入口。
   const mPro = $('#mPro');
-  const openPay = async () => {
-    const zh = (localStorage.getItem('lk_lang') || navigator.language || 'zh').startsWith('zh');
-    let url = 'https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a';
-    if (zh) {
-      // LK 短码：备注预填、付款后服务端自动归属开通；接口不可达退回裸链接（还有订单号认领兜底）
-      url = 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0';
-      try { const r = await api('/api/pay/intent', { plan: 'month' }); if (r.url) url = r.url; } catch (e) { }
-    }
+  const openPay = () => {
+    // 付款等待标记必须在跳走前写下 —— 回到本页后 refreshMe 靠它弹「已开通」提示、
+    // updateClaimVis 靠它决定要不要露出求助入口、可见性回调靠它强刷订阅状态。
+    // （删掉这一行会静默丢掉付款回来的全部反馈，第一版就是这么漏的。）
     localStorage.setItem('lk_pay_pending', String(Date.now()));
-    window.open(url, '_blank');
-    toast(t('付款后切回本页，稍等片刻会自动开通'));
+    location.href = '/pay.html';
   };
   // F-7（§50 六）：开通前把权益与「到期后会怎样」说清楚 ——「你保留了」在前
+  // §133：按钮不再写死「12元/月」——各地区价格由定价页向 Paddle 实时取，此处写死必然对不上。
   if (mPro) mPro.onclick = () => {
+    const pro = isPro();
     modal(`<h3>Looka Pro</h3>
       <p class="dim-note">${t('每天 50 枚鹿角 · 官方装扮 0 鹿角领取 · 更多个性化（规划中）')}</p>
       <p style="font-size:12px;margin:8px 0 2px"><b>${t('到期后你保留')}</b>：${t('全部内容和数据 · 做过的主题 · 云同步与导出 · 提醒闹钟')}</p>
       <p style="font-size:12px;margin:2px 0 8px"><b>${t('到期后')}</b>：${t('每日鹿角回到 10 枚 · 已领取的装扮永久保留')}</p>
       <p class="dim-note">${t('不偷偷扣钱：可随时取消，取消后立即不再扣款。')}</p>
       <div class="modal-btns"><button class="btn-mini" id="proCancel">${t('再想想')}</button>
-      <button class="btn-dark" id="proGo">${t('去开通 · 12元/月')}</button></div>`);
+      ${pro ? `<button class="btn-dark" id="proManage">${t('管理订阅')}</button>`
+            : `<button class="btn-dark" id="proGo">${t('查看方案')}</button>`}</div>`);
     $('#proCancel').onclick = closeModal;
-    $('#proGo').onclick = () => { closeModal(); openPay(); };
+    if ($('#proGo')) $('#proGo').onclick = () => { closeModal(); openPay(); };
+    // §133 B3：自助门户 —— 改支付方式 / 取消 / 看发票都在 Paddle 托管页完成
+    if ($('#proManage')) $('#proManage').onclick = async () => {
+      try {
+        const r = await api('/api/paddle/portal', {});
+        if (r.url) { closeModal(); location.href = r.url; }
+      } catch (e) {
+        toast(t('暂时打不开管理页，请稍后再试'));
+      }
+    };
   };
 
   // G1/G2（§54）+ P4/P5（§55）：我的鹿角 —— 余额/明细/参考价/邀请码

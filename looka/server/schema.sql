@@ -113,6 +113,30 @@ CREATE TABLE IF NOT EXISTS pay_orders (
   PRIMARY KEY (channel, order_no)   -- 主键就是防重复发放的锁
 );
 
+-- §133：Paddle 状态镜像。业务真相仍是 plans / antler_balance / founders —— 这两张表只
+-- 镜像 Paddle 侧发生了什么，用于自助门户反查 customer、对账和排查。
+-- 🚧 护栏：这两张表里的行是真实付费用户的状态映射，任何时候都不删、不清空。
+CREATE TABLE IF NOT EXISTS paddle_customers (
+  customer_id TEXT    PRIMARY KEY,  -- ctm_...
+  user_id     INTEGER,              -- 归属账号；NULL = 还没匹配上（等 custom_data 或人工）
+  email       TEXT    NOT NULL,
+  created_at  INTEGER NOT NULL,
+  updated_at  INTEGER NOT NULL      -- 取事件里的 updated_at：乱序投递时旧事件不许覆盖新状态
+);
+
+CREATE TABLE IF NOT EXISTS paddle_subscriptions (
+  subscription_id         TEXT    PRIMARY KEY,  -- sub_...
+  customer_id             TEXT    NOT NULL,
+  status                  TEXT    NOT NULL,     -- active/trialing/past_due/paused/canceled
+  price_id                TEXT    NOT NULL,
+  product_id              TEXT    NOT NULL,
+  scheduled_change_action TEXT,                 -- 将取消/将暂停：**不等于**已撤权
+  scheduled_change_at     INTEGER,
+  created_at              INTEGER NOT NULL,
+  updated_at              INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_paddle_sub_customer ON paddle_subscriptions(customer_id);
+
 -- §117 B：鹿角商店 —— 已解锁的商品（贴纸包 v1；将来主题包同表）
 CREATE TABLE IF NOT EXISTS entitlements (
   user_id    INTEGER NOT NULL,

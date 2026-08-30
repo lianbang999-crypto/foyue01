@@ -9,3 +9,8 @@ build/
 .cxx
 .kotlin
 *.jks
+
+# §133：wrangler 本地开发变量 —— 装的是 Paddle 真密钥，绝不进仓库
+# （样例见 server/.dev.vars.example，那份只有占位符，可以提交）
+.dev.vars
+server/.dev.vars

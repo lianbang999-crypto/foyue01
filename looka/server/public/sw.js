@@ -14,6 +14,10 @@ self.addEventListener('message', e => { if (e.data === 'skip') self.skipWaiting(
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.pathname.startsWith('/api/') || url.pathname.startsWith('/dl/')) return;
+  // §133：跨域一律不拦。Paddle 的 paddle.js 与结账浮层资源都在 cdn.paddle.com，
+  // 走我们这套「网络优先 + cache.put」会去缓存不透明响应（put 必失败），
+  // 徒增一层失败路径挡在付款链路上 —— 直接放行给浏览器自己处理。
+  if (url.origin !== self.location.origin) return;
   // 网络优先、缓存兜底：保证部署即生效，离线仍可打开
   e.respondWith(
     fetch(e.request).then(resp => {

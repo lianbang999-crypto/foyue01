@@ -1635,3 +1635,19 @@ placeholder 也写错：实机 ノート tab 是「ノート名、本文」、�
 | A6 | 发版 v1.30.0(53)：GitHub 推送 → 构建 → R2 → Worker 部署 → 线上 version.json 核验 53 一致 → 盖章 | [x] |
 
 [~] 实机项：Room v13 迁移、提案挂起期间手改对象→确认时拦截提示、操作记录页观感、杀进程后撤销最近批，待用户设备回执。
+
+## P69 · §133 Paddle 统一收单（v1.31.0，2026-08-28）
+
+| | 项 | 状态 |
+|---|---|---|
+| A | docs/PADDLE-SETUP.md：建品提示词 ×2（订阅 / 四个一次性产品）、商户文案中英双版、后台操作清单、密钥表、**一次性建表命令**（release.sh 不跑 schema 且 schema 含 3 条不幂等 ALTER，这是会静默炸的坑） | [x] |
+| B1 | Webhook 验签：raw 先取 → WebCrypto HMAC-SHA256（ts 5 分钟窗口 + safeEqual 等长比较）→ **失败 403 非 2xx**（Paddle 按非 2xx 重试，与爱发电/Ko-fi 恒回 200 相反）→ 通过才 parse；event_id 经 pay_orders 主键幂等；处理失败删幂等行并回 500 让其重试 | [~] |
+| B2 | 镜像表 paddle_customers / paddle_subscriptions + 乱序守卫（excluded.updated_at >= 表.updated_at）；paddleGrantsAccess=active/trialing/past_due，scheduled_change 不撤权；无主动撤权代码（setProUntil 只延不缩 + 自然到期，避免与 Founder/通行证抢同一 expires_at） | [~] |
+| B3 | /api/paddle/portal（先鉴权 + customer_id 只服务端反查）、/api/paddle/config（PADDLE_ENV 未配置直接 500，country 为 T1/XX 时不下发）、/api/pay/session（15 分钟外跳会话） | [~] |
+| C | pay.html/pay.js 三列 Free/Pro/Founder + 月年切换 + 只输出 formattedTotals（零价格计算/零 Intl）；buy.html/buy.js 鹿角包；welcome.html 只轮询不发权益；sw.js 跨域放行（原拦截器会去缓存 Paddle CDN）；app.js 购买入口改站内、加「管理订阅」、补回 lk_pay_pending 写入 | [~] |
+| E | pricing.v1 渠道规则改写 + paddle 节（SKU↔变量映射，不写具体 id）；check_contracts 增 SKU 对账 + **客户端服务端密钥泄漏扫描**；.gitignore 加 .dev.vars；.dev.vars.example | [x] |
+| F | build_i18n 扩到网页端（原只扫 Kotlin，漏译 13 条其中 10 条为既有缺陷）；双端 0 缺译 1216 条 | [x] |
+| G | 发版 v1.31.0 —— **阻塞**：缺 price id / live client token / webhook signing secret | [ ] |
+
+[~] 待凭据到位后验证：webhook 真实事件验签、镜像落行、plans 开通、门户开页、三列价格渲染。
+[ ] G 需用户先跑建品提示词并回传 ID 与密钥。

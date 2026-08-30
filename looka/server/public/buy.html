@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>补充鹿角 · Looka</title>
+<link rel="icon" href="deer.svg" type="image/svg+xml">
+<style>
+  :root{--ink:#1b1b1f;--dim:#8a8f8e;--line:#e6e8e7;--accent:#55b04b}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,'PingFang SC',sans-serif;color:var(--ink);background:#fafbfa}
+  main{max-width:460px;margin:0 auto;padding:26px 18px 56px}
+  .top{text-align:center;margin-bottom:20px}
+  .top .deer{font-size:32px}
+  .top h1{font-size:19px;margin:6px 0 4px}
+  .top p{color:var(--dim);font-size:13px;margin:0;line-height:1.7}
+  .pack{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;
+    display:flex;align-items:center;gap:14px;margin-bottom:11px}
+  .pack .n{font-size:17px;font-weight:700;flex:1}
+  .pack .n small{display:block;font-size:12px;font-weight:400;color:var(--dim);margin-top:3px}
+  .pack .p{font-size:16px;font-weight:600;min-width:74px;text-align:right}
+  .pack button{border:0;border-radius:9px;padding:10px 15px;font:inherit;font-size:13px;
+    font-weight:600;background:var(--accent);color:#fff;cursor:pointer}
+  .pack button[disabled]{background:#eef0ef;color:var(--dim)}
+  .notice{background:#fff8e6;border:1px solid #f0dfae;border-radius:10px;padding:11px 13px;
+    font-size:13px;line-height:1.7;color:#6b5a20;margin-bottom:14px}
+  .notice.err{background:#fdecec;border-color:#f2c4c4;color:#8c2f2f}
+  .hidden{display:none}
+  .foot{text-align:center;color:var(--dim);font-size:12px;line-height:1.9;margin-top:22px}
+  .foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="deer">🦌</div>
+    <h1>补充鹿角</h1>
+    <p>购买的鹿角永不过期，和每天免费领的分开算。</p>
+  </div>
+
+  <div id="notice" class="notice hidden"></div>
+
+  <div class="pack">
+    <div class="n">1000 鹿角<small>够用一阵子</small></div>
+    <div class="p" id="p1000">—</div>
+    <button id="b1000" type="button">购买</button>
+  </div>
+  <div class="pack">
+    <div class="n">3000 鹿角<small>重度使用更划算</small></div>
+    <div class="p" id="p3000">—</div>
+    <button id="b3000" type="button">购买</button>
+  </div>
+
+  <p class="foot">
+    一次性购买，不会自动续费。<br>
+    税费与退款规则以结账页显示为准。<br>
+    <a href="/pay.html">看看 Pro 方案</a> · <a href="/">回到 Looka</a>
+  </p>
+</main>
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+<script src="buy.js?v=53"></script>
+</body>
+</html>

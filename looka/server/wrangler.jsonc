@@ -52,8 +52,23 @@
     "AI_RPD": "100",
     "FREE_AI_RPD": "10",
     // 发件人（Resend 侧需先完成 foyue.org 域名 DNS 验证）
-    "MAIL_FROM": "Looka <noreply@foyue.org>"
+    "MAIL_FROM": "Looka <noreply@foyue.org>",
+
+    // §133 Paddle 统一收单。
+    // ⚠️ PADDLE_ENV **没有默认值**：worker 读不到就直接 500。拿 sandbox 密钥打 live
+    // （或反过来）等于对错账号收钱，宁可整条链路显式停摆也不猜。
+    "PADDLE_ENV": "sandbox",
+    // 建品后把 pri_… 回填到这里（留空 = 还没建，页面上该项不渲染）。
+    // 🚧 护栏：这些 price 是运行中的基础设施，建了就不删。
+    "PADDLE_PRICE_PRO_MONTH": "",
+    "PADDLE_PRICE_PRO_YEAR": "",
+    "PADDLE_PRICE_PASS_MONTH": "",
+    "PADDLE_PRICE_PASS_YEAR": "",
+    "PADDLE_PRICE_ANTLER_1000": "",
+    "PADDLE_PRICE_ANTLER_3000": "",
+    "PADDLE_PRICE_FOUNDER": ""
   },
   // 密钥（wrangler secret put）：SILICONFLOW_KEY / RESEND_API_KEY / ADMIN_KEY
+  //   §133 Paddle：PADDLE_CLIENT_TOKEN / PADDLE_API_KEY / PADDLE_WEBHOOK_SECRET / PADDLE_HOOK_PATH
   "observability": { "enabled": true }
 }

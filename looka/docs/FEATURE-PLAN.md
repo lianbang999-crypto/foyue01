@@ -11638,3 +11638,68 @@ harness 新增 tool_any 断言（任一诚实路径命中即可，仍须说出�
 AiActionsTest 回归）全绿；i18n 10 词条缺译 0。撤销语义澄清：任意时刻只有「最后一个
 未撤销的成功批」可撤，撤完后上一批自然成为新的可撤批（每批回放前逐行过 resultVersion
 反向 Freshness 守卫，被后续修改污染的行不撤并注明）。
+
+## 一百三十三、§133（2026-08-28）：Paddle 统一收单 —— 定价页 + 履约层 + 自助门户
+
+### 一、背景 / 用户诉求
+
+用户拍板把支付统一到 Paddle Live：**海外订阅、中国区、鹿角包全部走 Paddle**，
+理由是「Paddle 能统一支持，方便我们管理」。这推翻了本章初稿里「鹿角包不上 Paddle /
+中国区留爱发电」的保守做法 —— 用户在我提出费率顾虑后明确重申，按其决定执行。
+
+### 二、🔴 查证结论（标出处与把握，不拿推断当结论）
+
+1. **已查证**（`developer.paddle.com/paddlejs/methods/paddle-checkout-open`）：
+   `settings.allowedPaymentMethods` 含 `alipay`，原文 "Alipay, popular in China"。
+2. **已查证（反向）**：同一份完整列表里**没有微信支付**
+   （card / paypal / alipay / apple_pay / google_pay / ideal / kakao_pay / mb_way /
+   naver_pay / payco / pix / samsung_pay / upi / bancontact / blik /
+   south_korea_local_card / saved_payment_methods）。
+   → 用户前提「Paddle 支持支付宝和微信」**支付宝成立、微信不成立**，已当面更正。
+3. **没查到**：支付宝能否用于自动续费（相关文档页 404，WebSearch 本会话报配置错误）。
+   → 不赌这个能力：中国区改做**一次性通行证**（月卡 31 天 / 年卡 366 天）。
+4. **费率实算**（标准费率 5% + $0.50）：¥6 包约 64%、¥12 月卡约 35%、¥18 约 25%、
+   ¥98 年卡约 9%、$5 月付 15%。据此**不建 ¥6/$0.99 最小档**（护栏规定已建实体不得删，
+   宁可晚建）。
+
+### 三、栈翻译（spec 是 Next.js/Vercel/Node SDK/Postgres，我们都不是）
+
+| spec | 我们的落法 |
+|---|---|
+| `@paddle/paddle-js` npm + React 组件 | 网页端无构建、无 npm；Paddle.js 走 CDN `<script>`，页面是自包含 HTML+原生 JS |
+| `paddle.webhooks.unmarshal()`（Node SDK） | worker 是零依赖单文件；WebCrypto 手写 HMAC-SHA256，与 unmarshal 同算法 |
+| `express.raw()` | `await request.text()`，**验签前绝不 parse** |
+| `x-vercel-ip-country` | `request.cf.country`（静态资源先于 Worker 命中，故走 `/api/paddle/config` 下发而非 HTML 注入） |
+| Postgres `customers`/`subscriptions` | D1(SQLite)，表名加 `paddle_` 前缀避免与共用库 users 概念混淆 |
+| `.env.example` | `server/.dev.vars.example` + wrangler `vars`/`secret put` 双清单 |
+
+### 四、落地（v1.31.0 网页可买；App 侧 §134 另行）
+
+| 代号 | 内容 |
+|---|---|
+| A | `docs/PADDLE-SETUP.md`：建品提示词 ×2、商户文案（中英）、后台操作清单、密钥表、**一次性建表命令** |
+| B1 | Webhook `/api/pay/paddle/<HOOK_PATH>`：raw 先取 → HMAC 验签（ts 5 分钟窗口 + `safeEqual`）→ **失败回 403 非 2xx**（与爱发电/Ko-fi 恒回 200 相反，理由写进注释）→ 通过才 parse |
+| B2 | 镜像表 `paddle_customers` / `paddle_subscriptions`；upsert 带 `WHERE excluded.updated_at >= 表.updated_at` 乱序守卫（与 §132 Freshness Guard 同哲学）；`paddleGrantsAccess` = active/trialing/past_due，**scheduled_change 不撤权**；不写主动撤权代码，靠 `setProUntil` 只延不缩 + 自然到期 |
+| B3 | `/api/paddle/portal`（先鉴权、customer_id 只服务端反查）、`/api/paddle/config`（env/token/price/country/email，**PADDLE_ENV 未配置直接 500**）、`/api/pay/session`（App 外跳 15 分钟会话） |
+| C | `pay.html`+`pay.js`（Free/Pro/Founder 三列、月年切换、**只输出 formattedTotals**、国家未知不传 address）、`buy.html`+`buy.js`（鹿角包）、`welcome.html`（只轮询不发权益）、`sw.js` 跨域放行 |
+| E | pricing.v1 渠道规则改写 + `paddle` 节；check_contracts 增 SKU↔变量对账 + **客户端密钥泄漏扫描**；`.gitignore` 加 `.dev.vars`；build_i18n **扩到网页端** |
+
+### 五、主动偏离与明确不做
+
+- **不建 ¥6/$0.99 鹿角包**（费率 64% + 护栏不可删，等低价报价）
+- **不做 CNY 自动续费**（支付宝续费能力无凭据）
+- 不设试用；不建 Starter/Advanced 新档（那是产品改版，需先改 plans.v1）
+- **不删爱发电旧链路代码** —— 存量订单仍需对账，仅退出新购入口
+- App 侧改造（外跳 pay.html + 管理订阅入口）留 §134，本章网页端先可用
+
+### 六、顺带补的既有缺陷（超出本章范围，已记账）
+
+`build_i18n.py` 此前**只扫 Kotlin**，网页端 `t('…')` 从未进过覆盖率核查 ——
+实测漏译 13 条（英文/繁体用户看到中文原文），其中 10 条是本章之前就存在的。
+已一并补齐并把扫描扩到 `app.js`，让铁律二在 i18n 上真正覆盖双端。
+
+### 七、验收
+
+合同门（含新增两节）全绿 · i18n 双端 0 缺译（1216 条）· 五个 JS 文件 `node --check` 通过 ·
+客户端无服务端密钥（机器扫描）。**未做真实付款验证** —— 缺 price id 与 live token，
+且 Paddle 商户验证/域名审核未过时 live 交易本就无法完成。

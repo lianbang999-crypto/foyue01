@@ -65,5 +65,15 @@ for p in glob.glob(os.path.join(ROOT, 'app/src/main/java/com/looka/app/**/*.kt')
         k = unesc(m.group(1))
         if re.search(r'[一-鿿]', k) and k not in en:
             missing.add(k)
+
+# §133：网页端一并纳入核查。此前只扫 Kotlin，等于铁律二「双端同步」在 i18n 上只管了一端 ——
+# 实测漏了 13 条（英文/繁体用户看到的是中文原文）。app.js 用单引号的 t('…')。
+pat_web = re.compile(r"t\(\s*'((?:[^'\\]|\\.)*)'")
+for p in [os.path.join(ROOT, 'server/public/app.js')]:
+    if not os.path.exists(p): continue
+    for m in pat_web.finditer(open(p, encoding='utf-8').read()):
+        k = m.group(1).replace("\\'", "'")
+        if re.search(r'[一-鿿]', k) and k not in en:
+            missing.add(k)
 print(f'en {len(en)} 条 / zh-TW {len(tw)} 条 / 缺译 {len(missing)} 条')
 for k in sorted(missing)[:20]: print('  缺:', repr(k))

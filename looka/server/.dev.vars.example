@@ -1,0 +1,35 @@
+# §133 Paddle 本地开发变量样例（wrangler 的 .env 等价物）
+#
+# 用法：复制成 server/.dev.vars（该文件已被 .gitignore 忽略，不会进仓库），填上真值。
+# 线上不用这个文件 —— 线上非密项写在 wrangler.jsonc 的 vars，密钥用 wrangler secret put。
+#
+# ⚠️ 本地开发一律用 sandbox。拿 live 密钥在本地跑等于对真实账号收钱。
+
+# ---- 环境（production | sandbox）。没有默认值：读不到 worker 直接 500 ----
+PADDLE_ENV=sandbox
+
+# ---- 客户端 token：会下发到浏览器，属于公开型；但仍不进 git ----
+# sandbox 是 test_ 开头，live 是 live_ 开头
+PADDLE_CLIENT_TOKEN=test_xxxxxxxxxxxxxxxxxxxxxxxx
+
+# ---- 服务端 API key：**只在 worker 里用，绝不下发给任何前端** ----
+# 用途：调 /customers/{id}/portal-sessions 开自助门户
+PADDLE_API_KEY=pdl_sdbx_apikey_xxxxxxxxxxxxxxxxxxxx
+
+# ---- Webhook 签名密钥：来自 notification destination，**不是** API key ----
+# 后台路径：Developer tools > Notifications > 你的 destination > Signing secret
+PADDLE_WEBHOOK_SECRET=pdl_ntfset_xxxxxxxxxxxxxxxxxxxx
+
+# ---- Webhook 路径随机段：防路径被猜到（与爱发电/Ko-fi 同一套做法）----
+# 生成：openssl rand -hex 16
+# 完整回调地址 = https://looka.foyue.org/api/pay/paddle/<这个值>
+PADDLE_HOOK_PATH=replace_with_openssl_rand_hex_16
+
+# ---- price id（建品后回填；线上填在 wrangler.jsonc 的 vars 里）----
+PADDLE_PRICE_PRO_MONTH=
+PADDLE_PRICE_PRO_YEAR=
+PADDLE_PRICE_PASS_MONTH=
+PADDLE_PRICE_PASS_YEAR=
+PADDLE_PRICE_ANTLER_1000=
+PADDLE_PRICE_ANTLER_3000=
+PADDLE_PRICE_FOUNDER=

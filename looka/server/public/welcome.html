@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>谢谢你 · Looka</title>
+<link rel="icon" href="deer.svg" type="image/svg+xml">
+<style>
+  body{margin:0;font-family:-apple-system,'PingFang SC',sans-serif;color:#1b1b1f;background:#fafbfa;
+    display:flex;align-items:center;justify-content:center;min-height:100vh}
+  main{max-width:420px;padding:32px 22px;text-align:center}
+  .deer{font-size:46px;line-height:1}
+  h1{font-size:20px;margin:12px 0 8px}
+  p{color:#3a3f3e;font-size:14px;line-height:1.9;margin:0 0 8px}
+  .dim{color:#8a8f8e;font-size:12.5px;line-height:1.8}
+  .btn{display:inline-block;margin-top:18px;background:#55b04b;color:#fff;text-decoration:none;
+    border-radius:10px;padding:12px 26px;font-size:14px;font-weight:600}
+  .state{margin-top:16px;font-size:13px;color:#8a8f8e;min-height:20px}
+  .state.ok{color:#55b04b;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <div class="deer">🦌</div>
+  <h1>谢谢你，付款成功了</h1>
+  <p>小鹿正在把权益记到你的账号上，通常几秒钟就好。</p>
+  <div class="state" id="state">正在确认…</div>
+  <p class="dim">
+    如果这里一直没变，也不用担心 —— 付款记录已经在了，<br>
+    回到 App 或网页端下拉刷新即可；仍有问题请联系 looka01@qq.com。
+  </p>
+  <a class="btn" href="/">回到 Looka</a>
+</main>
+<script>
+/* §133：这一页**不发放任何权益** —— 权益只认服务端验签过的 Paddle webhook。
+   这里只是替用户轮询一下开通状态，让等待有反馈。前端"看起来成功了"从不构成开通依据。 */
+(function () {
+  var el = document.getElementById('state');
+  var token = '';
+  try { token = localStorage.getItem('lk_token') || ''; } catch (e) { }
+  if (!token) { el.textContent = '你还没在这个浏览器登录，回到 App 查看即可。'; return; }
+  var tries = 0;
+  (function poll() {
+    tries++;
+    fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.plan === 'pro') {
+          el.textContent = '✅ 已开通 Looka Pro';
+          el.className = 'state ok';
+          return;
+        }
+        if (tries < 10) return setTimeout(poll, 3000);
+        el.textContent = '还在处理中，回到 App 稍后刷新即可。';
+      })
+      .catch(function () {
+        if (tries < 10) return setTimeout(poll, 3000);
+        el.textContent = '网络不太顺，回到 App 稍后刷新即可。';
+      });
+  })();
+})();
+</script>
+</body>
+</html>

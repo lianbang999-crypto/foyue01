@@ -199,6 +199,42 @@ def main() -> int:
         print("✓ PRICING ↔ pricing.v1 ↔ 双端文案：订阅/买断/鹿角包一致")
     ok &= okp
 
+    # §133：Paddle SKU ↔ 环境变量对账。
+    # 现有那节只管人民币文案，管不到 Paddle 这条新链路 —— 后台价格与合同悄悄漂移
+    # 没人会发现（用户看到的是 Paddle 返回的价，我们的合同却写着另一个数）。
+    # 这里只核验「映射齐全 + 变量形状正确」：具体 price id 是部署配置，不进合同。
+    okpd = True
+    pd = pr.get("paddle", {})
+    wr = (ROOT / "server/wrangler.jsonc").read_text()
+    wk_txt = wk  # worker.js 全文
+    for sku in pd.get("skus", []):
+        var = sku["var"]
+        # ① worker 必须真的读了这个变量，否则合同写了、代码没用
+        if f"env.{var}" not in wk_txt:
+            print(f"✗ Paddle SKU {sku['id']}：worker.js 未读取 {var}"); okpd = False
+        # ② wrangler.jsonc 里要有这一项（值可以是占位，但键必须在，提醒部署时填）
+        if f'"{var}"' not in wr:
+            print(f"✗ Paddle SKU {sku['id']}：wrangler.jsonc 缺少 {var}"); okpd = False
+        else:
+            mm = re.search(r'"%s"\s*:\s*"([^"]*)"' % var, wr)
+            val = mm.group(1) if mm else ""
+            # 填了值就必须是 pri_ 形状；留空 = 还没建，允许（部署前的正常中间态）
+            if val and not val.startswith("pri_"):
+                print(f"✗ Paddle SKU {sku['id']}：{var} = '{val}' 不是 pri_ 开头"); okpd = False
+    # ③ 环境变量必须存在且不得有默认值兜底（配错账号 = 对错账号收钱）
+    if '"PADDLE_ENV"' not in wr:
+        print("✗ wrangler.jsonc 缺少 PADDLE_ENV"); okpd = False
+    # ④ 服务端密钥绝不能出现在任何客户端文件里
+    for cf in sorted(list((ROOT / "server/public").rglob("*.js")) +
+                     list((ROOT / "server/public").rglob("*.html"))):
+        txt = cf.read_text(errors="ignore")
+        for secret in ("PADDLE_API_KEY", "PADDLE_WEBHOOK_SECRET", "PADDLE_HOOK_PATH"):
+            if secret in txt:
+                print(f"✗ 服务端密钥 {secret} 出现在客户端文件 {cf.name}"); okpd = False
+    if okpd:
+        print(f"✓ Paddle SKU ↔ wrangler 变量：{len(pd.get('skus', []))} 项齐全；客户端无服务端密钥")
+    ok &= okpd
+
     if ok:
         print("\n全部一致。")
     else:

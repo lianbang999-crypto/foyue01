@@ -432,6 +432,210 @@ async function grantFounder(env, userId, kind) {
   return seq;
 }
 
+// ==================== §133 Paddle 统一收单 ====================
+// 海外订阅 / 中国区一次性通行证 / 鹿角包 / Founder 买断全部走 Paddle（MoR）。
+//
+// 🚧 护栏：Paddle 侧的 notification destination 与其 signing secret、所有 products 与
+// prices，以及这里落进 paddle_customers / paddle_subscriptions / pay_orders 的每一行，
+// 都是**运行中的基础设施**，不是测试残留 —— 任何时候都不删、也不"顺手清理"。
+// 它们驱动 transaction.completed / subscription.* / customer.* 事件，删掉等于把已付费
+// 用户的开通链路打断。
+
+/**
+ * Paddle REST 基址。**绝不静默默认到某个环境** —— 配错账号（拿 sandbox 密钥打 live，
+ * 或反过来）比直接报错危险得多。没配就返回 null，调用方一律显式失败。
+ */
+function paddleApiBase(env) {
+  if (env.PADDLE_ENV === 'sandbox') return 'https://sandbox-api.paddle.com';
+  if (env.PADDLE_ENV === 'production') return 'https://api.paddle.com';
+  return null;
+}
+
+/** price_id → 履约动作。env 里没配的项自动跳过，不会误命中 undefined */
+function paddleSkuOf(env, priceId) {
+  if (!priceId) return null;
+  const table = [
+    [env.PADDLE_PRICE_PRO_MONTH, { kind: 'sub', days: 31 }],
+    [env.PADDLE_PRICE_PRO_YEAR, { kind: 'sub', days: 366 }],
+    [env.PADDLE_PRICE_PASS_MONTH, { kind: 'pass', days: 31 }],
+    [env.PADDLE_PRICE_PASS_YEAR, { kind: 'pass', days: 366 }],
+    [env.PADDLE_PRICE_ANTLER_1000, { kind: 'antler', amount: 1000 }],
+    [env.PADDLE_PRICE_ANTLER_3000, { kind: 'antler', amount: 3000 }],
+    [env.PADDLE_PRICE_FOUNDER, { kind: 'founder' }]
+  ];
+  for (const [id, sku] of table) if (id && id === priceId) return sku;
+  return null;
+}
+
+/**
+ * Webhook 验签（`Paddle-Signature: ts=…;h1=…`）。
+ *
+ * 签名对象是 `${ts}:${原始请求体}` —— 所以调用方必须传 request.text() 的**原文**。
+ * 先 JSON.parse 再 stringify 会因为键序/空白变化让签名对不上（这是最常见的接入翻车点）。
+ * 用的是 notification destination 的 **signing secret**，不是 API key（两个不同的东西）。
+ */
+async function paddleVerify(raw, sigHeader, secret) {
+  if (!raw || !sigHeader || !secret) return false;
+  let ts = '', h1 = '';
+  for (const part of String(sigHeader).split(';')) {
+    const i = part.indexOf('=');
+    if (i < 0) continue;
+    const k = part.slice(0, i).trim(), v = part.slice(i + 1).trim();
+    if (k === 'ts') ts = v; else if (k === 'h1') h1 = v;
+  }
+  if (!/^\d+$/.test(ts) || !/^[0-9a-fA-F]{64}$/.test(h1)) return false;
+  if (Math.abs(Date.now() / 1000 - Number(ts)) > 300) return false;   // 重放窗口 5 分钟
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, enc.encode(`${ts}:${raw}`));
+  return safeEqual(toHex(mac), h1.toLowerCase());
+}
+
+/**
+ * 订阅状态是否授予权益。
+ *
+ * active / trialing 有权益；**存在 scheduled_change（将取消/将暂停）不算撤权** ——
+ * 那只是"将要"，用户已经付过当期的钱。past_due 也保留：那是扣款重试窗口，
+ * 立刻断权会误伤只是换了张卡的人。
+ *
+ * 至于"收回"：本实现**没有**主动撤权代码，靠自然到期。因为我们只把 plans.expires_at
+ * 顶到"已付费到"的那一刻（setProUntil），不再续期它自己就过期了。这样也避免了一段
+ * 撤权逻辑去和 Founder 永久权益、一次性通行证抢同一个 expires_at 字段。
+ */
+function paddleGrantsAccess(status) {
+  return status === 'active' || status === 'trialing' || status === 'past_due';
+}
+
+/** 把 Pro 顶到指定时刻：**只延长不缩短**，与一次性通行证 / Founder 共存时互不踩踏 */
+async function setProUntil(env, userId, untilMs) {
+  if (!(untilMs > Date.now())) return;
+  await env.DB.prepare(
+    `INSERT INTO plans (user_id, plan, expires_at) VALUES (?1,'pro',?2)
+     ON CONFLICT(user_id) DO UPDATE SET
+       plan = 'pro', expires_at = MAX(plans.expires_at, excluded.expires_at)`
+  ).bind(userId, untilMs).run();
+}
+
+/** 归属三级：custom_data.user_id（结账时我们自己写的，最可信）→ 镜像表 → 邮箱兜底 */
+async function paddleResolveUser(env, d) {
+  const cd = d?.custom_data || {};
+  const direct = Number(cd.user_id ?? cd.userId);
+  if (Number.isInteger(direct) && direct > 0) return direct;
+  // subscription/transaction 事件用 customer_id；customer.* 事件本身的 id 就是 ctm_…
+  const own = String(d?.id || '');
+  const cid = String(d?.customer_id || (own.startsWith('ctm_') ? own : ''));
+  if (cid) {
+    const row = await env.DB.prepare(
+      'SELECT user_id FROM paddle_customers WHERE customer_id = ?1').bind(cid).first();
+    if (row?.user_id) return Number(row.user_id);
+  }
+  const email = String(d?.email || d?.customer?.email || '').trim().toLowerCase();
+  if (email && isEmail(email)) {
+    const u = await env.AUTH_DB.prepare(
+      'SELECT id FROM users WHERE account = ?1').bind(email).first();
+    if (u) return Number(u.id);
+  }
+  return null;
+}
+
+// 下面两个 upsert 都带 `WHERE excluded.updated_at >= 表.updated_at` 守卫：
+// Paddle 投递是**至少一次且可能乱序**的，旧事件晚到不许覆盖新状态。
+// （与 §132 给 Agent 提案做的 Freshness Guard 是同一条哲学：晚到的旧结果没有写入资格。）
+
+async function paddleUpsertCustomer(env, d, userId, ts) {
+  const id = String(d?.id || '');
+  if (!id) return;
+  await env.DB.prepare(
+    `INSERT INTO paddle_customers (customer_id, user_id, email, created_at, updated_at)
+     VALUES (?1,?2,?3,?4,?4)
+     ON CONFLICT(customer_id) DO UPDATE SET
+       email = excluded.email,
+       user_id = COALESCE(excluded.user_id, paddle_customers.user_id),
+       updated_at = excluded.updated_at
+     WHERE excluded.updated_at >= paddle_customers.updated_at`
+  ).bind(id, userId || null, String(d?.email || ''), ts).run();
+}
+
+async function paddleUpsertSub(env, d, ts) {
+  const id = String(d?.id || '');
+  if (!id) return;
+  const item = (d?.items || [])[0] || {};
+  await env.DB.prepare(
+    `INSERT INTO paddle_subscriptions
+       (subscription_id, customer_id, status, price_id, product_id,
+        scheduled_change_action, scheduled_change_at, created_at, updated_at)
+     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?8)
+     ON CONFLICT(subscription_id) DO UPDATE SET
+       customer_id = excluded.customer_id, status = excluded.status,
+       price_id = excluded.price_id, product_id = excluded.product_id,
+       scheduled_change_action = excluded.scheduled_change_action,
+       scheduled_change_at = excluded.scheduled_change_at,
+       updated_at = excluded.updated_at
+     WHERE excluded.updated_at >= paddle_subscriptions.updated_at`
+  ).bind(id, String(d?.customer_id || ''), String(d?.status || ''),
+    String(item?.price?.id || ''), String(item?.price?.product_id || ''),
+    d?.scheduled_change?.action || null,
+    d?.scheduled_change?.effective_at ? Date.parse(d.scheduled_change.effective_at) : null,
+    ts).run();
+}
+
+/**
+ * 已验签事件的分发。调用方已用 pay_orders 做过 event_id 幂等，这里不必再防重复投递。
+ * 未知事件类型安全忽略（Paddle 以后加新事件不该让我们 500）。
+ */
+async function paddlePlaceEvent(env, evt) {
+  const type = String(evt?.event_type || '');
+  const d = evt?.data || {};
+  const ts = Date.parse(d?.updated_at || evt?.occurred_at || '') || Date.now();
+
+  if (type === 'customer.created' || type === 'customer.updated') {
+    await paddleUpsertCustomer(env, d, await paddleResolveUser(env, d), ts);
+    return;
+  }
+
+  if (type.startsWith('subscription.')) {
+    await paddleUpsertSub(env, d, ts);
+    const uid = await paddleResolveUser(env, d);
+    if (!uid) return;             // 归属不明：镜像已落，等 customer 事件或人工补
+    if (paddleGrantsAccess(String(d?.status || ''))) {
+      // 顶到本计费周期结束 +1 天：宽限一天是给续费事件晚到留的余量，别让用户在
+      // 续费成功与事件送达之间掉权益
+      const end = Date.parse(d?.current_billing_period?.ends_at || '') || 0;
+      if (end) await setProUntil(env, uid, end + 86400_000);
+    }
+    await track(env, 'looka', 'paddle_sub', uid, null,
+      { st: String(d?.status || '').slice(0, 16), t: type.slice(0, 24) });
+    return;
+  }
+
+  if (type === 'transaction.completed') {
+    const uid = await paddleResolveUser(env, d);
+    if (!uid) return;
+    await env.DB.prepare(
+      "UPDATE pay_orders SET user_id = ?1 WHERE channel='paddle' AND order_no = ?2"
+    ).bind(uid, String(evt?.event_id || '')).run();
+    const plan = (await planOf(env, uid)).plan;
+    for (const it of (d?.items || [])) {
+      const sku = paddleSkuOf(env, String(it?.price?.id || ''));
+      if (!sku) continue;
+      const ref = `${d?.id || evt?.event_id}:${it?.price?.id}`;   // 同一交易的同一价格只入一次
+      if (sku.kind === 'antler') {
+        await antlerAdd(env, uid, plan, sku.amount, 'paid', 'paddle', ref);
+      } else if (sku.kind === 'founder') {
+        await grantFounder(env, uid, 'buyout');
+      } else if (sku.kind === 'pass') {
+        await grantPro(env, uid, sku.days);      // 一次性通行证：在现有到期上叠加
+      }
+      // kind === 'sub' 的续费**不在这里加天数** —— 订阅到期时间以 subscription 事件的
+      // current_billing_period 为准；两处都加会翻倍
+    }
+    await track(env, 'looka', 'paddle_txn', uid, null, { n: (d?.items || []).length });
+    return;
+  }
+  // 其它类型：安全忽略
+}
+
 /**
  * 校验并入账一笔爱发电订单（幂等）。
  * ⚠️ webhook 推送无签名，内容一律不可采信 —— 调用方必须传入 query-order 反查回来的订单。
@@ -847,6 +1051,77 @@ async function route(request, env, ctx) {
     return new Response('ok', { status: 200 });
   }
 
+  // ===== §133 Paddle 前端配置（**不需要登录**：定价页对所有访客展示价格）=====
+  if (p === '/api/paddle/config' && m === 'GET') {
+    if (!paddleApiBase(env)) {
+      return json({ error: 'PADDLE_ENV 未配置（应为 production 或 sandbox）' }, 500);
+    }
+    if (!env.PADDLE_CLIENT_TOKEN) return json({ error: 'PADDLE_CLIENT_TOKEN 未配置' }, 500);
+    // 国家取 Cloudflare 边缘判定的 ISO-3166-1 alpha-2。T1（Tor）/XX（未知）**一律不下发** ——
+    // 客户端拿不到国家就整个不传 address，让 Paddle 按访客 IP 自己判断，这比我们瞎猜准。
+    // ⚠️ 我们内部若有 'OTHERS' 之类哨兵值，只能留在自己代码里，绝不能当国家码喂给 Paddle。
+    const cc = String(request.cf?.country || request.headers.get('CF-IPCountry') || '').toUpperCase();
+    const country = (/^[A-Z]{2}$/.test(cc) && cc !== 'T1' && cc !== 'XX') ? cc : null;
+    const u = await getUser(request, env);           // 未登录也要能看价，所以是可选的
+    return json({
+      ok: true,
+      env: env.PADDLE_ENV,
+      token: env.PADDLE_CLIENT_TOKEN,                // 客户端 token，公开型，可下发
+      country,                                        // 可能为 null —— 前端据此决定传不传 address
+      prices: {
+        pro_month: env.PADDLE_PRICE_PRO_MONTH || '',
+        pro_year: env.PADDLE_PRICE_PRO_YEAR || '',
+        pass_month: env.PADDLE_PRICE_PASS_MONTH || '',
+        pass_year: env.PADDLE_PRICE_PASS_YEAR || '',
+        antler_1000: env.PADDLE_PRICE_ANTLER_1000 || '',
+        antler_3000: env.PADDLE_PRICE_ANTLER_3000 || '',
+        founder: env.PADDLE_PRICE_FOUNDER || ''
+      },
+      founder_open: env.FOUNDER_BUYOUT_OPEN === '1',  // 售罄/未开批次时前端整列不渲染
+      user: u ? { id: u.id, email: u.account } : null
+    });
+  }
+
+  // ===== §133 Paddle Webhook（无需登录；路径带随机段）=====
+  // 与上面爱发电/Ko-fi 两条链路**故意不同**的一点：那两家验签能力弱、且失败会疯狂重推，
+  // 所以恒回 200。Paddle 相反 —— 它按非 2xx 判定投递失败并自动重试，所以验签不过
+  // 必须回非 2xx（回 200 等于告诉 Paddle "收到了"，这笔事件就永远丢了）。
+  if (env.PADDLE_HOOK_PATH && p === `/api/pay/paddle/${env.PADDLE_HOOK_PATH}` && m === 'POST') {
+    // ① 原始文本必须先拿到手，验签算的是 `${ts}:${原文}`；任何 parse 再 stringify 都会失败
+    const raw = await request.text();
+    const ok = await paddleVerify(raw, request.headers.get('Paddle-Signature'), env.PADDLE_WEBHOOK_SECRET);
+    if (!ok) {
+      ctx.waitUntil(track(env, 'looka', 'paddle_hook_bad', null, request, {}));
+      return json({ error: 'bad signature' }, 403);   // 不是 2xx：让 Paddle 重试
+    }
+    // ② 验签通过之后才允许 parse
+    let evt = null;
+    try { evt = JSON.parse(raw); } catch { return json({ error: 'bad json' }, 400); }
+    const eventId = String(evt?.event_id || '');
+    if (!eventId) return json({ error: 'missing event_id' }, 400);
+
+    // ③ 幂等：pay_orders 的主键 (channel, order_no) 就是锁。Paddle 是至少一次投递，
+    //    同一 event_id 再来时 changes=0，直接当作已处理返回成功。
+    const ins = await env.DB.prepare(
+      `INSERT OR IGNORE INTO pay_orders (channel, order_no, user_id, amount, raw, handled_at)
+       VALUES ('paddle', ?1, NULL, ?2, ?3, ?4)`
+    ).bind(eventId, String(evt?.data?.details?.totals?.grand_total || ''),
+      raw.slice(0, 4096), Date.now()).run();
+    if (!ins.meta.changes) return json({ ok: true, duplicate: true });
+
+    // ④ 处理失败要让 Paddle 重试 —— 所以这里**同步 await**，不能塞进 waitUntil，
+    //    否则异常被吞掉、我们却已经回了 200。同时把幂等行删掉，重试才不会被锁挡住。
+    try {
+      await paddlePlaceEvent(env, evt);
+    } catch (e) {
+      console.log('paddle hook', String(e));
+      await env.DB.prepare("DELETE FROM pay_orders WHERE channel='paddle' AND order_no = ?1")
+        .bind(eventId).run();
+      return json({ error: 'handler failed' }, 500);
+    }
+    return json({ ok: true });
+  }
+
   // ============ 以下都需要登录 ============
   const user = await getUser(request, env);
   if (!user) return json({ error: '未登录或会话已过期' }, 401);
@@ -878,6 +1153,50 @@ async function route(request, env, ctx) {
   // §128：定价只从合同常量下发（App 兜底值与 pricing.v1 由 check_contracts 对账）
   if (p === '/api/pricing' && m === 'GET') {
     return json({ ok: true, cny: PRICING.cny, usd: PRICING.usd });
+  }
+
+  // ===== §133 Paddle 自助门户：改支付方式 / 取消 / 看发票，全在 Paddle 托管页 =====
+  // 已经过上面的登录闸门，所以这里是"已鉴权"状态；**customer id 只从服务端反查**，
+  // 绝不接受客户端传入 —— 否则任何人都能拿别人的 customer id 开出别人的账单门户。
+  if (p === '/api/paddle/portal' && m === 'POST') {
+    const base = paddleApiBase(env);
+    if (!base) return json({ error: 'PADDLE_ENV 未配置' }, 500);
+    if (!env.PADDLE_API_KEY) return json({ error: '支付通道未配置' }, 500);
+    const row = await env.DB.prepare(
+      'SELECT customer_id FROM paddle_customers WHERE user_id = ?1 ORDER BY updated_at DESC LIMIT 1'
+    ).bind(user.id).first();
+    if (!row?.customer_id) return json({ error: '这个账号还没有可管理的订阅' }, 404);
+    const r = await fetch(`${base}/customers/${row.customer_id}/portal-sessions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.PADDLE_API_KEY}`, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const d = await r.json().catch(() => null);
+    const url = d?.data?.urls?.general?.overview;
+    if (!r.ok || !url) {
+      console.log('paddle portal', r.status, JSON.stringify(d || {}).slice(0, 300));
+      return json({ error: '暂时打不开管理页，请稍后再试' }, 502);
+    }
+    return json({ ok: true, url });
+  }
+
+  // ===== §133 App 外跳收银台的短期会话 =====
+  // App 里已登录，但系统浏览器没有 —— 签一个 15 分钟的会话让用户落地即已登录，
+  // 免去在浏览器里重新登录一遍。走 sessions 表，与正常登录同一套校验。
+  // 短命 + 一次性使用足以覆盖 URL 泄漏风险（referrer / 浏览器历史）。
+  if (p === '/api/pay/session' && m === 'POST') {
+    if (!await rateLimit(env, `paysess:${user.id}`, 20, 3600_000)) {
+      return json({ error: '操作过于频繁，请稍后再试' }, 429);
+    }
+    const b = await body();
+    const page = String(b.page || 'pay') === 'buy' ? 'buy' : 'pay';
+    const token = randHex(32);
+    await env.DB.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?1,?2,?3)')
+      .bind(token, user.id, Date.now() + 15 * 60_000).run();
+    return json({
+      ok: true,
+      url: `https://looka.foyue.org/${page}.html?session=${token}`
+    });
   }
 
   // ── §128 F1：用户共建中心（报告问题/提出建议/申请定制）。

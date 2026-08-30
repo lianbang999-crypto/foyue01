@@ -66,15 +66,34 @@
     }
   ],
   "channel_rules": [
-    "全球 Web 主通道 = Paddle（Merchant of Record）；App 外跳 https://looka.foyue.org/pay?session={短期签名会话}，系统浏览器/Custom Tab，禁止内嵌 WebView",
-    "付款确认只认可信 Paddle Webhook（验签+幂等）；前端完成事件不制造假开通；App 恢复时重读统一权益",
+    "§133：全部收单统一到 Paddle（Merchant of Record）—— 海外订阅、中国区通行证、鹿角包同一套后台，便于统一管理与对账",
+    "App 外跳 https://looka.foyue.org/pay.html?session={短期签名会话}（鹿角包走 buy.html），系统浏览器/Custom Tab，禁止内嵌 WebView",
+    "付款确认只认可信 Paddle Webhook（验签+幂等）；前端完成事件不制造假开通；welcome 页只轮询展示、不发放权益；App 恢复时重读统一权益",
     "订阅管理走 Paddle Customer Portal；购买页不兼任取消与付款方式管理",
-    "支付宝审批后可承担 CNY 订阅；微信支付只用于一次性商品（Founder/鹿角包），不作自动续费",
-    "低价 SKU（¥6 鹿角包 / 小额月付）未取得低价报价前不用 Paddle 标准费率出售",
-    "Ko-fi「金额 ≥ $7 给 31 天」逻辑退出，改由明确 SKU、周期与订单合同驱动",
+    "§133 查证：Paddle 支持 alipay（allowedPaymentMethods 列表实证），**不支持微信支付**（同列表无 WeChat）；支付宝能否用于自动续费未取得凭据",
+    "§133：因上一条不确定，中国区订阅做成**一次性通行证**（月卡 31 天 / 年卡 366 天），不做 CNY 自动续费；日后取得凭据再评估",
+    "低价 SKU（¥6/$0.99 鹿角包）未取得 Paddle 低价报价前不建 —— 标准费率下手续费约 64%，且已建实体按护栏不得删除",
+    "Ko-fi「金额 ≥ $7 给 31 天」逻辑退出，改由明确 SKU、周期与订单合同驱动；爱发电旧链路代码保留仅供存量订单对账，不再作为新购入口",
     "购买桶鹿角永不过期；失败按幂等键退还",
-    "对外显示含税与否、取消、退款、续订规则跟随实际支付渠道（Paddle Checkout 为准）"
+    "对外显示含税与否、取消、退款、续订规则跟随实际支付渠道（Paddle Checkout 为准）",
+    "🚧 护栏：Paddle 的 notification destination 与签名密钥、全部 products/prices，以及 paddle_customers / paddle_subscriptions / pay_orders 里的行，都是运行中的基础设施，任何时候不得删除或作为「清理」对象"
   ],
+  "paddle": {
+    "note": "SKU ↔ 环境变量名映射。**不写具体 price id** —— 那是部署配置（wrangler vars），不是合同。check_contracts 只核验变量存在且形如 pri_*。",
+    "env_var": "PADDLE_ENV（production|sandbox，未配置时服务端显式 500，绝不静默默认）",
+    "skus": [
+      { "id": "pro_month", "var": "PADDLE_PRICE_PRO_MONTH", "type": "recurring", "base": "USD 5", "overrides": ["GB 4.49", "IE 4.99", "AU 7.99"] },
+      { "id": "pro_year", "var": "PADDLE_PRICE_PRO_YEAR", "type": "recurring", "base": "USD 50", "overrides": ["GB 44.99", "IE 49.99", "AU 79.99"] },
+      { "id": "pass_month", "var": "PADDLE_PRICE_PASS_MONTH", "type": "one_time", "base": "CNY 12", "grants_days": 31 },
+      { "id": "pass_year", "var": "PADDLE_PRICE_PASS_YEAR", "type": "one_time", "base": "CNY 98", "grants_days": 366 },
+      { "id": "antler_1000", "var": "PADDLE_PRICE_ANTLER_1000", "type": "one_time", "base": "USD 2.99", "grants_antler": 1000 },
+      { "id": "antler_3000", "var": "PADDLE_PRICE_ANTLER_3000", "type": "one_time", "base": "USD 6.99", "grants_antler": 3000 },
+      { "id": "founder", "var": "PADDLE_PRICE_FOUNDER", "type": "one_time", "base": "CNY 19.9", "gate": "FOUNDER_BUYOUT_OPEN" }
+    ],
+    "not_created": [
+      { "id": "antler_300", "reason": "¥6/$0.99 标准费率手续费约 64%；等低价报价。护栏：已建实体不可删，故宁可晚建" }
+    ]
+  },
   "ui_rules": [
     "¥19.9 不是常规第三档：只在符合资格时显示；售罄后完全退出页面",
     "鹿角包在支付渠道打通前不进入任何购买按钮",

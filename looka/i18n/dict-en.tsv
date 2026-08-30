@@ -1210,3 +1210,16 @@ Pro 增益	Pro perks
 未执行	Not executed
 每一笔改动都记在这里；最近一批可以整批撤销，被撤销/被拦下的也会注明。	Every change is recorded here. The latest batch can be undone in one tap; undone or blocked items are labeled.
 （{0} 处后来又被改过，保持现状没有动）	({0} item(s) were changed afterwards and were left as-is)
+先选一个表情	Pick an emoji first
+兑换成功，已升级 	Redeemed — upgraded to 
+写一点内容再保存吧	Write something before saving
+同步失败：	Sync failed: 
+日期无效	Invalid date
+暂时打不开管理页，请稍后再试	Can't open the management page right now — please try again shortly
+查看方案	See plans
+清单名（如：购物 / 学习）	List name (e.g. Shopping / Study)
+管理订阅	Manage subscription
+表情包加载失败	Couldn't load stickers
+请填写日程名	Please enter an event name
+输入你的账号（邮箱或手机号）	Enter your account (email or phone)
+输入订阅兑换码（如 LOOKA-XXXX-XXXX）	Enter your redemption code (e.g. LOOKA-XXXX-XXXX)
