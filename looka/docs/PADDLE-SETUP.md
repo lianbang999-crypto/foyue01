@@ -249,14 +249,15 @@ wrangler secret put PADDLE_HOOK_PATH        # 自己生成的随机段，如 ope
 
 ---
 
-## 六、支付方式说明（查证结论）
+## 六、支付方式说明（实测结论，2026-08-30）
 
-- **支付宝可用**：`settings.allowedPaymentMethods` 支持 `alipay`
-  （出处：`developer.paddle.com/paddlejs/methods/paddle-checkout-open`，原文
-  "Alipay, popular in China"）。中国区收银页会显式带上它。
-- **微信支付不可用**：同一份文档的完整列表里没有 WeChat
-  （`card / paypal / alipay / apple_pay / google_pay / ideal / kakao_pay / mb_way /
-  naver_pay / payco / pix / samsung_pay / upi / bancontact / blik /
-  south_korea_local_card / saved_payment_methods`）。
-- **支付宝能否自动续费：未查证**（相关文档页 404）。这正是中国区改用**一次性通行证**
-  而不是订阅的原因 —— 不赌一个没有凭据的能力。日后若确认支持，再评估是否开 CNY 订阅。
+- **中国区实测**：结账页出现 **WeChat Pay + 银行卡**，价格 ¥12.00 含增值税（Pro 通行证）。
+- **⚠️ 不要设置 `settings.allowedPaymentMethods`**。它是**白名单过滤器**，不是「确保显示」。
+  实测传 `['alipay','card','paypal']` 的后果是中国区**只剩银行卡** —— 微信支付在 Paddle.js
+  里没有对应的可填值，永远进不了白名单，于是被自己的白名单挡掉。不传则由 Paddle 按买家
+  国家 + 后台启用项自动给出全集。
+- **更正记录**：此前根据 `allowedPaymentMethods` 的取值列表判定「Paddle 不支持微信支付」，
+  **这个结论是错的**。那份列表是过滤器的合法取值，不等于支付方式支持范围。
+- 支付宝在本次中国区实测中未出现（只有微信与卡）。原因未查证，如需支付宝再单独排查。
+- 自动续费：钱包类支付方式能否用于订阅续费仍未取得凭据 —— 这正是中国区走**一次性通行证**
+  而非订阅的原因。

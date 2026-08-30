@@ -113,8 +113,10 @@
         successUrl: location.origin + '/welcome'
       }
     };
-    // 中国区显式带上支付宝（已查证 Paddle 支持 alipay；微信支付不在其支持列表内）
-    if (isCN) opts.settings.allowedPaymentMethods = ['alipay', 'card', 'paypal'];
+    // ⚠️ 不要设 allowedPaymentMethods。它是**白名单过滤器**，不是「确保显示」：
+    // 一旦传了，没列进去的方式全被挡掉。实测中国区传 ['alipay','card','paypal'] 的结果是
+    // 只剩银行卡 —— 微信支付被过滤没了（它在 Paddle.js 里没有对应的可填值，永远进不了白名单）。
+    // 不传时 Paddle 会按买家国家 + 你后台启用的方式自动给全集：中国区实测出 WeChat Pay + 卡。
     Paddle.Checkout.open(opts);
   }
 

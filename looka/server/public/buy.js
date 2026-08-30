@@ -53,7 +53,8 @@
         successUrl: location.origin + '/welcome'
       }
     };
-    if (cfg.country === 'CN') opts.settings.allowedPaymentMethods = ['alipay', 'card', 'paypal'];
+    // 同 pay.js：不设 allowedPaymentMethods（白名单会把微信支付等方式挡掉），
+    // 交给 Paddle 按买家国家与后台启用项自动决定
     Paddle.Checkout.open(opts);
   }
 
