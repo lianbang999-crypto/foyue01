@@ -16,6 +16,16 @@
   var cfg = null, cycle = 'month', priceIds = { month: '', year: '' }, isCN = false;
   var shown = {};      // priceId -> Paddle 返回的已格式化总价字符串（原样，不再加工）
   var fallbackMode = false;   // true = Paddle 未就绪，走旧通道（见文末 fallback）
+  /**
+   * 'sub'  = 海外自动续费订阅（USD 基准），支付方式为卡 / PayPal
+   * 'pass' = 一次性通行证（CNY 基准），支付方式含**微信支付**
+   *
+   * 为什么必须让用户能手动切：微信支付**不支持自动续费订阅** —— 实测同一个中国地址，
+   * 买一次性通行证有 WeChat Pay 页签，买美元订阅就只剩卡 + PayPal。而国家是按 IP 判的，
+   * 大陆用户实测被判成海外 → 拿到订阅 → 没有微信 → 付不了款。
+   * 自动判断只作默认值，最终由用户说了算。
+   */
+  var mode = 'sub';
 
   function notice(msg, isErr) {
     var el = $('notice');
@@ -70,21 +80,44 @@
     });
   }
 
+  /** 当前模式对应的两个 price id */
+  function idsOf(m) {
+    return m === 'pass'
+      ? { month: cfg.prices.pass_month, year: cfg.prices.pass_year }
+      : { month: cfg.prices.pro_month, year: cfg.prices.pro_year };
+  }
+
+  function setMode(m) {
+    mode = m;
+    priceIds = idsOf(m);
+    paint();
+  }
+
   /* ---------- 渲染 ---------- */
   function paint() {
     if (fallbackMode) return paintFallback();
     var id = priceIds[cycle];
     $('proPrice').textContent = shown[id] || '—';
-    if (isCN) {
+    if (mode === 'pass') {
       $('proPer').textContent = cycle === 'year' ? '一次性 · 12 个月' : '一次性 · 30 天';
       $('proSub').textContent = '一次付清，不自动续费';
-      $('cycleNote').textContent = '中国区为一次性通行证，到期不会自动扣款。';
+      $('cycleNote').textContent = '通行证到期不会自动扣款，需要时再买一次。';
+      $('btnPro').textContent = cycle === 'year' ? '购买年卡' : '购买月卡';
+      $('modeSwitch').innerHTML =
+        '<a id="toSub">改用信用卡 / PayPal 付款（自动续费）</a>';
+      $('toSub').onclick = function () { setMode('sub'); };
     } else {
       $('proPer').textContent = cycle === 'year' ? '每年 · 可随时取消' : '每月 · 可随时取消';
       $('proSub').textContent = '小鹿陪你更久，装扮随便挑';
       $('cycleNote').textContent = cycle === 'year' ? '按年订阅，约等于送两个月。' : '';
+      $('btnPro').textContent = '订阅';
+      // 微信支付只在一次性通行证上可用（订阅不支持），所以这行必须常驻 ——
+      // 不能只在判成中国时才给，因为判错正是问题本身
+      $('modeSwitch').innerHTML =
+        '<a id="toPass">用微信支付（中国大陆）</a>' +
+        '<span class="hint">微信不支持自动续费，将改为一次性通行证</span>';
+      $('toPass').onclick = function () { setMode('pass'); };
     }
-    $('btnPro').textContent = isCN ? (cycle === 'year' ? '购买年卡' : '购买月卡') : '订阅';
   }
 
   function setCycle(c) {
@@ -131,15 +164,15 @@
     Paddle.Initialize({ token: cfg.token });
 
     isCN = cfg.country === 'CN';
-    // 中国区走一次性通行证（支付宝对自动续费的支持没有查到凭据，不赌）
-    priceIds = isCN
-      ? { month: cfg.prices.pass_month, year: cfg.prices.pass_year }
-      : { month: cfg.prices.pro_month, year: cfg.prices.pro_year };
+    mode = isCN ? 'pass' : 'sub';   // 自动判断只作默认值，用户可随时切换
+    priceIds = idsOf(mode);
 
-    var jobs = [
-      previewOne(priceIds.month).then(function (s) { shown[priceIds.month] = s; }),
-      previewOne(priceIds.year).then(function (s) { shown[priceIds.year] = s; })
-    ];
+    // 四个价格一次取齐：切换模式时不再等网络，直接换显示
+    var all = [cfg.prices.pro_month, cfg.prices.pro_year,
+               cfg.prices.pass_month, cfg.prices.pass_year];
+    var jobs = all.filter(Boolean).map(function (pid) {
+      return previewOne(pid).then(function (s) { shown[pid] = s; });
+    });
     // Founder 只在批次开放且配了价格时才出现（合同 ui_rules：售罄后完全退出页面）
     if (cfg.founder_open && cfg.prices.founder) {
       $('tierFounder').className = 'tier';
@@ -155,6 +188,7 @@
     $('tabYear').onclick = function () { setCycle('year'); };
     $('btnPro').onclick = function () { openCheckout(priceIds[cycle]); };
     $('btnFounder').onclick = function () { openCheckout(cfg.prices.founder); };
+    $('modeSwitch').style.display = '';
   }).catch(function (e) {
     // Paddle 还没配好（或临时不可用）时**必须留一条能买的路** ——
     // 否则这一页就成了死胡同，比接入前还差。回落到接入前那条爱发电/Ko-fi 通道。
@@ -189,6 +223,7 @@
     notice('新的支付通道正在开通中，先用原来的通道购买 —— 付款后回到 Looka 会自动开通。', false);
     $('proSub').textContent = '小鹿陪你更久，装扮随便挑';
     $('btnPro').textContent = '去付款';
+    $('modeSwitch').innerHTML = '';   // 旧通道没有通行证 SKU，别给一个点了没用的切换
     setCycle('month');
     $('tabMonth').onclick = function () { setCycle('month'); };
     $('tabYear').onclick = function () { setCycle('year'); };
