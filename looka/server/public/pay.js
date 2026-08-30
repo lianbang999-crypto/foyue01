@@ -108,7 +108,7 @@
       settings: {
         displayMode: 'overlay',
         variant: 'one-page',
-        successUrl: location.origin + '/welcome.html'
+        successUrl: location.origin + '/welcome'
       }
     };
     // 中国区显式带上支付宝（已查证 Paddle 支持 alipay；微信支付不在其支持列表内）
@@ -152,8 +152,36 @@
     $('btnPro').onclick = function () { openCheckout(priceIds[cycle]); };
     $('btnFounder').onclick = function () { openCheckout(cfg.prices.founder); };
   }).catch(function (e) {
-    notice('暂时打不开购买页：' + (e && e.message ? e.message : '未知错误') +
-      '。可以稍后再试，或联系 looka01@qq.com。', true);
-    $('btnPro').disabled = true;
+    // Paddle 还没配好（或临时不可用）时**必须留一条能买的路** ——
+    // 否则这一页就成了死胡同，比接入前还差。回落到接入前那条爱发电/Ko-fi 通道。
+    console.log('Paddle 不可用，回落旧通道', e);
+    fallback();
   });
+
+  function fallback() {
+    var zh = (navigator.language || 'zh').toLowerCase().indexOf('zh') === 0;
+    notice('新的支付通道正在开通中，先用原来的通道购买 —— 付款后回到 Looka 会自动开通。', false);
+    $('proPrice').textContent = zh ? '¥12' : '$5';
+    $('proPer').textContent = zh ? '每月' : 'per month';
+    $('btnPro').textContent = '去付款';
+    $('tabYear').style.display = 'none';   // 旧通道只按月下单，别给一个点了没用的按钮
+    $('btnPro').onclick = function () {
+      var url = zh
+        ? 'https://ifdian.net/order/create?plan_id=95141ca09d2711f1bead52540025c377&product_type=0'
+        : 'https://ko-fi.com/summary/8389f40f-12d2-4d22-8ecb-32d91359dc4a';
+      var t = token();
+      if (zh && t) {
+        // 带 LK 短码下单，付款后服务端能自动归属到账号（拿不到就用裸链接，还有订单号认领兜底）
+        fetch('/api/pay/intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + t },
+          body: JSON.stringify({ plan: 'month' })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          location.href = (d && d.url) ? d.url : url;
+        }).catch(function () { location.href = url; });
+      } else {
+        location.href = url;
+      }
+    };
+  }
 })();

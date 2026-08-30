@@ -1195,7 +1195,8 @@ async function route(request, env, ctx) {
       .bind(token, user.id, Date.now() + 15 * 60_000).run();
     return json({
       ok: true,
-      url: `https://looka.foyue.org/${page}.html?session=${token}`
+      // 无扩展名规范地址（Cloudflare Assets 会把 .html 307 到这里，query 保留但少一跳）
+      url: `https://looka.foyue.org/${page}?session=${token}`
     });
   }
 

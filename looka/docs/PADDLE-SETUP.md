@@ -152,7 +152,7 @@ When done, list every product and price you created with its Paddle ID
      `subscription.canceled`、`customer.created`、`customer.updated`
    - 建完**回读 signing secret** —— 它与 API key 是两个东西，验签用的是 signing secret
 2. **Checkout → Checkout settings** → default payment link 设为
-   `https://looka.foyue.org/pay.html`
+   `https://looka.foyue.org/pay`
    - Live 必须是**已审核通过的真实域名**，填 localhost 会让结账直接失败
    - sandbox 下 localhost 可用于本地自测
 3. 商户信息表单：粘贴第五节文案

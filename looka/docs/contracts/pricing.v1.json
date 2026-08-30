@@ -67,7 +67,7 @@
   ],
   "channel_rules": [
     "§133：全部收单统一到 Paddle（Merchant of Record）—— 海外订阅、中国区通行证、鹿角包同一套后台，便于统一管理与对账",
-    "App 外跳 https://looka.foyue.org/pay.html?session={短期签名会话}（鹿角包走 buy.html），系统浏览器/Custom Tab，禁止内嵌 WebView",
+    "App 外跳 https://looka.foyue.org/pay?session={短期签名会话}（鹿角包走 /buy），系统浏览器/Custom Tab，禁止内嵌 WebView",
     "付款确认只认可信 Paddle Webhook（验签+幂等）；前端完成事件不制造假开通；welcome 页只轮询展示、不发放权益；App 恢复时重读统一权益",
     "订阅管理走 Paddle Customer Portal；购买页不兼任取消与付款方式管理",
     "§133 查证：Paddle 支持 alipay（allowedPaymentMethods 列表实证），**不支持微信支付**（同列表无 WeChat）；支付宝能否用于自动续费未取得凭据",

@@ -46,6 +46,15 @@ s = open(p).read()
 s = re.sub(r'(app\.js\?v=)[\w.]*', r'\g<1>$VC', s)
 s = re.sub(r'(style\.css\?v=)[\w.]*', r'\g<1>$VC', s)
 open(p, 'w').write(s)
+# §133：收银页也要盖章 —— 漏掉的话 pay.js/buy.js 的修复会被浏览器缓存挡住，
+# 正是本文件开头那条注释记录过的事故形态（"已修复"的 bug 继续出现在用户面前）
+for page, asset in (('public/pay.html', 'pay.js'), ('public/buy.html', 'buy.js')):
+    try:
+        q = open(page).read()
+        q = re.sub(r'(%s\?v=)[\w.]*' % re.escape(asset), r'\g<1>$VC', q)
+        open(page, 'w').write(q)
+    except FileNotFoundError:
+        pass
 sw = 'public/sw.js'
 t = open(sw).read()
 t = re.sub(r"VER = 'looka-v[\w.]*'", "VER = 'looka-v$VC'", t)

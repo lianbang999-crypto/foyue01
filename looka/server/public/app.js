@@ -1925,7 +1925,8 @@ async function boot() {
     // updateClaimVis 靠它决定要不要露出求助入口、可见性回调靠它强刷订阅状态。
     // （删掉这一行会静默丢掉付款回来的全部反馈，第一版就是这么漏的。）
     localStorage.setItem('lk_pay_pending', String(Date.now()));
-    location.href = '/pay.html';
+    // 用无扩展名的规范地址：Cloudflare Assets 会把 /pay.html 307 到 /pay，直接写目标少一跳
+    location.href = '/pay';
   };
   // F-7（§50 六）：开通前把权益与「到期后会怎样」说清楚 ——「你保留了」在前
   // §133：按钮不再写死「12元/月」——各地区价格由定价页向 Paddle 实时取，此处写死必然对不上。

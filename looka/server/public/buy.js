@@ -50,7 +50,7 @@
       settings: {
         displayMode: 'overlay',
         variant: 'one-page',
-        successUrl: location.origin + '/welcome.html'
+        successUrl: location.origin + '/welcome'
       }
     };
     if (cfg.country === 'CN') opts.settings.allowedPaymentMethods = ['alipay', 'card', 'paypal'];
