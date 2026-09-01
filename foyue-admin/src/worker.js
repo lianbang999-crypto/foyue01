@@ -9,6 +9,128 @@
  * - 🔒 红线：任何接口都不返回用户内容（笔记/日记/日程正文），只有计数与元数据
  */
 
+/* ============================================================
+   四站运营合并（2026-08-30）
+   各子站认同一枚口令（其 Worker Secret ADMIN_TOKEN = 本后台的 FOYUE_ADMIN_KEY），
+   本后台以服务端身份取用，浏览器只跟本域说话，不再逐站配 CORS。
+   注：举报处理必须看到被举报的那一条正文才能判断，属红线（不返回用户内容）的
+   唯一例外，且仅限「已公开到广场且被举报」的内容，不涉及任何人的私人记录。
+   ============================================================ */
+const SUB = {
+  wenchao: ['SVC_WENCHAO', 'https://wenchao.foyue.org'],
+  game:    ['SVC_GAME',    'https://game.foyue.org'],
+  zhi:     ['SVC_ZHI',     'https://zhi.foyue.org'],
+};
+/** 经 Service Binding 调子站；未绑定时回退公网 fetch */
+async function subGet(env, site, path, body) {
+  const [bindName, origin] = SUB[site] || [];
+  if (!origin) return { __err: '未知站点' };
+  const req = new Request(origin + path, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      Authorization: 'Bearer ' + (env.FOYUE_ADMIN_KEY || ''),
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 8000);
+  try {
+    const svc = env[bindName];
+    const r = svc ? await svc.fetch(req) : await fetch(req, { signal: ac.signal });
+    if (!r.ok) return { __err: r.status === 401 ? '该站未认这枚口令' : 'HTTP ' + r.status };
+    return await r.json();
+  } catch (e) {
+    return { __err: e.name === 'AbortError' ? '该站响应超时' : '该站连不上：' + String(e).slice(0, 60) };
+  } finally { clearTimeout(timer); }
+}
+
+/** 今日待办：跨四站聚合「需要人处理」的事，无事即无事 */
+async function todoAll(env, request) {
+  const [bo, wc, zhi] = await Promise.all([
+    (async () => {
+      try {
+        const r = await env.BOJING.prepare(
+          "SELECT COUNT(*) n FROM reports WHERE status = 'open'").first();
+        // 问道被标「答偏了」且还没看过的。ask_feedback 是 2026-08-31 才加的表，
+        // 老库里可能还没有，读不到就当零，不要因此把整个待办页拖垮。
+        let askDown = 0;
+        try {
+          const a = await env.BOJING.prepare(
+            "SELECT COUNT(*) n FROM ask_feedback WHERE vote='down' AND handled=0").first();
+          askDown = a?.n || 0;
+        } catch { /* 表还没建 */ }
+        return { open: r?.n || 0, askDown };
+      } catch (e) { return { __err: '播经台库读取失败' }; }
+    })(),
+    subGet(env, 'wenchao', '/api/admin/stat'),
+    subGet(env, 'zhi', '/api/admin/stat'),
+  ]);
+  const items = [];
+  if (zhi.pendingReports) items.push({ site: 'zhi', label: '自知录 · 待处理举报', note: '公开内容，宜尽快处理', n: zhi.pendingReports });
+  if (bo.open) items.push({ site: 'bojing', label: '播经台 · 待处理报错', note: '同修提交的纠错', n: bo.open });
+  if (bo.askDown) items.push({ site: 'bojing', label: '问道 · 答偏了的反馈', note: '调检索参数的题源', n: bo.askDown });
+  if (wc.pendingCorrections) items.push({ site: 'wenchao', label: '文钞 · 待更正反馈', note: '答案被标为需更正', n: wc.pendingCorrections });
+  const errs = [];
+  if (bo.__err) errs.push('播经台：' + bo.__err);
+  if (wc.__err) errs.push('文钞：' + wc.__err);
+  if (zhi.__err) errs.push('自知录：' + zhi.__err);
+  return { items, total: items.reduce((s, i) => s + i.n, 0), errs };
+}
+
+/** 各站运营明细与处理动作 */
+async function opsFetch(env, request, site, kind) {
+  if (site === 'bojing') {
+    if (kind === 'reports') {
+      const { results } = await env.BOJING.prepare(
+        'SELECT id,site,kind,target,text,contact,status,ts FROM reports ORDER BY id DESC LIMIT 200').all();
+      const open = (await env.BOJING.prepare("SELECT COUNT(*) n FROM reports WHERE status='open'").first())?.n || 0;
+      return { items: results, openCount: open };
+    }
+    if (kind === 'comments') {
+      const { results } = await env.BOJING.prepare(
+        'SELECT c.id,c.dev,c.name,c.text,c.ts,(b.dev IS NOT NULL) banned FROM comments c '
+        + 'LEFT JOIN banned b ON b.dev = c.dev ORDER BY c.id DESC LIMIT 200').all();
+      return { items: results };
+    }
+    /* 问道回答的赞踩。默认只列「踩」—— 赞看着舒服，但没什么可做的；
+       踩指出的是检索没召回、或模型答偏了的问题，是下一轮调检索参数的题源。
+       连问题与回答一起取：只看一个赞踩，事后根本不知道那次答的是什么，无从改起。
+       verify 是当次的引用自检结果，与用户的判断并排看，最容易找出短板。 */
+    if (kind === 'askfb') {
+      try {
+        const want = new URL(request.url).searchParams.get('vote') || 'down';
+        const sql = 'SELECT id,ts,vote,q,a,verify,handled FROM ask_feedback'
+          + (want === 'all' ? '' : ' WHERE vote = ?1') + ' ORDER BY id DESC LIMIT 100';
+        const st = env.BOJING.prepare(sql);
+        const { results } = await (want === 'all' ? st : st.bind(want)).all();
+        return { items: results };
+      } catch { return { items: [], note: 'ask_feedback 表尚未建立' }; }
+    }
+    const total = (await env.BOJING.prepare('SELECT COUNT(*) n FROM comments').first())?.n || 0;
+    const today = (await env.BOJING.prepare('SELECT COUNT(*) n FROM comments WHERE ts >= ?1')
+      .bind(Date.now() - ((Date.now() + 8 * 3600_000) % DAY_MS)).first())?.n || 0;
+    const banned = (await env.BOJING.prepare('SELECT COUNT(*) n FROM banned').first())?.n || 0;
+    const open = (await env.BOJING.prepare("SELECT COUNT(*) n FROM reports WHERE status='open'").first())?.n || 0;
+    let askUp = 0, askDown = 0, askPending = 0;
+    try {
+      const a = await env.BOJING.prepare(
+        "SELECT SUM(vote='up') up, SUM(vote='down') down, "
+        + "SUM(vote='down' AND handled=0) pending FROM ask_feedback").first();
+      askUp = a?.up || 0; askDown = a?.down || 0; askPending = a?.pending || 0;
+    } catch { /* 表还没建：三个数留零，页面照常出 */ }
+    return { total, today, banned, openReports: open, askUp, askDown, askPending };
+  }
+  if (site === 'wenchao') return subGet(env, 'wenchao', kind === 'feedback' ? '/api/admin/feedback' : '/api/admin/stat');
+  if (site === 'game') return subGet(env, 'game', '/api/admin/app-stat');
+  if (site === 'zhi') {
+    if (kind === 'reports') return subGet(env, 'zhi', '/api/admin/reports');
+    if (kind === 'plaza') return subGet(env, 'zhi', '/api/admin/plaza');
+    return subGet(env, 'zhi', '/api/admin/stat');
+  }
+  return { error: '未知站点' };
+}
+
 const J = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
@@ -373,6 +495,13 @@ export default {
           return d ? J(d) : J({ error: '用户不存在' }, 404);
         }
         if (p === '/admin/api/retention') return J(await retention(env));
+
+        // ---- 四站运营合并（2026-08-30）：待办、举报、留言、反馈 ----
+        if (p === '/admin/api/todo') return J(await todoAll(env, request));
+        if (p === '/admin/api/ops') {
+          const site = url.searchParams.get('site') || '';
+          return J(await opsFetch(env, request, site, url.searchParams.get('kind') || 'list'));
+        }
         if (p === '/admin/api/audit') {
           const rows = await env.STATS.prepare('SELECT * FROM admin_audit ORDER BY id DESC LIMIT 50').all();
           return J(rows.results || []);
@@ -440,6 +569,65 @@ export default {
           }
           await audit(env, 'gencode', b.type || 'plan', { count, days: b.days, amount: b.amount });
           return J({ ok: true, codes: out });
+        }
+
+        // ---- 四站运营写操作（2026-08-30）：每笔记 admin_audit ----
+        if (p === '/admin/api/ops-act') {
+          const site = String(b.site || '');
+          const act = String(b.act || '');
+          // 播经台：报错状态流转 / 删留言 / 封解封设备
+          if (site === 'bojing') {
+            if (act === 'mark') {
+              const id = Number(b.id), st = String(b.status || '');
+              if (!id || !['open', 'done', 'ignored'].includes(st)) return J({ error: '参数不合法' }, 400);
+              await env.BOJING.prepare('UPDATE reports SET status=?1 WHERE id=?2').bind(st, id).run();
+              await audit(env, 'bo-report-' + st, id, {});
+              return J({ ok: true });
+            }
+            if (act === 'del') {
+              const id = Number(b.id);
+              if (!id) return J({ error: '缺 id' }, 400);
+              await env.BOJING.prepare('DELETE FROM comments WHERE id=?1').bind(id).run();
+              await audit(env, 'bo-del-comment', id, {});
+              return J({ ok: true });
+            }
+            if (act === 'askfb-handled') {
+              const id = Number(b.id);
+              if (!id) return J({ error: '缺 id' }, 400);
+              await env.BOJING.prepare('UPDATE ask_feedback SET handled=1 WHERE id=?1').bind(id).run();
+              await audit(env, 'bo-askfb-handled', id, {});
+              return J({ ok: true });
+            }
+            if (act === 'ban' || act === 'unban') {
+              const dev = String(b.dev || '').trim();
+              if (!dev) return J({ error: '缺 dev' }, 400);
+              if (act === 'ban') {
+                await env.BOJING.prepare('INSERT OR REPLACE INTO banned (dev,ts) VALUES (?1,?2)')
+                  .bind(dev, Date.now()).run();
+              } else {
+                await env.BOJING.prepare('DELETE FROM banned WHERE dev=?1').bind(dev).run();
+              }
+              await audit(env, 'bo-' + act, dev, {});
+              return J({ ok: true });
+            }
+          }
+          // 自知录：广场内容下架 / 标记举报已办
+          if (site === 'zhi' && act === 'takedown') {
+            const r = await subGet(env, 'zhi', '/api/admin/takedown',
+              { noteId: Number(b.noteId), takedown: b.takedown !== false });
+            if (r.__err) return J({ error: r.__err }, 502);
+            await audit(env, b.takedown === false ? 'zhi-report-keep' : 'zhi-takedown', b.noteId, {});
+            return J({ ok: true });
+          }
+          // 文钞：标记反馈已处理
+          if (site === 'wenchao' && act === 'handled') {
+            const r = await subGet(env, 'wenchao', '/api/admin/feedback-handled',
+              { key: String(b.key || ''), handled: true });
+            if (r.__err) return J({ error: r.__err }, 502);
+            await audit(env, 'wc-feedback-handled', String(b.key || ''), {});
+            return J({ ok: true });
+          }
+          return J({ error: '未知操作' }, 400);
         }
 
         // 封禁 / 解封

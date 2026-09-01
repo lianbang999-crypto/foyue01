@@ -21,6 +21,26 @@ th,td { border-bottom:.6px solid var(--hair); padding:6px 8px; text-align:left; 
 th { color:var(--gray); font-weight:500; }
 .num { font-variant-numeric:tabular-nums; }
 .badge { font-size:11px; padding:1px 7px; border-radius:8px; background:#eef; }
+/* 运营页（四站合并） */
+.subnav { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.sbtn { border:.8px solid var(--hair); background:#fff; padding:5px 12px; border-radius:8px; cursor:pointer; font-size:12.5px; }
+.sbtn.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+.row { display:flex; align-items:center; gap:10px; justify-content:space-between;
+       padding:9px 0; border-bottom:.6px solid var(--hair); font-size:13px; }
+.row:last-child { border-bottom:none; }
+.row.todo { cursor:pointer; }
+.row.todo:hover { background:#fafafa; }
+.row b { font-variant-numeric:tabular-nums; }
+.dim { color:var(--gray); font-style:normal; font-size:12px; }
+.mini { border:.8px solid var(--hair); background:#fff; padding:3px 10px; border-radius:7px;
+        cursor:pointer; font-size:12px; margin-left:6px; }
+.mini:hover { border-color:var(--ink); }
+.kpi { display:flex; flex-wrap:wrap; gap:18px; margin-bottom:6px; }
+.kpi > div { min-width:64px; }
+.kpi b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+.kpi span { font-size:11.5px; color:var(--gray); }
+h3 { font-size:13px; color:var(--gray); font-weight:600; margin:16px 0 4px; }
+@media (max-width:640px){ .row { flex-wrap:wrap; } .kpi { gap:12px; } .kpi b { font-size:17px; } }
 .badge.pro { background:#e3f2e3; color:var(--ok); }
 .badge.ban { background:#fde3e3; color:var(--warn); }
 .warn { color:var(--warn); font-weight:600; }
@@ -49,7 +69,8 @@ input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
 <div id="app" class="wrap hidden">
   <h1>佛悦 · 数据后台 <span id="attention" class="warn"></span></h1>
   <div class="tabs">
-    <button data-t="overview" class="on">总览</button>
+    <button data-t="ops" class="on">运营</button>
+    <button data-t="overview">总览</button>
     <button data-t="users">用户</button>
     <button data-t="subs">订阅</button>
     <button data-t="health">健康</button>
@@ -65,7 +86,19 @@ input.q { padding:6px 10px; border:.8px solid var(--hair); border-radius:8px; }
 
 <script>
 const $ = s => document.querySelector(s);
-const esc = x => String(x).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const esc = x => String(x).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* 问道反馈那一栏的小字：把当次的引用自检压成一句话。
+   用户说「答偏了」而机器自检也说引用对不上 → 多半是模型答歪了；
+   自检说没问题却仍被踩 → 多半是没召回到该召回的段。两种毛病要改的地方不同，
+   在这儿分开，胜过事后翻半天。 */
+function verifyNote(raw) {
+  if (!raw) return '';
+  let v; try { v = JSON.parse(raw); } catch { return ''; }
+  if (!v || !v.cited) return ' · 未标出处';
+  if (!v.faithful) return ' · 自检：引用对不上';
+  return ` · 自检通过（${v.cited} 处出处）`;
+}
 let KEY = sessionStorage.getItem('fy_admin_key') || '';
 
 function msg(t) { const m = $('#msg'); m.textContent = t; m.classList.remove('hidden'); setTimeout(() => m.classList.add('hidden'), 2600); }
@@ -223,6 +256,102 @@ const views = {
     const list = await api('audit');
     const rows = list.map(a => `<tr><td>${fmt(a.ts)}</td><td>${a.action}</td><td>${a.target}</td><td style="white-space:normal;font-size:12px">${a.detail}</td></tr>`).join('');
     return `<div class="card"><table><tr><th>时间</th><th>操作</th><th>对象</th><th>详情</th></tr>${rows || '<tr><td colspan=4>暂无</td></tr>'}</table></div>`;
+  },
+
+  // ---- 运营：四站待办与处理（2026-08-30 合并原 /admin.html） ----
+  async ops(sub) {
+    const site = sub || 'todo';
+    const nav = [['todo','待办'],['bojing','播经台'],['wenchao','文钞'],['zhi','自知录'],['game','须弥山']]
+      .map(([k, n]) => `<button class="sbtn${site === k ? ' on' : ''}" onclick="render('ops','${k}')">${n}</button>`).join('');
+    let body = '';
+
+    if (site === 'todo') {
+      const d = await api('todo');
+      body = d.items.length
+        ? d.items.map(i => `<div class="row todo" onclick="render('ops','${i.site}')">
+             <span>${i.label}<i class="dim"> · ${i.note}</i></span><b class="warn">${i.n}</b></div>`).join('')
+        : '<p class="dim">今日无事。四站均无待处理事项。</p>';
+      if (d.errs && d.errs.length) body += `<p class="dim" style="margin-top:10px">取数异常：${d.errs.join('；')}</p>`;
+    }
+
+    if (site === 'bojing') {
+      const [st, rp, af] = await Promise.all([
+        api('ops?site=bojing'), api('ops?site=bojing&kind=reports'), api('ops?site=bojing&kind=askfb')]);
+      body = `<div class="kpi"><div><b>${st.today}</b><span>今日留言</span></div>
+        <div><b>${st.total}</b><span>累计留言</span></div>
+        <div><b>${st.banned}</b><span>封禁设备</span></div>
+        <div><b class="${st.openReports ? 'warn' : ''}">${st.openReports}</b><span>待处理报错</span></div>
+        <div><b>${st.askUp ?? 0}</b><span>问道有益</span></div>
+        <div><b class="${st.askPending ? 'warn' : ''}">${st.askPending ?? 0}</b><span>问道待看</span></div></div>
+        <h3>报错 / 纠错</h3>` + (rp.items.length ? rp.items.map(r => `<div class="row">
+          <span>${esc(r.text || '')}<i class="dim"> · ${esc([r.site, r.kind, r.target].filter(Boolean).join(' / '))}</i></span>
+          ${r.status === 'open'
+            ? `<span><button class="mini" onclick="opsAct('bojing','mark',{id:${r.id},status:'done'})">已办</button>
+               <button class="mini" onclick="opsAct('bojing','mark',{id:${r.id},status:'ignored'})">忽略</button></span>`
+            : `<i class="dim">${r.status === 'done' ? '已办' : '已忽略'}</i>`}</div>`).join('') : '<p class="dim">暂无报错</p>')
+        /* 问道「答偏了」的反馈。这一栏不是拿来看分数的，是拿来找检索短板的：
+           问题原文 + 当次的引用自检并排摆着，一眼看出是没召回、还是召回了却答歪了。 */
+        + `<h3>问道 · 答偏了<i class="dim"> ${af.note ? '（' + esc(af.note) + '）' : '　默认只列踩'}</i></h3>`
+        + ((af.items || []).length ? af.items.slice(0, 60).map(it => `<div class="row">
+          <span>${esc((it.q || '').slice(0, 60))}
+            <i class="dim"> · ${new Date(it.ts).toLocaleDateString('zh-CN')}${verifyNote(it.verify)}</i></span>
+          ${it.handled
+            ? '<i class="dim">已看</i>'
+            : `<button class="mini" onclick="opsAct('bojing','askfb-handled',{id:${it.id}})">标记已看</button>`}
+          </div>`).join('') : '<p class="dim">暂无反馈</p>');
+    }
+
+    if (site === 'wenchao') {
+      const [st, fb] = await Promise.all([api('ops?site=wenchao'), api('ops?site=wenchao&kind=feedback')]);
+      if (st.__err) return `<div class="card warn">文钞：${st.__err}</div>`;
+      body = `<div class="kpi"><div><b>${st.up}</b><span>有帮助</span></div>
+        <div><b>${st.down}</b><span>需更正</span></div>
+        <div><b class="${st.pendingCorrections ? 'warn' : ''}">${st.pendingCorrections}</b><span>待处理</span></div>
+        <div><b>${st.kb ?? '—'}</b><span>知识库段</span></div></div>
+        <h3>反馈</h3>` + ((fb.items || []).length ? fb.items.slice(0, 60).map(it => `<div class="row">
+          <span>${esc((it.q || '').slice(0, 60))}${it.note ? `<i class="dim"> · 更正：${esc(it.note)}</i>` : ''}</span>
+          ${it.vote === 'down' && !it.handled
+            ? `<button class="mini" onclick="opsAct('wenchao','handled',{key:'${esc(it.key)}'})">标记已办</button>`
+            : `<i class="dim">${it.vote === 'up' ? '有帮助' : '已办'}</i>`}</div>`).join('') : '<p class="dim">暂无反馈</p>');
+    }
+
+    if (site === 'zhi') {
+      const [st, rp] = await Promise.all([api('ops?site=zhi'), api('ops?site=zhi&kind=reports')]);
+      if (st.__err) return `<div class="card warn">自知录：${st.__err}</div>`;
+      body = `<div class="kpi"><div><b>${st.users}</b><span>用户</span></div>
+        <div><b>${st.notes}</b><span>记录</span></div>
+        <div><b>${st.shared}</b><span>广场在展</span></div>
+        <div><b>${st.activeToday}</b><span>今日记录人</span></div>
+        <div><b>${st.aiToday}</b><span>今日 AI</span></div>
+        <div><b class="${st.pendingReports ? 'warn' : ''}">${st.pendingReports}</b><span>待处理举报</span></div></div>
+        <h3>举报</h3>` + ((rp.reports || []).length ? rp.reports.map(r => `<div class="row">
+          <span>${esc((r.content || '（记录已删）').slice(0, 60))}<i class="dim"> · ${esc(r.author_nick || '匿名')}${r.reason ? ' · ' + esc(r.reason) : ''}</i></span>
+          ${r.handled ? `<i class="dim">已办</i>`
+            : `<span><button class="mini" onclick="opsAct('zhi','takedown',{noteId:${r.note_id},takedown:true})">下架</button>
+               <button class="mini" onclick="opsAct('zhi','takedown',{noteId:${r.note_id},takedown:false})">保留</button></span>`}</div>`).join('')
+          : '<p class="dim">暂无举报</p>');
+    }
+
+    if (site === 'game') {
+      const d = await api('ops?site=game');
+      if (d.__err) return `<div class="card warn">须弥山：${d.__err}</div>`;
+      body = `<div class="kpi"><div><b>${d.installs}</b><span>装机</span></div>
+        <div><b>${d.active1}</b><span>今日活跃</span></div>
+        <div><b>${d.active7}</b><span>七日活跃</span></div>
+        <div><b>${d.active30 ?? '—'}</b><span>卅日活跃</span></div>
+        <div><b>${d.downloads}</b><span>APK 下载</span></div></div>`
+        + (d.byVer ? '<h3>版本分布</h3>' + d.byVer.map(v => `<div class="row"><span>${esc(v.ver)}</span><b>${v.n}</b></div>`).join('') : '');
+    }
+
+    return `<div class="card"><div class="subnav">${nav}</div>${body}</div>`;
+  },
+
+  async crashes() {
+    const list = await api('crashes');
+    const rows = list.map(c => `<tr><td>${fmt(c.created_at)}</td><td>${c.ver}</td><td>${esc(c.model || '')}</td>
+      <td><pre style="max-width:640px;white-space:pre-wrap;font-size:11px;margin:0">${esc((c.stack || '').slice(0, 1200))}</pre></td></tr>`).join('');
+    return `<div class="card"><h3>崩溃日志（最近 50 条）</h3>
+      <table><tr><th>时间</th><th>版本</th><th>机型</th><th>堆栈</th></tr>${rows || '<tr><td colspan=4>暂无 —— 好消息</td></tr>'}</table></div>`;
   }
 };
 
@@ -244,13 +373,19 @@ async function bindOrder(no) {
   if (!confirm(`确认绑定订单 ${no} → 用户 ${uid} 并开通对应时长？`)) return;
   try { await api('bind-order', { order_no: no, user_id: +uid }); msg('已绑定并开通'); render('subs'); } catch (e) { msg(e.message); }
 }
+async function opsAct(site, act, extra) {
+  const need = { takedown: '从广场下架这条？原记录仍留在作者自己的录中。', del: '删除这条留言？' };
+  if (need[act] && extra.takedown !== false && !confirm(need[act])) return;
+  try { await api('ops-act', { site, act, ...extra }); msg('已处理'); render('ops', site); }
+  catch (e) { msg(e.message); }
+}
 async function genCode(days) {
   if (!confirm(`生成 1 张 ${days} 天订阅码？`)) return;
   try { const r = await api('gencode', { days, count: 1 }); $('#codeOut').textContent = r.codes.join(' '); msg('已生成'); render('audit'); }
   catch (e) { msg(e.message); }
 }
 
-let cur = 'overview';
+let cur = 'ops';
 async function render(t, arg) {
   cur = t || cur;
   const tabKey = cur === 'userdetail' ? 'users' : cur;
@@ -264,17 +399,9 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => render(
 async function boot() {
   $('#loginView').classList.add('hidden');
   $('#app').classList.remove('hidden');
-  render('overview');
+  render('ops');
 }
 if (KEY) boot(); else $('#loginView').classList.remove('hidden');
 </script>
 </body>
 </html>
-
-  async crashes() {
-    const list = await api('crashes');
-    const rows = list.map(c => `<tr><td>${fmt(c.created_at)}</td><td>${c.ver}</td><td>${esc(c.model || '')}</td>
-      <td><pre style="max-width:640px;white-space:pre-wrap;font-size:11px;margin:0">${esc((c.stack || '').slice(0, 1200))}</pre></td></tr>`).join('');
-    $('#content').innerHTML = `<div class="card"><h3>崩溃日志（C4 · 最近 50 条）</h3>
-      <table><tr><th>时间</th><th>版本</th><th>机型</th><th>堆栈</th></tr>${rows || '<tr><td colspan=4>暂无 —— 好消息</td></tr>'}</table></div>`;
-  },

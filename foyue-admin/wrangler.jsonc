@@ -18,7 +18,16 @@
     // Looka 业务库（plans / pay_orders / antler / crashes …）
     { "binding": "LOOKA", "database_name": "looka-db",   "database_id": "086f0ba9-853a-493a-9012-90d87f47933f" },
     // 流通处（products / orders / cs_msgs）
-    { "binding": "SHOP",  "database_name": "foyue-shop", "database_id": "ce07b8bb-b115-437c-9278-5829b1b00f05" }
+    { "binding": "SHOP",  "database_name": "foyue-shop", "database_id": "ce07b8bb-b115-437c-9278-5829b1b00f05" },
+    // 播经台（comments / banned / reports）—— 同 zone 直连，不必跨站调接口
+    { "binding": "BOJING", "database_name": "bojingtai-cmt", "database_id": "14b4c9fd-0b36-45f2-930c-bbcd9e8b818b" }
+  ],
+  // 子站直连（Service Binding）：Worker 之间内部调用，不走公网、不受边缘路由影响，
+  // 也就不必逐站配 CORS。各子站仍各自校验 Bearer 口令。
+  "services": [
+    { "binding": "SVC_WENCHAO", "service": "wenchao-ai" },
+    { "binding": "SVC_GAME",    "service": "xuanfopu-sumeru" },
+    { "binding": "SVC_ZHI",     "service": "zizhilu" }
   ],
   // 密钥（npx wrangler secret put FOYUE_ADMIN_KEY）
   "observability": { "enabled": true }
