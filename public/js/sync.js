@@ -339,12 +339,24 @@ export async function syncRun(opts = {}) {
 
 /* ══════════ 全站共念 ══════════ */
 
-/** beat：顺带报一次「此刻在念」。心跳不挂莲号 ——
- *  没开号的莲友一样在念，不该不算数。 */
-export async function syncGongxiu(beat) {
+/** beat：顺带报一次「此刻在念」。today：今日念了多少。
+ *  两样都不挂莲号 —— 没开号的莲友一样在念，不该不算数：
+ *  原先总数只累加已开号者报上来的那份，而开号要攒到万声才劝，
+ *  于是绝大多数在念的人一声都没算进去，报出来的数目远小于实情。
+ *
+ *  已开号的设备不在这里报数：它的数目由 syncRun 的 recent 记在莲号名下，
+ *  两处都报就重复计了。
+ *
+ *  dev 无论是否 beat 都要带：服务端靠它把「自己」从「此刻同在」里排除。 */
+export async function syncGongxiu(beat, today) {
   try {
-    const q = beat ? `?beat=1&dev=${encodeURIComponent(localStorage.getItem('fy.dev') || '')}` : '';
-    const r = await fetch(API_GX + q);
+    const q = new URLSearchParams();
+    const dev = localStorage.getItem('fy.dev') || '';
+    if (dev) q.set('dev', dev);
+    if (beat) q.set('beat', '1');
+    if (!acct && today > 0) q.set('n', String(Math.floor(today)));
+    const s = q.toString();
+    const r = await fetch(API_GX + (s ? '?' + s : ''));
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }

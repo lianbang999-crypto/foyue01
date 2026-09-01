@@ -1,0 +1,23 @@
+[
+  { "q": "十念记数怎么做", "scope": "in", "expect": ["十念"] },
+  { "q": "信愿行三资粮是什么关系", "scope": "in", "expect": ["信愿", "资粮"] },
+  { "q": "临终助念要注意什么", "scope": "in", "expect": ["临终", "助念"] },
+  { "q": "什么是带业往生", "scope": "in", "expect": ["往生"] },
+  { "q": "念佛为什么要都摄六根", "scope": "in", "expect": ["都摄六根", "念佛圆通"] },
+  { "q": "散乱心念佛有没有用", "scope": "in", "expect": [] },
+  { "q": "念佛和参禅有什么区别", "scope": "in", "expect": ["禅净"] },
+  { "q": "为什么说净土法门是特别法门", "scope": "in", "expect": [] },
+  { "q": "回向的意义是什么", "scope": "in", "expect": ["回向"] },
+  { "q": "怎么才算真信切愿", "scope": "in", "expect": ["信愿"] },
+  { "q": "父母不信佛我该怎么劝", "scope": "in", "expect": [] },
+  { "q": "学佛的人可以吃鸡蛋吗", "scope": "in", "expect": [] },
+  { "q": "梦见去世的亲人是什么意思", "scope": "in", "expect": [] },
+  { "q": "工作太忙没时间念佛怎么办", "scope": "in", "expect": [] },
+  { "q": "什么是敦伦尽分", "scope": "in", "expect": [] },
+
+  { "q": "今天天气怎么样", "scope": "out", "expect": [] },
+  { "q": "帮我写一段python冒泡排序", "scope": "out", "expect": [] },
+  { "q": "推荐几支股票", "scope": "out", "expect": [] },
+  { "q": "帮我订一张去北京的机票", "scope": "out", "expect": [] },
+  { "q": "iPhone 和安卓哪个好", "scope": "out", "expect": [] }
+]

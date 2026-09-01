@@ -285,6 +285,123 @@ export function makeLivePoster(p) {
   return cv;
 }
 
+/* ── 念佛计数分享海报 ──
+   把计数页那圈念珠原样画出来：一百零八颗，念到哪颗朱砂到哪颗，中间是今日的声数。
+   计数页上那道环是一条连续的弧，这里改画成一百零八颗珠 —— 环在屏上会走动，
+   动态里读得出进度；一张静止的图没有动作可倚，得让「一百零八」这件事自己看得见。
+
+   这张图不是用来晒数目的。站内「只报数目、不设排名」那条规矩在图上照旧算数：
+   佛号最大，念珠次之，累计与连续退作一行小字。末了一句「若有见闻者，悉发菩提心」
+   出自站内那首回向偈，说的正是看见这张图的人 —— 转发这一下即是回向，不是晒功课。 */
+export function makeCountPoster(p) {
+  const W = 750, H = 1080;
+  const { cv, ctx } = hiCanvas(W, H);
+  const SERIF = '"Noto Serif SC", "Songti SC", "STSong", serif';
+  const T = p.T || ((s) => s);
+  const num = (n) => Number(n || 0).toLocaleString();
+  const today = Math.max(0, Number(p.today) || 0);
+
+  // 素宣纸底 + 一道极细界栏（与另两版海报同源）
+  ctx.fillStyle = POSTER.paper;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = POSTER.ruleSoft;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(32.5, 32.5, W - 65, H - 65);
+  ctx.textAlign = 'center';
+
+  // 佛号：站内这六个字是疏排的，挤作一团便失了庄重。
+  // canvas 无 letter-spacing（新版虽有 ctx.letterSpacing，Safari 尚不通用），故逐字落笔。
+  // 自定义功课名最长十二字，排不下就一路收字号，不许出界。
+  const name = Array.from(T(p.name || '南无阿弥陀佛'));
+  let ns = 44, gap = 16;
+  const nameW = () => name.reduce((a, c) => a + ctx.measureText(c).width, 0) + gap * (name.length - 1);
+  ctx.font = `600 ${ns}px ${SERIF}`;
+  while (ns > 22 && nameW() > W - 190) {
+    ns -= 2; gap = Math.max(5, gap - 1);
+    ctx.font = `600 ${ns}px ${SERIF}`;
+  }
+  ctx.fillStyle = POSTER.ink;
+  let nx = W / 2 - nameW() / 2;
+  for (const c of name) {
+    const cw = ctx.measureText(c).width;
+    ctx.fillText(c, nx + cw / 2, 150);   // textAlign 是 center，故按字宽中点落笔
+    nx += cw + gap;
+  }
+
+  // 念珠：一百零八颗围成一圈，自顶端顺时针上珠。
+  // 定了课就照定课的完成度点亮（默认定课正是 108，与一串同数）；
+  // 未定课则按本串算 —— 满串那一刻整圈朱砂，恰是站内「满一串」的那一响。
+  const BEADS = 108, cx = W / 2, cy = 414, R = 142;
+  const done = p.goal > 0 && today >= p.goal;
+  const frac = p.goal > 0
+    ? Math.min(1, today / p.goal)
+    : (today % BEADS || (today > 0 ? BEADS : 0)) / BEADS;
+  const lit = Math.round(frac * BEADS);
+  for (let i = 0; i < BEADS; i++) {
+    const a = -Math.PI / 2 + (i / BEADS) * Math.PI * 2;
+    const on = i < lit;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, on ? 3.7 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = on ? POSTER.zhusha : POSTER.track;
+    ctx.fill();
+  }
+
+  // 珠心：今日声数。数目长了就收字号，不许压到珠上
+  const tt = num(today);
+  let ts = 86;
+  ctx.font = `600 ${ts}px ${SERIF}`;
+  while (ts > 40 && ctx.measureText(tt).width > R * 1.5) { ts -= 4; ctx.font = `600 ${ts}px ${SERIF}`; }
+  ctx.fillStyle = POSTER.ink;
+  ctx.fillText(tt, cx, cy + 10);
+  ctx.fillStyle = POSTER.ink3;
+  ctx.font = `23px ${SERIF}`;
+  ctx.fillText(T('今日 · 声'), cx, cy + 56);
+
+  // 定课圆满：全图唯一一处朱砂小字，圆满了才有
+  if (done) {
+    ctx.fillStyle = POSTER.zhusha;
+    ctx.font = `23px ${SERIF}`;
+    ctx.fillText(T('今日定课圆满'), cx, 600);
+  }
+
+  // 一道短金线收住上半。以下日期与累计两行贴作一组（行距 34），
+  // 与偈句之间空出一大档 —— 前者是这一天的实况，后者是说给看图的人听的，
+  // 均分间距会把两件事读成一串流水账。
+  ctx.strokeStyle = POSTER.rule;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 100, 636.5);
+  ctx.lineTo(cx + 100, 636.5);
+  ctx.stroke();
+
+  const dp = bjParts(Date.now());
+  ctx.fillStyle = POSTER.ink3;
+  ctx.font = `22px ${SERIF}`;
+  ctx.fillText(T(`${dp.y}年${dp.mo}月${dp.d}日 · 周${WEEK[dp.day]}`), cx, 678);
+  const stat = [];
+  if (p.total > 0) stat.push(T(`累计 ${num(p.total)} 声`));
+  if (p.streak > 0) stat.push(T(`连续 ${p.streak} 日`));
+  if (stat.length) ctx.fillText(stat.join(' · '), cx, 712);
+
+  // 回向偈的第三句：说的正是看见这张图的人
+  ctx.fillStyle = POSTER.ink2;
+  ctx.font = `27px ${SERIF}`;
+  ctx.fillText(T('若有见闻者，悉发菩提心'), cx, 776);
+
+  // 底部：裸二维码 + 一行小字（不落标识与网址，与另两版一致）
+  const qsize = 140, qy = 818;
+  if (drawQR(ctx, p.url, cx - qsize / 2, qy, qsize)) {
+    ctx.fillStyle = POSTER.gold;
+    ctx.font = `22px ${SERIF}`;
+    ctx.fillText(T(p.cta || '扫二维码 同念佛号'), cx, qy + qsize + 40);
+  } else {
+    ctx.fillStyle = POSTER.gold;
+    ctx.font = `24px ${SERIF}`;
+    ctx.fillText(T('佛 乐 · 净 土 法 音'), cx, qy + 40);
+  }
+  return cv;
+}
+
 // 选文截到上限：超长时收在最近的句读处，避免拦腰截断
 export function trimQuote(text, max) {
   if (text.length <= max) return text;

@@ -20,12 +20,13 @@ import {
 } from './sync.js';
 import { WEEK } from './const.js';
 import {
-  makePoster, makeLivePoster, makeQuotePoster, showPoster, revokePoster,
+  makePoster, makeLivePoster, makeQuotePoster, makeCountPoster, showPoster, revokePoster,
   trimQuote, resetPoster, posterToBlob,
 } from './poster.js';
 import {
   initAsk, buildWenda, loadChat, saveChat, sendQuestion, shareAnswer, pruneRt, pathToHash,
   isAsking, abortAsk, chatMsg, chatCount, clearChat, growInput, syncAskUI,
+  speakAnswer, stopSpeak, isSpeaking,
 } from './ask.js';
 
 const audio = $('#audio');
@@ -54,6 +55,8 @@ let seekPending = null;
 let lastSaved = 0;
 let seekDragging = false;
 let nf = { tracks: [], idx: 0, timerMin: 0, deadline: null };
+let msMeta = null;          // 最近一次报给系统的曲目（锁屏与 APP 通知面板共用，见 updateMediaSession）
+let everPlayed = false;     // 本次打开有没有真的响过（没响过就不该在 APP 通知栏里占一条）
 let sleepT = { min: 0, deadline: null };    // 睡眠定时（点播/直播共用）
 const SLEEP_MINS = [0, 15, 30, 60];
 let miniExpanded = localStorage.getItem('fy.miniExp') !== '0';   // 播放条两态，记住用户偏好
@@ -127,7 +130,11 @@ async function init() {
   // Service Worker：新版本接管时自动刷一次，关掉「新页面配旧样式」的错配窗口
   //（老客户端本次打开仍由旧 SW 供样式，刷这一下才见新版）。
   // 首次安装本来就没有 controller，不刷；正在放音也不刷，免得打断听经。
-  if ('serviceWorker' in navigator) {
+  //
+  // 安卓 APP 内跳过：壳与正文由安装包直接供给（见 app-android 的取件台），
+  // 再挂一个 SW 就成了两套缓存抢同一批地址 —— 更新完还是旧的那类问题，
+  // 一旦出现极难查。离线的事那边已经办妥，这边不必再管。
+  if ('serviceWorker' in navigator && !window.__fyNative) {
     const hadController = !!navigator.serviceWorker.controller;
     let swReloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -525,6 +532,9 @@ function tick() {
       });
     } catch { /* 忽略 */ }
   }
+
+  // 安卓 APP 的锁屏/通知面板：同样一秒一报，进度条才跟得上
+  pushNativeMedia();
 }
 
 /* ================= 首页：今日案头 ================= */
@@ -1989,28 +1999,60 @@ function beadFull() {
 }
 
 /* ── 全站共念 ──
-   只报总数与此刻在念的人数，不设个人排名：
-   共修是彼此增上，不是比谁念得多。 */
+   只报数目与此刻在念的人数，不设个人排名：
+   共修是彼此增上，不是比谁念得多。
+
+   这一行原先常驻计数页页脚，有两处不妥：
+   一是数目本身不实 —— 只算了开过莲号的人，而开号要攒到万声才劝，
+   自己刚念了几千声却见「莲友共念七百声」，一望即知是假的（已在 sync.js 与
+   worker/lian.js 两头改正：没开号的也报数，「此刻同在」不再把自己数进去）。
+   二是位置不对 —— 念佛这一页是留下来念的，页脚挂一行别人的数目，眼睛总要去够它；
+   何况这一页「入念即隐」，真念起来它就淡掉了，等于只在没念时才看得见。
+
+   故此处只留上报（别人的「此刻同在」得靠它才真），数目移到回向偈那一页：
+   回向本是把功德分与众生，正在那一刻看见同念的人，才相应。 */
 let gxTimer = null;
 let njLastCount = 0;
+let gxData = null;      // 最近一次取回的共念数目，供回向偈先显后刷
 
-async function refreshGongxiu() {
-  const el = $('#cntGx');
-  if (!el) return;
+/** 上报并取回共念数目。计数页每分钟一次，只报不显。 */
+async function gxPing() {
   // 三分钟内计过数才报心跳，免得把「开着页面发呆」也算成在念
-  const d = await syncGongxiu(Date.now() - njLastCount < 180000);
-  if (!d || !d.total) { el.hidden = true; return; }
-  el.hidden = false;
-  el.textContent = `莲友共念 ${d.total.toLocaleString()} 声`
-    + (d.live > 0 ? ` · 此刻 ${d.live} 位同在` : '');
+  const d = await syncGongxiu(Date.now() - njLastCount < 180000, njDayTotal(bjDateKey()));
+  if (d) gxData = d;
+  return d;
 }
 
 function startGongxiu() {
-  refreshGongxiu();
+  gxPing();
   clearInterval(gxTimer);
-  gxTimer = setInterval(refreshGongxiu, 60000);
+  gxTimer = setInterval(gxPing, 60000);
 }
 function stopGongxiu() { clearInterval(gxTimer); gxTimer = null; }
+
+/* ── 回向偈 ──
+   偈末缀两行共念数目。先拿上一次取回的显出来，再去取新的 ——
+   开层就转圈等网络，是让人对着空处站着。 */
+function openHuixiang() {
+  renderHxGx();
+  $('#hxOverlay').hidden = false;
+  gxPing().then(() => { if (!$('#hxOverlay').hidden) renderHxGx(); });
+}
+
+function renderHxGx() {
+  const live = $('#hxLive'), sum = $('#hxSum');
+  const d = gxData;
+  // 「此刻 N 位同在」的 N 已不含自己：独自念时无人同在，这一行就不出现 ——
+  // 不拿一个「1」来充数，那个 1 本就是看它的人自己
+  const hasLive = !!(d && d.live > 0);
+  const hasSum = !!(d && d.total > 0);
+  live.hidden = !hasLive;
+  if (hasLive) live.textContent = `此刻 ${d.live} 位莲友同在`;
+  sum.hidden = !hasSum;
+  if (hasSum) sum.textContent = `今日共念 ${(d.today || 0).toLocaleString()} 声 · 累计 ${d.total.toLocaleString()} 声`;
+  // 两行都无（尚未取到数目）时连那道金线一并收掉，免得偈末凭空多一道横线
+  $('#hxGx').hidden = !(hasLive || hasSum);
+}
 
 /* 攒到一定分量再劝人开莲号：一上来就弹，是打扰；
    念到几万声还只存在一台手机里，才是真要紧的事。只说一次。 */
@@ -2560,6 +2602,24 @@ function readerShare() {
   };
 }
 
+/* 念佛分享海报：把这一页的念珠原样画成一张可转发的图。
+   不是晒数目 —— 站内「不设排名」那条在图上照旧算数，故海报以佛号与念珠为主，
+   数目退作一行小字；末了一句「若有见闻者，悉发菩提心」，正说着看见这张图的人。 */
+function countShare() {
+  return {
+    kind: 'count',
+    name: njItem().name,               // 当前功课的佛号
+    today: njDayTotal(bjDateKey()),
+    goal: nj.goal || 0,
+    total: njGrandTotal(),
+    streak: njStreak(),
+    title: '念佛计数 · 佛乐净土法音',
+    text: '与您共念一句佛号',
+    url: location.origin + '/#count',
+    cta: '扫二维码 同念佛号',
+  };
+}
+
 function liveShare() {
   // 分享直播：深链 #live，对方打开即入二十四时排播，与大众同闻
   const ep = liveItem ? liveItem.ep : null;
@@ -3079,9 +3139,11 @@ function bindEvents() {
     liveRetry = 0;   // 接上了就把退避清零，下次断流仍从 4 秒起
     clearLiveWatch();
     playStatus('');
+    everPlayed = true;   // 真响过了，APP 的通知面板此刻才该出现
+    pushNativeMedia();
   });
   // 暂停即存进度（含睡眠定时暂停），不留 5 秒空窗
-  audio.addEventListener('pause', saveProgress);
+  audio.addEventListener('pause', () => { saveProgress(); pushNativeMedia(); });
   audio.addEventListener('timeupdate', () => {
     if (mode !== 'od' || !od) return;
     const ep = od.list[od.idx];
@@ -3232,7 +3294,9 @@ function bindEvents() {
     else { tts.audio.pause(); $('#ttsBar').classList.add('paused'); }
   });
   // 听经开播时让位（只留一路声音）
-  audio.addEventListener('play', () => { if (tts.on) ttsStop(); });
+  // 讲经一起播，就把正在读的停下 —— 两个声音叠着，哪个都听不清。
+  // 讲记朗读与问道回答朗读各有一套，两边都要收。
+  audio.addEventListener('play', () => { if (tts.on) ttsStop(); if (isSpeaking()) stopSpeak(); });
 
   // 我的划线（我的页入口）；文库数据未就绪则先等一拍
   // 文库标题搜索：即时过滤全库篇目
@@ -3598,7 +3662,7 @@ function bindEvents() {
         renderLianSheet(); openCntSheet('lian', '莲号 · 功课同步');
       } else if (nav.dataset.hub === 'huixiang') {
         closeCntSheet();
-        $('#hxOverlay').hidden = false;
+        openHuixiang();
       }
     } else if (cntSheetMode === 'lian') {
       const b = e.target.closest('[data-lian]');
@@ -3680,8 +3744,14 @@ function bindEvents() {
     }
   });
 
-  // 回向偈（入口在功课中心）
-  $('#hxOverlay').addEventListener('click', () => { $('#hxOverlay').hidden = true; });
+  // 回向偈（入口在功课中心）：轻触任意处返回，唯独分享键不算
+  $('#hxOverlay').addEventListener('click', (e) => {
+    if (!e.target.closest('#btnHxShare')) $('#hxOverlay').hidden = true;
+  });
+  $('#btnHxShare').addEventListener('click', () => {
+    sharePayload = countShare();
+    showPoster(makeCountPoster(posterPayload(sharePayload)));
+  });
 
   // 定课圆满层：轻触返回，或转入回向
   $('#gdOverlay').addEventListener('click', (e) => {
@@ -3689,7 +3759,7 @@ function bindEvents() {
   });
   $('#btnGdHx').addEventListener('click', () => {
     $('#gdOverlay').hidden = true;
-    $('#hxOverlay').hidden = false;
+    openHuixiang();
   });
 
   // 备份与迁移（我的）
@@ -3912,7 +3982,7 @@ function bindEvents() {
       sendQuestion(rt.dataset.retry);
       return;
     }
-    const act = e.target.closest('[data-ans-copy],[data-ans-share]');
+    const act = e.target.closest('[data-ans-copy],[data-ans-share],[data-ans-speak],[data-ans-fb]');
     if (!act) return;
     const mi = Number(act.closest('.msg')?.dataset.mi);
     const m = chatMsg(mi);
@@ -3922,6 +3992,21 @@ function bindEvents() {
     if (act.hasAttribute('data-ans-copy')) {
       copyText(`问：${qText}\n\n${clean}\n\n—— 佛乐 · 问法 ${location.origin}/#wenda`)
         .then((ok) => toast(ok ? '已复制' : '复制失败'));
+    } else if (act.hasAttribute('data-ans-speak')) {
+      // 讲经与朗读不能同时响：起朗读先把正在播的停下，由这里协调（audio 归 app.js 管）
+      if (!isSpeaking() && !audio.paused) audio.pause();
+      speakAnswer(m.content, act);
+    } else if (act.dataset.ansFb) {
+      const vote = act.dataset.ansFb;
+      const row = act.closest('.ans-acts');
+      row.querySelectorAll('[data-ans-fb]').forEach((b) => b.classList.remove('on'));
+      act.classList.add('on');
+      // 反馈是顺手一点的事，不该等网络：先给回执，后台送
+      toast(vote === 'up' ? '谢谢，已记下' : '已记下，我们据此改进检索');
+      fetch('/api/askfb', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dev: devId(), vote, q: qText, a: m.content, verify: m.verify || null }),
+      }).catch(() => { /* 送不到就算了，不回头打扰用户 */ });
     } else {
       shareAnswer(qText, clean, m.sources);
     }
@@ -4007,11 +4092,71 @@ function bindEvents() {
 
 /* ================= 媒体会话（锁屏控制） ================= */
 
+/* ── 安卓 APP：把播放态转给原生 ──
+   声音仍是这个页面在放，原生只拿它去点亮锁屏与通知栏那块控制面板，
+   并借前台服务把进程撑住，人切走了、锁屏了，法音还在。
+   不在 APP 内时 window.__fyNative 不存在，这里整段是空转。 */
+function pushNativeMedia() {
+  const n = window.__fyNative;
+  if (!n || !n.media) return;
+  if (!everPlayed || !msMeta) { try { n.media('{"mode":""}'); } catch { /* 忽略 */ } return; }
+  const seekable = mode === 'od' && !!od && !od.loop;
+  try {
+    n.media(JSON.stringify({
+      mode,
+      title: msMeta.title,
+      // 副行给系列名：锁屏上只见一个「第十七讲」，人认不出是哪一部
+      artist: msMeta.series + (msMeta.tag ? ' · ' + msMeta.tag : ''),
+      playing: !audio.paused,
+      position: Number.isFinite(audio.currentTime) ? audio.currentTime : 0,
+      duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+      canPrev: mode === 'od' && !!od && od.idx > 0,
+      canNext: mode === 'od' && !!od && od.idx < od.list.length - 1,
+      seekable,
+    }));
+  } catch { /* 桥断了不该连累播放 */ }
+}
+
+/* 通知栏按钮、耳机线控、蓝牙、车机的操作，经原生转成一句话落到这里。
+   一律复用页面既有的那几个函数 —— 直播要对表、点播要记进度、佛号要循环，
+   这些规矩只写在一处，原生那边不另起炉灶。 */
+window.__fyMedia = {
+  cmd(name, arg) {
+    if (name === 'play') {
+      // 直播不能直接 audio.play()：搁置久了本机进度早已落后大众，
+      // 必须走 toggleLive 重新取流对表，否则接上的是几分钟前那一句
+      if (mode === 'live') { if (audio.paused) toggleLive(); }
+      else audio.play().catch(() => { /* 忽略 */ });
+    } else if (name === 'pause') {
+      if (mode === 'live') { if (!audio.paused) toggleLive(); }
+      else audio.pause();
+    } else if (name === 'next') {
+      stepEpisode(1);
+    } else if (name === 'prev') {
+      stepEpisode(-1);
+    } else if (name === 'seek') {
+      if (Number.isFinite(arg) && mode === 'od') { try { audio.currentTime = arg; } catch { /* 忽略 */ } }
+    } else if (name === 'stop') {
+      // 划掉通知即离席：停播、收面板，但不动进度与计数
+      audio.pause();
+      if (mode === 'live') wantLive = false;
+      everPlayed = false;
+      try { window.__fyNative.mediaClear(); } catch { /* 忽略 */ }
+      return;
+    }
+    pushNativeMedia();
+  },
+};
+
 function setMS(action, fn) {
   try { navigator.mediaSession.setActionHandler(action, fn); } catch { /* 旧浏览器不支持该操作 */ }
 }
 
 function updateMediaSession(ep, tag) {
+  // 顺手记下这一集，原生那边的通知面板与锁屏也用同一份（见 pushNativeMedia）。
+  // 记在这里是因为三种模式换曲都必经此处，别处再抄一遍迟早漏一条。
+  msMeta = { title: ep.title || '', series: ep.seriesTitle || '', tag: tag || '' };
+  pushNativeMedia();
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.metadata = new MediaMetadata({
     title: ep.title,

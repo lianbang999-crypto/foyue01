@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    FileProvider 对外开放的目录白名单。只开真正要递出去的那一处：
+    下载好的新版安装包放在 cacheDir/apk/，由系统安装器读取。
+-->
+<paths>
+    <cache-path path="apk/" name="apk" />
+    <!-- 分享海报与备份文件：先落到 cacheDir/share/，再经 FileProvider 递给微信等接收方。
+         WebView 不支持 Web Share API，站点里 <a download> 那条路在 APP 内到不了终点，
+         故由原生接手（见 MainActivity 的 DownloadListener 与 NativeBridge#share）。 -->
+    <cache-path path="share/" name="share" />
+</paths>

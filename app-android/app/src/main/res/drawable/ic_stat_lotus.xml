@@ -1,0 +1,40 @@
+<!--
+    通知栏小图标：一朵五瓣莲。
+
+    这里不能用应用图标 —— 系统会把通知小图标整体重绘成单色剪影，
+    彩色的飞天图送进去只会变成一坨白斑。故另画一枚纯形状的矢量图，
+    莲花既合净土之义，在状态栏那点尺寸下也还认得出来。
+
+    五片花瓣是同一条路径绕基点 (12,18) 旋转出来的，改形状只需改那一条 path。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- 左外瓣 -->
+    <group android:pivotX="12" android:pivotY="18" android:rotation="-76">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M12,18 C10,16 9.3,13.4 10,11 C10.5,9.3 11.2,8.1 12,7 C12.8,8.1 13.5,9.3 14,11 C14.7,13.4 14,16 12,18 Z" />
+    </group>
+    <!-- 右外瓣 -->
+    <group android:pivotX="12" android:pivotY="18" android:rotation="76">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M12,18 C10,16 9.3,13.4 10,11 C10.5,9.3 11.2,8.1 12,7 C12.8,8.1 13.5,9.3 14,11 C14.7,13.4 14,16 12,18 Z" />
+    </group>
+    <!-- 左内瓣 -->
+    <group android:pivotX="12" android:pivotY="18" android:rotation="-38">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M12,18 C10,16 9.3,13.4 10,11 C10.5,9.3 11.2,8.1 12,7 C12.8,8.1 13.5,9.3 14,11 C14.7,13.4 14,16 12,18 Z" />
+    </group>
+    <!-- 右内瓣 -->
+    <group android:pivotX="12" android:pivotY="18" android:rotation="38">
+        <path android:fillColor="#FFFFFFFF"
+            android:pathData="M12,18 C10,16 9.3,13.4 10,11 C10.5,9.3 11.2,8.1 12,7 C12.8,8.1 13.5,9.3 14,11 C14.7,13.4 14,16 12,18 Z" />
+    </group>
+    <!-- 中瓣（最后画，压在上层） -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M12,18 C10,16 9.3,13.4 10,11 C10.5,9.3 11.2,8.1 12,7 C12.8,8.1 13.5,9.3 14,11 C14.7,13.4 14,16 12,18 Z" />
+</vector>

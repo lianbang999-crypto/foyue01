@@ -1,0 +1,67 @@
+/*
+ * 佛乐 · 净土法音 —— 安卓离线应用
+ *
+ * 壳代码、样式、讲记正文全部随安装包出厂，装完断网即可读、可念、可听已下载的音频。
+ * 网络只在三处用到：直播/点播的音频流、问道与莲号等接口、目录更新。
+ *
+ * 打包前务必先跑 `python3 scripts/build-app-assets.py`，
+ * 把 public/ 的内容同步进 src/main/assets/ —— 漏了这一步，装出来是个没有正文的空壳。
+ */
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace "org.foyue.app"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "org.foyue.app"      // 发布后永不可改
+        // 保持 21：不主动放弃老机器。内核太旧跑不动的情况，
+        // 由 MainActivity 检出后给一页说明，而不是让人对着白屏猜。
+        minSdk 21
+        targetSdk 36
+        versionCode 1
+        versionName "1.0.0"
+
+        resValue "string", "appName", "佛乐 · 净土法音"
+        resValue "string", "launcherName", "佛乐"
+        resValue "color", "backgroundColor", "#F6F1E6"   // 与 manifest.webmanifest 的 background_color 一致
+    }
+
+    buildFeatures {
+        // AGP 8 起默认不生成 BuildConfig；MainActivity 与 NativeBridge 要读
+        // BuildConfig.VERSION_NAME 拼启动地址、做版本比对，必须打开。
+        buildConfig true
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            // WebView 的 JS 接口是靠反射调用的，R8 按空配置裁剪会把它裁没，
+            // 表现为页面里 window.__fyNative 的方法全部失灵。规则见 proguard-rules.pro。
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    androidResources {
+        // 讲记正文是纯文本，assets 里默认会被 aapt 压一遍；这对 17MB 的正文是划算的，
+        // 故不加 noCompress。只有本身已压缩的格式才值得跳过。
+        noCompress += ['woff2', 'png', 'jpg', 'webp']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'   // WebViewAssetLoader / WebViewCompat
+    implementation 'androidx.core:core:1.13.1'       // FileProvider / NotificationCompat
+    implementation 'androidx.media:media:1.7.0'      // MediaSessionCompat + 通知栏媒体样式
+}

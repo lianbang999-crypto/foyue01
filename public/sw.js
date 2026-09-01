@@ -2,7 +2,7 @@
 // 音频（/audio/*，Range 分段）与问道接口（/api/*）不经缓存，永远直连网络。
 // 改动壳资源清单或需要强制刷新客户端缓存时，把 VER 加一。
 
-const VER = 'fy-v48';
+const VER = 'fy-v51';
 const SHELL = [
   '/',
   '/css/all.css',
@@ -19,6 +19,7 @@ const SHELL = [
   '/js/ask.js',
   '/js/vault.js',
   '/js/sync.js',
+  '/js/appinstall.js',
   '/favicon.png',
   '/icon-192.png',
   '/icon-512.png',
@@ -46,8 +47,11 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
-  // 音频流（含 Range 分段）与问道接口：直连，不缓存
-  if (url.pathname.startsWith('/audio/') || url.pathname.startsWith('/api/') || req.headers.get('range')) return;
+  // 音频流（含 Range 分段）与问道接口：直连，不缓存。
+  // /app/ 同理：安装包十几 MB，缓存下来平白吃掉配额；发布信息也必须现问 ——
+  // 拿一份缓存的 release.json 去比版本，只会永远说已是最新。
+  if (url.pathname.startsWith('/audio/') || url.pathname.startsWith('/api/')
+      || url.pathname.startsWith('/app/') || req.headers.get('range')) return;
 
   // 页面导航：网络优先（保证部署即生效），离线回退缓存壳
   // 只把首页写入 '/' 兜底位，避免 /admin.html 等其他导航页污染离线壳

@@ -1,0 +1,24 @@
+// 佛乐 · 净土法音 —— 安卓离线应用（顶层构建配置）
+//
+// 与同门的 wenchao/app-android 保持同一套工具链版本，两处一并升级，
+// 免得日后一个能构建一个不能，还要回头查是哪儿差了一档。
+buildscript {
+    repositories {
+        google()
+        mavenCentral()   // jcenter 已停止服务，androidx 等依赖走 google/mavenCentral
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.9.1'
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

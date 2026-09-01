@@ -90,10 +90,15 @@ CREATE TABLE IF NOT EXISTS lian_blob (
   PRIMARY KEY (lian, kind)
 );
 
--- 每日念佛汇总：全站共念的总数由此累加。只记数目，不记谁念的什么。
+-- 每日念佛汇总：全站共念的数目由此累加。只记数目，不记谁念的什么。
+-- lian 一列存两种值：开了号的记莲号本身，没开号的记「d:<设备标识>」。
+-- 原先只收莲号，而开号要攒到万声才劝，于是绝大多数在念的人一声都没算进去，
+-- 「莲友共念」报出来的数目远小于实情（见 worker/lian.js 的 serveGongxiu）。
+-- 莲号是八位大写字母数字，与 d: 前缀撞不上。
+-- 同一天同一身份只一行，写入一律 MAX 取大而不累加：反复上报不会把数目滚大。
 CREATE TABLE IF NOT EXISTS nianfo_day (
   day  TEXT NOT NULL,                -- YYYY-MM-DD（北京时间，与站内日界一致）
-  lian TEXT NOT NULL,
+  lian TEXT NOT NULL,                -- 莲号，或「d:<设备标识>」（未开号者）
   n    INTEGER NOT NULL,
   PRIMARY KEY (day, lian)
 );
@@ -104,3 +109,31 @@ CREATE TABLE IF NOT EXISTS nianfo_live (
   dev TEXT PRIMARY KEY,
   ts  INTEGER NOT NULL
 );
+
+-- 问道回答的赞踩（2026-08-31）：哪些问题答得好、哪些答偏了，靠这个才看得见。
+-- 连问题与回答一起存：只存一个赞踩，事后根本不知道那次答的是什么，无从改起。
+-- verify 是当次的引用自检结果（JSON），把「用户说不好」与「机器自检也说有问题」
+-- 两条线索并排放着，最容易找出检索的短板。
+CREATE TABLE IF NOT EXISTS ask_feedback (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts      INTEGER NOT NULL,
+  dev     TEXT NOT NULL DEFAULT '',
+  vote    TEXT NOT NULL,                -- up | down
+  q       TEXT NOT NULL DEFAULT '',
+  a       TEXT NOT NULL DEFAULT '',
+  verify  TEXT NOT NULL DEFAULT '',
+  handled INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_ask_feedback_ts ON ask_feedback(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_ask_feedback_vote ON ask_feedback(vote, ts DESC);
+
+-- 控制台操作日志（2026-08-18）：谁在何时改了什么，供回溯。
+-- 只记写操作（删留言、封解封、改公告），读接口不记。
+CREATE TABLE IF NOT EXISTS admin_log (
+  id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts     INTEGER NOT NULL,
+  ip     TEXT NOT NULL DEFAULT '',
+  action TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_admin_log_ts ON admin_log(ts DESC);

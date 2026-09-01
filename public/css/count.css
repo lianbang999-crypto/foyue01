@@ -299,7 +299,32 @@
 #gdOverlay .hx-btn { margin-top: 20px; }
 .hx-verse { text-align: center; padding: 20px; }
 .hx-verse p { font-size: clamp(1.05rem, 4.2vw, 1.3rem); letter-spacing: 0.24em; line-height: 2.4; color: var(--ink); }
-.hx-verse small { display: block; margin-top: 26px; color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.2em; }
+.hx-verse small { display: block; margin-top: 24px; color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.2em; }
+
+/* —— 全站共念（原在计数页脚，现落于此） ——
+   只报数目与此刻在念的人数，不设个人排名：共修是彼此增上，不是比谁念得多。
+   偈是发愿，数目是实况，两者不该连成一片读，故上缀一道极细金线隔开。 */
+.hx-gx {
+  margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--gold-line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.hx-gx[hidden] { display: none; }
+.hx-gx span {
+  color: var(--ink-3); font-size: 0.76rem; letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.hx-gx span[hidden] { display: none; }
+
+/* 分享结缘：回向本是把功德分与众生，顺路把这句佛号也分与人，正是同一件事。
+   做成幽微的空心键 —— 这一刻的主角是偈，不是按钮。 */
+.hx-share {
+  display: block; margin: 26px auto 0; padding: 9px 26px;
+  font-family: var(--serif); font-size: 0.8rem; letter-spacing: 0.2em; text-indent: 0.2em;
+  color: var(--gold-text); background: none; cursor: pointer;
+  border: 1px solid var(--gold-line); border-radius: 999px;
+  transition: opacity 0.2s var(--e-io);
+}
+.hx-share:active { opacity: 0.6; }
 
 
 /* 我的 · 足迹卡 */
@@ -368,14 +393,6 @@
 .about-sheet p { color: var(--ink-2); font-size: 0.86rem; line-height: 1.95; letter-spacing: 0.03em; }
 .about-sheet .about-mail { margin-top: 2px; }
 .about-sheet a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); padding-bottom: 1px; }
-
-/* —— 全站共念（计数页脚一行） ——
-   只报总数与此刻在念的人数，不设个人排名：共修是彼此增上，不是比谁念得多。 */
-.cnt-gx {
-  margin-top: 26px; text-align: center; color: var(--ink-3);
-  font-size: 0.76rem; letter-spacing: 0.12em; font-variant-numeric: tabular-nums;
-}
-.cnt-gx[hidden] { display: none; }
 
 /* —— 莲号：跨设备认回功课 ——
    计数原先只在本机，清一次缓存、换一台手机就没了。
@@ -451,8 +468,7 @@ body[data-nianfo] .top,
 body[data-nianfo] .bottom-nav,
 body[data-nianfo] .cnt-hub,
 body[data-nianfo] .nj-actions,
-body[data-nianfo] .cnt-tip,
-body[data-nianfo] .cnt-gx {
+body[data-nianfo] .cnt-tip {
   /* 留一线可见而非归零：告诉人「东西还在，会回来」，不是页面坏了 */
   opacity: 0.1;
   transition: opacity 0.6s var(--e-out);
@@ -460,7 +476,7 @@ body[data-nianfo] .cnt-gx {
      落在这两条带上的触点由 app.js 接住，唤回而不跳转。 */
   pointer-events: none;
 }
-.top, .bottom-nav, .cnt-hub, .nj-actions, .cnt-tip, .cnt-gx {
+.top, .bottom-nav, .cnt-hub, .nj-actions, .cnt-tip {
   transition: opacity 0.25s var(--e-out);
 }
 /* 返回键（.cnt-back）在 .cnt-top 里，不在站顶栏 .top 里，故不受上面那组影响：

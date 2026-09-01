@@ -77,6 +77,7 @@
      而 CSS 阻塞渲染，慢网下这些字节就是白屏时间。拼装顺序见 worker/css.js。 -->
 <link rel="stylesheet" href="/css/all.css">
 <script src="/js/qrcode.js" defer></script><!-- 二维码生成（MIT，分享海报用） -->
+<script src="/js/appinstall.js" defer></script><!-- 安卓离线应用：下载引导与版本提示 -->
 </head>
 <body data-theme="day" data-view="home" data-tab="home" data-seg="ting" data-mode="live">
 
@@ -330,6 +331,11 @@
     <h3 class="wode-sub" id="wodeContentSub" hidden>我的内容</h3>
     <div class="wode-group" id="wodeContentGroup" hidden></div>
 
+    <!-- 安装：安卓离线应用的下载与版本，由 js/appinstall.js 按身份铺行
+         （浏览器里给下载，应用里给版本与更新，取不到发布信息就整组不出现） -->
+    <h3 class="wode-sub" id="appSub" hidden>安装</h3>
+    <div class="wode-group" id="appGroup" hidden></div>
+
     <!-- 别院：同源分站（各自独立站点，新窗打开，本站数据互不相通） -->
     <h3 class="wode-sub">别院</h3>
     <div class="wode-group">
@@ -421,8 +427,7 @@
       <!-- 整页皆是念珠：轻触屏上任意空处即计一声，闭目、行走皆可念。
            原先这是「静念」全屏模式里的做法，如今就是本页本身。 -->
       <p class="cnt-tip">轻触屏上任意处 · 计一声</p>
-      <!-- 全站共念：只报总数与此刻在念的人数，不设排名 —— 念佛贵在恳切，不在与人比多 -->
-      <p class="cnt-gx" id="cntGx" hidden></p>
+      <!-- 全站共念那一行已移至回向偈：这一页是留下来念的，不挂别人的数目 -->
     </div>
   </section>
 
@@ -758,13 +763,19 @@
   </div>
 </div>
 
-<!-- 回向偈（计数页回向） -->
+<!-- 回向偈（计数页回向）。全站共念的数目落在这里：
+     回向是把功德分与众生，正在那一刻看见同念的人，才相应 -->
 <div id="hxOverlay" hidden>
   <div class="hx-verse">
     <p>愿以此功德，庄严佛净土。</p>
     <p>上报四重恩，下济三途苦。</p>
     <p>若有见闻者，悉发菩提心。</p>
     <p>尽此一报身，同生极乐国。</p>
+    <div class="hx-gx" id="hxGx" hidden>
+      <span id="hxLive" hidden></span>
+      <span id="hxSum" hidden></span>
+    </div>
+    <button class="hx-share" id="btnHxShare">分 享 结 缘</button>
     <small>回向圆满 · 轻触任意处返回</small>
   </div>
 </div>

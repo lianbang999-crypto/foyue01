@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        windowBackground 设成与启动屏同色的纸色：冷启动时系统先画这一层，
+        设成白色以外的纸色，才不会在打开的一瞬间闪一下白。
+        状态栏与导航栏一并染成纸色，与站点的宣纸底一气。
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.NoTitleBar">
+        <item name="android:windowBackground">@color/backgroundColor</item>
+        <item name="android:statusBarColor">@color/backgroundColor</item>
+        <item name="android:navigationBarColor">@color/backgroundColor</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+</resources>

@@ -2,6 +2,8 @@ node_modules/
 .wrangler/
 .DS_Store
 scripts/vectors.ndjson
+# 全文索引待灌的行（约 22MB，由 build-index.py 从 public/text/ 现生成，源头在那儿）
+scripts/kb-rows.ndjson
 .dev.vars
 scripts/__pycache__/
 

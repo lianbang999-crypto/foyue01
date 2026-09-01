@@ -1,0 +1,11 @@
+<!--
+    自适应图标（API 26+）。背景铺站点的纸色，前景用站点已备好的 maskable 版标志。
+
+    前景不再另加 inset：public/img/icon-maskable-512.png 本就是按 maskable 规范画的，
+    飞天只占中间约五成五，四周留白已够系统按各家形状（圆/方/水滴）裁切。
+    再套一层内缩，图就缩成一小点了。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/backgroundColor" />
+    <foreground android:drawable="@mipmap/ic_maskable" />
+</adaptive-icon>

@@ -18,9 +18,13 @@
   "vectorize": [
     { "binding": "WENKU", "index_name": "foyue-wenku" }
   ],
-  // 直播留言存储（同修在此 + 管理后台）
+  // DB：直播留言存储（同修在此 + 管理后台）
+  // KB：问道的全文（关键词）索引。与 Vectorize 里那 9084 块同一套 id，两路召回靠 id 对齐做 RRF 融合。
+  //     单独一个库而不并进 DB：这边是几十 MB 的只读索引，随文库重建整表重灌；
+  //     那边是留言与念佛计数，用户数据，不该被索引重建牵连。
   "d1_databases": [
-    { "binding": "DB", "database_name": "bojingtai-cmt", "database_id": "14b4c9fd-0b36-45f2-930c-bbcd9e8b818b" }
+    { "binding": "DB", "database_name": "bojingtai-cmt", "database_id": "14b4c9fd-0b36-45f2-930c-bbcd9e8b818b" },
+    { "binding": "KB", "database_name": "foyue-wenku-fts", "database_id": "aeaff457-aa95-476b-8c2d-352070ddaa2e" }
   ],
   "vars": {
     // 生成模型可随时更换（硅基流动模型 ID）

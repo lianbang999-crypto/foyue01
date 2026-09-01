@@ -21,6 +21,10 @@ const BAD_MAX = 10;               // 连错这些次就锁
 const LOCK_MS = 3600000;          // 锁一小时
 const LIVE_WINDOW = 180000;       // 「此刻在念」的判定窗：三分钟内计过数即算在念
 const GX_CACHE_MS = 60000;        // 全站总数的缓存时长，免得每次都全表求和
+const DAY_MAX = 200000;           // 单设备单日上限：一昼夜不停也念不到这个数，超出即是注水
+
+/** 北京时间的日期键。全站共修同一个「今日」，日界不随访客所在时区走。 */
+const bjDay = (ms) => new Date(ms + 8 * 3600000).toISOString().slice(0, 10);
 
 const json = (d, s = 200) =>
   new Response(JSON.stringify(d), { status: s, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
@@ -234,17 +238,22 @@ export async function serveSync(request, env) {
   // —— 每日汇总（全站共念由此累加）——
   // 客户端直接报最近几天的数目，服务端不必解整包 JSON。
   // 取大而不累加：同一天反复同步不该把数目越滚越多。功课记录宁可少算，不可注水。
+  const dev = String(body.dev || '').slice(0, 64);
   const recent = body.recent && typeof body.recent === 'object' ? body.recent : {};
   const days = Object.keys(recent).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 7);
   if (days.length) {
-    await env.DB.batch(days.map((d) => env.DB.prepare(
+    const ops = days.map((d) => env.DB.prepare(
       'INSERT INTO nianfo_day (day,lian,n) VALUES (?,?,?) ' +
       'ON CONFLICT(day,lian) DO UPDATE SET n = MAX(n, excluded.n)')
-      .bind(d, lian, Math.max(0, Math.min(10000000, Number(recent[d]) || 0)))));
+      .bind(d, lian, Math.max(0, Math.min(10000000, Number(recent[d]) || 0))));
+    // 开号之前，这台设备是以「d:<dev>」匿名报数的（见 serveGongxiu）。
+    // 如今这几天已记在莲号名下，匿名的那几行就该撤掉，否则同一天算两遍。
+    // 只撤这几天 —— 更早的匿名日子莲号的 recent 报不到，撤了就是白白少算。
+    if (dev) for (const d of days) ops.push(env.DB.prepare('DELETE FROM nianfo_day WHERE day = ? AND lian = ?').bind(d, 'd:' + dev));
+    await env.DB.batch(ops);
   }
 
   // 心跳：此刻在念
-  const dev = String(body.dev || '').slice(0, 64);
   if (dev && body.beat) {
     await env.DB.prepare('INSERT INTO nianfo_live (dev,ts) VALUES (?,?) ON CONFLICT(dev) DO UPDATE SET ts = excluded.ts')
       .bind(dev, now).run();
@@ -263,41 +272,81 @@ export async function serveSync(request, env) {
 }
 
 /* ══════════ GET /api/gongxiu ══════════
-   全站共念总数与此刻在念人数。只报数目，不设排名 ——
-   念佛贵在恳切，不在与人比多。 */
+   全站共念的数目与此刻在念的人数。只报数目，不设排名 ——
+   念佛贵在恳切，不在与人比多。
+
+   这里原先报出来的数目是不实的，两处都偏：
+
+   其一，总数只累加已开莲号者报上来的那份。而开号要攒到万声或连续七日才劝
+   （见 lianTip），于是绝大多数正在念的人，一声都没算进去 —— 自己刚念了几千声，
+   抬头看见「莲友共念七百声」，这数目一望即知是假的，连带着整个页面都不可信了。
+   故此处让没开莲号的设备也报自己今日的数目，与莲号同走 nianfo_day 一张表、
+   同一条「取大不累加」的规则：一天一行，反复上报不会把数目滚大。
+
+   其二，「此刻 N 位同在」把自己也数了进去 —— 一个人独自念时报的是「此刻 1 位同在」，
+   而「同在」说的本是别人。故心跳照旧记，计数时把自己排除：报 3 就是另有三位。 */
 export async function serveGongxiu(request, env) {
   await ensure(env);
   const now = Date.now();
+  const day = bjDay(now);
 
-  // 心跳不挂在莲号上：没开号的莲友一样在念，不该不算数
+  // 心跳与匿名报数都不挂在莲号上：没开号的莲友一样在念，不该不算数
   const url = new URL(request.url);
   const dev = String(url.searchParams.get('dev') || '').slice(0, 64);
-  if (url.searchParams.get('beat') === '1' && dev) {
-    await env.DB.prepare(
-      'INSERT INTO nianfo_live (dev,ts) VALUES (?,?) ON CONFLICT(dev) DO UPDATE SET ts = excluded.ts')
-      .bind(dev, now).run();
+  const beat = url.searchParams.get('beat') === '1';
+  // 已开莲号的设备不在这条路上报数（客户端不带 n）：它的数目由 /api/sync
+  // 记在莲号名下，两处都记就重了
+  const n = Math.max(0, Math.min(DAY_MAX, Math.floor(Number(url.searchParams.get('n')) || 0)));
+  // 限流按设备而非按 IP。这条路上多是手机，运营商 NAT 之下成百上千人共用一个出口 IP，
+  // 按 IP 拦会把同一片网络里的莲友整批挡掉 —— 而少算正是这次要修的毛病。
+  // 单机一分钟才报一次，30/分对它绰绰有余，对着一个 dev 猛打的仍拦得住。
+  if (dev && (beat || n > 0) && !(await limited(env, 'gx:' + dev, 'PUSH_RL'))) {
+    const ops = [];
+    if (beat) {
+      ops.push(env.DB.prepare(
+        'INSERT INTO nianfo_live (dev,ts) VALUES (?,?) ON CONFLICT(dev) DO UPDATE SET ts = excluded.ts')
+        .bind(dev, now));
+    }
+    if (n > 0) {
+      ops.push(env.DB.prepare(
+        'INSERT INTO nianfo_day (day,lian,n) VALUES (?,?,?) ' +
+        'ON CONFLICT(day,lian) DO UPDATE SET n = MAX(n, excluded.n)')
+        .bind(day, 'd:' + dev, n));   // 莲号是八位大写字母数字，与 d: 前缀不会撞
+    }
+    await env.DB.batch(ops);
   }
 
-  let total = 0;
+  // 总数与今日各求一次和，一并缓存。缓存里记下算它时是哪一天：
+  // 跨过北京零点还照旧发出去，「今日」报的就是昨日的数目。
+  let total = 0, today = 0, fresh = false;
   const cached = await env.DB.prepare("SELECT v FROM meta WHERE k = 'gx.total'").first();
   if (cached) {
     try {
       const c = JSON.parse(cached.v);
-      if (now - c.t < GX_CACHE_MS) total = c.n;
+      if (now - c.t < GX_CACHE_MS && c.day === day) { total = c.n; today = c.d; fresh = true; }
     } catch { /* 缓存坏了就重算 */ }
   }
-  if (!total) {
-    const row = await env.DB.prepare('SELECT COALESCE(SUM(n),0) n FROM nianfo_day').first();
-    total = row ? row.n : 0;
+  if (!fresh) {
+    const [a, b] = await env.DB.batch([
+      env.DB.prepare('SELECT COALESCE(SUM(n),0) n FROM nianfo_day'),
+      env.DB.prepare('SELECT COALESCE(SUM(n),0) n FROM nianfo_day WHERE day = ?').bind(day),
+    ]);
+    total = a.results?.[0]?.n || 0;
+    today = b.results?.[0]?.n || 0;
     await env.DB.prepare('INSERT OR REPLACE INTO meta (k,v) VALUES (?,?)')
-      .bind('gx.total', JSON.stringify({ n: total, t: now })).run();
+      .bind('gx.total', JSON.stringify({ n: total, d: today, day, t: now })).run();
   }
 
   // 顺手清掉过期心跳，免得这张表只涨不消
   if (Math.random() < 0.1) {
     await env.DB.prepare('DELETE FROM nianfo_live WHERE ts < ?').bind(now - LIVE_WINDOW * 4).run();
   }
-  const live = await env.DB.prepare('SELECT COUNT(*) n FROM nianfo_live WHERE ts > ?').bind(now - LIVE_WINDOW).first();
+  // 数「此刻同在」时把自己排除：一个人独自念时该报 0，不该报 1
+  const live = dev
+    ? await env.DB.prepare('SELECT COUNT(*) n FROM nianfo_live WHERE ts > ? AND dev <> ?')
+      .bind(now - LIVE_WINDOW, dev).first()
+    : await env.DB.prepare('SELECT COUNT(*) n FROM nianfo_live WHERE ts > ?')
+      .bind(now - LIVE_WINDOW).first();
 
-  return json({ total, live: live ? live.n : 0 });
+  return json({ total, today, live: live ? live.n : 0 });
 }

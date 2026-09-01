@@ -15,14 +15,43 @@
 
 ## 问道 RAG 架构
 
+与同门 wenchao 的「问文钞」同一套路数（2026-09-01 对齐）。每一步都 best-effort：
+任一步出事都退回更笨但可用的做法，不让问道整个哑掉。
+
 ```
-问题 → bge-m3 向量化 → Vectorize(foyue-wenku, 8999块) 召回20
-     → bge-reranker-v2-m3 重排取8 → Qwen3.5-35B-A3B 流式作答(SSE) → 引用[n]跳原文
+追问改写(condense) → 改写检索式 + 抽关键名相
+   → 【向量多查询召回 ∥ D1 全文关键词召回】 → RRF 融合 → 去重
+   → bge-reranker-v2-m3 重排取 8 → 按 path 从 ASSETS 现取父段落
+   → Qwen3.5-35B-A3B 流式作答(SSE) → 引用逐字自检 → 引用[n]跳原文
 ```
 
+两处是这一版的要害：
+
+- **关键词那一路**（D1 `foyue-wenku-fts`，中文重叠二元索引）。「戒杀」「十念记数」这类
+  短名相在长句里语义占比太小，纯向量常常召不回；两路用 RRF 融合，不是谁压倒谁。
+  两边共用同一套块 id —— **融合就是靠 id 对齐的**，故两份索引必须同一次切块产出。
+- **小块检索、大块喂入**。命中的是 700 字小块，切块难免把一句话拦腰截断；喂给模型的是它
+  在原文里所在的那一大段（`PARENT_CHARS`），查询时按 `path` 从 ASSETS 现取，不进索引。
+  引用卡片仍用精确小块，便于逐字核对。
+
+**两道护栏**（贴「宁可不答，不可妄说」）：检索服务自己坏了 → 据实说「检索暂时不可用」，
+**绝不诬为「文库中未找到」**；相关度低于 `RERANK_MIN` → 直接拒答，不调用生成模型。
+后者非有不可 —— 向量检索对再离谱的问题也会返回最近的八条，「零命中」那道护栏够不着。
+
 - 全链路硅基流动 API，Key 存 Worker Secret（`SILICONFLOW_API_KEY`），前端零接触
-- 限流：每 IP 每分钟 8 问；系统提示词固守「只依原文、注明出处、不足则如实说、不代法师说法」
-- 重建索引：`SF_KEY=sk-xxx python3 scripts/build-index.py` → `npx wrangler vectorize insert foyue-wenku --file=scripts/vectors.ndjson --batch-size 500`
+- 限流：每 IP 每分钟 8 问；首轮问答的结果经 `caches.default` 缓存 7 天
+  （追问不缓存 —— 同一句话在不同上下文里该答得不一样）
+- 自检：`GET /api/ask/health` 看各路开关与 `hybridReady`／`lexRows`。
+  关键词索引没建好时问道照常能用，只是悄悄退回纯向量，**不看这里发现不了**
+- 改了检索逻辑或提示词，**务必把 `RETRIEVAL_VERSION` 加一**，否则旧缓存会遮住新逻辑
+- 重建索引（两份必须一起重灌）：
+  ```bash
+  SF_KEY=sk-xxx python3 scripts/build-index.py
+  npx wrangler vectorize upsert foyue-wenku --file=scripts/vectors.ndjson --batch-size 500
+  ADMIN_TOKEN=xxx python3 scripts/push-kb.py --reset
+  ```
+- 评测（改检索参数后必跑，与上次对比升降）：`python3 scripts/eval-ask.py`
+  统计召回率／引用率／误拒率／忠实率／直引逐字命中率，并给出在题与离题的分水岭
 - 换生成模型：改 wrangler.jsonc 的 `SF_CHAT_MODEL`
 
 ## 直播排播（北京时间，每日固定）
@@ -52,7 +81,9 @@ public/
   js/const.js         跨模块共用常量（放这儿是为了断开依赖环）
   css/*.css           样式源码，12 个板块文件；顺序即层叠顺序，见 worker/css.js 的 ORDER
   _headers            静态资源缓存分档（正文 1 天 / 图标 7 天 / 目录 1 小时；壳代码不放宽）
-  sw.js               Service Worker：壳资源缓存提速与离线兜底（/audio、/api 直连；改壳清单时 VER 加一）
+  js/appinstall.js    安卓离线应用的下载引导（横幅 + 我的页安装区）与 APP 内版本比对
+  sw.js               Service Worker：壳资源缓存提速与离线兜底（/audio、/api、/app 直连；改壳清单时 VER 加一）
+  app/                安卓安装包与 release.json（发布信息，由打包脚本按 build.gradle 生成）
   catalog.json        音频目录（6 桶 / 24 系列 / 912 集 / 401 小时）
   library.json        文库目录（39 系列 / 255 篇）
   qa.json             问道索引（969 问，其中 820 条有文字稿）
@@ -62,6 +93,8 @@ scripts/
   build-catalog.mjs   清单 → catalog.json + qa.json
   build-library.py    大安法师（讲法集）TXT/（docx/doc/GBK-txt）→ public/text/ + library.json
   build-index.py      public/text/ → 切块 → bge-m3 向量化 → vectors.ndjson（灌入 Vectorize）
+  build-app-assets.py public/ → 安卓 APP 的 assets（并按 worker/css.js 的 ORDER 预拼 all.css）
+app-android/          安卓离线应用（自建 WebView，详见 app-android/README.md）
 ```
 
 ### 可索引的真实路径（SEO）
@@ -83,6 +116,23 @@ scripts/
 音频桶：daanfashi / yinguangdashi / jingtushengxian / youshengshu / fohao / jingdiandusong。
 文库源文本在本仓库 `大安法师（讲法集）TXT/`（835 个问答 docx + 37 个讲记系列）。
 
+## 安卓离线应用
+
+自建 WebView 应用（**不是 TWA**）：壳与 1075 篇讲记正文随安装包出厂，装完断网即可读、
+可念佛计数、可听此前下载的音频，并且锁屏后台一直恭听。包体约 8MB。
+
+内容挂在 `WebViewAssetLoader` 的**自有域 `foyue.org`** 下，与线上同源 ——
+`/api/*` 与 `/audio/*` 由取件台放行走真网络（音频的 Range 分段交给 WebView 自己谈），
+Worker 的跨域白名单与前端的相对地址因此一处都不用改。
+
+站点侧只多两处改动：APP 内跳过 Service Worker（原生已管离线，两套缓存会打架），
+以及把播放态报给原生（`pushNativeMedia` / `window.__fyMedia`，锁屏控制靠它）。
+
+**数据不与手机浏览器互通** —— APP 的 WebView 存储自成一份，念佛计数与收藏不会自动带过来，
+跨端只有莲号云同步这一条路（`public/js/sync.js`）。
+
+构建与发版见 [app-android/README.md](app-android/README.md)。
+
 ## 开发与部署
 
 ```bash
@@ -90,6 +140,7 @@ npm run dev            # 本地开发（wrangler dev --remote，连真实 R2）
 npm run deploy         # 部署
 npm run catalog        # 桶内容变更后重建音频目录
 python3 scripts/build-library.py   # 本地讲记文本变更后重建文库
+python3 scripts/build-app-assets.py  # 打安卓包前必跑：同步内容进 APP（漏了装出来是空壳）
 ```
 
 ## 注意
@@ -114,3 +165,28 @@ python3 scripts/build-library.py   # 本地讲记文本变更后重建文库
 - CSS 别改成并列多个 `<link>`：各自压缩会丢掉跨文件的重复模式，实测多传 9.4 KB，慢网下 FCP 多等 324ms
 - 浮层新增时记得加进 app.js 的 `OVERLAYS` 清单，否则没有 Esc、焦点也不归还（主题与语言弹层就漏过一轮）
 - 问答 969 条里 149 条只有音频没有文字稿，故不进 sitemap（无正文可索引，硬发页面反成薄内容）
+
+## 管理后台（foyue.org/admin）
+
+**全站只有这一个后台**，由 `foyue-admin` Worker 提供（源码 `foyue-admin/`，路由 `foyue.org/admin*`）。
+播经台原先的 `public/admin.html` 已并入，现仅留一个跳转页。
+
+页签：**运营**（待办／播经台／文钞／自知录／须弥山）· 总览 · 用户 · 订阅 · 健康 · 子站 · 留存 · 审计 · 崩溃
+
+**取数方式**
+- 播经台：`BOJING` 绑定 `bojingtai-cmt` 库，**D1 直连**（留言／封禁／报错）
+- 文钞 / 须弥山 / 自知录：**Service Binding** 内部调用（`SVC_WENCHAO` / `SVC_GAME` / `SVC_ZHI`）
+  —— 不走公网、不受边缘路由影响，也就不必逐站配 CORS；各子站仍各自校验 Bearer 口令
+
+**口令**：一枚通行四站。后台用 `FOYUE_ADMIN_KEY`，各子站用 `ADMIN_TOKEN`，值相同。
+> 注意：**先部署、后设 secret**。`wrangler deploy` 之后要重设一次，否则线上取不到。
+
+**待办优先**：打开先看跨站聚合的待处理项（举报／报错／待更正），无事显示「今日无事」。
+
+**新增站点接入**
+1. 子站 Worker 加 `/api/admin/*`，校验 `Bearer ADMIN_TOKEN`；
+2. `foyue-admin/wrangler.jsonc` 的 `services` 加一条 Service Binding；
+3. `src/worker.js` 的 `SUB` 加一项，`opsFetch` 加分支；
+4. `public/admin/index.html` 的 `views.ops` 里 `nav` 加一个按钮。
+
+**红线**：接口不返回用户私人内容。唯一例外是**已公开到广场且被举报**的那一条正文——不看到它就无法判断该不该下架。
