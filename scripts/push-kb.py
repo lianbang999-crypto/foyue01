@@ -27,10 +27,18 @@ BATCH = 150      # 每批行数。D1 batch 一次几百条没问题，压低些�
 TIMEOUT = 120
 
 
+# 必须带个正常 UA：Python-urllib 的默认 UA 会被 Cloudflare 挡成 403（error code 1010，
+# 浏览器指纹拦截）。它挡在 Worker 之前，口令对不对都轮不到我们的代码说话 ——
+# 别在这上头查半天。
+UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '\
+     '(KHTML, like Gecko) Chrome/126.0 Safari/537.36 foyue-kb-push'
+
+
 def post(path, payload):
     req = urllib.request.Request(
         BASE + path, data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
-        headers={'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'},
+        headers={'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json',
+                 'User-Agent': UA},
         method='POST')
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
         return json.load(r)
