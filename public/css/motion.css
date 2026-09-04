@@ -63,7 +63,7 @@ button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
    注意：节目单的 .sched-item 是纯展示的 div —— 无 href、无 role、无点击处理，
    给它按压/悬停反馈等于伪造可点性，用户按下去没反应反而更困惑，故不在此列。 */
 .ep-list li, .more-btn, .more-link, .wode-row,
-.chat-starters button, .reader-tools button, .back-btn, .block-chip,
+.ask-starter, .reader-tools button, .back-btn, .block-chip,
 .seg-row a, .tabs a, .bottom-nav a, .ask-btn, .fh-all, .pls-go, .site-network a {
   transition: transform var(--t-1) var(--e-press),
               color var(--t-2) var(--e-out),
@@ -71,7 +71,7 @@ button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
               background var(--t-2) var(--e-out);
 }
 .ep-list li:active { transform: scale(0.985); }
-.more-btn:active, .chat-starters button:active, .reader-tools button:active,
+.more-btn:active, .ask-starter:active, .reader-tools button:active,
 .block-chip:active, .seg-row a:active, .ask-btn:active { transform: scale(0.96); }
 .back-btn:active { transform: scale(0.9); }
 /* 列表条目按下时补一层极淡的朱砂水，位移之外再给个着色确认。
@@ -116,11 +116,11 @@ button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
 
 /* —— 输入态 ——
    聚焦时描边转朱砂并托一圈极淡的水，比只换边框色更明确「光标在这」 */
-#tingSearch:focus, .chat-input:focus-within, .cmt-input input:focus {
+#tingSearch:focus, .ask-composer:focus-within, .cmt-input input:focus {
   border-color: var(--accent-soft);
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
-#tingSearch, .chat-input, .cmt-input input {
+#tingSearch, .ask-composer, .cmt-input input {
   transition: border-color var(--t-2) var(--e-out), box-shadow var(--t-2) var(--e-out);
 }
 
@@ -131,7 +131,7 @@ button, [role="button"], .door, .fh-chip, .bottom-nav a, .seg-row a, .tabs a {
    的长距离跳转，一旦变成平滑滚动就要眼看整卷划过去，反而慢。需要平滑的地方
    （回顶、跳段）脚本里已单独指定 behavior: 'smooth'。 */
 :target, .ep-list li, .sched-item { scroll-margin-top: 72px; }
-.sheet, .cnt-sheet, .cmt-list, .pls-eps, .chat { overscroll-behavior: contain; }
+.sheet, .cnt-sheet, .cmt-list, .pls-eps, .ask-log { overscroll-behavior: contain; }
 
 /* —— 悬停：只在真有指针的设备上抬一抬 ——
    触屏点完不会退出 hover 态，故位移类的悬停一律只给鼠标。 */

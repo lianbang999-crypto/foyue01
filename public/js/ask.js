@@ -1,17 +1,25 @@
-// 问道：文库 RAG 问答（检索 → 流式作答 → 引用跳原文）。
+// 问法：文库 RAG 问答（检索 → 流式作答 → 引用跳原文）。
 //
-// 对话状态（消息表与在途请求）只此一处用得着，故随模块一起走；
-// 事件层要摸它时走下面几个访问器，不直接改状态，免得两处各记一份。
+// 2026-09 重做为独占整屏的请益堂：语录式「问／答」、出处卡、往问（本机近 30 段）。
+// 对话状态（往问各段与在途请求）只此一处用得着，故随模块一起走；
+// 事件层（app.js）要摸它时走下面几个访问器，不直接改状态，免得两处各记一份。
 // 繁简转换与海报由外部注入：在此 import 简繁那套，依赖链会绕回 app.js 成环。
 
-import { $, esc, toast, copyText, setLS, delLS } from './util.js';
+import { $, esc, toast, setLS, delLS } from './util.js';
 import { makeQuotePoster, showPoster, trimQuote } from './poster.js';
 import { bjParts } from './station.js';
 import { announce } from './a11y.js';
 
-// 对话状态
-let chat = { msgs: [], streaming: false };
-let askCtrl = null;                // 问法流式请求控制器（停止生成用）
+/* ================= 状态 ================= */
+const LS_KEY = 'fy.chats';
+const MAX_THREADS = 30;   // 往问最多留几段
+const MAX_MSGS = 40;      // 每段最多留几条（问答各算一条）
+
+let threads = [];         // 往问：[{ id, ts, msgs: [{ role, content, sources?, verify? }] }]
+let cur = null;           // 当前这一段（也在 threads 里）
+let streaming = false;
+let askCtrl = null;       // 流式请求控制器（停止生成用）
+let lib = null;           // 文库目录：今日一问从问答里取，由 buildWenda 注入
 
 // 繁简转换由外部注入：海报走 canvas，不经 DOM 转换器，得自己转一道
 let trans = () => (x) => x;
@@ -19,67 +27,187 @@ export function initAsk(o) {
   trans = o.trans || trans;
 }
 
-/* —— 作答时的滚动跟随 ——
-   原先只在插入占位时滚过一次，此后再不管：回答一长，正在生成的字就跑到屏幕外，
-   人得一边读一边手动往下划，流式「边生成边读」的意思就没了。
-   判断沿用聊天室那套「贴底才跟、翻看前文不打断」（见 app.js 的 nearBottom），
-   区别只在问法是整页滚动、聊天室是容器内滚动。 */
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const freshThread = () => ({ id: newId(), ts: Date.now(), msgs: [] });
+// 「答过了」不算护栏定句：被拒的一问之后，输入框该提示重新问，而不是「接着问」
+const answered = (t) => t.msgs.some((m) => m.role === 'assistant' && !refusalKind(m));
+const firstQ = (t) => t.msgs.find((m) => m.role === 'user')?.content || '';
+// 往问只留答过东西的段：只挨了一句护栏定句的（离题、检索坏了）不值得留，当前这段除外
+const listed = () => threads.filter((t) => t.msgs.length && (t === cur || answered(t))).sort((a, b) => b.ts - a.ts);
 
-const STICK_SLACK = 120;   // 距底多少像素之内算「还贴着底」
+// 常问：栏目眉标 + 问句。问句要是文库里答得出的，别放一句好听但检索不到的
+const STARTERS = [
+  ['念佛', '如何对治念佛时的昏沉散乱？'],
+  ['信愿', '什么是信愿行三资粮？'],
+  ['临终', '临终助念应该注意什么？'],
+  ['经论', '《往生论注》讲了什么？'],
+  ['入门', '初学净土，应如何下手？'],
+];
 
-function nearPageBottom() {
-  const max = document.documentElement.scrollHeight - window.innerHeight;
-  return max - window.scrollY < STICK_SLACK;
+/* ================= 日期 ================= */
+const CN = '零一二三四五六七八九';
+const cnDay = (d) => d < 10 ? CN[d] : d < 20 ? '十' + (d % 10 ? CN[d % 10] : '') : CN[Math.floor(d / 10)] + '十' + (d % 10 ? CN[d % 10] : '');
+const cnMonth = (m) => m < 11 ? CN[m] : '十' + CN[m - 10];
+const bjKey = (ms) => { const p = bjParts(ms); return `${p.y}-${p.mo}-${p.d}`; };
+const cnDate = (ms) => { const p = bjParts(ms); return `${cnMonth(p.mo)}月${cnDay(p.d)}日`; };
+
+/** 今天 / 昨天 / 更早（group=true）或具体日期 */
+function dayLabel(ms, group = false) {
+  const now = Date.now();
+  if (bjKey(ms) === bjKey(now)) return '今天';
+  if (bjKey(ms) === bjKey(now - 86400000)) return '昨天';
+  return group ? '更早' : cnDate(ms);
 }
 
-let stickRaf = 0;
-function stickToBottom() {
-  // 逐字追加会密集触发，合并到下一帧滚一次；用瞬时而非平滑 ——
-  // 连续发起平滑滚动会彼此打架，反而抖
-  cancelAnimationFrame(stickRaf);
-  stickRaf = requestAnimationFrame(() => {
-    window.scrollTo(0, document.documentElement.scrollHeight);
-  });
+/* ================= 持久化 =================
+   fy.chats = { cur, threads }：往问最多 30 段、每段 40 条，按最近提问倒序。
+   旧版只存一段（fy.chat），首次读到时并进来，不丢用户手上那段对话。
+   刻意不随莲号同步（见 sync.js）：属私事且量大。 */
+export function saveChat() {
+  const list = listed().slice(0, MAX_THREADS)
+    .map((t) => ({ id: t.id, ts: t.ts, msgs: t.msgs.slice(-MAX_MSGS) }));
+  setLS(LS_KEY, JSON.stringify({ cur: cur && cur.msgs.length ? cur.id : null, threads: list }), true);
 }
 
-/** 输入框随字数长高。上限只写在 CSS（.chat-input textarea 的 max-height），
-    此处不复述那个数字；超上限后 textarea 自己出滚动条。
-    传 reset 则回到单行（发送后清空时用）。 */
-export function growInput(reset = false) {
-  const el = $('#wdInput');
-  if (!el) return;
-  el.style.height = '';                     // 先撤掉行内高度，才能量到内容真实所需
-  if (reset) return;
-  el.style.height = el.scrollHeight + 'px'; // 全局 box-sizing: border-box，可直接用
-}
-
-/* 页面态：有无对话（决定「新问」与用法说明的存留）、发送键是否可按。
-   都由这一处统一刷新 —— 分散在各调用点必漏，漏掉的那次就是一个死键。 */
-export function syncAskUI() {
-  document.body.toggleAttribute('data-chatting', chat.msgs.length > 0);
-  const btn = $('#btnAsk');
-  const inp = $('#wdInput');
-  if (btn && inp) btn.disabled = !chat.streaming && !inp.value.trim();
-}
-
-/* —— 供事件层使用的访问器（不外露可变状态） —— */
-export const isAsking = () => chat.streaming;
-export const abortAsk = () => askCtrl?.abort();
-export const chatMsg = (i) => chat.msgs[i];
-export const chatCount = () => chat.msgs.length;
-export function clearChat() {
-  chat.msgs = [];
-  saveChat();
-  $('#chatLog').innerHTML = '';
-  $('#chatStarters').hidden = false;
+export function loadChat() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(LS_KEY)); } catch { /* 没有或坏了 */ }
+  threads = Array.isArray(data?.threads)
+    ? data.threads.filter((t) => t && t.id && Array.isArray(t.msgs) && t.msgs.length)
+    : [];
+  cur = threads.find((t) => t.id === data?.cur) || null;
+  // 旧版单段对话并入；当时正在看的就是它，接着看
+  try {
+    const old = JSON.parse(localStorage.getItem('fy.chat'));
+    if (old?.msgs?.length) {
+      const t = { id: newId(), ts: Date.now(), msgs: old.msgs };
+      threads.unshift(t);
+      if (!cur) cur = t;
+    }
+  } catch { /* 没有旧数据 */ }
+  delLS('fy.chat');
+  if (!cur) { cur = freshThread(); threads.unshift(cur); }
+  renderLog();
+  // 回到上次那一段：停在最近一答，接着问
+  if (cur.msgs.length) { const el = $('#askLog'); el.scrollTop = el.scrollHeight; }
   syncAskUI();
 }
 
-/* ================= 问道（文库 RAG） ================= */
+/* ================= 段落（往问） ================= */
+function tidy() { threads = threads.filter((t) => t.msgs.length || t === cur); }
 
-// 文库规模由调用方给出：问道模块不持有目录数据，免得和 app.js 各存一份
+/** 新问：旧对话自动存入往问，不再弹窗确认 */
+export function newThread() {
+  if (streaming) abortAsk();
+  if (!cur.msgs.length) { renderLog(); return; }   // 已是空段，不必再开
+  const had = answered(cur);
+  cur = freshThread();
+  threads.unshift(cur);
+  tidy(); saveChat(); renderLog(); syncAskUI();
+  if (had) toast('已存入往问');
+  $('#askText')?.focus({ preventScroll: true });
+}
+
+export function openThread(id) {
+  const t = threads.find((x) => x.id === id);
+  if (!t || t === cur) return;
+  if (streaming) abortAsk();
+  cur = t;
+  tidy(); saveChat(); renderLog(); syncAskUI();
+}
+
+export function clearThreads() {
+  threads = [];
+  cur = freshThread();
+  threads.unshift(cur);
+  saveChat(); renderLog(); syncAskUI();
+}
+
+/** 往问抽屉正文（复用念佛弹层 #cntSheet，mode='asklog'） */
+export function histSheetHtml() {
+  const list = listed();
+  if (!list.length) return '<p class="hist-empty">还没有往问。问过的，会留在这里。</p>';
+  let h = '', g = '';
+  for (const t of list) {
+    const gl = dayLabel(t.ts, true);
+    if (gl !== g) { g = gl; h += `<p class="ask-eyebrow hist-d">${gl}</p>`; }
+    const n = t.msgs.filter((m) => m.role === 'user').length;
+    h += `<button class="hist-i${t === cur ? ' cur' : ''}" data-load-thread="${t.id}">
+      <span>${esc(firstQ(t))}</span><small>${t === cur ? '当前' : n + ' 问'}</small></button>`;
+  }
+  return h + '<p class="hist-note">只存在本机，近 30 段；清除浏览器数据即失</p>'
+    + '<button class="hist-clear" data-clear-threads>清空往问</button>';
+}
+
+/* ================= 页面态 ================= */
+/** 发送键是否可按、停止态、输入框提示语，都由这一处统一刷新 ——
+    分散在各调用点必漏，漏掉的那次就是一个死键。 */
+export function syncAskUI() {
+  const btn = $('#askSend');
+  const inp = $('#askText');
+  if (!btn || !inp) return;
+  btn.disabled = !streaming && !inp.value.trim();
+  btn.classList.toggle('stop', streaming);
+  btn.setAttribute('aria-label', streaming ? '停止作答' : '提问');
+  inp.placeholder = cur && answered(cur) ? '接着问 …' : '请写下您的问题 …';
+}
+
+/** 输入框随字数长高。上限只写在 CSS（.ask-composer textarea 的 max-height），
+    此处不复述那个数字；超上限后 textarea 自己出滚动条。传 reset 则回到单行。 */
+export function growInput(reset = false) {
+  const el = $('#askText');
+  if (!el) return;
+  el.style.height = '';
+  if (reset) return;
+  el.style.height = el.scrollHeight + 'px';
+}
+
+/* —— 供事件层使用的访问器（不外露可变状态） —— */
+export const isAsking = () => streaming;
+export const abortAsk = () => askCtrl?.abort();
+export const chatMsg = (i) => cur?.msgs[i];
+export const chatCount = () => cur?.msgs.length || 0;
+
+/* —— 作答时的滚动跟随 ——
+   会话卷自己滚（不再是整页）。判断沿用聊天室那套「贴底才跟、翻看前文不打断」。 */
+const STICK_SLACK = 120;   // 距底多少像素之内算「还贴着底」
+const logEl = () => $('#askLog');
+function nearBottom() {
+  const el = logEl();
+  return el.scrollHeight - el.clientHeight - el.scrollTop < STICK_SLACK;
+}
+let stickRaf = 0;
+function stickToBottom() {
+  // 逐字追加会密集触发，合并到下一帧滚一次；用瞬时而非平滑 —— 连续发起平滑滚动会彼此打架，反而抖
+  cancelAnimationFrame(stickRaf);
+  stickRaf = requestAnimationFrame(() => { const el = logEl(); el.scrollTop = el.scrollHeight; });
+}
+
+/* —— 软键盘 ——
+   fixed 满屏的面不随软键盘缩（iOS 与新版安卓 Chrome 都只缩可视视口），
+   输入框会被键盘压在底下。按可视视口把面收一收，键盘收起再放回去。 */
+if (window.visualViewport) {
+  const fit = () => {
+    const v = $('#view-wenda');
+    if (!v) return;
+    const vv = window.visualViewport;
+    const shrunk = document.body.dataset.view === 'wenda' && vv.height < window.innerHeight - 100;
+    const stick = shrunk && nearBottom();
+    v.style.height = shrunk ? `${vv.height}px` : '';
+    v.style.top = shrunk ? `${vv.offsetTop}px` : '';
+    if (stick) stickToBottom();
+  };
+  window.visualViewport.addEventListener('resize', fit);
+  window.visualViewport.addEventListener('scroll', fit);
+}
+
+/* ================= 渲染 ================= */
+
+// 文库规模由调用方给出：问法模块不持有目录数据，免得和 app.js 各存一份
 export function buildWenda(library) {
+  lib = library;
   $('#wdCorpus').textContent = library.chapterCount + library.qaCount;
+  if (cur && !cur.msgs.length) renderLog();   // 空态里的「今日一问」要等目录到了才有
 }
 
 export function pathToHash(path) {
@@ -88,183 +216,99 @@ export function pathToHash(path) {
   return m ? `#read/${m[1]}/${Number(m[2])}` : '#wenku';
 }
 
-export async function sendQuestion(q) {
-  q = q.trim();
-  if (!q || chat.streaming) return;
-  chat.streaming = true;
-  askCtrl = new AbortController();
-  $('#wdInput').value = '';
-  growInput(true);          // 清空后收回单行，免得留一块空白
-  syncAskUI();              // 发送键转入「停止」态，页头也该现出「新问」
-  document.querySelector('.chat-input').classList.add('asking');   // 发送键变「停止」
-  $('#chatStarters').hidden = true;
-
-  chat.msgs.push({ role: 'user', content: q });
-  saveChat();
-  const log = $('#chatLog');
-  log.insertAdjacentHTML('beforeend', `<div class="msg user msg-new"><p>${esc(q)}</p></div>`);
-  log.insertAdjacentHTML('beforeend', '<div class="msg bot streaming msg-new"><p class="thinking">检索文库中 …</p></div>');
-  const botDiv = log.lastElementChild;
-  botDiv.scrollIntoView({ block: 'end' });
-
-  let sources = [];
-  let answer = '';
-  let verify = null;                  // 服务端的引用逐字自检结果，答毕随 done 事件到
-  // 回答落定：入历史 + 渲染 + 核验徽标 + 操作行
-  const settle = () => {
-    const stick = nearPageBottom();
-    botDiv.classList.remove('streaming');
-    chat.msgs.push({ role: 'assistant', content: answer, sources, verify });
-    botDiv.dataset.mi = chat.msgs.length - 1;
-    botDiv.innerHTML = renderAnswer(answer, sources, false) + verifyBadge(verify) + ansActs();
-    saveChat();
-    if (stick) stickToBottom();       // 出处栏与操作行一并落地，别把它们顶到屏外
-  };
-  try {
-    const history = chat.msgs.slice(-7, -1).map((m) => ({ role: m.role, content: m.content }));
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q, history }),
-      signal: askCtrl.signal,
-    });
-    if (!res.ok) throw new Error(await res.text() || res.status);
-
-    const rd = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const { done, value } = await rd.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const frames = buf.split('\n\n');
-      buf = frames.pop();
-      for (const frame of frames) {
-        const ev = frame.match(/^event: (\w+)/m)?.[1];
-        const dataLine = frame.match(/^data: (.*)$/m)?.[1];
-        if (!ev || !dataLine) continue;
-        const data = JSON.parse(dataLine);
-        if (ev === 'sources') {
-          sources = data;
-          const stick = nearPageBottom();
-          // 检索阶段反馈：让人知道系统正翻文库。
-          // 零命中时不能报「已找到 0 篇」—— 那是句自相矛盾的话；此时护栏已备好定句，等它来。
-          botDiv.innerHTML = sources.length
-            ? `<p class="thinking">已找到 ${sources.length} 篇相关开示，正在作答 …</p>`
-            : '<p class="thinking">正在作答 …</p>';
-          if (stick) stickToBottom();
-        } else if (ev === 'delta') {
-          answer += data.text;
-          const stick = nearPageBottom();   // 必须在重渲染前问，渲染后高度就变了
-          botDiv.innerHTML = renderAnswer(answer, sources, true);
-          if (stick) stickToBottom();
-        } else if (ev === 'done') {
-          verify = data.verify || null;
-        }
-      }
-    }
-    if (answer) settle();
-    else {
-      botDiv.classList.remove('streaming');
-      botDiv.innerHTML = '<p>（未能生成回答，请换个问法）</p>';
-      chat.msgs.pop();
-      saveChat();
-    }
-  } catch (e) {
-    if (answer) settle();   // 中途停止：保留已生成的部分
-    else {
-      botDiv.classList.remove('streaming');
-      chat.msgs.pop();   // 失败的问题不入历史
-      saveChat();
-      botDiv.innerHTML = (e && e.name === 'AbortError')
-        ? '<p class="thinking">已停止</p>'
-        : `<p>${esc(String(e.message || '网络异常，请稍后再试').slice(0, 120))}</p>
-           <button class="chat-retry" data-retry="${esc(q)}">重 试</button>`;
-    }
-  }
-  chat.streaming = false;
-  askCtrl = null;
-  document.querySelector('.chat-input').classList.remove('asking');
-  syncAskUI();
-  // 流式作答是逐字追加的，读屏不会主动读；答毕整段播报一次
-  announce(botDiv.querySelector('.chat-retry')
-    ? '作答失败，可重试'
-    : '作答完毕。' + botDiv.textContent.trim().slice(0, 200));
+/** 今日一问：从《学佛问答》有文字稿的条目里按北京日期确定性取一条（与排播同一思路，天下同题）。
+    只取问句形的标题 —— 「法要逗机」这类语录式标题拿来当问题会问得莫名其妙。 */
+function todayQuestion() {
+  const qa = lib?.qa;
+  if (!Array.isArray(qa)) return null;
+  // library.json 里的问答条目是 { n, title, path }（都有文字稿）；qa.json 那份才用 text 字段
+  const pool = qa.filter((i) => (i.path || i.text) && i.title
+    && (/[？?]$/.test(i.title) || /如何|怎样|怎么|为什么|为何|是否|能否|可否|什么|吗/.test(i.title)));
+  if (!pool.length) return null;
+  let h = 0;
+  for (const ch of bjKey(Date.now())) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return pool[h % pool.length];
 }
 
-/* —— 出处角标的悬停预览（只给有真鼠标的桌面）——
-   手机维持原样：点一下弹出处卡片。桌面上「非点不可」是多余的一步 ——
-   核对出处本该像看脚注一样，眼睛扫过去就见着，不该打断读回答的节奏。
-   触屏没有真悬停，hover 在那边会变成「点一下才触发、再点别处才消失」，反而碍事，
-   故用 pointer:fine 挡住。 */
-const canHover = () => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
-let citeTip = null;
-
-function hideCiteTip() {
-  if (citeTip) { citeTip.remove(); citeTip = null; }
+function emptyHtml() {
+  const n = lib ? lib.chapterCount + lib.qaCount : 0;
+  const today = todayQuestion();
+  const recent = listed().filter((t) => t !== cur).slice(0, 3);
+  return `<div class="ask-empty">
+    <p class="ask-eyebrow">请益</p>
+    <p class="ask-lead">问净土修学之事。答依大安法师${n ? ` <b>${n}</b> 篇` : ''}讲记与问答而出，每句注明出处，点编号可看原文。</p>
+    ${today ? `<section class="ask-today">
+      <p class="ask-eyebrow">今日一问 · ${cnDate(Date.now())}</p>
+      <button class="today-q" data-q="${esc(today.title)}"><span>${esc(today.title)}</span><em>问此题 ›</em></button>
+      <p class="today-n">取自《学佛问答》，每日一题</p>
+    </section>` : ''}
+    <section class="ask-group">
+      <p class="ask-eyebrow">常问</p>
+      ${STARTERS.map(([t, q]) => `<button class="ask-starter" data-q="${esc(q)}"><i>${t}</i><span>${esc(q)}</span></button>`).join('')}
+    </section>
+    ${recent.length ? `<section class="ask-group">
+      <p class="ask-eyebrow">往问</p>
+      ${recent.map((t) => `<button class="ask-starter" data-load-thread="${t.id}"><i class="dt">${esc(dayLabel(t.ts))}</i><span>${esc(firstQ(t))}</span></button>`).join('')}
+      <button class="ask-more" data-hist>全部往问 ›</button>
+    </section>` : ''}
+  </div>`;
 }
 
-function showCiteTip(btn) {
-  hideCiteTip();
-  const d = btn.dataset;
-  if (!d.x && !d.t) return;
-  citeTip = document.createElement('div');
-  citeTip.className = 'cite-tip';
-  citeTip.innerHTML = `<b>《${esc(d.s || '')}》${esc(d.t || '')}</b>`
-    + (d.x ? `<span>${esc(d.x)}…</span>` : '');
-  document.body.appendChild(citeTip);
-  // 贴着角标放，越出视口就往回收 —— 靠右的角标不该把卡片顶出屏幕
-  const r = btn.getBoundingClientRect();
-  const w = citeTip.offsetWidth;
-  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
-  const above = r.top > citeTip.offsetHeight + 16;
-  citeTip.style.left = `${left}px`;
-  citeTip.style.top = above
-    ? `${r.top + scrollY - citeTip.offsetHeight - 8}px`
-    : `${r.bottom + scrollY + 8}px`;
-}
-
-if (canHover()) {
-  document.addEventListener('mouseover', (e) => {
-    const btn = e.target.closest?.('.cite');
-    if (btn) showCiteTip(btn);
-  });
-  document.addEventListener('mouseout', (e) => {
-    if (e.target.closest?.('.cite')) hideCiteTip();
-  });
-  // 滚动时卡片会与角标脱节，直接收掉，不做跟随
-  addEventListener('scroll', hideCiteTip, { passive: true });
-}
-
-// 引用按钮统一带出处数据（s=系列 t=篇名 x=摘录），点击弹出处预览不打断对话
+// 引用按钮统一带出处数据（s=系列 t=篇名 x=摘录 n=编号），点击弹出处预览不打断对话
 const citeData = (s) =>
-  `data-path="${esc(s.path)}" data-s="${esc(s.series)}" data-t="${esc(s.title)}" data-x="${esc(s.x || '')}"`;
+  `data-path="${esc(s.path)}" data-n="${s.n}" data-s="${esc(s.series)}" data-t="${esc(s.title)}" data-x="${esc(s.x || '')}"`;
 
-function renderAnswer(text, sources, streaming) {
-  // [n] → 出处引用角标；段落按空行/换行切分
+function inline(h, sources, cited) {
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');   // 最简 Markdown：加粗
+  return h.replace(/\[(\d{1,2})\]/g, (_, n) => {                // [n] → 出处引用角标
+    const s = sources[Number(n) - 1];
+    if (!s) return `[${n}]`;
+    cited.add(Number(n));
+    return `<button class="cite" ${citeData(s)} title="${esc(s.series + ' ' + s.title)}">${n}</button>`;
+  });
+}
+
+/** 最简 Markdown：段落、加粗、角标，外加小标题与有序/无序列表（提示词已允许模型分节列点）。
+    作答中在末尾补一道朱砂笔锋。 */
+function renderText(text, sources, streaming) {
   const cited = new Set();
-  const paras = text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
-  const html = paras.map((p) => {
-    let h = esc(p)
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')  // 最简 Markdown：仅处理加粗
-      .replace(/^[#]+\s*/, '');                             // 丢弃标题井号
-    h = h.replace(/\[(\d{1,2})\]/g, (_, n) => {
-      const s = sources[Number(n) - 1];
-      if (!s) return `[${n}]`;
-      cited.add(Number(n));
-      return `<button class="cite" ${citeData(s)} title="${esc(s.series + ' ' + s.title)}">${n}</button>`;
-    });
-    return `<p>${h}</p>`;
-  }).join('');
-  let srcs = '';
-  const shown = sources.filter((s) => cited.has(s.n));
-  const list = shown.length ? shown : (streaming ? [] : sources.slice(0, 3));
-  if (list.length) {
-    srcs = '<div class="src-list">' + list.map((s) =>
-      `<button class="src" ${citeData(s)}>
-        <span class="src-n">${s.n}</span>《${esc(s.series)}》${esc(s.title)}</button>`).join('') + '</div>';
+  const lines = text.split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  let out = '', list = null;
+  const flush = () => { if (list) { out += `</${list}>`; list = null; } };
+  for (const ln of lines) {
+    const li = ln.match(/^(?:[-•*]|\d{1,2}[.、)]|[（(]\d{1,2}[）)])\s*(.+)$/);
+    const hd = ln.match(/^#{1,4}\s*(.+?)\s*#*$/);
+    if (li) {
+      const kind = /^[-•*]/.test(ln) ? 'ul' : 'ol';
+      if (list !== kind) { flush(); out += `<${kind}>`; list = kind; }
+      out += `<li>${inline(esc(li[1]), sources, cited)}</li>`;
+    } else if (hd) { flush(); out += `<h4>${inline(esc(hd[1]), sources, cited)}</h4>`; }
+    else { flush(); out += `<p>${inline(esc(ln), sources, cited)}</p>`; }
   }
-  return html + srcs;
+  flush();
+  if (streaming) out = out.replace(/(<\/(?:p|li|h4)>)(?![\s\S]*<\/(?:p|li|h4)>)/, '<span class="caret"></span>$1');
+  return { html: `<div class="a-text">${out}</div>`, cited };
+}
+
+function srcCard(s) {
+  return `<button class="src" ${citeData(s)}>
+    <span class="src-n">${s.n}</span>
+    <span class="src-t"><i>《${esc(s.series)}》</i>${esc(s.title)}</span>
+    ${s.x ? `<span class="src-x">${esc(s.x)}</span>` : ''}</button>`;
+}
+
+/** 出处卡：被引用的在前，其余折叠 */
+function renderSources(sources, cited) {
+  if (!sources.length) return '';
+  const used = sources.filter((s) => cited.has(s.n));
+  const rest = sources.filter((s) => !cited.has(s.n));
+  const main = used.length ? used : sources.slice(0, 3);
+  const more = used.length ? rest : sources.slice(3);
+  return `<div class="srcs">
+    <p class="srcs-h">出处 <b>${sources.length}</b> 篇 <small>${used.length ? `引用 ${used.length} 篇 · ` : ''}点开可看原文</small></p>
+    ${main.map(srcCard).join('')}
+    ${more.length ? `<div class="srcs-rest" hidden>${more.map(srcCard).join('')}</div><button class="srcs-more" data-more>其余 ${more.length} 篇 ›</button>` : ''}
+  </div>`;
 }
 
 /* —— 引用核验徽标 ——
@@ -306,7 +350,247 @@ export function ansActs() {
 </div>`;
 }
 
-/* —— 回答朗读 ——
+/* —— 护栏定句 ——
+   服务端两种情形（文库里确实没有 / 检索坏了）都以一句定句作答、不带出处。
+   前端认出来单独排：不列出处、不给核验与操作行，定句后给两枚去路。 */
+function refusalKind(m) {
+  if (m.sources && m.sources.length) return '';
+  if (/^文库中未找到/.test(m.content)) return 'none';
+  if (/^抱歉，文库检索暂时不可用/.test(m.content)) return 'down';
+  return '';
+}
+function refuseHtml(kind, text, q) {
+  const i = text.indexOf('。');
+  const lead = i > 0 ? text.slice(0, i + 1) : text;
+  const hint = i > 0 ? text.slice(i + 1).trim() : '';
+  const chips = kind === 'none'
+    ? '<button class="ask-chip" data-refocus>换个问法</button><button class="ask-chip" data-browse>浏览文库 ›</button>'
+    : `<button class="ask-chip" data-retry="${esc(q)}">重 试</button>`;
+  return `<div class="ask-refuse"><p>${esc(lead)}</p>${hint ? `<p class="hint">${esc(hint)}</p>` : ''}
+    <div class="ask-chips">${chips}</div></div>`;
+}
+
+function answerHtml(m, q) {
+  const kind = refusalKind(m);
+  if (kind) return refuseHtml(kind, m.content, q);
+  const { html, cited } = renderText(m.content, m.sources || [], false);
+  return html + renderSources(m.sources || [], cited) + verifyBadge(m.verify) + ansActs();
+}
+
+// 刷新时正在作答、或答失败后的残问：留个重试，不让人对着一句没下文的问发愣
+const danglingHtml = (q) =>
+  `<p class="thinking">未得到回答</p><button class="chat-retry" data-retry="${esc(q)}">重 试</button>`;
+
+function exchangeHtml(q, bodyHtml, mi, fresh) {
+  return `<article class="ex${fresh ? ' ex-new' : ''}"${mi >= 0 ? ` data-mi="${mi}"` : ''}>
+    <div class="ex-q"><span class="seal seal-q">问</span><p>${esc(q)}</p></div>
+    <div class="ex-a"><span class="seal seal-a">答</span><div class="ex-body">${bodyHtml}</div></div>
+  </article>`;
+}
+
+function renderLog() {
+  const log = logEl();
+  if (!log) return;
+  if (!cur.msgs.length) { log.innerHTML = emptyHtml(); log.scrollTop = 0; renderRail(); return; }
+  let html = '';
+  for (let i = 0; i < cur.msgs.length; i++) {
+    const m = cur.msgs[i];
+    if (m.role !== 'user') continue;
+    const a = cur.msgs[i + 1]?.role === 'assistant' ? cur.msgs[i + 1] : null;
+    html += exchangeHtml(m.content, a ? answerHtml(a, m.content) : danglingHtml(m.content), a ? i + 1 : -1, false);
+  }
+  log.innerHTML = html;
+  log.scrollTop = 0;
+  renderRail();
+}
+
+/** 桌面右栏：本答出处 + 往问。手机上 display:none，渲染很便宜，不做条件判断 */
+function renderRail() {
+  const rail = $('#askRail');
+  if (!rail) return;
+  const last = [...cur.msgs].reverse().find((m) => m.role === 'assistant' && m.sources?.length);
+  let h = '<p class="ask-eyebrow">本答出处</p>';
+  h += last
+    ? `<div class="srcs">${last.sources.map(srcCard).join('')}</div>`
+    : '<p class="rail-empty">发问后，这一答的出处会列在这里；悬停正文角标即高亮对应的一篇。</p>';
+  const list = listed().slice(0, 8);
+  h += '<p class="ask-eyebrow rail-hist">往问</p>';
+  h += list.length
+    ? list.map((t) => `<button class="hist-i${t === cur ? ' cur' : ''}" data-load-thread="${t.id}"><span>${esc(firstQ(t))}</span><small>${esc(dayLabel(t.ts, true))}</small></button>`).join('')
+    : '<p class="rail-empty">还没有往问。</p>';
+  rail.innerHTML = h;
+}
+
+/* ================= 发问 ================= */
+export async function sendQuestion(q) {
+  q = q.trim();
+  if (!q || streaming) return;
+  const th = cur;                       // 记住是哪一段：作答中若切去别段，答案仍归原段
+  streaming = true;
+  askCtrl = new AbortController();
+  $('#askText').value = '';
+  growInput(true);          // 清空后收回单行，免得留一块空白
+  syncAskUI();              // 发送键转入「停止」态
+
+  const log = logEl();
+  if (!th.msgs.length) log.innerHTML = '';   // 空态让位
+  th.msgs.push({ role: 'user', content: q });
+  th.ts = Date.now();                        // 段的时间 = 最近一次提问
+  saveChat();
+  log.insertAdjacentHTML('beforeend', exchangeHtml(q, '<p class="thinking">检索文库中 …</p>', -1, true));
+  const art = log.lastElementChild;
+  const body = art.querySelector('.ex-body');
+  stickToBottom();
+
+  let sources = [];
+  let answer = '';
+  let verify = null;                  // 服务端的引用逐字自检结果，答毕随 done 事件到
+  // 回答落定：入历史 + 渲染 + 出处卡 + 核验徽标 + 操作行
+  const settle = () => {
+    const stick = nearBottom();
+    const m = { role: 'assistant', content: answer, sources, verify };
+    th.msgs.push(m);
+    art.dataset.mi = th.msgs.length - 1;
+    body.innerHTML = answerHtml(m, q);
+    saveChat();
+    if (stick) stickToBottom();       // 出处卡与操作行一并落地，别把它们顶到屏外
+    if (th === cur) renderRail();
+  };
+  try {
+    const history = th.msgs.slice(-7, -1).map((m) => ({ role: m.role, content: m.content }));
+    const res = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q, history }),
+      signal: askCtrl.signal,
+    });
+    if (!res.ok) throw new Error(await res.text() || res.status);
+
+    const rd = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const frames = buf.split('\n\n');
+      buf = frames.pop();
+      for (const frame of frames) {
+        const ev = frame.match(/^event: (\w+)/m)?.[1];
+        const dataLine = frame.match(/^data: (.*)$/m)?.[1];
+        if (!ev || !dataLine) continue;
+        const data = JSON.parse(dataLine);
+        if (ev === 'sources') {
+          sources = data;
+          const stick = nearBottom();
+          // 检索阶段反馈：让人知道系统正翻文库。
+          // 零命中时不能报「已找到 0 篇」—— 那是句自相矛盾的话；此时护栏已备好定句，等它来。
+          body.innerHTML = sources.length
+            ? `<p class="thinking">已找到 <b>${sources.length}</b> 篇相关开示，正在作答 …</p>`
+            : '<p class="thinking">正在作答 …</p>';
+          if (stick) stickToBottom();
+        } else if (ev === 'delta') {
+          answer += data.text;
+          const stick = nearBottom();   // 必须在重渲染前问，渲染后高度就变了
+          body.innerHTML = renderText(answer, sources, true).html;
+          if (stick) stickToBottom();
+        } else if (ev === 'done') {
+          verify = data.verify || null;
+        }
+      }
+    }
+    if (answer) settle();
+    else {
+      th.msgs.pop();
+      saveChat();
+      body.innerHTML = `<p>（未能生成回答，请换个问法）</p><button class="chat-retry" data-retry="${esc(q)}">重 试</button>`;
+    }
+  } catch (e) {
+    if (answer) settle();   // 中途停止：保留已生成的部分
+    else {
+      th.msgs.pop();        // 失败的问题不入历史
+      saveChat();
+      body.innerHTML = (e && e.name === 'AbortError')
+        ? '<p class="thinking">已停止</p>'
+        : `<p>${esc(String(e.message || '网络异常，请稍后再试').slice(0, 120))}</p>
+           <button class="chat-retry" data-retry="${esc(q)}">重 试</button>`;
+    }
+  }
+  streaming = false;
+  askCtrl = null;
+  syncAskUI();
+  // 流式作答是逐字追加的，读屏不会主动读；答毕整段播报一次
+  announce(body.querySelector('.chat-retry')
+    ? '作答失败，可重试'
+    : '作答完毕。' + body.textContent.trim().slice(0, 200));
+}
+
+/** 重试：把那一则连同它在历史里的痕迹一并撤掉，再问一遍 */
+export function retryExchange(art, q) {
+  if (streaming) return;
+  const mi = Number(art?.dataset.mi);
+  if (art && Number.isInteger(mi) && cur.msgs[mi]?.role === 'assistant') cur.msgs.splice(mi - 1, 2);
+  else {
+    // 没答成的那一问：失败时已经从历史里弹掉；刷新后残留的那种还在末尾，顺手清掉
+    const last = cur.msgs[cur.msgs.length - 1];
+    if (last?.role === 'user' && last.content === q) cur.msgs.pop();
+  }
+  saveChat();
+  if (cur.msgs.length) renderLog();
+  sendQuestion(q);
+}
+
+/* —— 出处角标的悬停预览与联动（只给有真鼠标的桌面）——
+   手机维持原样：点一下弹出处卡片。桌面上「非点不可」是多余的一步 ——
+   核对出处本该像看脚注一样，眼睛扫过去就见着，不该打断读回答的节奏。
+   触屏没有真悬停，hover 在那边会变成「点一下才触发、再点别处才消失」，反而碍事，
+   故用 pointer:fine 挡住。悬停角标时，同一则里与右栏里对应的出处卡一并点亮。 */
+const canHover = () => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches;
+let citeTip = null;
+
+function hideCiteTip() {
+  if (citeTip) { citeTip.remove(); citeTip = null; }
+  document.querySelectorAll('.src.hi').forEach((s) => s.classList.remove('hi'));
+}
+
+function showCiteTip(btn) {
+  hideCiteTip();
+  const d = btn.dataset;
+  if (d.n) {
+    const sel = `.src[data-n="${d.n}"]`;
+    btn.closest('.ex')?.querySelectorAll(sel).forEach((s) => s.classList.add('hi'));
+    $('#askRail')?.querySelectorAll(sel).forEach((s) => s.classList.add('hi'));
+  }
+  if (!d.x && !d.t) return;
+  citeTip = document.createElement('div');
+  citeTip.className = 'cite-tip';
+  citeTip.innerHTML = `<b>《${esc(d.s || '')}》${esc(d.t || '')}</b>`
+    + (d.x ? `<span>${esc(d.x)}…</span>` : '');
+  document.body.appendChild(citeTip);
+  // 贴着角标放，越出视口就往回收 —— 靠右的角标不该把卡片顶出屏幕。
+  // 会话面是 fixed 满屏，视口坐标即页面坐标，不再加 scrollY
+  const r = btn.getBoundingClientRect();
+  const w = citeTip.offsetWidth;
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+  const above = r.top > citeTip.offsetHeight + 16;
+  citeTip.style.position = 'fixed';
+  citeTip.style.left = `${left}px`;
+  citeTip.style.top = above ? `${r.top - citeTip.offsetHeight - 8}px` : `${r.bottom + 8}px`;
+}
+
+if (canHover()) {
+  document.addEventListener('mouseover', (e) => {
+    const btn = e.target.closest?.('.cite');
+    if (btn) showCiteTip(btn);
+  });
+  document.addEventListener('mouseout', (e) => {
+    if (e.target.closest?.('.cite')) hideCiteTip();
+  });
+  // 会话卷一滚，卡片就与角标脱节，直接收掉，不做跟随
+  document.addEventListener('scroll', hideCiteTip, { passive: true, capture: true });
+}
+
+/* ================= 回答朗读 =================
    复用讲记那条 /api/tts（CosyVoice2，服务端已按文本做边缘缓存，同一段不重复计费）。
    那个接口单次上限 600 字，而回答可能到七百字，故按句切成不超过 550 字的几段依次播；
    接口不通时降级到本机 speechSynthesis —— 有声总比没有强。 */
@@ -325,19 +609,19 @@ export function stopSpeak() {
   });
 }
 
-/** 去掉角标与加粗符：朗读时念出「方括号三」是滑稽的 */
-function speakable(t) {
+/** 去掉角标、加粗符与小标题的井号：朗读时念出「方括号三」是滑稽的 */
+export function speakable(t) {
   return String(t || '').replace(/\[\d{1,2}\]/g, '').replace(/\*\*/g, '')
     .replace(/^[#\s]+/gm, '').replace(/\s+/g, ' ').trim();
 }
 
 function speakPieces(t) {
   const out = [];
-  let cur = '';
+  let cur2 = '';
   for (const s of t.split(/(?<=[。！？；])/)) {
-    if (cur.length + s.length > 550 && cur) { out.push(cur); cur = s; } else cur += s;
+    if (cur2.length + s.length > 550 && cur2) { out.push(cur2); cur2 = s; } else cur2 += s;
   }
-  if (cur.trim()) out.push(cur);
+  if (cur2.trim()) out.push(cur2);
   return out;
 }
 
@@ -379,20 +663,6 @@ export async function speakAnswer(text, btn) {
       window.speechSynthesis.speak(u);
     } catch { toast('朗读暂不可用'); done(); }
   }
-}
-
-// 对话持久化：刷新/换页回来还在；「新问」清空
-export function saveChat() {
-  setLS('fy.chat', JSON.stringify({ msgs: chat.msgs.slice(-40) }), true);
-}
-export function loadChat() {
-  try { chat.msgs = JSON.parse(localStorage.getItem('fy.chat')).msgs || []; } catch { chat.msgs = []; }
-  if (!chat.msgs.length) { syncAskUI(); return; }   // 空对话也要刷一次：发送键该是素的
-  $('#chatLog').innerHTML = chat.msgs.map((m, i) => m.role === 'user'
-    ? `<div class="msg user"><p>${esc(m.content)}</p></div>`
-    : `<div class="msg bot" data-mi="${i}">${renderAnswer(m.content, m.sources || [], false)}${verifyBadge(m.verify)}${ansActs()}</div>`).join('');
-  $('#chatStarters').hidden = true;
-  syncAskUI();
 }
 
 // 阅读时长明细只留近 7 天

@@ -432,27 +432,43 @@
   </section>
 
   <!-- 问道：文库问答（RAG） -->
-  <section id="view-wenda" class="view">
-    <div class="wd-head">
-      <h2 class="page-title">问法</h2>
-      <button class="chat-new" id="btnChatNew">新 问</button>
-    </div>
-    <p class="page-note">依据文库 <span id="wdCorpus"></span> 篇讲记与问答作答 · 每句注明出处，点编号可看原文</p>
-    <div class="chat" id="chatLog"></div>
-    <div class="chat-starters" id="chatStarters">
-      <button>如何对治念佛时的昏沉散乱？</button>
-      <button>什么是信愿行三资粮？</button>
-      <button>临终助念应该注意什么？</button>
-      <button>《往生论注》讲了什么？</button>
-    </div>
-    <div class="chat-input">
-      <textarea id="wdInput" rows="1" maxlength="300" placeholder="向文库提问 …"></textarea>
-      <button id="btnAsk" aria-label="提问" disabled>
-        <svg aria-hidden="true" class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <svg aria-hidden="true" class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+  <!-- 问法：独占整屏的请益堂 —— 自己的顶栏 / 会话卷 / 停靠输入，底部导航在此让位。
+       问答用语录体例（「问」朱砂印、「答」泥金印），出处卡、往问（本机近 30 段）见 js/ask.js -->
+  <section id="view-wenda" class="view" aria-label="问法">
+    <div class="ask-top">
+      <button class="ask-ic" id="askBack" aria-label="返回">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
+      <div class="ask-ttl">
+        <strong>问法</strong>
+        <small>依大安法师 <span id="wdCorpus"></span> 篇讲记与问答作答</small>
+      </div>
+      <div class="ask-tr">
+        <button class="ask-ic" id="askHist" aria-label="往问" title="往问">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.6"/><path d="M12 7.5V12l3 2"/></svg>
+        </button>
+        <button class="ask-ic" id="askNew" aria-label="新问" title="新问">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
     </div>
-    <p class="ai-note">答案由 AI 依据大安法师讲记原文生成，仅供参考；修学请以原文与善知识为准。</p>
+    <div class="ask-body">
+      <div class="ask-col">
+        <div class="ask-log" id="askLog"></div>
+        <div class="ask-dock">
+          <div class="ask-composer">
+            <textarea id="askText" rows="1" maxlength="300" placeholder="请写下您的问题 …" aria-label="提问"></textarea>
+            <button class="ask-send" id="askSend" aria-label="提问" disabled>
+              <svg aria-hidden="true" class="ic-send" viewBox="0 0 24 24"><path d="M4 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg aria-hidden="true" class="ic-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <p class="ask-note">AI 依讲记原文作答，仅供参考；修学请以原文与善知识为准</p>
+        </div>
+      </div>
+      <!-- 桌面右栏（≥1120px）：本答出处 + 往问，内容由 ask.js 渲染 -->
+      <aside class="ask-rail" id="askRail" aria-label="出处与往问"></aside>
+    </div>
   </section>
 
 </main>

@@ -37,11 +37,14 @@ const SEED = {
     '十念 +10': 'Ten +10', '撤销 −1': 'Undo −1', '重 置': 'Reset', '功课 ›': 'Practice ›',
     '静 念': 'Still', '收 起': 'Close', '重置今日': 'Reset today',
     '轻触任意处 · 计一声': 'Tap anywhere to count',
-    '回 向': 'Dedicate', '南无阿弥陀佛': 'Namo Amitabha', '新 问': 'New',
+    '回 向': 'Dedicate', '南无阿弥陀佛': 'Namo Amitabha', '新问': 'New', '往问': 'History',
     '分享 · 法布施': 'Share · Dharma gift', '朗读中 …': 'Reading aloud …',
     '上一集': 'Previous', '下一集': 'Next', '倍速': 'Speed', '今日 · 声': 'today',
     '搜索系列与集名 …': 'Search series & episodes …', '搜索篇目 …': 'Search chapters …',
-    '向文库提问 …': 'Ask the library …', '‹ 上一篇': '‹ Previous', '下一篇': 'Next',
+    '请写下您的问题 …': 'Write your question …', '接着问 …': 'Ask a follow-up …',
+    '请益': 'Ask', '今日一问': "Today's question", '常问': 'Common questions', '出处': 'Sources',
+    '恭读全文 ›': 'Read the full text ›', '换个问法': 'Rephrase', '浏览文库 ›': 'Browse the library ›',
+    '返回': 'Back', '‹ 上一篇': '‹ Previous', '下一篇': 'Next',
   },
   ja: {
     '佛乐': '佛乐',   // 品牌名保持原字
@@ -72,18 +75,22 @@ const SEED = {
     '十念 +10': '十念 +10', '撤销 −1': '取り消し −1', '重 置': 'リセット', '功课 ›': '日課 ›',
     '静 念': '静念', '收 起': '閉じる', '重置今日': '今日をリセット',
     '轻触任意处 · 计一声': '画面のどこでもタップで一声',
-    '回 向': '回向', '南无阿弥陀佛': '南無阿弥陀仏', '新 问': '新規',
+    '回 向': '回向', '南无阿弥陀佛': '南無阿弥陀仏', '新问': '新規', '往问': '履歴',
     '分享 · 法布施': '共有 · 法布施', '朗读中 …': '朗読中 …',
     '上一集': '前の回', '下一集': '次の回', '倍速': '速度', '今日 · 声': '本日 · 声',
     '搜索系列与集名 …': 'シリーズ・回名を検索 …', '搜索篇目 …': '篇目を検索 …',
-    '向文库提问 …': '文庫に質問 …', '‹ 上一篇': '‹ 前の篇', '下一篇': '次の篇',
+    '请写下您的问题 …': '質問をご記入ください …', '接着问 …': '続けて質問 …',
+    '请益': '請益', '今日一问': '本日の一問', '常问': 'よくある質問', '出处': '出典',
+    '恭读全文 ›': '全文を読む ›', '换个问法': '言い換える', '浏览文库 ›': '文庫を見る ›',
+    '返回': '戻る', '‹ 上一篇': '‹ 前の篇', '下一篇': '次の篇',
   },
 };
 
 // 内容区（不翻译）：正文、篇目/系列名、留言、问答、字幕等
 const SKIP_SEL = [
-  '#readerBody', '#chatLog', '#cmtList', '#liveCc', '#plCc',
-  '.ep-list', '.chat-starters', '.share-prev', '.cite-x',
+  '#readerBody', '.ex', '#cmtList', '#liveCc', '#plCc',
+  // 问法：问答本身、引导问题、今日一问、往问条目、桌面右栏都是内容，不翻；顶栏与眉标照翻
+  '.ep-list', '.ask-starter', '.today-q', '.hist-i', '#askRail', '.share-prev', '.cite-x',
   '.ls-info', '.hl-series', '.hl-ep', '.hc-main', '.wh-main', '.series-title', '.ep-title',
   '.wr-seal',   // 朱印只两字，翻了就不成章
   '#langList', '#langVal', // 语言选择器（弹层选项 + 设置页当前值）：

@@ -1,175 +1,272 @@
-/* 佛乐 · 问道对话
+/* 佛乐 · 问法（独占整屏的请益堂）
    由 style.css 按板块拆出。**加载顺序即层叠顺序**，index.html 里这些
    <link> 的先后不可调换，也不可漏 —— 后面的规则依赖覆盖前面的。 */
 
-/* —— 问道对话 ——
-   这一页原是一套聊天软件的语汇：实心色块气泡、圆角卡片、横排药丸。
-   而全站其余各处都是宣纸的语汇 —— 素底、界栏、泥金、朱砂只作点睛。
-   问法本就是「读一段开示」，不是「聊天」，故一律退回纸上：
-   问用一道朱砂细线收边（如古书眉批），答直接落纸，靠留白分段。 */
-.chat { margin-top: 8px; }
+/* —— 这一页 2026-09 重做 ——
+   上一版把聊天软件的皮去掉「退回纸上」，但留下四处不顺：输入框排在对话之后、
+   答完要划到页底才能追问；借用整页滚动，与顶栏底栏播放条挤在一起；空态一整屏空白；
+   出处只剩尾巴上一行标题。这一版改成「一座专门的堂」：
+   · 独占整屏：自己的顶栏、自己的会话卷、停靠在底的输入框（同莲友共修群 #chatRoom）
+   · 语录体例：一枚朱砂「问」印、一枚泥金「答」印，取代气泡与头像；问是每一则的题眼
+   · 出处第一等：答毕列出处卡（系列 · 篇名 · 一行摘录），桌面上占一整条右栏
+   全站的纸墨语汇不变：素底、界栏、泥金，朱砂只给可点的与正在进行的。 */
 
-/* 问：不再用实心朱砂气泡。色块之重压过了正文，而一页之内该被强调的
-   是法师的开示，不是我自己的问题。位置（靠右）已足以说明这是谁说的，
-   墨色则让它与正文同重、不抢。 */
-.msg.user {
-  /* 整块靠右，块内文字仍左对齐 —— 长问句若跟着右对齐，中文读起来很吃力
-     （每行起点都在跳）。靠右已足够说明「这是我问的」。 */
-  width: fit-content;
-  max-width: 82%;
-  margin-left: auto;
-  margin-bottom: 16px;                    /* 与紧随其后的回答成组，靠得近 */
-  padding-right: 14px;
-  border-right: 2px solid var(--accent);  /* 多行时这道线自然变长，更像批注标记 */
+/* —— 外壳 ——
+   z-index 压在底部导航（20）之上、播放器（30）之下：播放中的停靠条仍在，只是移到输入框上方。 */
+body[data-view="wenda"] #view-wenda {
+  display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: 25;
+  background: var(--bg); background-image: var(--sky);
 }
-.msg.user p {
-  background: none; padding: 0; border-radius: 0;
-  color: var(--ink-2); font-size: 0.93rem; line-height: 1.85;
-  /* 比回答略轻一档：一页之内该被细读的是开示，问句只是引子 */
-}
+body[data-view="wenda"] { overflow: hidden; }          /* 背后那页不再跟着滚 */
+body[data-view="wenda"] .bottom-nav, body[data-view="wenda"] footer { display: none; }
+/* 停靠条：底栏让位后不必再抬高；输入区为它留出一条 */
+body[data-view="wenda"] #mini.collapsed { bottom: max(12px, env(safe-area-inset-bottom)); }
+body[data-view="wenda"][data-mode="od"] .ask-dock { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
 
-/* 答：去掉底色、边框、圆角三重装饰，与阅读器同样直接落在纸上。
-   行距沿用阅读器的疏朗度 —— 这里读的也是开示。 */
-.msg.bot {
-  background: none; border: 0; border-radius: 0; padding: 0;
-  max-width: none;
-  margin-bottom: 38px;                    /* 一问一答之后，留一口气再接下一问 */
+/* —— 顶栏：返回 · 问法 · 往问 / 新问 —— */
+.ask-top {
+  flex: none; width: 100%; max-width: 1040px; margin: 0 auto;
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center;
+  padding: max(10px, env(safe-area-inset-top)) 8px 8px;
+  border-bottom: 1px solid var(--gold-line);
 }
-.msg.bot:last-child { margin-bottom: 0; }
-.msg.bot p { line-height: 1.95; font-size: 0.96rem; color: var(--ink); margin-bottom: 0.85em; }
-.msg.bot p:last-of-type { margin-bottom: 0; }
+.ask-ic {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 12px; color: var(--ink-2); cursor: pointer;
+  transition: color var(--t-2) var(--e-out), transform var(--t-1) var(--e-press);
+}
+.ask-ic svg { width: 22px; height: 22px; }
+.ask-ic:active { color: var(--accent); transform: scale(0.9); }
+@media (hover: hover) and (pointer: fine) { .ask-ic:hover { color: var(--accent); } }
+.ask-ttl { text-align: center; min-width: 0; }
+.ask-ttl strong { display: block; font-size: 1.02rem; font-weight: 600; letter-spacing: 0.14em; line-height: 1.3; }
+.ask-ttl small {
+  display: block; margin-top: 1px; font-size: 0.68rem; letter-spacing: 0.06em; color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ask-tr { display: flex; }
+
+/* —— 会话卷 + 停靠输入 —— */
+.ask-body { flex: 1; min-height: 0; display: flex; width: 100%; max-width: 1040px; margin: 0 auto; }
+.ask-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ask-log { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px 22px; -webkit-overflow-scrolling: touch; }
+.ask-dock { flex: none; padding: 8px 12px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.ask-rail { display: none; }
+
+/* —— 一则问答：语录体例 ——
+   每一则用一道泥金界栏隔开；问印在前、答印在后。 */
+.ex + .ex { margin-top: 34px; padding-top: 28px; border-top: 1px solid var(--gold-line); }
+/* 新问答落纸：淡入 + 抬一指高。只给新插入的那一则 —— 恢复往问时若逐则播，几则各自淡入反成一阵闪 */
+.ex-new { animation: exIn var(--t-3) var(--e-out) backwards; }
+@keyframes exIn { from { opacity: 0; transform: translateY(8px); } }
+.ex-q, .ex-a { display: flex; gap: 12px; align-items: flex-start; }
+.ex-a { margin-top: 14px; }
+/* 问是每一则的题眼：同字号、加重。多则问答时靠它找到每一则的起点 */
+.ex-q p { flex: 1; min-width: 0; margin: 0; font-size: 1.02rem; font-weight: 600; line-height: 1.7; color: var(--ink); }
+.ex-body { flex: 1; min-width: 0; }
+/* 印：22px 见方，微不对称圆角仿刻印。问用朱砂满底（白文），答用泥金描边（朱文）——
+   答不用朱砂：它是 AI 依讲记的转述，不该比法师的原文（出处）更亮 */
+.seal {
+  flex: none; width: 22px; height: 22px; margin-top: 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px 5px 4px 5px; font-size: 12.5px; font-weight: 600; line-height: 1;
+}
+.seal-q { background: var(--accent); color: var(--on-accent); }
+.seal-a { margin-top: 4px; border: 1px solid var(--gold-text); color: var(--gold-text); }
+
+/* 答：直接落纸，行距同阅读器；小标题与要点是三期放开提示词后才会出现的东西，渲染先支持起来 */
+.a-text p { margin: 0 0 0.85em; font-size: 0.96rem; line-height: 1.95; text-align: justify; color: var(--ink); }
+.a-text > :last-child { margin-bottom: 0; }
+.a-text h4 { margin: 14px 0 6px; font-size: 0.98rem; font-weight: 600; letter-spacing: 0.04em; color: var(--ink); }
+.a-text h4:first-child { margin-top: 0; }
+.a-text ol, .a-text ul { margin: 0 0 0.85em; padding-left: 1.4em; font-size: 0.96rem; line-height: 1.9; color: var(--ink); }
+.a-text li { margin: 2px 0; }
+.a-text li::marker { color: var(--accent); }
+.a-text strong { font-weight: 600; }
 /* 「检索中 …」原用全站通用的 pulse（1 → 0.25），幅度太大读作闪烁、像出错。
    改成自家的浅呼吸，只在 0.55–0.9 间起伏，是「在想」不是「坏了」。 */
-.msg.bot .thinking { color: var(--ink-3); animation: thinkBreath 2s var(--e-io) infinite; }
+.thinking { margin: 0; font-size: 0.92rem; line-height: 1.9; color: var(--ink-3); animation: thinkBreath 2s var(--e-io) infinite; }
+.thinking b { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 @keyframes thinkBreath { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.9; } }
-/* 引用角标：行内 17px 的方章，视觉上不能再大，但热区要够 ——
-   用伪元素向外撑到约 33px，不占排版位置 */
+/* 作答中：末尾一道朱砂笔锋，像笔停在纸上 */
+.caret {
+  display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -0.15em;
+  background: var(--accent); animation: caretBlink 1s steps(2, start) infinite;
+}
+@keyframes caretBlink { to { visibility: hidden; } }
+/* 引用角标：行内 17px 的方章，视觉上不能再大，但热区要够 —— 用伪元素向外撑到约 33px，不占排版位置 */
 .cite {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 17px; padding: 0 3px; margin: 0 2px;
   border-radius: 5px; border: 1px solid var(--accent-soft);
   background: var(--accent-wash); color: var(--accent);
-  font-size: 0.68rem; font-family: var(--serif); cursor: pointer;
+  font-size: 0.68rem; font-family: var(--serif); line-height: 1; cursor: pointer;
   vertical-align: 0.15em;
 }
 .cite::after { content: ''; position: absolute; inset: -8px -6px; }
-/* 出处栏：实心泥金细线 —— 全站界栏皆实线，虚线只此一处，语汇不齐 */
-.src-list { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--gold-line); display: flex; flex-direction: column; gap: 6px; }
-.src {
-  font-family: var(--serif); text-align: left; background: transparent; border: 0;
-  color: var(--ink-2); font-size: 0.8rem; cursor: pointer; padding: 3px 0;
-  display: flex; gap: 8px; align-items: baseline; line-height: 1.5;
-}
-@media (hover: hover) and (pointer: fine) {
-  .src:hover { color: var(--accent); }
-}
-/* 出处的序号不必再套方框：这里是一份清单，序号本身已有次第之意，
-   描个框就成了第二种「可点的方章」，与正文里的引用角标语汇撞车。
-   改用泥金数字，与上方那道泥金界栏同源。 */
-.src-n {
-  flex: none; min-width: 12px; border: 0; background: none;
-  color: var(--gold-text); font-size: 0.72rem; font-variant-numeric: tabular-nums;
-}
-/* 引导问题：原是四枚横排药丸，长短参差、四道边框各自为界，是空页上最吵的一块。
-   改成竖排一列，与文库篇目（.ep-list）同一套语汇 —— 本就是「可点进去的几条」。
-   行首一枚极小的朱砂点代替边框，说明可点即够。 */
-.chat-starters { display: block; margin: 20px 0 0; }
-.chat-starters button {
-  display: flex; width: 100%; align-items: baseline; gap: 10px;
-  font-family: var(--serif); background: none; border: 0;
-  border-bottom: 1px solid var(--line); border-radius: 0;
-  color: var(--ink-2); font-size: 0.94rem; line-height: 1.6;
-  padding: 14px 2px; text-align: left; cursor: pointer;
-  transition: color var(--t-2) var(--e-out);
-}
-.chat-starters button:last-child { border-bottom: 0; }
-.chat-starters button::before {
-  content: ''; flex: none; width: 3px; height: 3px; border-radius: 50%;
-  background: var(--accent-soft);
-  transform: translateY(-0.28em);   /* 落在字腰略上，作标点而非上标 */
-}
-.chat-starters button:active { color: var(--accent); }
-@media (hover: hover) and (pointer: fine) {
-  .chat-starters button:hover { color: var(--accent); }
-}
-.chat-input {
-  display: flex; gap: 8px; align-items: flex-end;
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-  padding: 8px 8px 8px 16px; margin-top: 12px;
-  transition: border-color 0.25s var(--e-out);
-}
-.chat-input:focus-within { border-color: var(--accent-soft); }
-.chat-input textarea {
-  flex: 1; font-family: var(--serif); font-size: 0.96rem; line-height: 1.6;
-  background: transparent; border: 0; outline: none; color: var(--ink);
-  resize: none; max-height: 120px;
-}
-.chat-input textarea::placeholder { color: var(--ink-3); }
-.chat-input button {
-  flex: none; width: 44px; height: 44px; border-radius: 13px; border: 0;
-  background: var(--accent); color: var(--on-accent); cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: transform var(--t-1) var(--e-press), opacity var(--t-2) var(--e-out);
-}
-.chat-input button:not(:disabled):active { transform: scale(0.93); }
-/* 空着的时候不占强调位：此刻该被看见的是那几条引导问题，不是一个待命的按钮。
-   一朱砂满底的方块若恒亮，它就是整页最重的一点，而它什么也没在等。 */
-.chat-input button:disabled {
-  background: none; color: var(--ink-3); opacity: 1; cursor: default;
-}
-.chat-input button svg { width: 20px; height: 20px; }
-.ai-note { color: var(--ink-3); font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.04em; text-align: center; }
 
-/* 以下原在 style.css 的「通用按钮」「阅读器」两段之间，按板块拆分时
-   被行号切到了 reader.css；它们都是问法自己的零件，归位在此。
-   ask.css 紧邻 reader.css 之前加载，故层叠次序不因这次搬动而变。 */
-/* 问法：页头新问键 / 停止态 / 回答操作行 / 重试 / 出处预览 */
-/* 标题让 flex:1 —— 否则「问法」被「新问」挤成收缩宽度，标题里那道
-   泥金引线（.page-title::after）宽度归零，全站只有这一页秃着 */
-.wd-head { display: flex; align-items: center; gap: 12px; }
-.wd-head .page-title { flex: 1; min-width: 0; }
-/* 「新问」：没有对话可清时它是死键，故由 JS 按 data-chatting 收起（见下）。
-   留下时也不必再框一道 —— 页头已有标题与那道泥金引线，再加个药丸就三层了。 */
-.chat-new {
-  flex: none; font-family: var(--serif); background: transparent; border: 0;
-  color: var(--ink-3); font-size: 0.84rem; letter-spacing: 0.08em;
-  padding: 6px 2px; cursor: pointer;
-  transition: color var(--t-2) var(--e-out);
+/* —— 出处卡：系列 · 篇名 · 一行摘录 ——
+   被引用的在前，其余折叠。序号用泥金数字，不套方框 —— 清单里的序号本已有次第，
+   再描个框就成了第二种「可点的方章」，与正文里的引用角标语汇撞车。 */
+.srcs { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--gold-line); }
+.srcs-h { display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; font-size: 0.72rem; letter-spacing: 0.12em; color: var(--gold-text); }
+.srcs-h b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.srcs-h small { margin-left: auto; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ink-3); }
+.src {
+  display: grid; grid-template-columns: 16px 1fr; column-gap: 8px; row-gap: 1px;
+  width: 100%; padding: 8px 0 9px;
+  font-family: var(--serif); background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  text-align: left; color: var(--ink); cursor: pointer;
+  transition: color var(--t-2) var(--e-out), background var(--t-2) var(--e-out);
 }
-.chat-new:active { color: var(--accent); }
-@media (hover: hover) and (pointer: fine) {
-  .chat-new:hover { color: var(--accent); }
+.srcs .src:last-child, .srcs-rest .src:last-child { border-bottom: 0; }
+.src-n { padding-top: 4px; font-size: 0.72rem; line-height: 1; color: var(--gold-text); font-variant-numeric: tabular-nums; }
+.src-t { font-size: 0.84rem; line-height: 1.55; }
+.src-t i { font-style: normal; color: var(--ink-3); }
+.src-x {
+  grid-column: 2; font-size: 0.76rem; line-height: 1.55; color: var(--ink-3);
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
 }
-/* 空对话：没有可清的东西，也不必再讲一遍用法 */
-body:not([data-chatting]) .chat-new { display: none; }
-body[data-chatting] #view-wenda > .page-note { display: none; }
-#btnAsk .ic-stop { display: none; }
-.chat-input.asking #btnAsk .ic-send { display: none; }
-.chat-input.asking #btnAsk .ic-stop { display: block; }
-/* 回答操作行：纯图标按钮（复制 / 分享） */
-/* 复制/分享：原 29px 见方，指腹按不准；提到 38px（图标不变，只放大热区） */
-.ans-acts { display: flex; gap: 4px; margin-top: 8px; margin-left: -10px; }
-.ans-acts button {
-  background: transparent; border: 0; width: 38px; height: 38px; padding: 0; cursor: pointer;
-  color: var(--ink-3); display: flex; align-items: center; justify-content: center;
-  border-radius: 10px; transition: color 0.2s var(--e-out), background 0.2s var(--e-out);
+.src.hi { color: var(--accent); background: var(--accent-wash); }
+@media (hover: hover) and (pointer: fine) { .src:hover { color: var(--accent); } }
+.srcs-rest[hidden] { display: none; }
+.srcs-more {
+  display: block; width: 100%; padding: 8px 0 0; background: none; border: 0;
+  font-family: var(--serif); font-size: 0.78rem; letter-spacing: 0.08em; color: var(--ink-3); text-align: left; cursor: pointer;
 }
-.ans-acts button svg { width: 17px; height: 17px; }
-.ans-acts button:active { color: var(--accent); background: var(--accent-wash); }
-/* 朗读中、已表态：留一个明确的"按下了"的态，免得人不确定点没点上 */
-.ans-acts button.on { color: var(--accent); background: var(--accent-wash); }
 
 /* —— 引用核验徽标 ——
-   摆在回答与操作行之间，一行小字。不做成醒目的绿标或红标：
+   摆在出处与操作行之间，一行小字。不做成醒目的绿标或红标：
    它是给人一个「可核对到什么程度」的交代，不是给回答打分。 */
 .ans-verify {
   display: inline-flex; align-items: center; gap: 5px;
-  margin-top: 10px; font-size: 0.74rem; letter-spacing: 0.04em; line-height: 1.4;
+  margin-top: 12px; font-size: 0.74rem; letter-spacing: 0.04em; line-height: 1.4;
   color: var(--ink-3);
 }
 .ans-verify svg { flex: 0 0 auto; opacity: 0.85; }
 .ans-verify.warn { color: var(--accent); }
+/* 回答操作行：纯图标（复制 / 朗读 / 有益 / 答偏了 / 分享），38px 热区 */
+.ans-acts { display: flex; gap: 2px; margin: 6px 0 0 -10px; }
+.ans-acts button {
+  width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 10px; color: var(--ink-3); cursor: pointer;
+  transition: color var(--t-2) var(--e-out), background var(--t-2) var(--e-out);
+}
+.ans-acts button svg { width: 17px; height: 17px; }
+.ans-acts button:active, .ans-acts button.on { color: var(--accent); background: var(--accent-wash); }
+
+/* 护栏定句（未找到 / 检索不可用）：泥金「答」印照旧，定句后给两枚去路，不列出处不给操作行 */
+.ask-refuse p { margin: 0 0 0.5em; font-size: 0.96rem; line-height: 1.95; color: var(--ink); }
+.ask-refuse .hint { font-size: 0.88rem; color: var(--ink-3); }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ask-chip {
+  padding: 7px 14px; font-family: var(--serif); font-size: 0.84rem; letter-spacing: 0.06em;
+  color: var(--accent); background: transparent; border: 1px solid var(--accent-soft); border-radius: 999px; cursor: pointer;
+}
+.ask-chip:active { background: var(--accent-wash); }
+.chat-retry {
+  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
+  color: var(--accent); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 6px;
+}
+
+/* —— 空态：请益引言 · 今日一问 · 常问 · 往问 —— */
+.ask-eyebrow { margin: 0 0 8px; font-size: 0.72rem; letter-spacing: 0.14em; color: var(--gold-text); }
+.ask-lead { margin: 6px 0 0; font-size: 0.98rem; line-height: 1.9; color: var(--ink-2); }
+.ask-lead b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* 今日一问：与首页「正在播出」同一套卡语汇（朱砂左缘 + 6/14 圆角） */
+.ask-today {
+  margin: 24px 0 8px; padding: 13px 16px 12px;
+  background: var(--card); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 6px 14px 14px 6px;
+}
+.ask-today .ask-eyebrow { margin-bottom: 4px; }
+.today-q {
+  display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 0; background: none; border: 0; font-family: var(--serif); text-align: left; color: var(--ink); cursor: pointer;
+}
+.today-q span { font-size: 1rem; font-weight: 600; line-height: 1.6; }
+.today-q em { flex: none; font-style: normal; font-size: 0.8rem; letter-spacing: 0.06em; color: var(--accent); }
+.today-q:active span { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .today-q:hover span { color: var(--accent); } }
+.today-n { margin: 6px 0 0; font-size: 0.7rem; letter-spacing: 0.04em; color: var(--ink-3); }
+.ask-group { margin-top: 22px; }
+/* 引导问题与往问条目：竖排一列，与文库篇目（.ep-list）同一套语汇；行首一枚泥金栏目眉标 */
+.ask-starter {
+  display: flex; width: 100%; align-items: baseline; gap: 10px; padding: 13px 2px;
+  background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  font-family: var(--serif); font-size: 0.95rem; line-height: 1.6; color: var(--ink-2); text-align: left; cursor: pointer;
+}
+.ask-starter:last-of-type { border-bottom: 0; }
+.ask-starter i { flex: none; width: 2.6em; font-style: normal; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--gold-text); }
+.ask-starter i.dt { width: auto; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.ask-starter:active { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .ask-starter:hover { color: var(--accent); } }
+.ask-more {
+  padding: 10px 2px 0; background: none; border: 0;
+  font-family: var(--serif); font-size: 0.8rem; letter-spacing: 0.08em; color: var(--accent); cursor: pointer;
+}
+
+/* —— 停靠输入 ——
+   空着的时候发送键不占强调位：此刻该被看见的是那几条引导问题，不是一个待命的按钮。 */
+.ask-composer {
+  display: flex; align-items: flex-end; gap: 6px;
+  padding: 5px 5px 5px 16px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+  transition: border-color var(--t-2) var(--e-out);
+}
+.ask-composer:focus-within { border-color: var(--accent-soft); }
+.ask-composer textarea {
+  flex: 1; min-width: 0; padding: 8px 0;
+  font-family: var(--serif); font-size: 0.96rem; line-height: 1.6; color: var(--ink);
+  background: transparent; border: 0; outline: none; resize: none; max-height: 120px;
+}
+.ask-composer textarea::placeholder { color: var(--ink-3); }
+.ask-send {
+  flex: none; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--on-accent); border: 0; border-radius: 50%; cursor: pointer;
+  transition: transform var(--t-1) var(--e-press), background var(--t-2) var(--e-out), color var(--t-2) var(--e-out);
+}
+.ask-send:not(:disabled):active { transform: scale(0.93); }
+.ask-send:disabled { background: transparent; color: var(--ink-3); cursor: default; }
+.ask-send svg { width: 20px; height: 20px; }
+.ask-send .ic-stop { display: none; }
+.ask-send.stop .ic-send { display: none; }
+.ask-send.stop .ic-stop { display: block; }
+.ask-note { margin: 7px 0 0; text-align: center; font-size: 0.68rem; letter-spacing: 0.04em; color: var(--ink-3); }
+/* 「我的」页也用这一行小字（数据只存本机 …） */
+.ai-note { color: var(--ink-3); font-size: 0.72rem; margin-top: 10px; letter-spacing: 0.04em; text-align: center; }
+
+/* —— 出处抽屉（复用念佛弹层 #cntSheet） —— */
+.cite-src { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; margin-bottom: 10px; }
+.cite-x {
+  color: var(--ink); font-size: 0.92rem; line-height: 2; text-align: justify;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+/* —— 往问抽屉与桌面右栏 —— */
+.hist-d { margin: 14px 0 0; }
+.hist-i {
+  display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 12px 2px; background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  font-family: var(--serif); text-align: left; color: var(--ink); cursor: pointer;
+  transition: color var(--t-2) var(--e-out);
+}
+.hist-i span { flex: 1; min-width: 0; font-size: 0.95rem; line-height: 1.55; }
+.hist-i small { flex: none; font-size: 0.72rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.hist-i.cur span { color: var(--accent); }
+.hist-i:active { color: var(--accent); }
+@media (hover: hover) and (pointer: fine) { .hist-i:hover { color: var(--accent); } }
+.hist-note { margin: 14px 0 0; text-align: center; font-size: 0.72rem; letter-spacing: 0.04em; color: var(--ink-3); }
+.hist-empty { padding: 28px 0; text-align: center; font-size: 0.9rem; color: var(--ink-3); }
+/* 清空往问：这一带唯一的破坏性操作，不与别项等重 —— 无框、字小、退到最末（同 .cal-reset） */
+.hist-clear {
+  display: block; margin: 18px auto 0; padding: 10px 12px; background: transparent; border: 0; cursor: pointer;
+  font-family: var(--serif); color: var(--ink-3); font-size: 0.78rem; letter-spacing: 0.08em;
+}
+.rail-empty { margin: 0; font-size: 0.82rem; line-height: 1.7; color: var(--ink-3); }
+.rail-hist { margin-top: 22px; }
 
 /* —— 出处角标的悬停预览（仅桌面，见 ask.js 的 canHover）——
    位置由 JS 按角标算，这里只管长相。 */
@@ -182,19 +279,11 @@ body[data-chatting] #view-wenda > .page-note { display: none; }
 }
 .cite-tip b { display: block; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
 .cite-tip span { display: block; color: var(--ink-2); text-align: justify; }
-.chat-retry {
-  font-family: var(--serif); background: transparent; border: 0; padding: 2px 0;
-  color: var(--accent); font-size: 0.78rem; letter-spacing: 0.1em; cursor: pointer; margin-top: 6px;
-}
-.cite-src { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; margin-bottom: 10px; }
-.cite-x {
-  color: var(--ink); font-size: 0.92rem; line-height: 2; text-align: justify;
-  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-  padding: 14px 16px; margin-bottom: 14px;
-}
 
-/* 新问答落纸：淡入 + 抬一指高。只给新插入的那一条 ——
-   恢复历史对话时若逐条播，六条各自淡入反成一阵闪。
-   全局的 prefers-reduced-motion 规则（chrome.css）已把位移与延时一并归零。 */
-.msg-new { animation: msgIn var(--t-3) var(--e-out) backwards; }
-@keyframes msgIn { from { opacity: 0; transform: translateY(8px); } }
+/* —— 桌面：会话栏 640px 居中 + 出处栏 300px 靠右 —— */
+@media (min-width: 1120px) {
+  .ask-rail { display: block; flex: none; width: 300px; overflow-y: auto; padding: 18px 18px 24px; border-left: 1px solid var(--line); }
+  .ask-log { padding: 24px 40px 28px; }
+  .ask-log > *, .ask-dock > * { max-width: 640px; margin-left: auto; margin-right: auto; }
+  .ask-rail .srcs { margin: 0; padding: 0; border: 0; }
+}

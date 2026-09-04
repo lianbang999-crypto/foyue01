@@ -24,9 +24,9 @@ import {
   trimQuote, resetPoster, posterToBlob,
 } from './poster.js';
 import {
-  initAsk, buildWenda, loadChat, saveChat, sendQuestion, shareAnswer, pruneRt, pathToHash,
-  isAsking, abortAsk, chatMsg, chatCount, clearChat, growInput, syncAskUI,
-  speakAnswer, stopSpeak, isSpeaking,
+  initAsk, buildWenda, loadChat, sendQuestion, shareAnswer, pruneRt, pathToHash,
+  isAsking, abortAsk, chatMsg, newThread, openThread, clearThreads, histSheetHtml, retryExchange,
+  growInput, syncAskUI, speakAnswer, stopSpeak, isSpeaking, speakable,
 } from './ask.js';
 
 const audio = $('#audio');
@@ -62,7 +62,8 @@ const SLEEP_MINS = [0, 15, 30, 60];
 let miniExpanded = localStorage.getItem('fy.miniExp') !== '0';   // 播放条两态，记住用户偏好
 let nj = { total: 0, days: {} };   // 念佛计数
 let reader = { chapters: null, idx: 0, path: null, backHash: '#wenku' };
-let pendingReaderBack = null;      // 从问道引用跳转阅读时，返回键回问道
+let pendingReaderBack = null;      // 从问法引用跳转阅读时，返回键回问法
+let askBackHash = '#home';         // 问法独占整屏，返回键回进入前的那一页
 let pendingHlTarget = null;        // 从「我的划线」跳转时定位到的段落 {path, p}
 let allChapters = null;            // 文库全部篇目（阅读页标题搜索用）
 
@@ -409,6 +410,8 @@ async function route() {
   syncCmtPolling();                   // 按「聊天室开 / 在直播页」决定留言轮询节奏
   document.body.dataset.tab = tab;  // 导航高亮与子栏面板显示依赖 data-tab / data-seg
   document.querySelectorAll('a[data-tab]').forEach((a) => a.classList.toggle('on', a.dataset.tab === tab));
+  // 问法的「来处」：问法本身与由问法跳去的原文（tab 仍是 wenda）都不算
+  if (tab !== 'wenda') askBackHash = h;
 }
 
 /* ── 与站方对表 ──
@@ -3630,6 +3633,14 @@ function bindEvents() {
       closeCntSheet();
       pendingReaderBack = '#wenda';
       location.hash = pathToHash(b.dataset.citeOpen);
+    } else if (cntSheetMode === 'asklog') {
+      // 往问：点一段接着看；清空是这里唯一的破坏性操作，问一句
+      const ld = e.target.closest('[data-load-thread]');
+      if (ld) { closeCntSheet(); openThread(ld.dataset.loadThread); return; }
+      if (!e.target.closest('[data-clear-threads]')) return;
+      if (!window.confirm('清空全部往问？此操作不可恢复。')) return;
+      clearThreads();
+      closeCntSheet();
     } else if (cntSheetMode === 'myhl') {
       const b = e.target.closest('[data-hl-open]');
       if (!b) return;
@@ -3941,30 +3952,29 @@ function bindEvents() {
     if (e.target === $('#aboutOverlay')) $('#aboutOverlay').hidden = true;   // 点遮罩关闭，点内容不关
   });
 
-  // 问道：对话（流式中发送键＝停止）
-  $('#btnAsk').addEventListener('click', () => {
+  // 问法：独占整屏的请益堂（流式中发送键＝停止）
+  $('#askSend').addEventListener('click', () => {
     if (isAsking()) { abortAsk(); return; }
-    sendQuestion($('#wdInput').value);
+    sendQuestion($('#askText').value);
   });
-  $('#wdInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion($('#wdInput').value); }
+  $('#askText').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion($('#askText').value); }
   });
   // 随字数长高。原先 rows=1 死守一行，问句稍长就只看得见最后一行，
   // 写到一半回看不了自己写了什么 —— 打字慢的人尤其难受。
-  // 上限只写在 CSS（.chat-input textarea 的 max-height），此处不复述那个数字。
-  $('#wdInput').addEventListener('input', () => { growInput(); syncAskUI(); });
-  $('#chatStarters').addEventListener('click', (e) => {
-    const b = e.target.closest('button');
-    if (b) sendQuestion(b.textContent);
+  // 上限只写在 CSS（.ask-composer textarea 的 max-height），此处不复述那个数字。
+  $('#askText').addEventListener('input', () => { growInput(); syncAskUI(); });
+  $('#askBack').addEventListener('click', () => { location.hash = askBackHash; });
+  $('#askNew').addEventListener('click', newThread);
+  $('#askHist').addEventListener('click', () => {
+    $('#cntSheetBody').innerHTML = histSheetHtml();
+    openCntSheet('asklog', '往问');
   });
-  $('#btnChatNew').addEventListener('click', () => {
-    if (isAsking()) return;
-    if (chatCount() && !window.confirm('开始新的一问？当前对话将清空。')) return;
-    clearChat();
-  });
-  $('#chatLog').addEventListener('click', (e) => {
-    // 引用角标 / 出处行 → 出处预览抽屉（不打断对话）
-    const c = e.target.closest('[data-path]');
+  // 会话面内一切可点之物走一个委托：空态引导、出处、重试、操作行、桌面右栏
+  $('#view-wenda').addEventListener('click', (e) => {
+    const t = e.target;
+    // 引用角标 / 出处卡 → 出处预览抽屉（不打断对话）
+    const c = t.closest('[data-path]');
     if (c) {
       $('#cntSheetBody').innerHTML = `
         <p class="cite-src">《${esc(c.dataset.s || '')}》· ${esc(c.dataset.t || '')}</p>
@@ -3973,22 +3983,29 @@ function bindEvents() {
       openCntSheet('cite', '出处');
       return;
     }
-    const rt = e.target.closest('[data-retry]');
-    if (rt) {
-      // 连同上方残留的提问气泡一起移除，重发不留重影
-      const errMsg = rt.closest('.msg');
-      if (errMsg?.previousElementSibling?.classList.contains('user')) errMsg.previousElementSibling.remove();
-      errMsg?.remove();
-      sendQuestion(rt.dataset.retry);
+    const q = t.closest('[data-q]');
+    if (q) { sendQuestion(q.dataset.q); return; }
+    const ld = t.closest('[data-load-thread]');
+    if (ld) { openThread(ld.dataset.loadThread); return; }
+    if (t.closest('[data-hist]')) { $('#askHist').click(); return; }
+    const more = t.closest('[data-more]');
+    if (more) {
+      const rest = more.previousElementSibling;
+      rest.hidden = !rest.hidden;
+      more.textContent = rest.hidden ? `其余 ${rest.children.length} 篇 ›` : '收起 ›';
       return;
     }
-    const act = e.target.closest('[data-ans-copy],[data-ans-share],[data-ans-speak],[data-ans-fb]');
+    if (t.closest('[data-refocus]')) { $('#askText').focus(); return; }
+    if (t.closest('[data-browse]')) { location.hash = '#wenku'; return; }
+    const rt = t.closest('[data-retry]');
+    if (rt) { retryExchange(rt.closest('.ex'), rt.dataset.retry); return; }
+    const act = t.closest('[data-ans-copy],[data-ans-share],[data-ans-speak],[data-ans-fb]');
     if (!act) return;
-    const mi = Number(act.closest('.msg')?.dataset.mi);
+    const mi = Number(act.closest('.ex')?.dataset.mi);
     const m = chatMsg(mi);
     if (!m) return;
     const qText = chatMsg(mi - 1)?.content || '';
-    const clean = m.content.replace(/\[\d{1,2}\]/g, '').replace(/\*\*/g, '').trim();
+    const clean = speakable(m.content);
     if (act.hasAttribute('data-ans-copy')) {
       copyText(`问：${qText}\n\n${clean}\n\n—— 佛乐 · 问法 ${location.origin}/#wenda`)
         .then((ok) => toast(ok ? '已复制' : '复制失败'));
