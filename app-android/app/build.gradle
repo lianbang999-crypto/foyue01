@@ -21,8 +21,11 @@ android {
         // 由 MainActivity 检出后给一页说明，而不是让人对着白屏猜。
         minSdk 21
         targetSdk 36
-        versionCode 1
-        versionName "1.0.0"
+        // 1.1.0（2026-09-01）：随包的前端整块换了 —— 问道更名问法、页面重做成请益堂。
+        // 壳代码本身没动，但 ContentUpdater 只刷目录 JSON、不刷 js/css/html，
+        // 故这类改动必须发新包才到得了已装用户手里。
+        versionCode 2
+        versionName "1.1.0"
 
         resValue "string", "appName", "佛乐 · 净土法音"
         resValue "string", "launcherName", "佛乐"
